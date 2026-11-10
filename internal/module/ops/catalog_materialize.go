@@ -30,9 +30,49 @@ type catalogAggregate struct {
 	installed *pkgmeta.Module
 }
 
+// catalogLifecycleTimes holds the latest install/upgrade FinishedAt for Overview.
+type catalogLifecycleTimes struct {
+	installedAt    *time.Time
+	lastUpgradedAt *time.Time
+}
+
+func (t catalogLifecycleTimes) lastInstalledOrUpgradedAt(fallback *time.Time) *time.Time {
+	var best *time.Time
+	pick := func(candidate *time.Time) {
+		if candidate == nil {
+			return
+		}
+		if best == nil || candidate.After(*best) {
+			best = candidate
+		}
+	}
+	pick(t.installedAt)
+	pick(t.lastUpgradedAt)
+	if best != nil {
+		return best
+	}
+	return fallback
+}
+
 // SyncSourceSnapshotsThenMaterialize syncs source snapshots then rewrites catalog rows.
 // originType: local | registry | all (empty => all).
+// Origin sync errors are returned even when materialize succeeds so callers can
+// decide soft vs hard failure; ActionSync treats materialize success as terminal success.
 func (o *Ops) SyncSourceSnapshotsThenMaterialize(ctx context.Context, originType string) (lifecycle.ModuleSourceSnapshotSyncStats, error) {
+	stats, originErr := o.syncSourceSnapshots(ctx, originType)
+	if originType == "" {
+		originType = "all"
+	}
+	// Always materialize so a failed origin (e.g. offline registry) still
+	// reflects snapshots that did sync successfully.
+	if matErr := o.MaterializeCatalog(ctx, nil); matErr != nil {
+		return stats, errors.Join(originErr, matErr)
+	}
+	return stats, originErr
+}
+
+// syncSourceSnapshots updates local and/or registry source snapshots without materializing.
+func (o *Ops) syncSourceSnapshots(ctx context.Context, originType string) (lifecycle.ModuleSourceSnapshotSyncStats, error) {
 	stats := lifecycle.ModuleSourceSnapshotSyncStats{}
 	if o == nil {
 		return stats, errors.New("ops: nil host")
@@ -57,12 +97,11 @@ func (o *Ops) SyncSourceSnapshotsThenMaterialize(ctx context.Context, originType
 		syncRegistry = defaultSyncRegistry
 	}
 
-	var err error
 	switch originType {
 	case originLocal:
-		stats, err = syncLocal(ctx, o.Scope, o.LockerFactory)
+		return syncLocal(ctx, o.Scope, o.LockerFactory)
 	case originRegistry:
-		stats, err = syncRegistry(ctx, o.Scope, o.LockerFactory)
+		return syncRegistry(ctx, o.Scope, o.LockerFactory)
 	case "all":
 		regStats, regErr := syncRegistry(ctx, o.Scope, o.LockerFactory)
 		stats.Total += regStats.Total
@@ -72,16 +111,46 @@ func (o *Ops) SyncSourceSnapshotsThenMaterialize(ctx context.Context, originType
 		stats.Total += localStats.Total
 		stats.Success += localStats.Success
 		stats.Failed += localStats.Failed
-		err = errors.Join(regErr, localErr)
+		return stats, errors.Join(regErr, localErr)
 	default:
 		return stats, errors.New("ops: originType must be one of: local, registry, all")
 	}
-	// Always materialize so a failed origin (e.g. offline registry) still
-	// reflects snapshots that did sync successfully.
-	if matErr := o.MaterializeCatalog(ctx, nil); matErr != nil {
-		return stats, errors.Join(err, matErr)
+}
+
+func (o *Ops) countCatalogRows(ctx context.Context) (int, error) {
+	sess, err := o.session(ctx)
+	if err != nil {
+		return 0, err
 	}
-	return stats, err
+	var n int64
+	if err := sess.WithContext(ctx).Model(&modmeta.ModuleCatalog{}).Count(&n).Error; err != nil {
+		return 0, err
+	}
+	return int(n), nil
+}
+
+func (o *Ops) persistSyncResult(ctx context.Context, row *modmeta.ModuleOperation, summary SyncResultSummary) error {
+	if row == nil {
+		return errors.New("ops: nil operation")
+	}
+	doc, err := unmarshalPlanDocument(row.PlanJson)
+	if err != nil {
+		if o.Scope != nil && o.Scope.Logger() != nil {
+			o.Scope.Logger().Warn("ops: decode plan json for sync result failed", "error", err)
+		}
+		doc = PlanDocument{BaseRevision: "sync"}
+	}
+	if strings.TrimSpace(doc.BaseRevision) == "" {
+		doc.BaseRevision = "sync"
+	}
+	copied := summary
+	doc.SyncResult = &copied
+	raw, err := marshalPlanDocument(doc)
+	if err != nil {
+		return err
+	}
+	row.PlanJson = raw
+	return o.casSaveOperation(ctx, row, StatusRunning)
 }
 
 // MaterializeCatalog rewrites meta_module_catalog rows from source snapshots + installed modules.
@@ -163,6 +232,11 @@ func (o *Ops) MaterializeCatalog(ctx context.Context, moduleNames []string) erro
 		ensure(name).installed = &installed[i]
 	}
 
+	lifecycleTimes, err := loadCatalogLifecycleTimes(sess.WithContext(ctx), names, filtered)
+	if err != nil {
+		return err
+	}
+
 	existingDemo := map[string]catalogDemoState{}
 	{
 		var prior []modmeta.ModuleCatalog
@@ -185,7 +259,7 @@ func (o *Ops) MaterializeCatalog(ctx context.Context, moduleNames []string) erro
 	now := time.Now().UTC()
 	rows := make([]modmeta.ModuleCatalog, 0, len(byName))
 	for name, a := range byName {
-		rows = append(rows, materializeOne(name, a, now, existingDemo[name]))
+		rows = append(rows, materializeOne(name, a, now, existingDemo[name], lifecycleTimes[name]))
 	}
 	if len(rows) == 0 {
 		return nil
@@ -204,7 +278,10 @@ func (o *Ops) MaterializeCatalog(ctx context.Context, moduleNames []string) erro
 	// Keep reverse-dep edges coherent for modules outside this batch
 	// (and repair dependents_json after filtered materialize, which must not
 	// upsert a partial dependents graph into the conflict update).
-	return o.refreshCatalogDependents(ctx)
+	if err := o.refreshCatalogDependents(ctx); err != nil {
+		return err
+	}
+	return o.replaceCatalogDependsEdges(ctx)
 }
 
 // catalogMaterializeDoUpdates builds dialect-safe ON CONFLICT assignments.
@@ -219,8 +296,9 @@ func catalogMaterializeDoUpdates(dialect string) clause.Set {
 	beforeInstalledVersion := []string{
 		"summary", "description", "category", "application", "author", "license",
 		"local_version", "registry_version", "installed",
+		"last_installed_or_upgraded_at",
 		"update_available", "registry_newer_than_local", "available", "unavailable_reason",
-		"local_path", "depends_json", "has_demo", "last_sync_at", "updated_at",
+		"local_path", "registry_path", "registry_tarball", "depends_json", "has_demo", "last_sync_at", "updated_at",
 	}
 	updates := clause.AssignmentColumns(beforeInstalledVersion)
 	updates = append(updates, clause.Assignment{
@@ -256,7 +334,7 @@ func catalogDemoLoadedUpsertExpr(dialect string) string {
 	END`
 }
 
-func materializeOne(name string, a *catalogAggregate, now time.Time, prior catalogDemoState) modmeta.ModuleCatalog {
+func materializeOne(name string, a *catalogAggregate, now time.Time, prior catalogDemoState, life catalogLifecycleTimes) modmeta.ModuleCatalog {
 	row := modmeta.ModuleCatalog{
 		ModuleName: name,
 		Available:  true,
@@ -266,7 +344,7 @@ func materializeOne(name string, a *catalogAggregate, now time.Time, prior catal
 		if a.local.Version.Valid {
 			localV = strings.TrimSpace(a.local.Version.String)
 		}
-		row.LocalVersion = a.local.Version
+		row.LocalVersion = nullString(displayVersion(localV))
 		row.LocalPath = a.local.LocalPath
 		if a.local.LastSyncAt != nil {
 			row.LastSyncAt = a.local.LastSyncAt
@@ -281,7 +359,10 @@ func materializeOne(name string, a *catalogAggregate, now time.Time, prior catal
 		if a.registry.Version.Valid {
 			registryV = strings.TrimSpace(a.registry.Version.String)
 		}
-		row.RegistryVersion = a.registry.Version
+		row.RegistryVersion = nullString(displayVersion(registryV))
+		pkg, tarball := registryOriginFromSnapshot(a.registry)
+		row.RegistryPath = nullString(pkg)
+		row.RegistryTarball = nullString(tarball)
 		if row.LastSyncAt == nil && a.registry.LastSyncAt != nil {
 			row.LastSyncAt = a.registry.LastSyncAt
 		}
@@ -297,7 +378,13 @@ func materializeOne(name string, a *catalogAggregate, now time.Time, prior catal
 	if a.installed != nil {
 		row.Installed = true
 		installedV = strings.TrimSpace(a.installed.Version)
-		row.InstalledVersion = nullString(installedV)
+		row.InstalledVersion = nullString(displayVersion(installedV))
+		var createdAt *time.Time
+		if !a.installed.CreatedAt.IsZero() {
+			t := a.installed.CreatedAt.UTC()
+			createdAt = &t
+		}
+		row.LastInstalledOrUpgradedAt = life.lastInstalledOrUpgradedAt(createdAt)
 		if row.Summary == "" {
 			row.Summary = a.installed.Summary
 		}
@@ -344,6 +431,49 @@ func materializeOne(name string, a *catalogAggregate, now time.Time, prior catal
 	return row
 }
 
+// loadCatalogLifecycleTimes reads the latest succeeded install/upgrade FinishedAt
+// per module for catalog Overview timestamps.
+func loadCatalogLifecycleTimes(db *gorm.DB, names []string, filtered bool) (map[string]catalogLifecycleTimes, error) {
+	out := map[string]catalogLifecycleTimes{}
+	if db == nil {
+		return out, nil
+	}
+	var rows []modmeta.ModuleOperation
+	q := db.Model(&modmeta.ModuleOperation{}).
+		Select("module_name", "action", "finished_at").
+		Where("status = ? AND action IN ? AND finished_at IS NOT NULL", StatusSucceeded, []string{ActionInstall, ActionUpgrade})
+	if filtered {
+		if len(names) == 0 {
+			return out, nil
+		}
+		q = q.Where("module_name IN ?", names)
+	}
+	if err := q.Find(&rows).Error; err != nil {
+		return nil, err
+	}
+	for i := range rows {
+		row := rows[i]
+		name := strings.TrimSpace(row.ModuleName)
+		if name == "" || row.FinishedAt == nil || row.FinishedAt.IsZero() {
+			continue
+		}
+		t := row.FinishedAt.UTC()
+		cur := out[name]
+		switch row.Action {
+		case ActionInstall:
+			if cur.installedAt == nil || t.After(*cur.installedAt) {
+				cur.installedAt = &t
+			}
+		case ActionUpgrade:
+			if cur.lastUpgradedAt == nil || t.After(*cur.lastUpgradedAt) {
+				cur.lastUpgradedAt = &t
+			}
+		}
+		out[name] = cur
+	}
+	return out, nil
+}
+
 func decodeDependsNames(raw datatypes.JSON) []string {
 	if len(raw) == 0 {
 		return nil
@@ -353,6 +483,26 @@ func decodeDependsNames(raw datatypes.JSON) []string {
 		return nil
 	}
 	return uniqueTrimmedNames(names)
+}
+
+// dependsNamesForEdges preserves duplicate depends entries until replaceCatalogDependsEdges dedupes edges.
+func dependsNamesForEdges(raw datatypes.JSON) []string {
+	if len(raw) == 0 {
+		return nil
+	}
+	var names []string
+	if err := json.Unmarshal(raw, &names); err != nil {
+		return nil
+	}
+	out := make([]string, 0, len(names))
+	for _, name := range names {
+		name = strings.TrimSpace(name)
+		if name == "" {
+			continue
+		}
+		out = append(out, name)
+	}
+	return out
 }
 
 func fillCatalogDependents(rows []modmeta.ModuleCatalog) {
@@ -421,7 +571,83 @@ func (o *Ops) refreshCatalogDependents(ctx context.Context) error {
 	})
 }
 
-type manifestLite struct {
+// ensureModuleCatalogDependTable creates meta_module_catalog_depend when absent
+// (e.g. load-demo / materialize before meta schema evolve has run in tests).
+// Never AutoMigrate: schema authority remains the meta TS evolve path.
+func ensureModuleCatalogDependTable(db *gorm.DB) error {
+	if db == nil {
+		return errors.New("ops: nil db")
+	}
+	m := db.Migrator()
+	if m.HasTable(&modmeta.ModuleCatalogDepend{}) {
+		return nil
+	}
+	return m.CreateTable(&modmeta.ModuleCatalogDepend{})
+}
+
+// replaceCatalogDependsEdges rewrites meta_module_catalog_depend from DependsJson names.
+// Full replace keeps self-ManyToMany Depends/Dependents coherent after every materialize.
+func (o *Ops) replaceCatalogDependsEdges(ctx context.Context) error {
+	sess, err := o.session(ctx)
+	if err != nil {
+		return err
+	}
+	if err := ensureModuleCatalogDependTable(sess.WithContext(ctx)); err != nil {
+		return err
+	}
+	var rows []modmeta.ModuleCatalog
+	if err := sess.WithContext(ctx).
+		Model(&modmeta.ModuleCatalog{}).
+		Select("id", "module_name", "depends_json").
+		Find(&rows).Error; err != nil {
+		return err
+	}
+	idByName := make(map[string]string, len(rows))
+	for _, row := range rows {
+		name := strings.TrimSpace(row.ModuleName)
+		id := strings.TrimSpace(row.Id.String)
+		if name == "" || id == "" {
+			continue
+		}
+		idByName[name] = id
+	}
+	edges := make([]modmeta.ModuleCatalogDepend, 0)
+	seen := make(map[string]struct{})
+	for _, row := range rows {
+		moduleID := strings.TrimSpace(row.Id.String)
+		if moduleID == "" {
+			continue
+		}
+		for _, depName := range dependsNamesForEdges(row.DependsJson) {
+			dependID := idByName[depName]
+			if dependID == "" || dependID == moduleID {
+				continue
+			}
+			key := moduleID + "\x00" + dependID
+			if _, ok := seen[key]; ok {
+				continue
+			}
+			seen[key] = struct{}{}
+			edges = append(edges, modmeta.ModuleCatalogDepend{
+				ModuleID: moduleID,
+				DependID: dependID,
+			})
+		}
+	}
+	return sess.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Unscoped().Session(&gorm.Session{AllowGlobalUpdate: true}).
+			Where("1 = 1").
+			Delete(&modmeta.ModuleCatalogDepend{}).Error; err != nil {
+			return err
+		}
+		if len(edges) == 0 {
+			return nil
+		}
+		return tx.CreateInBatches(&edges, 200).Error
+	})
+}
+
+type manifestLiteFields struct {
 	Summary     string          `json:"summary"`
 	Description string          `json:"description"`
 	Category    string          `json:"category"`
@@ -430,9 +656,59 @@ type manifestLite struct {
 	License     string          `json:"license"`
 	Depends     json.RawMessage `json:"depends"`
 	Demo        json.RawMessage `json:"demo"`
-	Choysum     *struct {
-		Demo json.RawMessage `json:"demo"`
-	} `json:"choysum"`
+}
+
+type manifestLite struct {
+	manifestLiteFields
+	Choysum *manifestLiteFields `json:"choysum"`
+}
+
+// registryOriginFromSnapshot reads index.choysum.dev package id + latest tarball
+// from a registry ModuleSourceSnapshot (SourceRef and/or ManifestJson).
+func registryOriginFromSnapshot(snap *modmeta.ModuleSourceSnapshot) (packageID, tarball string) {
+	if snap == nil {
+		return "", ""
+	}
+	packageID = strings.TrimSpace(snap.SourceRef)
+	versionKey := ""
+	if snap.Version.Valid {
+		versionKey = displayVersion(strings.TrimSpace(snap.Version.String))
+	}
+	if len(snap.ManifestJson) == 0 {
+		return packageID, ""
+	}
+	var doc struct {
+		Package  string `json:"package"`
+		Versions map[string]struct {
+			Package string `json:"package"`
+			Tarball string `json:"tarball"`
+		} `json:"versions"`
+	}
+	if err := json.Unmarshal(snap.ManifestJson, &doc); err != nil {
+		return packageID, ""
+	}
+	if packageID == "" {
+		packageID = strings.TrimSpace(doc.Package)
+	}
+	if versionKey != "" {
+		if entry, ok := doc.Versions[versionKey]; ok {
+			if packageID == "" {
+				packageID = strings.TrimSpace(entry.Package)
+			}
+			return packageID, strings.TrimSpace(entry.Tarball)
+		}
+		// Snapshot Version may still carry a leading v; try the raw key too.
+		if snap.Version.Valid {
+			raw := strings.TrimSpace(snap.Version.String)
+			if entry, ok := doc.Versions[raw]; ok {
+				if packageID == "" {
+					packageID = strings.TrimSpace(entry.Package)
+				}
+				return packageID, strings.TrimSpace(entry.Tarball)
+			}
+		}
+	}
+	return packageID, ""
 }
 
 func fillCatalogFromManifest(row *modmeta.ModuleCatalog, raw datatypes.JSON) {
@@ -443,33 +719,41 @@ func fillCatalogFromManifest(row *modmeta.ModuleCatalog, raw datatypes.JSON) {
 	if err := json.Unmarshal(raw, &m); err != nil {
 		return
 	}
+	var nested manifestLiteFields
+	if m.Choysum != nil {
+		nested = *m.Choysum
+	}
 	if row.Summary == "" {
-		row.Summary = m.Summary
+		row.Summary = firstNonEmpty(m.Summary, nested.Summary)
 	}
 	if row.Description == "" {
-		row.Description = m.Description
+		row.Description = firstNonEmpty(m.Description, nested.Description)
 	}
 	if row.Category == "" {
-		row.Category = m.Category
+		row.Category = firstNonEmpty(m.Category, nested.Category)
 	}
 	if row.Application == "" {
-		row.Application = m.Application
+		row.Application = firstNonEmpty(m.Application, nested.Application)
 	}
 	if row.Author == "" {
-		row.Author = m.Author
+		row.Author = firstNonEmpty(m.Author, nested.Author)
 	}
 	if row.License == "" {
-		row.License = m.License
+		row.License = firstNonEmpty(m.License, nested.License)
 	}
-	if len(row.DependsJson) == 0 && len(m.Depends) > 0 {
-		row.DependsJson = datatypes.JSON(m.Depends)
+	depends := m.Depends
+	if len(depends) == 0 {
+		depends = nested.Depends
+	}
+	if len(row.DependsJson) == 0 && len(depends) > 0 {
+		row.DependsJson = datatypes.JSON(depends)
 	}
 	if !row.HasDemo {
-		if len(m.Demo) > 0 && string(m.Demo) != "null" && string(m.Demo) != "[]" && string(m.Demo) != "{}" {
-			row.HasDemo = true
-		} else if m.Choysum != nil && len(m.Choysum.Demo) > 0 && string(m.Choysum.Demo) != "null" {
-			row.HasDemo = true
+		demo := m.Demo
+		if len(demo) == 0 || strings.TrimSpace(string(demo)) == "null" {
+			demo = nested.Demo
 		}
+		row.HasDemo = hasDemoPayload(datatypes.JSON(demo))
 	}
 }
 

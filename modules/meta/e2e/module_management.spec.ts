@@ -71,6 +71,14 @@ function parseTerminalStatus(value: string): Exclude<OperationTerminalStatus, 'r
   return '';
 }
 
+/** Map result-step Result chip (SUCCEEDED/FAILED) to terminal status. */
+function parseTerminalResult(value: string): Exclude<OperationTerminalStatus, 'reloaded'> | '' {
+  const normalized = value.trim().toUpperCase();
+  if (normalized === 'SUCCEEDED') return 'succeeded';
+  if (normalized === 'FAILED') return 'failed';
+  return '';
+}
+
 /**
  * Escapes a string so it can be used as a literal fragment in RegExp patterns.
  */
@@ -110,6 +118,14 @@ async function ensureLoggedIn(page: Page, baseURL: string) {
  */
 async function waitForModuleCatalog(page: Page) {
   await page.locator('[data-testid="module-catalog-view"]').waitFor({ state: 'visible', timeout: 30000 });
+  // Default catalog is ChoyKanbanView flat board; list route uses ChoyListView table.
+  const flatBoard = page.locator('[data-testid="choy-kanban-flat-board"]');
+  const listTable = page.locator('[data-testid="module-catalog-table"]');
+  if ((await flatBoard.count()) > 0) {
+    await flatBoard.first().waitFor({ state: 'visible', timeout: 15000 }).catch(() => null);
+  } else if ((await listTable.count()) > 0) {
+    await listTable.first().waitFor({ state: 'visible', timeout: 15000 }).catch(() => null);
+  }
   // The catalog can already be stable from cache without a fresh RPC on each poll.
   // Keep a short best-effort response wait to avoid 30s stalls in hot loops.
   await page
@@ -156,7 +172,7 @@ async function findModuleCardByName(page: Page, moduleName: string): Promise<Loc
     const card = cards.nth(i);
     const name = (
       (await card
-        .locator('.module-catalog-card__title .name')
+        .locator('[data-testid="module-catalog-card-name"]')
         .textContent()
         .catch(() => '')) || ''
     ).trim();
@@ -254,7 +270,7 @@ async function moduleStatusText(page: Page, moduleName: string) {
   }
   const tagText = (
     (await card
-      .locator('.module-catalog-card__status')
+      .locator('[data-testid="module-catalog-card-status"]')
       .textContent()
       .catch(() => '')) || ''
   ).trim();
@@ -356,28 +372,44 @@ async function pageNavEpoch(page: Page): Promise<string> {
  */
 async function waitForOperationTerminalState(page: Page, timeout = 3 * 60 * 1000): Promise<OperationTerminalStatus> {
   const dialog = page.locator('.module-op-dialog');
+  const strip = page.locator('[data-testid="module-op-progress-strip"]');
+  const resultTag = dialog.locator('[data-testid="module-op-result"]');
   const statusTag = dialog.locator('[data-testid="module-op-status"]');
   const startURL = String(await page.url());
   const startEpoch = await pageNavEpoch(page);
+  let sawStrip = false;
 
   const deadline = Date.now() + timeout;
   while (Date.now() < deadline) {
+    const resultText = ((await resultTag.textContent().catch(() => '')) || '').trim();
+    const fromResult = parseTerminalResult(resultText);
+    if (fromResult) {
+      return fromResult;
+    }
+    // Apply-failure result stays in the confirm dialog.
     const statusText = ((await statusTag.textContent().catch(() => '')) || '').trim();
-    const terminal = parseTerminalStatus(statusText);
-    if (terminal) {
-      return terminal;
+    const fromStatus = parseTerminalStatus(statusText);
+    if (fromStatus) {
+      return fromStatus;
+    }
+
+    const stripVisible = await strip.isVisible().catch(() => false);
+    if (stripVisible) {
+      sawStrip = true;
+    } else if (sawStrip) {
+      // Strip clears after tip/poll terminal; toast distinguishes success vs failure.
+      const failedToast = await page.getByText(/Operation Failed/i).isVisible().catch(() => false);
+      if (failedToast) return 'failed';
+      return 'succeeded';
     }
 
     const href = String(await page.url());
     if (href !== startURL && href.includes('/web/meta/modules')) {
-      // Hard navigation/reload replaced the operation dialog.
       return 'reloaded';
     }
 
     const dialogVisible = await dialog.isVisible().catch(() => false);
     if (!dialogVisible && href.includes('/web/meta/modules')) {
-      // Hidden dialog alone is not evidence of a hard navigation/reload.
-      // Same-URL hard reload still changes performance.timeOrigin.
       const epoch = await pageNavEpoch(page);
       if (href !== startURL || (startEpoch !== '' && epoch !== '' && epoch !== startEpoch)) {
         return 'reloaded';
@@ -388,8 +420,13 @@ async function waitForOperationTerminalState(page: Page, timeout = 3 * 60 * 1000
   }
 
   const dialogVisible = await dialog.isVisible().catch(() => false);
+  const stripVisible = await strip.isVisible().catch(() => false);
   throw new Error(
-    dialogVisible ? 'operation did not reach a terminal status before timeout' : 'operation dialog disappeared before terminal status became observable'
+    stripVisible
+      ? 'operation progress strip did not finish before timeout'
+      : dialogVisible
+        ? 'operation did not reach a terminal status before timeout'
+        : 'operation UI disappeared before terminal status became observable',
   );
 }
 
@@ -444,7 +481,7 @@ async function waitForOperationFailure(page: Page) {
         `expected failed operation status, got status=${statusText || '<empty>'}, result=${resultText || '<empty>'}`,
       );
     }
-    // Apply-time failures (e.g. lock conflict) may only surface the drawer alert.
+    // Apply-time failures (e.g. lock conflict) may only surface the dialog alert.
     const alert = dialog.locator('[data-testid="module-op-alert"]');
     const alertText = ((await alert.textContent().catch(() => '')) || '').trim();
     if (!/fail|error|conflict|lease/i.test(alertText)) {
@@ -568,7 +605,7 @@ async function snapshotModuleCards(page: Page): Promise<ModuleCardSnapshot[]> {
 
     const name = (
       (await card
-        .locator('.module-catalog-card__title .name')
+        .locator('[data-testid="module-catalog-card-name"]')
         .textContent()
         .catch(() => '')) || ''
     ).trim();
@@ -578,7 +615,7 @@ async function snapshotModuleCards(page: Page): Promise<ModuleCardSnapshot[]> {
 
     const status = (
       (await card
-        .locator('.module-catalog-card__status')
+        .locator('[data-testid="module-catalog-card-status"]')
         .textContent()
         .catch(() => '')) || ''
     ).trim();
@@ -939,45 +976,51 @@ test('meta module management: lock conflict flow', async () => {
 });
 
 /**
- * Verifies that the module catalog page loads and remains interactive when the
- * boot IfStale RequestSync fires in the background. The catalog must not block
- * on async snapshot refresh.
+ * Verifies that the module catalog page loads without auto RequestSync and
+ * remains interactive (manual sync button stays available).
  */
-test('meta module management: catalog lazy sync does not block page', async () => {
+test('meta module management: catalog open does not auto sync', async () => {
   const runtime = readRuntimeInfo();
   test.skip(runtime.scenario !== 'default', 'only runs under default scenario');
 
   const baseURL = runtime.baseURL;
-  await ensureLoggedIn(page, baseURL);
+  let requestSyncCalls = 0;
+  const routeHandler = async (route: any) => {
+    const req = route.request();
+    if (req.method() === 'POST' && req.url().includes('/meta.MetaModuleCatalog/RequestSync')) {
+      requestSyncCalls += 1;
+    }
+    await route.continue();
+  };
 
-  // After login, catalog boot calls RequestSync({ Force: false, IfStale: true })
-  // when the user can sync. Assert the page stays interactive during that work.
-  const searchInput = page.locator('[data-testid="module-catalog-view"] .choy-search__input');
-  await expect(searchInput).toBeVisible({ timeout: 15000 });
+  await loginAsE2EAdmin(page, baseURL);
+  await page.route('**/*', routeHandler);
+  try {
+    await page.goto(`${baseURL}/web/meta/modules`, { waitUntil: 'domcontentloaded' });
+    await page.waitForURL('**/web/meta/modules', { timeout: 30000 });
+    await waitForModuleCatalog(page);
 
-  const cards = page.locator('[data-testid="module-catalog-card"]');
-  const count = await cards.count();
-  if (count > 0) {
-    // At least one card is present: the catalog rendered before or during sync.
-    await expect(cards.first()).toBeVisible({ timeout: 10000 });
-  } else if (count === 0) {
-    // No local modules and registry may be unreachable in CI; page must still
-    // render the empty catalog shell without crashing.
+    const searchInput = page.locator('[data-testid="module-catalog-view"] .choy-search__input');
+    await expect(searchInput).toBeVisible({ timeout: 15000 });
     await expect(page.locator('[data-testid="module-catalog-view"]')).toBeVisible({ timeout: 15000 });
-  }
 
-  // The manual sync toolbar button must remain reachable.
-  const syncButton = page.getByRole('button', { name: /Sync/i });
-  if (await syncButton.isVisible().catch(() => false)) {
-    await expect(syncButton).toBeEnabled({ timeout: 5000 });
+    // Give boot a moment; catalog must not fire RequestSync on open.
+    await page.waitForTimeout(1500);
+    expect(requestSyncCalls).toBe(0);
+
+    const syncButton = page.getByRole('button', { name: /更新模块列表|Update Module List|Sync/i });
+    if (await syncButton.isVisible().catch(() => false)) {
+      await expect(syncButton).toBeEnabled({ timeout: 5000 });
+    }
+  } finally {
+    await page.unroute('**/*', routeHandler);
   }
 });
 
 /**
- * Verifies that the module catalog page remains usable even when registry
- * sync fails silently (e.g. index.choysum.dev is unreachable in an air-gapped
- * or CI environment). The catalog must still show local modules and allow
- * install/upgrade/uninstall operations.
+ * Verifies that the module catalog page remains usable when a manual registry
+ * sync fails (e.g. index.choysum.dev is unreachable). Entering the page must
+ * not call RequestSync; only the toolbar button triggers it.
  */
 test('meta module management: catalog usable when registry sync fails', async () => {
   const runtime = readRuntimeInfo();
@@ -1016,21 +1059,18 @@ test('meta module management: catalog usable when registry sync fails', async ()
     await page.waitForURL('**/web/meta/modules', { timeout: 30000 });
     await waitForModuleCatalog(page);
 
-    // Boot IfStale RequestSync runs after catalog mount; this test forces the
-    // first RequestSync to fail and verifies the page still stays usable.
     await expect(page.locator('[data-testid="module-catalog-view"]')).toBeVisible({ timeout: 15000 });
-    await expect.poll(() => requestSyncCalls, { timeout: 15000 }).toBeGreaterThan(0);
-    await expect.poll(() => forcedRegistrySyncFailures, { timeout: 15000 }).toBeGreaterThan(0);
+    await page.waitForTimeout(1000);
+    expect(requestSyncCalls).toBe(0);
 
-    // The manual sync button should still work for local-only refresh.
-    const syncButton = page.getByRole('button', { name: /Sync/i });
+    const syncButton = page.getByRole('button', { name: /更新模块列表|Update Module List|Sync/i });
     if (await syncButton.isVisible().catch(() => false)) {
       await syncButton.click();
-      await page.waitForTimeout(2000);
+      await expect.poll(() => requestSyncCalls, { timeout: 15000 }).toBeGreaterThan(0);
+      await expect.poll(() => forcedRegistrySyncFailures, { timeout: 15000 }).toBeGreaterThan(0);
       await expect(page.locator('[data-testid="module-catalog-view"]')).toBeVisible({ timeout: 15000 });
     }
 
-    // The catalog remains interactive despite registry sync failures.
     const searchInput = page.locator('[data-testid="module-catalog-view"] .choy-search__input');
     if (await searchInput.isVisible().catch(() => false)) {
       await searchInput.fill('e2e_fixture');

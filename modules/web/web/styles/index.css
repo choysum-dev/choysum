@@ -275,6 +275,7 @@ html {
   gap: var(--choy-field-group-gap);
 }
 
+/* Same size as values (sm); hierarchy is muted label vs foreground value (both regular). */
 .choy-field-base__label-row {
   gap: var(--choy-field-label-inline-gap);
   font-size: var(--choy-font-size-sm);

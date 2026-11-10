@@ -26,6 +26,7 @@ func OpsEntities() []any {
 	return []any{
 		&ModuleSourceSnapshot{},
 		&ModuleCatalog{},
+		&ModuleCatalogDepend{},
 		&ModuleOperation{},
 		&ModelData{},
 		&ModuleMigration{},

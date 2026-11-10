@@ -17,6 +17,7 @@ import (
 	"github.com/choysum-dev/choysum/internal/testing/scopetest"
 	"github.com/choysum-dev/choysum/pkg/config"
 	"github.com/choysum-dev/choysum/pkg/scope"
+	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
@@ -251,6 +252,25 @@ func TestNewDefaultScopeCreatesMissingSQLiteParentDir(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestNewDbPostgresUsesOpenPostgresWrapper(t *testing.T) {
+	// Stub the dialector factory so this covers newDb's postgres branch without a live server.
+	prev := postgresOpen
+	t.Cleanup(func() { postgresOpen = prev })
+	dsn := filepath.Join(t.TempDir(), "pg-stub.sqlite")
+	postgresOpen = func(string) gorm.Dialector {
+		return sqlite.Open(dsn)
+	}
+	db := newDb(context.Background(), scope.DatabaseRuntimeOptions{Dialect: "postgres", DSN: "unused"}, testLogger())
+	if db == nil {
+		t.Fatal("expected postgres db handle via openPostgres wrapper")
+	}
+	sqlDB, err := db.DB()
+	if err != nil {
+		t.Fatalf("db.DB: %v", err)
+	}
+	defer sqlDB.Close()
 }
 
 func TestNewDbPanicsOnInvalidDialect(t *testing.T) {

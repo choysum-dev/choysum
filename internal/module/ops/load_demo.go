@@ -58,9 +58,8 @@ func defaultApplyDemoFiles(ctx context.Context, runtimeScope scope.Scope, mod *p
 }
 
 func (o *Ops) planLoadDemo(ctx context.Context, operatorUserId string) (PlanResult, error) {
-	// Refresh HasDemo / installed flags before selecting pending rows. Setup may
-	// call load-demo right after CompleteInitialSetup, before a catalog sync has
-	// rewritten rows from installed demo_str (otherwise NO_DEMO_PENDING falsely).
+	// Refresh HasDemo / installed flags before selecting pending rows. Catalog
+	// rows may lag demo_str until a full sync or this materialize rewrite.
 	if err := o.MaterializeCatalog(ctx, nil); err != nil {
 		return PlanResult{}, fmt.Errorf("ops: materialize catalog before load-demo plan: %w", err)
 	}

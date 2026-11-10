@@ -1,35 +1,45 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { computed, ref, type Ref } from 'vue';
+import { computed, ref, unref, type Ref } from 'vue';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import { ChoyMessage } from '@/web';
 import { createPlanDialogSessionGate } from '../views/module_catalog_chrome';
 import { createModuleOpProgressSession, type ModuleOpStatusSnapshot } from './useModuleOpProgress';
 import {
-  createModuleOpDrawerProgressHooks,
+  createModuleCatalogOpDrawerProgressHooks,
   mapOperationRowToSnapshot,
-} from './moduleOpDrawerProgress';
+} from './moduleCatalogOpDrawerProgress';
+import {
+  changedApplicationsFromModules,
+  mapPlanModuleEntry,
+  partitionPlanModules,
+  shouldShowAffectedApplications,
+  type ModuleOpPlanModuleView,
+} from '../views/module_op_plan_impact';
 
-export type ModuleOpDrawerStep = 'plan' | 'progress' | 'result';
-export type ModuleOpDrawerPlanAction = 'install' | 'upgrade' | 'uninstall' | 'load_demo';
+export type ModuleCatalogOpDrawerStep = 'plan' | 'progress' | 'result';
+export type ModuleCatalogOpDrawerPlanAction = 'install' | 'upgrade' | 'uninstall' | 'load_demo';
 
-export type ModuleOpDrawerPlanView = {
+export type ModuleCatalogOpDrawerPlanView = {
   Id: string;
   baseRevision?: string;
-  affectedModules: Array<{
-    moduleName: string;
-    reason?: string;
-    currentVersion?: string;
-    targetVersion?: string;
-    origin?: string;
-  }>;
+  /** Full ModuleOrder (+ Ensure) mapped entries; prefer changingModules / satisfiedModules for UI. */
+  affectedModules: ModuleOpPlanModuleView[];
+  ensureModules: ModuleOpPlanModuleView[];
+  changingModules: ModuleOpPlanModuleView[];
+  satisfiedModules: ModuleOpPlanModuleView[];
+  /** Engine AffectedApps (full closure); not for direct dump in the confirm dialog. */
   affectedApps: string[];
+  /** Applications of changing modules only. */
+  changedApplications: string[];
+  showAffectedApplications: boolean;
+  needsWebBuild: boolean;
   risks: Array<{ code: string; level: string; message?: string }>;
   blockers: Array<{ code: string; level: string; message?: string }>;
 };
 
-export type ModuleOpDrawerSessionMsgs = {
+export type ModuleCatalogOpDrawerSessionMsgs = {
   failedToLoadPlan: string;
   applyFailed: string;
   jobStillRunning: string;
@@ -39,9 +49,12 @@ export type ModuleOpDrawerSessionMsgs = {
   operationFailed: string;
   succeededReloadFailed: string;
   operationSucceeded: string;
+  /** Sync completed with catalog refresh but some sources failed. */
+  operationSucceededPartial?: string;
 };
 
 const OP_STATUS_FIELDS = [
+  'Action',
   'Status',
   'Phase',
   'ErrorDomain',
@@ -49,6 +62,7 @@ const OP_STATUS_FIELDS = [
   'ErrorMessage',
   'ReloadTriggered',
   'ReloadFailed',
+  'PlanJson',
 ] as const;
 
 /** Read one operation row via Browse, else Search-by-Id. */
@@ -71,18 +85,22 @@ export async function readOperationStatusSnapshot(
   return mapOperationRowToSnapshot(row);
 }
 
-function mapPlanResponse(nextPlan: any): ModuleOpDrawerPlanView {
+function mapPlanResponse(nextPlan: any): ModuleCatalogOpDrawerPlanView {
+  const affectedModules = (nextPlan?.ModuleOrder || []).map(mapPlanModuleEntry);
+  const ensureModules = (nextPlan?.EnsureModules || []).map(mapPlanModuleEntry);
+  const { changing, satisfied } = partitionPlanModules(affectedModules, ensureModules);
+  const changedApplications = changedApplicationsFromModules(changing);
   return {
     Id: String(nextPlan?.Id || '').trim(),
     baseRevision: nextPlan?.BaseRevision != null ? String(nextPlan.BaseRevision) : undefined,
-    affectedModules: (nextPlan?.ModuleOrder || []).map((entry: any) => ({
-      moduleName: String(entry?.ModuleName || '').trim(),
-      reason: entry?.Reason != null ? String(entry.Reason) : undefined,
-      currentVersion: entry?.CurrentVersion != null ? String(entry.CurrentVersion) : undefined,
-      targetVersion: entry?.TargetVersion != null ? String(entry.TargetVersion) : undefined,
-      origin: entry?.Origin != null ? String(entry.Origin) : undefined,
-    })),
+    affectedModules,
+    ensureModules,
+    changingModules: changing,
+    satisfiedModules: satisfied,
     affectedApps: (nextPlan?.AffectedApps || []).map((name: unknown) => String(name || '').trim()).filter(Boolean),
+    changedApplications,
+    showAffectedApplications: shouldShowAffectedApplications(changing, changedApplications),
+    needsWebBuild: nextPlan?.NeedsWebBuild === true,
     risks: (nextPlan?.Risks || []).map((issue: any) => ({
       code: String(issue?.Code || '').trim(),
       level: String(issue?.Level || '').trim(),
@@ -99,25 +117,35 @@ function mapPlanResponse(nextPlan: any): ModuleOpDrawerPlanView {
 /**
  * Drawer session: Plan → Confirm/Apply → C1 progress (operation-row Read + tip).
  */
-export function useModuleOpDrawerSession(opts: {
+export function useModuleCatalogOpDrawerSession(opts: {
   operationStore: WebModelStore<any> | Ref<WebModelStore<any> | null | undefined>;
   isOpen: () => boolean;
-  msgs: ModuleOpDrawerSessionMsgs;
-  onSettled?: () => void;
+  msgs: ModuleCatalogOpDrawerSessionMsgs;
+  onSettled?: (status?: ModuleOpStatusSnapshot | null) => void;
+  /** Called after Apply succeeds, before progress watch (hosts refresh ActiveOperationId). */
+  onApplied?: (operationId: string) => void;
 }) {
-  const step = ref<ModuleOpDrawerStep>('plan');
+  const step = ref<ModuleCatalogOpDrawerStep>('plan');
   const planLoading = ref(false);
   const executeLoading = ref(false);
-  const plan = ref<ModuleOpDrawerPlanView | null>(null);
+  const plan = ref<ModuleCatalogOpDrawerPlanView | null>(null);
   const opStatus = ref<ModuleOpStatusSnapshot | null>(null);
   const activeModuleName = ref('');
-  const activeAction = ref<ModuleOpDrawerPlanAction | 'progress' | ''>('');
+  const activeAction = ref<ModuleCatalogOpDrawerPlanAction | 'progress' | 'sync' | ''>('');
   const useRegistryOrigin = ref(false);
   const planSession = createPlanDialogSessionGate();
+  // Tracks which begin() seq last set planLoading, so finally can clear even after stop()/invalidate.
+  let planLoadingOwnerSeq = 0;
 
   function resolveStore(): WebModelStore<any> | null {
-    const raw = opts.operationStore as any;
-    const store = raw && typeof raw === 'object' && 'value' in raw ? raw.value : raw;
+    // Unwrap Ref/ComputedRef layers. Some hosts pass a ComputedRef as the prop
+    // value; one unref is not always enough.
+    let store: any = opts.operationStore;
+    for (let i = 0; i < 3; i += 1) {
+      const next = unref(store);
+      if (next === store) break;
+      store = next;
+    }
     return store || null;
   }
 
@@ -128,7 +156,7 @@ export function useModuleOpDrawerSession(opts: {
   }
 
   const progress = createModuleOpProgressSession(
-    createModuleOpDrawerProgressHooks({
+    createModuleCatalogOpDrawerProgressHooks({
       fetchStatus: fetchOperationStatus,
       isDrawerOpen: () => opts.isOpen(),
       setOpStatus: status => {
@@ -160,11 +188,13 @@ export function useModuleOpDrawerSession(opts: {
     if (!opStatus.value) return opts.msgs.completed;
     if (opStatus.value.resultStatus === 'FAILED') return opts.msgs.operationFailed;
     if (opStatus.value.resultStatus !== 'SUCCEEDED') return opts.msgs.completed;
+    if (opStatus.value.partialFailure) return opts.msgs.operationSucceededPartial ?? opts.msgs.operationSucceeded;
     return opStatus.value.ReloadFailed ? opts.msgs.succeededReloadFailed : opts.msgs.operationSucceeded;
   });
 
   function reset() {
     planSession.invalidate();
+    planLoadingOwnerSeq = 0;
     plan.value = null;
     opStatus.value = null;
     step.value = 'plan';
@@ -178,19 +208,22 @@ export function useModuleOpDrawerSession(opts: {
 
   function stop() {
     planSession.invalidate();
+    planLoadingOwnerSeq = 0;
+    planLoading.value = false;
+    executeLoading.value = false;
     progress.stop();
   }
 
   async function runPlan(input: {
     moduleName: string;
-    action: Exclude<ModuleOpDrawerPlanAction, 'load_demo'>;
+    action: Exclude<ModuleCatalogOpDrawerPlanAction, 'load_demo'>;
     origin?: 'local' | 'registry';
   }) {
     const moduleName = String(input.moduleName || '').trim();
     const action = input.action;
     if (!moduleName || !action) return;
     const store = resolveStore();
-    if (!store) {
+    if (!store || typeof (store as any).Plan !== 'function') {
       ChoyMessage.error(opts.msgs.failedToLoadPlan);
       return;
     }
@@ -201,6 +234,7 @@ export function useModuleOpDrawerSession(opts: {
     opStatus.value = null;
     plan.value = null;
     const requestSeq = planSession.begin();
+    planLoadingOwnerSeq = requestSeq;
     planLoading.value = true;
     try {
       const req: Record<string, unknown> = { ModuleName: moduleName, Action: action };
@@ -215,7 +249,8 @@ export function useModuleOpDrawerSession(opts: {
       ChoyMessage.error(String(error?.message || opts.msgs.failedToLoadPlan));
       plan.value = null;
     } finally {
-      if (planSession.isCurrent(requestSeq)) planLoading.value = false;
+      // Clear even after stop()/invalidate when no newer plan owns the spinner.
+      if (planLoadingOwnerSeq === requestSeq) planLoading.value = false;
     }
   }
 
@@ -238,6 +273,7 @@ export function useModuleOpDrawerSession(opts: {
     opStatus.value = null;
     plan.value = null;
     const requestSeq = planSession.begin();
+    planLoadingOwnerSeq = requestSeq;
     planLoading.value = true;
     try {
       const nextPlan = await (store as any).PlanDemo({});
@@ -251,7 +287,7 @@ export function useModuleOpDrawerSession(opts: {
       activeAction.value = '';
       step.value = 'plan';
     } finally {
-      if (planSession.isCurrent(requestSeq)) planLoading.value = false;
+      if (planLoadingOwnerSeq === requestSeq) planLoading.value = false;
     }
   }
 
@@ -265,24 +301,25 @@ export function useModuleOpDrawerSession(opts: {
     });
   }
 
-  async function watchProgress(operationId: string) {
+  async function watchProgress(operationId: string, preferredAction?: 'progress' | 'sync') {
     const id = String(operationId || '').trim();
     if (!id) return;
     const store = resolveStore();
     const canRead =
       !!store && (typeof (store as any).Browse === 'function' || typeof (store as any).Search === 'function');
+    const nextAction = preferredAction || activeAction.value || 'progress';
     if (!canRead) {
       // Page-mount stubs may omit Browse/Search; keep the drawer open without crashing.
-      activeAction.value = activeAction.value || 'progress';
+      activeAction.value = nextAction;
       step.value = 'progress';
-      opStatus.value = { status: 'queued' };
+      opStatus.value = { status: 'queued', phase: 'queued' };
       return;
     }
-    activeAction.value = activeAction.value || 'progress';
+    activeAction.value = nextAction;
     step.value = 'progress';
     opStatus.value = null;
     await progress.watch(id);
-    if (opts.isOpen()) opts.onSettled?.();
+    if (opts.isOpen()) opts.onSettled?.(opStatus.value);
   }
 
   async function confirmApply() {
@@ -294,7 +331,6 @@ export function useModuleOpDrawerSession(opts: {
       return;
     }
     executeLoading.value = true;
-    step.value = 'progress';
     try {
       await (store as any).Apply({ Id: operationId });
     } catch (error: any) {
@@ -307,13 +343,13 @@ export function useModuleOpDrawerSession(opts: {
         summary: String(error?.message || opts.msgs.applyFailed),
       };
       ChoyMessage.error(String(error?.message || opts.msgs.applyFailed));
+      if (opts.isOpen()) opts.onSettled?.(opStatus.value);
       return;
     } finally {
       executeLoading.value = false;
     }
-    // progress.watch swallows status-read errors; do not remap them as Apply failures.
-    await progress.watch(operationId);
-    if (opts.isOpen()) opts.onSettled?.();
+    // Host closes the confirm dialog and watches progress on a locked strip.
+    opts.onApplied?.(operationId);
   }
 
   return {

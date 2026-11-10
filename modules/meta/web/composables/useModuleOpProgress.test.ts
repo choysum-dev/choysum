@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import {
+  clampRetryDelay,
   createModuleOpProgressSession,
   type ModuleOpProgressDeps,
   type ModuleOpStatusSnapshot,
@@ -51,6 +52,13 @@ function createFakeClock(): {
 
   return { deps, advance };
 }
+
+test('clampRetryDelay: clamps finite server delay into poll bounds', () => {
+  expect(clampRetryDelay(undefined, 1000)).toBe(1000);
+  expect(clampRetryDelay(Number.NaN, 1000)).toBe(1000);
+  expect(clampRetryDelay(2500, 1000)).toBe(2500);
+  expect(clampRetryDelay(60_000, 1000)).toBe(5000);
+});
 
 test('createModuleOpProgressSession: skips tip when boot status is terminal', async () => {
   const onTips = fnRecorder(async () => undefined);
@@ -515,4 +523,409 @@ test('createModuleOpProgressSession: poll fallback settles on stop and inactive 
   await orphanPending;
   await advance(1_000);
   await Promise.resolve();
+});
+
+test('createModuleOpProgressSession: default reloadWeb uses window when ReloadWeb', async () => {
+  const reloads: number[] = [];
+  const prev = (globalThis as any).window;
+  (globalThis as any).window = { location: { reload: () => reloads.push(1) } };
+  try {
+    const session = createModuleOpProgressSession(
+      {
+        fetchStatus: async () => snapshot({ status: 'succeeded', ReloadWeb: true }),
+        isActive: () => true,
+        onStatus: () => undefined,
+        onTerminal: () => undefined,
+        onTimeout: () => undefined,
+      },
+      { onTips: async () => undefined, subscribeModuleOp: () => emptyAsyncIterable() },
+    );
+    await session.watch('job-host-reload');
+    expect(reloads.length).toBe(1);
+  } finally {
+    (globalThis as any).window = prev;
+  }
+});
+
+test('createModuleOpProgressSession: boot fetch errors notify then continue tip path', async () => {
+  const onTransientNetworkError = fnRecorder();
+  const onHardError = fnRecorder();
+  let transientCalls = 0;
+  const transientFetch = fnRecorder(async () => {
+    transientCalls += 1;
+    if (transientCalls === 1) throw new Error('NetworkError when attempting to fetch resource');
+    return snapshot({ status: 'succeeded' });
+  });
+  const session = createModuleOpProgressSession(
+    {
+      fetchStatus: transientFetch as any,
+      isActive: () => true,
+      onStatus: () => undefined,
+      onTerminal: () => undefined,
+      onTimeout: () => undefined,
+      onTransientNetworkError: onTransientNetworkError as any,
+      onHardError: onHardError as any,
+    },
+    { onTips: async () => undefined, subscribeModuleOp: () => emptyAsyncIterable() },
+  );
+  await session.watch('job-boot-transient');
+  expect(onTransientNetworkError.calls.length).toBe(1);
+  expect(onHardError.calls.length).toBe(0);
+
+  const onHardErrorOnly = fnRecorder();
+  let hardCalls = 0;
+  const hardFetch = fnRecorder(async () => {
+    hardCalls += 1;
+    if (hardCalls === 1) throw new Error('boot-status-fail');
+    return snapshot({ status: 'succeeded' });
+  });
+  const hardSession = createModuleOpProgressSession(
+    {
+      fetchStatus: hardFetch as any,
+      isActive: () => true,
+      onStatus: () => undefined,
+      onTerminal: () => undefined,
+      onTimeout: () => undefined,
+      onHardError: onHardErrorOnly as any,
+    },
+    { onTips: async () => undefined, subscribeModuleOp: () => emptyAsyncIterable() },
+  );
+  await hardSession.watch('job-boot-hard');
+  expect(onHardErrorOnly.calls[0]?.[0]).toBe('boot-status-fail');
+});
+
+test('createModuleOpProgressSession: tip refresh errors surface transient and hard', async () => {
+  const { deps, advance } = createFakeClock();
+  const onTransientNetworkError = fnRecorder();
+  const onHardError = fnRecorder();
+  let n = 0;
+  const fetchStatus = fnRecorder(async () => {
+    n += 1;
+    if (n === 1) return snapshot({ status: 'queued' });
+    if (n === 2) throw new Error('NetworkError when attempting to fetch resource');
+    if (n === 3) throw new Error('tip-refresh-fail');
+    return snapshot({ status: 'succeeded' });
+  });
+  const onTips = fnRecorder(async (_stream: unknown, callback: () => Promise<void>) => {
+    await callback();
+    await advance(80);
+    await callback();
+    await advance(80);
+    await callback();
+    await advance(80);
+  });
+  const session = createModuleOpProgressSession(
+    {
+      fetchStatus: fetchStatus as any,
+      isActive: () => true,
+      onStatus: () => undefined,
+      onTerminal: () => undefined,
+      onTimeout: () => undefined,
+      onTransientNetworkError: onTransientNetworkError as any,
+      onHardError: onHardError as any,
+    },
+    { ...deps, onTips: onTips as any, subscribeModuleOp: () => emptyAsyncIterable() },
+  );
+  await session.watch('job-tip-errors');
+  expect(onTransientNetworkError.calls.length).toBe(1);
+  expect(onHardError.calls[0]?.[0]).toBe('tip-refresh-fail');
+});
+
+test('createModuleOpProgressSession: poll honors retryAfterMs clamp', async () => {
+  const { deps, advance } = createFakeClock();
+  let calls = 0;
+  const fetchStatus = fnRecorder(async () => {
+    calls += 1;
+    if (calls === 1) return snapshot({ status: 'queued', retryAfterMs: 2500 });
+    return snapshot({ status: 'succeeded' });
+  });
+  const session = createModuleOpProgressSession(
+    {
+      fetchStatus: fetchStatus as any,
+      isActive: () => true,
+      onStatus: () => undefined,
+      onTerminal: () => undefined,
+      onTimeout: () => undefined,
+    },
+    { ...deps, onTips: 0 as any, subscribeModuleOp: 0 as any },
+  );
+  const pending = session.watch('job-retry-after');
+  let settled = false;
+  void pending.then(() => {
+    settled = true;
+  });
+  for (let i = 0; i < 20 && !settled; i += 1) {
+    await advance(500);
+    await Promise.resolve();
+  }
+  await pending;
+  expect(calls).toBeGreaterThanOrEqual(2);
+});
+
+test('createModuleOpProgressSession: fireTimeout is a no-op after stop bumps generation', async () => {
+  const { deps, advance } = createFakeClock();
+  const onTimeout = fnRecorder();
+  const session = createModuleOpProgressSession(
+    {
+      fetchStatus: async () => snapshot({ status: 'queued' }),
+      isActive: () => true,
+      onStatus: () => undefined,
+      onTerminal: () => undefined,
+      onTimeout: onTimeout as any,
+    },
+    { ...deps, onTips: 0 as any, subscribeModuleOp: 0 as any },
+  );
+  const pending = session.watch('job-stop-timeout');
+  await advance(1);
+  session.stop();
+  await advance(11 * 60 * 1000);
+  await pending;
+  expect(onTimeout.calls.length).toBe(0);
+});
+
+test('createModuleOpProgressSession: applyFetched returns early when inactive before second guard', async () => {
+  const { deps, advance } = createFakeClock();
+  let active = true;
+  let release: (() => void) | undefined;
+  let calls = 0;
+  const fetchStatus = fnRecorder(async () => {
+    calls += 1;
+    if (calls === 1) return snapshot({ status: 'queued' });
+    await new Promise<void>(resolve => {
+      release = resolve;
+    });
+    active = false;
+    return snapshot({ status: 'succeeded' });
+  });
+  const onTerminal = fnRecorder();
+  const session = createModuleOpProgressSession(
+    {
+      fetchStatus: fetchStatus as any,
+      isActive: () => active,
+      onStatus: () => undefined,
+      onTerminal: onTerminal as any,
+      onTimeout: () => undefined,
+    },
+    { ...deps, onTips: 0 as any, subscribeModuleOp: 0 as any },
+  );
+  const pending = session.watch('job-inactive-mid-fetch');
+  for (let i = 0; i < 30 && !release; i += 1) {
+    await advance(500);
+    await Promise.resolve();
+  }
+  release?.();
+  await pending;
+  expect(onTerminal.calls.length).toBe(0);
+});
+
+test('createModuleOpProgressSession: applyFetched skips when inactive before fetch', async () => {
+  const fetchStatus = fnRecorder();
+  const session = createModuleOpProgressSession(
+    {
+      fetchStatus: fetchStatus as any,
+      isActive: () => false,
+      onStatus: () => undefined,
+      onTerminal: () => undefined,
+      onTimeout: () => undefined,
+    },
+    { onTips: async () => undefined, subscribeModuleOp: () => emptyAsyncIterable() },
+  );
+  await session.watch('job-inactive-pre-fetch');
+  expect(fetchStatus.calls.length).toBe(0);
+});
+
+test('createModuleOpProgressSession: boot catch exits when session becomes inactive', async () => {
+  const onHardError = fnRecorder();
+  let active = true;
+  const session = createModuleOpProgressSession(
+    {
+      fetchStatus: async () => {
+        active = false;
+        throw new Error('boot-status-fail');
+      },
+      isActive: () => active,
+      onStatus: () => undefined,
+      onTerminal: () => undefined,
+      onTimeout: () => undefined,
+      onHardError: onHardError as any,
+    },
+    { onTips: async () => undefined, subscribeModuleOp: () => emptyAsyncIterable() },
+  );
+  await session.watch('job-boot-inactive');
+  expect(onHardError.calls.length).toBe(0);
+});
+
+test('createModuleOpProgressSession: stale generation deadline does not call onTimeout', async () => {
+  const { deps, advance } = createFakeClock();
+  const onTimeout = fnRecorder();
+  const session = createModuleOpProgressSession(
+    {
+      fetchStatus: async () => snapshot({ status: 'queued' }),
+      isActive: () => true,
+      onStatus: () => undefined,
+      onTerminal: () => undefined,
+      onTimeout: onTimeout as any,
+    },
+    {
+      ...deps,
+      clearSchedule: () => undefined,
+      onTips: 0 as any,
+      subscribeModuleOp: 0 as any,
+    },
+  );
+  const pending = session.watch('job-stale-deadline');
+  session.stop();
+  await advance(11 * 60 * 1000);
+  await pending;
+  expect(onTimeout.calls.length).toBe(0);
+});
+
+test('createModuleOpProgressSession: deadline is ignored when session is inactive', async () => {
+  const { deps, advance } = createFakeClock();
+  const onTimeout = fnRecorder();
+  let active = true;
+  const session = createModuleOpProgressSession(
+    {
+      fetchStatus: async () => snapshot({ status: 'queued' }),
+      isActive: () => active,
+      onStatus: () => undefined,
+      onTerminal: () => undefined,
+      onTimeout: onTimeout as any,
+    },
+    { ...deps, onTips: 0 as any, subscribeModuleOp: 0 as any },
+  );
+  const pending = session.watch('job-inactive-deadline');
+  active = false;
+  await advance(11 * 60 * 1000);
+  await pending;
+  expect(onTimeout.calls.length).toBe(0);
+});
+
+test('createModuleOpProgressSession: stale fireTimeout after poll timeout is ignored', async () => {
+  const { deps, advance } = createFakeClock();
+  const onTimeout = fnRecorder();
+  const session = createModuleOpProgressSession(
+    {
+      fetchStatus: async () => snapshot({ status: 'queued' }),
+      isActive: () => true,
+      onStatus: () => undefined,
+      onTerminal: () => undefined,
+      onTimeout: onTimeout as any,
+    },
+    { ...deps, onTips: 0 as any, subscribeModuleOp: 0 as any },
+  );
+  const pending = session.watch('job-double-timeout');
+  let settled = false;
+  void pending.then(() => {
+    settled = true;
+  });
+  for (let i = 0; i < 40 && !settled; i += 1) {
+    await advance(60_000);
+    await Promise.resolve();
+  }
+  await pending;
+  expect(onTimeout.calls.length).toBe(1);
+  await advance(11 * 60 * 1000);
+  expect(onTimeout.calls.length).toBe(1);
+});
+
+test('createModuleOpProgressSession: tip refresh ignores stale generation after stop', async () => {
+  const { deps, advance } = createFakeClock();
+  const onHardError = fnRecorder();
+  let calls = 0;
+  const fetchStatus = fnRecorder(async () => {
+    calls += 1;
+    if (calls === 1) return snapshot({ status: 'queued' });
+    throw new Error('tip-refresh-fail');
+  });
+  let tipCalls = 0;
+  let tipSession!: ReturnType<typeof createModuleOpProgressSession>;
+  tipSession = createModuleOpProgressSession(
+    {
+      fetchStatus: fetchStatus as any,
+      isActive: () => true,
+      onStatus: () => undefined,
+      onTerminal: () => undefined,
+      onTimeout: () => undefined,
+      onHardError: onHardError as any,
+    },
+    {
+      ...deps,
+      onTips: (async (_stream: unknown, callback: () => void | Promise<void>) => {
+        tipCalls += 1;
+        if (tipCalls === 1) await callback();
+        tipSession.stop();
+        await callback();
+        await advance(80);
+        await callback();
+      }) as any,
+      subscribeModuleOp: () => emptyAsyncIterable(),
+    },
+  );
+  await tipSession.watch('job-tip-stale');
+  expect(onHardError.calls.length).toBe(0);
+});
+
+test('createModuleOpProgressSession: tip refresh errors after stop stay silent', async () => {
+  const { deps, advance } = createFakeClock();
+  const onHardError = fnRecorder();
+  let calls = 0;
+  let tipSession!: ReturnType<typeof createModuleOpProgressSession>;
+  const fetchStatus = fnRecorder(async () => {
+    calls += 1;
+    if (calls === 1) return snapshot({ status: 'queued' });
+    tipSession.stop();
+    throw new Error('after-stop');
+  });
+  tipSession = createModuleOpProgressSession(
+    {
+      fetchStatus: fetchStatus as any,
+      isActive: () => true,
+      onStatus: () => undefined,
+      onTerminal: () => undefined,
+      onTimeout: () => undefined,
+      onHardError: onHardError as any,
+    },
+    {
+      ...deps,
+      onTips: (async (_stream: unknown, callback: () => void | Promise<void>) => {
+        await callback();
+        await advance(80);
+      }) as any,
+      subscribeModuleOp: () => emptyAsyncIterable(),
+    },
+  );
+  await tipSession.watch('job-tip-stop-mid-error');
+  expect(onHardError.calls.length).toBe(0);
+});
+
+test('createModuleOpProgressSession: clampRetryDelay bounds retryAfterMs on poll ticks', async () => {
+  const { deps, advance } = createFakeClock();
+  let calls = 0;
+  const fetchStatus = fnRecorder(async () => {
+    calls += 1;
+    if (calls === 1) return snapshot({ status: 'queued', retryAfterMs: 60_000 });
+    return snapshot({ status: 'succeeded' });
+  });
+  const session = createModuleOpProgressSession(
+    {
+      fetchStatus: fetchStatus as any,
+      isActive: () => true,
+      onStatus: () => undefined,
+      onTerminal: () => undefined,
+      onTimeout: () => undefined,
+    },
+    { ...deps, onTips: 0 as any, subscribeModuleOp: 0 as any },
+  );
+  const pending = session.watch('job-clamp-retry');
+  let settled = false;
+  void pending.then(() => {
+    settled = true;
+  });
+  for (let i = 0; i < 30 && !settled; i += 1) {
+    await advance(1_000);
+    await Promise.resolve();
+  }
+  await pending;
+  expect(calls).toBeGreaterThanOrEqual(2);
 });

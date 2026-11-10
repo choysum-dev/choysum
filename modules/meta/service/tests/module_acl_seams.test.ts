@@ -128,7 +128,8 @@ test('meta ACL seams: sync path uses bridge.plan(action=sync), not MetaModuleOpe
     expect(resp.Id).toBe('op-sync-acl');
     expect(planCalls).toHaveLength(1);
     expect(planCalls[0].action).toBe('sync');
-    expect(planCalls[0].origin).toBe('local');
+    // Execute syncs all origins; plan does not take a meaningful sync origin.
+    expect(planCalls[0].origin).toBeUndefined();
   } finally {
     restore();
   }

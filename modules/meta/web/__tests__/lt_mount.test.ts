@@ -2,13 +2,23 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { mount, flushPromises } from '@choysum/test-utils';
-import ModuleCatalog from '../pages/ModuleCatalog.vue';
+import ModuleCatalogKanban from '../pages/ModuleCatalogKanban.vue';
 import { buildPageMountGlobal } from '@choysum/page-mount';
 
-test('lt_mount: mounts real ModuleCatalog.vue under choysumMount', async () => {
-  const wrapper = mount(ModuleCatalog as any, {
+test('lt_mount: mounts real ModuleCatalogKanban.vue under choysumMount', async () => {
+  const wrapper = mount(ModuleCatalogKanban as any, {
     global: buildPageMountGlobal({
-      route: { path: '/meta/modules', fullPath: '/meta/modules', name: 'MetaModuleCatalog', params: {} },
+      route: {
+        path: '/meta/modules',
+        fullPath: '/meta/modules',
+        name: 'MetaModuleCatalog',
+        params: {},
+        meta: {
+          viewKind: 'kanban',
+          defaultGroups: [],
+          viewPaths: { kanban: '/meta/modules', list: '/meta/modules/list' },
+        },
+      },
     }),
   });
   await flushPromises();

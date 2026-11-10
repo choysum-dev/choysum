@@ -10,6 +10,8 @@ import type MetaModuleOperation from '@/meta/service/models/module_operation';
 export type ModuleCatalogPageDeps = {
   scopeManager: unknown;
   createStore?: typeof createStoreByModel;
+  /** Kanban chrome uses Catalog; list chrome uses Module List. */
+  pageTitleSrc?: 'Catalog' | 'Module List';
 };
 
 /**
@@ -31,7 +33,7 @@ export function useModuleCatalogPage(deps: ModuleCatalogPageDeps): {
     scopeManager: deps.scopeManager,
   }) as WebModelStore<MetaModuleOperation>;
   return {
-    pageTitle: _t('Modules'),
+    pageTitle: _t(deps.pageTitleSrc || 'Catalog'),
     catalogStore,
     operationStore,
   };

@@ -51,15 +51,22 @@ export const metaSettingsAppMenu: MenuItem = defineMenu('meta.menu.settings_app'
   ],
 });
 
-/** Top-level Modules entry only — no Board / List / History children. */
+/** Modules app root + Catalog leaf — breadcrumb Modules > Catalog. */
 export const metaMenus: MenuItem[] = [
-  defineMenu('meta.menu.modules', {
+  defineMenu('meta.menu.root', {
     title: _lt('Modules'),
     sequence: 60,
     icon: Boxes,
-    path: '/meta/modules',
     defaultRoles: ['sys.admin'],
-    // Catalog browse only; install/upgrade/sync stay gated by action requires.
-    requires: [{ model: 'meta.MetaModuleCatalog' }],
+    children: [
+      defineMenu('meta.menu.modules', {
+        title: _lt('Catalog'),
+        path: '/meta/modules',
+        sequence: 10,
+        defaultRoles: ['sys.admin'],
+        // Catalog browse only; install/upgrade/sync stay gated by action requires.
+        requires: [{ model: 'meta.MetaModuleCatalog' }],
+      }),
+    ],
   }),
 ];

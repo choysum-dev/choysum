@@ -12,13 +12,14 @@ import (
 )
 
 type BaseModel struct {
-	Id         sql.NullString `gorm:"primaryKey;type:char(20)"`
-	CreatedAt  time.Time      `gorm:"index"`
-	UpdatedAt  time.Time      `gorm:"index"`
-	DeletedAt  gorm.DeletedAt `gorm:"index"`
-	CreatedUid sql.NullString `gorm:"size:20;index"`
-	UpdatedUid sql.NullString `gorm:"size:20;index"`
-	DeletedUid sql.NullString `gorm:"size:20;index"`
+	Id        sql.NullString `gorm:"primaryKey;type:char(20)"`
+	CreatedAt time.Time      `gorm:"index"`
+	UpdatedAt time.Time      `gorm:"index"`
+	DeletedAt gorm.DeletedAt `gorm:"index"`
+	// char(20) matches TS BaseModel ManyToOneRef audit uids (not varchar via size:20).
+	CreatedUid sql.NullString `gorm:"type:char(20);index"`
+	UpdatedUid sql.NullString `gorm:"type:char(20);index"`
+	DeletedUid sql.NullString `gorm:"type:char(20);index"`
 }
 
 func (m *BaseModel) BeforeCreate(tx *gorm.DB) error {

@@ -10,28 +10,55 @@ type PlanIssue struct {
 	Message string `json:"message,omitempty"`
 }
 
+// Role / Effect values on ModuleOrderEntry (UI reads these; Reason stays for compat).
+const (
+	RoleTarget     = "target"
+	RoleDependency = "dependency"
+	RoleDependent  = "dependent"
+
+	EffectInstall           = "install"
+	EffectUpgrade           = "upgrade"
+	EffectUninstall         = "uninstall"
+	EffectAlreadySatisfied  = "already_satisfied"
+)
+
 // ModuleOrderEntry is one frozen step in PlanJson.moduleOrder.
 type ModuleOrderEntry struct {
 	ModuleName     string `json:"moduleName"`
-	Reason         string `json:"reason,omitempty"`
+	Application    string `json:"application,omitempty"`
+	Role           string `json:"role,omitempty"`
+	Effect         string `json:"effect,omitempty"`
+	Reason         string `json:"reason,omitempty"` // legacy: root|dependency|uninstall|…
 	CurrentVersion string `json:"currentVersion,omitempty"`
 	TargetVersion  string `json:"targetVersion,omitempty"`
 	Origin         string `json:"origin,omitempty"`
 }
 
+// SyncResultSummary is written into PlanJson after ActionSync finishes.
+type SyncResultSummary struct {
+	Total       int    `json:"total"`
+	Success     int    `json:"success"`
+	Failed      int    `json:"failed"`
+	CatalogRows int    `json:"catalogRows"`
+	Origin      string `json:"origin,omitempty"`
+}
+
 // PlanDocument is the frozen plan body stored in meta_module_operation.plan_json.
 type PlanDocument struct {
-	ModuleOrder   []ModuleOrderEntry `json:"moduleOrder"`
-	AffectedApps  []string           `json:"affectedApps,omitempty"`
-	Risks         []PlanIssue        `json:"risks,omitempty"`
-	Blockers      []PlanIssue        `json:"blockers,omitempty"`
-	BaseRevision  string             `json:"baseRevision"`
-	EnsureOrder   []string           `json:"ensureOrder,omitempty"`
-	NeedsWebBuild bool               `json:"needsGlobalWebBuild,omitempty"`
+	ModuleOrder    []ModuleOrderEntry `json:"moduleOrder"`
+	EnsureModules  []ModuleOrderEntry `json:"ensureModules,omitempty"` // enriched EnsureOrder for UI
+	AffectedApps   []string           `json:"affectedApps,omitempty"`
+	Risks          []PlanIssue        `json:"risks,omitempty"`
+	Blockers       []PlanIssue        `json:"blockers,omitempty"`
+	BaseRevision   string             `json:"baseRevision"`
+	EnsureOrder    []string           `json:"ensureOrder,omitempty"`
+	NeedsWebBuild  bool               `json:"needsGlobalWebBuild,omitempty"`
 	// CLI / bridge options frozen at Plan time for deterministic Run.
 	SkipWebShell    bool   `json:"skipWebShell,omitempty"`
 	WebShellProfile string `json:"webShellProfile,omitempty"`
 	LifecycleInput  string `json:"lifecycleInput,omitempty"` // upgrade/install input; empty => ModuleName
+	// SyncResult is filled by Run for ActionSync (snapshot stats + catalog size).
+	SyncResult *SyncResultSummary `json:"syncResult,omitempty"`
 }
 
 // PlanRequest creates a draft operation.
@@ -47,14 +74,16 @@ type PlanRequest struct {
 
 // PlanResult is returned to callers after a draft row is written.
 type PlanResult struct {
-	Id           string
-	Action       string
-	ModuleName   string
-	ModuleOrder  []ModuleOrderEntry
-	AffectedApps []string
-	Risks        []PlanIssue
-	Blockers     []PlanIssue
-	BaseRevision string
+	Id            string
+	Action        string
+	ModuleName    string
+	ModuleOrder   []ModuleOrderEntry
+	EnsureModules []ModuleOrderEntry
+	AffectedApps  []string
+	Risks         []PlanIssue
+	Blockers      []PlanIssue
+	BaseRevision  string
+	NeedsWebBuild bool
 }
 
 // ApplyRequest moves a draft operation to queued after revision checks.

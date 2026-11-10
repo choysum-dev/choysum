@@ -42,8 +42,8 @@ func TestBaseModelAuditUidColumns(t *testing.T) {
 			t.Fatalf("%s type = %v, want sql.NullString", name, field.Type)
 		}
 		tag := field.Tag.Get("gorm")
-		if !strings.Contains(tag, "size:20") || !strings.Contains(tag, "index") {
-			t.Fatalf("%s gorm tag = %q, want size:20;index", name, tag)
+		if !strings.Contains(tag, "type:char(20)") || !strings.Contains(tag, "index") {
+			t.Fatalf("%s gorm tag = %q, want type:char(20);index", name, tag)
 		}
 	}
 }

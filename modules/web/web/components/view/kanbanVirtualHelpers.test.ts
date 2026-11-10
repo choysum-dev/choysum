@@ -25,15 +25,16 @@ describe('kanbanVirtualHelpers', () => {
 
   test('virtual card gap matches non-virtual gap-2', () => {
     expect(CHOY_KANBAN_CARD_GAP).toBe(8);
-    expect(CHOY_KANBAN_DEFAULT_CARD_SIZE).toBe(88);
+    expect(CHOY_KANBAN_DEFAULT_CARD_SIZE).toBe(128);
   });
 
   test('resolveChoyKanbanEstimateCardSize falls back to default', () => {
+    expect(CHOY_KANBAN_DEFAULT_CARD_SIZE).toBe(128);
     expect(resolveChoyKanbanEstimateCardSize(undefined)).toBe(CHOY_KANBAN_DEFAULT_CARD_SIZE);
     expect(resolveChoyKanbanEstimateCardSize(0)).toBe(CHOY_KANBAN_DEFAULT_CARD_SIZE);
     expect(resolveChoyKanbanEstimateCardSize(-1)).toBe(CHOY_KANBAN_DEFAULT_CARD_SIZE);
     expect(resolveChoyKanbanEstimateCardSize(88)).toBe(88);
-    expect(resolveChoyKanbanEstimateCardSize(88.9)).toBe(88);
+    expect(resolveChoyKanbanEstimateCardSize(128.9)).toBe(128);
   });
 
   test('encode/decode lane drag payload', () => {

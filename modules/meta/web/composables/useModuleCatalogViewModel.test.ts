@@ -5,20 +5,48 @@ import { reactive, ref } from 'vue';
 import { useModuleCatalogViewModel } from './useModuleCatalogViewModel';
 
 const msgs = {
-  all: 'All',
-  installed: 'Installed',
-  upgradeable: 'Upgradeable',
-  uninstalled: 'Not Installed',
-  unavailable: 'Unavailable',
-  cards: 'Cards',
-  table: 'Table',
   unknown: 'Unknown',
   install: 'Install',
   upgrade: 'Upgrade',
   progress: 'View Progress',
-  syncTriggered: (id: string) => `ok:${id}`,
-  syncTriggeredEmpty: 'ok',
+  installed: 'Installed',
+  updateAvailable: 'Update available',
+  uninstalled: 'Not Installed',
+  unavailable: 'Unavailable',
   syncFailed: (msg: string) => `fail:${msg}`,
+  syncSettledOk: (summary: string) => (summary ? `ok:${summary}` : 'ok'),
+  syncSettledPartial: (summary: string) => `partial:${summary}`,
+  syncSettledFailed: (message: string) => `err:${message}`,
+  syncJobStillRunning: 'still-running',
+  syncServiceRestarting: 'restarting',
+  syncFailedToGetStatus: 'no-status',
+  formatSyncSummaryOk: (sync: { total: number; catalogRows: number }) =>
+    `synced ${sync.total} / catalog ${sync.catalogRows}`,
+  formatSyncSummaryPartial: (sync: {
+    success: number;
+    total: number;
+    failed: number;
+    catalogRows: number;
+  }) => `synced ${sync.success}/${sync.total} (${sync.failed} failed) / catalog ${sync.catalogRows}`,
+  opSettledOk: 'Operation Succeeded',
+  opSettledPartial: 'Module list updated with warnings',
+  opSettledFailed: (msg: string) => `Operation Failed: ${msg}`,
+  opJobStillRunning: 'still-running',
+  opServiceRestarting: 'restarting',
+  opFailedToGetStatus: 'no-status',
+  opReloadingService: () => 'Almost done, refreshing…',
+  opExecuting: () => 'Working on it, please wait…',
+  opQueued: () => 'Getting ready…',
+  opFinishing: () => 'Wrapping up…',
+  opInProgress: () => 'Please wait…',
+  opProgressTitle: (action: string, moduleName: string) => {
+    const name = String(moduleName || '').trim();
+    if (action === 'install') return name ? `Installing ${name}` : 'Installing…';
+    if (action === 'upgrade') return name ? `Upgrading ${name}` : 'Upgrading…';
+    if (action === 'uninstall') return name ? `Uninstalling ${name}` : 'Uninstalling…';
+    if (action === 'load_demo') return 'Loading demo data…';
+    return name ? `Working on ${name}` : 'Working…';
+  },
 };
 
 function makeStore(rows: any[] = []) {
@@ -37,62 +65,58 @@ function makeRoute(partial: Record<string, unknown> = {}) {
   }) as any;
 }
 
-test('useModuleCatalogViewModel: filters cards and labels status / versions / actions', () => {
+test('useModuleCatalogViewModel: labels status and drives drawer actions', () => {
   const store = makeStore([
-    { Id: '1', ModuleName: 'core', Installed: true, InstalledVersion: '1.0', LocalVersion: '1.1', UpdateAvailable: true, Available: true },
+    {
+      Id: '1',
+      ModuleName: 'core',
+      Installed: true,
+      InstalledVersion: '1.0',
+      LocalVersion: '1.1',
+      UpdateAvailable: true,
+      Available: true,
+    },
     { Id: '2', ModuleName: 'base', Installed: false, LocalVersion: '2.0', Available: true },
     { Id: '3', ModuleName: 'gone', Available: false },
   ]);
   const pushed: string[] = [];
-  const replaced: any[] = [];
   const route = makeRoute();
+  let resolveBrowse: ((row: any) => void) | undefined;
+  const operationStore = {
+    Browse: () =>
+      new Promise(resolve => {
+        resolveBrowse = (row: any) => resolve(row);
+      }),
+  } as any;
   const api = useModuleCatalogViewModel({
     store,
+    operationStore,
     route,
     router: {
       push: (to: any) => {
         pushed.push(String(to));
         return Promise.resolve();
       },
-      replace: (to: any) => {
-        replaced.push(to);
-        return Promise.resolve();
-      },
+      replace: async () => undefined,
     } as any,
     msgs,
   });
 
-  expect(api.filteredCardRows.value).toHaveLength(3);
-  api.filter.value = 'upgradeable';
-  expect(api.filteredCardRows.value.map((r: any) => r.ModuleName)).toEqual(['core']);
-  api.filter.value = 'uninstalled';
-  expect(api.filteredCardRows.value.map((r: any) => r.ModuleName)).toEqual(['base']);
-  api.filter.value = 'unavailable';
-  expect(api.filteredCardRows.value.map((r: any) => r.ModuleName)).toEqual(['gone']);
-
   const core = store.state.result.rows[0];
-  expect(api.statusLabel(core)).toBe('Installed');
-  expect(api.versionLine(core)).toBe('1.0 → 1.1');
+  expect(api.statusLabel(core)).toBe('Update available');
   expect(api.primaryActionFor(core)).toBe('upgrade');
   expect(api.primaryActionLabel('upgrade')).toBe('Upgrade');
   expect(api.primaryActionLabel(null)).toBe('');
-  expect(api.cardKey(core, 0)).toBe('1');
-  expect(api.cardKey({}, 9)).toBe('row-9');
-  expect(api.statusBadgeVariant(core)).toBeTruthy();
-  expect(api.cardBadgeVariant(core)).toBeTruthy();
+  expect(api.statusBadgeVariant(core)).toBe('secondary');
+  expect(api.statusLabel({ Installed: true, UpdateAvailable: false })).toBe('Installed');
+  expect(api.statusBadgeVariant({ Installed: true, UpdateAvailable: false, Available: true })).toBe(
+    'outline',
+  );
   expect(api.statusLabel({ Available: false })).toBe('Unavailable');
   expect(api.statusLabel({ Installed: false })).toBe('Not Installed');
   expect(api.statusLabel({})).toBe('Unknown');
-  expect(api.versionLine({ Installed: true, InstalledVersion: '1' })).toBe('1');
-  expect(api.versionLine({ RegistryVersion: '9' })).toBe('9');
-
-  api.onViewSelect('table');
-  expect(api.viewMode.value).toBe('table');
-  expect(replaced[0].query.view).toBe('table');
-  expect(replaced[0].name).toBe('MetaModuleCatalog');
-  expect(replaced[0].params).toEqual({});
-  api.onViewSelect('cards');
-  expect(api.viewMode.value).toBe('cards');
+  expect(api.field({ ModuleName: null }, 'ModuleName')).toBe('');
+  expect(api.field(null, 'ModuleName')).toBe('');
 
   api.onRowClick({ row: core } as any);
   expect(pushed).toContain('/meta/modules/core');
@@ -107,12 +131,15 @@ test('useModuleCatalogViewModel: filters cards and labels status / versions / ac
   api.onPrimaryAction({ ModuleName: 'base', Installed: false, Available: true });
   expect(api.drawerAction.value).toBe('install');
 
+  api.closeDrawer();
   api.onPrimaryAction({ ModuleName: 'busy', ActiveOperationId: 'op-9' });
-  expect(api.drawerAction.value).toBe('progress');
-  expect(api.drawerOperationId.value).toBe('op-9');
+  expect(api.progressBusy.value).toBe(true);
+  expect(api.progressHeadline.value).toContain('Getting ready');
+  expect(api.drawerOpen.value).toBe(false);
 
-  api.onPrimaryAction({ Installed: true, UpdateAvailable: false, Available: true });
-  expect(api.drawerOperationId.value).toBe('op-9');
+  api.stopOpProgress();
+  resolveBrowse?.({ Status: 'succeeded', Phase: 'done' });
+  expect(api.progressBusy.value).toBe(false);
 
   api.closeDrawer();
   expect(api.drawerOpen.value).toBe(false);
@@ -155,30 +182,57 @@ test('useModuleCatalogViewModel: load-demo button visibility and drawer open', (
   expect(done.drawerOpen.value).toBe(false);
 });
 
+test('useModuleCatalogViewModel: syncDrawerFromRoute on deep link with id starts progress', () => {
+  const store = makeStore([{ Id: '1', ModuleName: 'core' }]);
+  const route = makeRoute({
+    name: 'MetaModuleOperationDeepLink',
+    params: { id: 'op-route-live' },
+  });
+  const api = useModuleCatalogViewModel({
+    store,
+    operationStore: {
+      Browse: async () => ({ Status: 'succeeded', Phase: 'done' }),
+    } as any,
+    route,
+    router: { push: async () => undefined, replace: async () => undefined } as any,
+    msgs,
+  });
+  api.syncDrawerFromRoute();
+  expect(api.drawerOpen.value).toBe(false);
+  expect(api.progressBusy.value).toBe(true);
+});
+
 test('useModuleCatalogViewModel: boots and syncs drawer from operation deep link only', () => {
   const store = makeStore([{ Id: '1', ModuleName: 'core' }]);
   const route = makeRoute({
     name: 'MetaModuleOperationDeepLink',
     params: { id: 'op-deep' },
   });
+  let resolveBrowse: ((row: any) => void) | undefined;
   const api = useModuleCatalogViewModel({
     store,
+    operationStore: {
+      Browse: () =>
+        new Promise(resolve => {
+          resolveBrowse = (row: any) => resolve(row);
+        }),
+    } as any,
     route,
     router: { push: async () => undefined, replace: async () => undefined } as any,
     msgs,
   });
   api.bootFromRoute();
-  expect(api.drawerOpen.value).toBe(true);
-  expect(api.drawerOperationId.value).toBe('op-deep');
+  expect(api.progressBusy.value).toBe(true);
+  expect(api.drawerOpen.value).toBe(false);
 
   route.name = 'MetaModuleCatalog';
   route.params = {};
   api.syncDrawerFromRoute();
-  expect(api.drawerOpen.value).toBe(false);
+  expect(api.progressBusy.value).toBe(false);
+  resolveBrowse?.({ Status: 'succeeded', Phase: 'done' });
 
   api.openDrawer({ moduleName: 'core', action: 'install' });
   expect(api.drawerOpen.value).toBe(true);
-  // User-opened drawers stay open across non-deep-link route syncs (e.g. view query).
   api.syncDrawerFromRoute();
   expect(api.drawerOpen.value).toBe(true);
   api.closeDrawer();
@@ -186,6 +240,9 @@ test('useModuleCatalogViewModel: boots and syncs drawer from operation deep link
   expect(api.resolveInitialOperationId()).toBe('');
   const withProp = useModuleCatalogViewModel({
     store,
+    operationStore: {
+      Browse: () => new Promise(() => {}),
+    } as any,
     route: makeRoute({ name: 'MetaModuleCatalog', params: { id: 'ignored' } }),
     router: { push: async () => undefined, replace: async () => undefined } as any,
     initialOperationId: () => 'op-from-prop',
@@ -193,7 +250,8 @@ test('useModuleCatalogViewModel: boots and syncs drawer from operation deep link
   });
   expect(withProp.resolveInitialOperationId()).toBe('op-from-prop');
   withProp.bootFromRoute();
-  expect(withProp.drawerOperationId.value).toBe('op-from-prop');
+  expect(withProp.progressBusy.value).toBe(true);
+  withProp.stopOpProgress();
 
   const emptyOp = useModuleCatalogViewModel({
     store,
@@ -205,87 +263,6 @@ test('useModuleCatalogViewModel: boots and syncs drawer from operation deep link
   emptyOp.syncDrawerFromRoute();
   expect(emptyOp.drawerOpen.value).toBe(false);
 
-  const queryRoute = makeRoute({ query: { view: 'table' } });
-  const fromQuery = useModuleCatalogViewModel({
-    store,
-    route: queryRoute,
-    router: { push: async () => undefined, replace: async () => undefined } as any,
-    msgs,
-  });
-  expect(fromQuery.viewMode.value).toBe('table');
-  queryRoute.query = { view: 'cards' };
-});
-
-test('useModuleCatalogViewModel: onSync delegates to RequestSync', async () => {
-  let calls = 0;
-  const store = {
-    state: { result: { rows: [{ Id: '1' }] }, loading: false },
-    RequestSync: async () => {
-      calls += 1;
-      return 'op-string';
-    },
-  } as any;
-  const api = useModuleCatalogViewModel({
-    store,
-    route: makeRoute(),
-    router: { push: async () => undefined, replace: async () => undefined } as any,
-    msgs,
-  });
-  api.onSync();
-  await Promise.resolve();
-  expect(calls).toBe(1);
-});
-
-test('useModuleCatalogViewModel: bootFromRoute requests IfStale sync when permitted', async () => {
-  const syncOpts: Array<{ Force?: boolean; IfStale?: boolean }> = [];
-  const store = {
-    state: { result: { rows: [{ Id: '1' }] }, loading: false },
-    RequestSync: async (opts: { Force?: boolean; IfStale?: boolean }) => {
-      syncOpts.push({ Force: !!opts?.Force, IfStale: !!opts?.IfStale });
-      return { Id: 'op-stale' };
-    },
-  } as any;
-  const allowed = useModuleCatalogViewModel({
-    store,
-    route: makeRoute(),
-    router: { push: async () => undefined, replace: async () => undefined } as any,
-    canRequestSync: () => true,
-    msgs,
-  });
-  allowed.bootFromRoute();
-  await Promise.resolve();
-  expect(syncOpts).toEqual([{ Force: false, IfStale: true }]);
-
-  syncOpts.length = 0;
-  const denied = useModuleCatalogViewModel({
-    store,
-    route: makeRoute(),
-    router: { push: async () => undefined, replace: async () => undefined } as any,
-    canRequestSync: () => false,
-    msgs,
-  });
-  denied.bootFromRoute();
-  await Promise.resolve();
-  expect(syncOpts).toEqual([]);
-});
-
-test('useModuleCatalogViewModel: filterOptions and viewSwitcherOptions expose labels', () => {
-  const api = useModuleCatalogViewModel({
-    store: makeStore(),
-    route: makeRoute(),
-    router: { push: async () => undefined, replace: async () => undefined } as any,
-    msgs,
-  });
-  expect(api.filterOptions.value.map(o => o.value)).toEqual([
-    'all',
-    'installed',
-    'upgradeable',
-    'uninstalled',
-    'unavailable',
-  ]);
-  expect(api.viewSwitcherOptions.value.map(o => o.value)).toEqual(['cards', 'table']);
-  expect(api.field({ ModuleName: null }, 'ModuleName')).toBe('');
-  expect(api.field(null, 'ModuleName')).toBe('');
   const initialRef = ref('op-ref');
   const withRef = useModuleCatalogViewModel({
     store: makeStore(),
@@ -295,6 +272,96 @@ test('useModuleCatalogViewModel: filterOptions and viewSwitcherOptions expose la
     msgs,
   });
   expect(withRef.resolveInitialOperationId()).toBe('op-ref');
+});
+
+test('useModuleCatalogViewModel: onSync does not open drawer and refreshes on settle', async () => {
+  let calls = 0;
+  let refreshed = 0;
+  const store = {
+    state: {
+      result: { rows: [{ Id: '1' }] },
+      loading: false,
+      list: {
+        refresh: async () => {
+          refreshed += 1;
+        },
+      },
+    },
+    RequestSync: async () => {
+      calls += 1;
+      return 'op-string';
+    },
+  } as any;
+  const operationStore = {
+    Browse: async () => ({
+      Action: 'sync',
+      Status: 'succeeded',
+      PlanJson: JSON.stringify({
+        syncResult: { total: 1, success: 1, failed: 0, catalogRows: 3 },
+      }),
+    }),
+  } as any;
+  const api = useModuleCatalogViewModel({
+    store,
+    operationStore,
+    route: makeRoute(),
+    router: { push: async () => undefined, replace: async () => undefined } as any,
+    msgs,
+  });
+  await api.onSync();
+  expect(calls).toBe(1);
+  expect(api.drawerOpen.value).toBe(false);
+  expect(api.syncBusy.value).toBe(false);
+  expect(refreshed).toBe(1);
+
+  // Idle again — second click enqueues again.
+  await api.onSync();
+  expect(calls).toBe(2);
+});
+
+test('useModuleCatalogViewModel: onDrawerSettled refreshes install/upgrade settle', async () => {
+  let refreshed = 0;
+  const store = {
+    state: {
+      result: { rows: [{ Id: '1' }] },
+      loading: false,
+      list: {
+        refresh: async () => {
+          refreshed += 1;
+        },
+      },
+    },
+    RequestSync: async () => ({ Id: 'op-settle' }),
+  } as any;
+  const api = useModuleCatalogViewModel({
+    store,
+    route: makeRoute(),
+    router: { push: async () => undefined, replace: async () => undefined } as any,
+    msgs,
+  });
+  api.onDrawerSettled();
+  await Promise.resolve();
+  expect(refreshed).toBe(1);
+});
+
+test('useModuleCatalogViewModel: bootFromRoute does not request sync', async () => {
+  let calls = 0;
+  const store = {
+    state: { result: { rows: [{ Id: '1' }] }, loading: false },
+    RequestSync: async () => {
+      calls += 1;
+      return { Id: 'op-boot' };
+    },
+  } as any;
+  const api = useModuleCatalogViewModel({
+    store,
+    route: makeRoute(),
+    router: { push: async () => undefined, replace: async () => undefined } as any,
+    msgs,
+  });
+  api.bootFromRoute();
+  await Promise.resolve();
+  expect(calls).toBe(0);
 });
 
 test('useModuleCatalogViewModel: lastSyncAtLabel picks newest raw timestamp', () => {
@@ -353,4 +420,48 @@ test('useModuleCatalogViewModel: refreshCatalog prefers list.refresh then Search
   });
   await api2.refreshCatalog();
   expect(searched).toBe(1);
+});
+
+test('useModuleCatalogViewModel: onOpApplied starts progress and onDrawerSettled refreshes only', async () => {
+  let refreshed = 0;
+  const store = {
+    state: {
+      result: { rows: [{ Id: '1', ModuleName: 'core' }] },
+      list: { refresh: async () => { refreshed += 1; } },
+    },
+    RequestSync: async () => ({ Id: 'x' }),
+  } as any;
+  const operationStore = {
+    Browse: async () => ({ Status: 'succeeded', Phase: 'done' }),
+  } as any;
+  const api = useModuleCatalogViewModel({
+    store,
+    operationStore,
+    route: makeRoute(),
+    router: { push: async () => undefined, replace: async () => undefined } as any,
+    msgs,
+  });
+  api.openDrawer({ moduleName: 'core', action: 'install' });
+  api.onOpApplied('op-applied');
+  expect(api.drawerOpen.value).toBe(false);
+  await Promise.resolve();
+  expect(refreshed).toBeGreaterThanOrEqual(1);
+
+  api.onDrawerSettled({ resultStatus: 'FAILED', summary: 'boom' });
+  api.onDrawerSettled({ resultStatus: 'SUCCEEDED' });
+  expect(api.canUninstall({ Installed: true, Available: false })).toBe(false);
+});
+
+test('useModuleCatalogViewModel: lastSyncAtLabel accepts Date and numeric timestamps', () => {
+  const store = makeStore([
+    { Id: '1', LastSyncAt: new Date('2026-02-01T00:00:00Z') },
+    { Id: '2', LastSyncAt: Date.UTC(2026, 5, 1) },
+  ]);
+  const api = useModuleCatalogViewModel({
+    store,
+    route: makeRoute(),
+    router: { push: async () => undefined, replace: async () => undefined } as any,
+    msgs,
+  });
+  expect(String(api.lastSyncAtLabel.value).length).toBeGreaterThan(0);
 });

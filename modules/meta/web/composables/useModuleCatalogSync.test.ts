@@ -1,167 +1,241 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { nextTick, reactive } from 'vue';
+import { effectScope, ref } from 'vue';
+import { ChoyMessage } from '@/web';
 import { useModuleCatalogSync } from './useModuleCatalogSync';
 
 const msgs = {
-  triggered: (id: string) => `ok:${id}`,
-  triggeredEmpty: 'ok-empty',
-  failed: (msg: string) => `fail:${msg}`,
+  failed: (detail: string) => `failed:${detail}`,
+  settledOk: (summary: string) => (summary ? `ok:${summary}` : 'ok'),
+  settledPartial: (summary: string) => `partial:${summary}`,
+  settledFailed: (message: string) => `err:${message}`,
+  jobStillRunning: 'still-running',
+  serviceRestarting: 'restarting',
+  failedToGetStatus: 'no-status',
+  formatSummaryOk: (sync: { total: number; catalogRows: number }) =>
+    `synced ${sync.total} / catalog ${sync.catalogRows}`,
+  formatSummaryPartial: (sync: { success: number; total: number; failed: number; catalogRows: number }) =>
+    `synced ${sync.success}/${sync.total} (${sync.failed} failed) / catalog ${sync.catalogRows}`,
 };
 
-test('useModuleCatalogSync: requestSync returns operation id from bridge response', async () => {
-  const store: any = {
-    state: { result: { rows: [{ Id: '1' }] } },
+test('useModuleCatalogSync: onSync watches operation and settles with summary toast path', async () => {
+  let refreshed = 0;
+  const catalogStore = {
     RequestSync: async () => ({ Id: 'op-sync-1' }),
-  };
-  const api = useModuleCatalogSync(store, msgs);
-  const id = await api.requestSync({ Force: true });
-  expect(id).toBe('op-sync-1');
-  expect(api.syncLoading.value).toBe(false);
-});
-
-test('useModuleCatalogSync: requestSync accepts string id and empty payload', async () => {
-  const store: any = {
-    RequestSync: async () => 'op-string',
-  };
-  const api = useModuleCatalogSync(store, msgs);
-  expect(await api.requestSync()).toBe('op-string');
-
-  store.RequestSync = async () => ({ Id: '' });
-  expect(await api.requestSync({ Force: false, IfStale: true })).toBe('');
-});
-
-test('useModuleCatalogSync: requestSync returns empty string on failure and while loading', async () => {
-  let resolveGate: (() => void) | undefined;
-  const store: any = {
-    RequestSync: () =>
-      new Promise(resolve => {
-        resolveGate = () => resolve({ Id: 'late' });
+  } as any;
+  const operationStore = {
+    Browse: async () => ({
+      Action: 'sync',
+      Status: 'succeeded',
+      PlanJson: JSON.stringify({
+        syncResult: { total: 2, success: 2, failed: 0, catalogRows: 5 },
       }),
-  };
-  const api = useModuleCatalogSync(store, msgs);
-  const pending = api.requestSync();
-  expect(api.syncLoading.value).toBe(true);
-  expect(await api.requestSync()).toBe('');
-  resolveGate?.();
-  expect(await pending).toBe('late');
-
-  store.RequestSync = async () => {
-    throw new Error('boom');
-  };
-  expect(await api.requestSync()).toBe('');
-
-  store.RequestSync = async () => {
-    throw 'raw';
-  };
-  expect(await api.requestSync()).toBe('');
+    }),
+  } as any;
+  const api = useModuleCatalogSync(catalogStore, operationStore, msgs, {
+    refreshCatalog: async () => {
+      refreshed += 1;
+    },
+  });
+  await api.onSync();
+  expect(refreshed).toBe(1);
+  expect(api.syncBusy.value).toBe(false);
 });
 
-test('useModuleCatalogSync: watchEmptyCatalogAutoSync fires once for empty loaded result', async () => {
-  let syncCalls = 0;
-  const state = reactive({ result: undefined as any, loading: false });
-  const store: any = {
-    state,
+test('useModuleCatalogSync: onSync ignores second click while busy', async () => {
+  let calls = 0;
+  let resolveBrowse: ((row: any) => void) | null = null;
+  const catalogStore = {
     RequestSync: async () => {
-      syncCalls += 1;
-      return { Id: `op-${syncCalls}` };
+      calls += 1;
+      return { Id: 'op-busy' };
     },
-  };
-  const api = useModuleCatalogSync(store, msgs);
-  api.watchEmptyCatalogAutoSync();
-
-  state.result = null;
-  await nextTick();
-  expect(syncCalls).toBe(0);
-
-  state.loading = true;
-  state.result = { rows: [] };
-  await nextTick();
-  expect(syncCalls).toBe(0);
-
-  state.loading = false;
-  state.result = { rows: [] };
-  await nextTick();
+  } as any;
+  const operationStore = {
+    Browse: () =>
+      new Promise(resolve => {
+        resolveBrowse = resolve;
+      }),
+  } as any;
+  const api = useModuleCatalogSync(catalogStore, operationStore, msgs);
+  const pending = api.onSync();
   await Promise.resolve();
-  expect(syncCalls).toBe(1);
-
-  state.result = { rows: [] };
-  await nextTick();
-  expect(syncCalls).toBe(1);
-
-  state.result = { rows: [{ Id: '1' }] };
-  await nextTick();
-  state.result = { nope: true };
-  await nextTick();
-  expect(syncCalls).toBe(1);
+  expect(api.syncBusy.value).toBe(true);
+  await api.onSync();
+  expect(calls).toBe(1);
+  resolveBrowse!({ Action: 'sync', Status: 'succeeded', PlanJson: '{}' });
+  await pending;
+  expect(api.syncBusy.value).toBe(false);
 });
 
-test('useModuleCatalogSync: later empty search after non-empty first result does not force sync', async () => {
-  let syncCalls = 0;
-  const state = reactive({ result: undefined as any, loading: false });
-  const store: any = {
-    state,
+test('useModuleCatalogSync: enqueue failure surfaces failed toast path without watch', async () => {
+  const catalogStore = {
     RequestSync: async () => {
-      syncCalls += 1;
-      return { Id: `op-${syncCalls}` };
+      throw new Error('boom');
     },
-  };
-  const api = useModuleCatalogSync(store, msgs);
-  api.watchEmptyCatalogAutoSync();
-
-  state.result = { rows: [{ Id: '1' }] };
-  await nextTick();
-  expect(syncCalls).toBe(0);
-
-  // User search with no matches must not be treated as an empty catalog.
-  state.result = { rows: [] };
-  await nextTick();
-  await Promise.resolve();
-  expect(syncCalls).toBe(0);
+  } as any;
+  const api = useModuleCatalogSync(catalogStore, null, msgs);
+  await api.onSync();
+  expect(api.syncBusy.value).toBe(false);
 });
 
-test('useModuleCatalogSync: immediate watch syncs a pre-settled empty catalog once', async () => {
-  let syncCalls = 0;
-  const store: any = {
-    state: { result: { rows: [] }, loading: false },
-    RequestSync: async () => {
-      syncCalls += 1;
-      return { Id: `op-${syncCalls}` };
+test('useModuleCatalogSync: empty operation id does not start watch', async () => {
+  let browsed = 0;
+  let refreshed = 0;
+  const warnings: string[] = [];
+  const orig = ChoyMessage.warning;
+  ChoyMessage.warning = ((m: string) => {
+    warnings.push(m);
+    return 0;
+  }) as typeof ChoyMessage.warning;
+  const catalogStore = {
+    RequestSync: async () => ({ Id: '' }),
+  } as any;
+  const operationStore = {
+    Browse: async () => {
+      browsed += 1;
+      return { Status: 'succeeded' };
     },
-  };
-  const api = useModuleCatalogSync(store, msgs);
-  api.watchEmptyCatalogAutoSync();
-  await nextTick();
-  await Promise.resolve();
-  expect(syncCalls).toBe(1);
+  } as any;
+  const api = useModuleCatalogSync(catalogStore, operationStore, msgs, {
+    refreshCatalog: async () => {
+      refreshed += 1;
+    },
+  });
+  await api.onSync();
+  expect(browsed).toBe(0);
+  expect(refreshed).toBe(1);
+  expect(warnings).toEqual([msgs.jobStillRunning]);
+  ChoyMessage.warning = orig;
 });
 
-test('useModuleCatalogSync: empty auto-sync respects canRequestSync gate', async () => {
-  let syncCalls = 0;
-  const deniedStore: any = {
-    state: { result: { rows: [] }, loading: false },
-    RequestSync: async () => {
-      syncCalls += 1;
-      return { Id: `op-${syncCalls}` };
+test('useModuleCatalogSync: missing operation store warns and best-effort refreshes', async () => {
+  let refreshed = 0;
+  const warnings: string[] = [];
+  const orig = ChoyMessage.warning;
+  ChoyMessage.warning = ((m: string) => {
+    warnings.push(m);
+    return 0;
+  }) as typeof ChoyMessage.warning;
+  const catalogStore = {
+    RequestSync: async () => ({ Id: 'op-no-op-store' }),
+  } as any;
+  const api = useModuleCatalogSync(catalogStore, null, msgs, {
+    refreshCatalog: async () => {
+      refreshed += 1;
     },
-  };
-  const denied = useModuleCatalogSync(deniedStore, msgs, { canRequestSync: () => false });
-  denied.watchEmptyCatalogAutoSync();
-  await nextTick();
-  await Promise.resolve();
-  expect(syncCalls).toBe(0);
+  });
+  await api.onSync();
+  expect(refreshed).toBe(1);
+  expect(warnings).toEqual([msgs.jobStillRunning]);
+  ChoyMessage.warning = orig;
+});
 
-  const allowedStore: any = {
-    state: { result: { rows: [] }, loading: false },
-    RequestSync: async () => {
-      syncCalls += 1;
-      return { Id: `op-${syncCalls}` };
+test('useModuleCatalogSync: partial and failed terminals refresh and clear busy', async () => {
+  let refreshed = 0;
+  const catalogStore = { RequestSync: async () => ({ Id: 'op-partial' }) } as any;
+  const partialStore = {
+    Browse: async () => ({
+      Action: 'sync',
+      Status: 'succeeded',
+      PlanJson: JSON.stringify({
+        syncResult: { total: 3, success: 2, failed: 1, catalogRows: 8 },
+      }),
+    }),
+  } as any;
+  const partial = useModuleCatalogSync(catalogStore, partialStore, msgs, {
+    refreshCatalog: async () => {
+      refreshed += 1;
     },
-  };
-  const allowed = useModuleCatalogSync(allowedStore, msgs, { canRequestSync: () => true });
-  allowed.watchEmptyCatalogAutoSync();
-  await nextTick();
+  });
+  await partial.onSync();
+  expect(refreshed).toBe(1);
+  expect(partial.syncBusy.value).toBe(false);
+
+  const failedStore = {
+    Browse: async () => ({
+      Action: 'sync',
+      Status: 'failed',
+      ErrorMessage: 'sync blew up',
+    }),
+  } as any;
+  const failed = useModuleCatalogSync(catalogStore, failedStore, msgs);
+  await failed.onSync();
+  expect(failed.syncBusy.value).toBe(false);
+});
+
+test('useModuleCatalogSync: stop resets watch state', async () => {
+  let resolveBrowse: ((row: any) => void) | undefined;
+  const catalogStore = { RequestSync: async () => ({ Id: 'op-stop' }) } as any;
+  const operationStore = {
+    Browse: () =>
+      new Promise(resolve => {
+        resolveBrowse = resolve;
+      }),
+  } as any;
+  const api = useModuleCatalogSync(catalogStore, operationStore, msgs);
+  const pending = api.onSync();
   await Promise.resolve();
-  expect(syncCalls).toBe(1);
+  expect(api.syncBusy.value).toBe(true);
+  api.stop();
+  expect(api.syncBusy.value).toBe(false);
+  resolveBrowse?.({ Action: 'sync', Status: 'succeeded', PlanJson: '{}' });
+  await pending;
+});
+
+test('useModuleCatalogSync: ok path without custom formatters uses formatModuleOpSummary', async () => {
+  const catalogStore = { RequestSync: async () => ({ Id: 'op-plain' }) } as any;
+  const operationStore = {
+    Browse: async () => ({
+      Action: 'install',
+      Status: 'succeeded',
+      PlanJson: '{}',
+    }),
+  } as any;
+  const api = useModuleCatalogSync(catalogStore, operationStore, {
+    ...msgs,
+    formatSummaryOk: undefined,
+    formatSummaryPartial: undefined,
+  });
+  await api.onSync();
+  expect(api.syncBusy.value).toBe(false);
+});
+
+test('useModuleCatalogSync: unwraps nested operation store refs', async () => {
+  const catalogStore = { RequestSync: async () => ({ Id: 'op-nested' }) } as any;
+  const inner = {
+    Browse: async () => ({
+      Action: 'sync',
+      Status: 'succeeded',
+      PlanJson: JSON.stringify({
+        syncResult: { total: 1, success: 1, failed: 0, catalogRows: 2 },
+      }),
+    }),
+  };
+  const api = useModuleCatalogSync(catalogStore, ref(ref(inner)) as any, msgs);
+  await api.onSync();
+  expect(api.syncBusy.value).toBe(false);
+});
+
+test('useModuleCatalogSync: scope dispose stops an in-flight watch', async () => {
+  let resolveBrowse: ((row: any) => void) | undefined;
+  const catalogStore = { RequestSync: async () => ({ Id: 'op-scope' }) } as any;
+  const operationStore = {
+    Browse: () =>
+      new Promise(resolve => {
+        resolveBrowse = resolve;
+      }),
+  } as any;
+  let api: ReturnType<typeof useModuleCatalogSync> | undefined;
+  const scope = effectScope();
+  scope.run(() => {
+    api = useModuleCatalogSync(catalogStore, operationStore, msgs);
+    void api.onSync();
+  });
+  await Promise.resolve();
+  expect(api!.syncBusy.value).toBe(true);
+  scope.stop();
+  expect(api!.syncBusy.value).toBe(false);
+  resolveBrowse?.({ Action: 'sync', Status: 'succeeded', PlanJson: '{}' });
 });

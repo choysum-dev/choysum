@@ -73,6 +73,7 @@ func newOpsTestDB(t *testing.T) *gorm.DB {
 	if err := db.AutoMigrate(
 		&modmeta.ModuleOperation{},
 		&modmeta.ModuleCatalog{},
+		&modmeta.ModuleCatalogDepend{},
 		&modmeta.ModuleSourceSnapshot{},
 		&pkgmeta.Module{},
 		&metaAppSetting{},

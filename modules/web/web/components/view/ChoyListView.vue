@@ -91,6 +91,13 @@ SPDX-License-Identifier: Apache-2.0
                 <slot name="overflow-actions" :selected-items="selectedItems" />
               </template>
             </ChoyPageTitleActions>
+
+            <!-- Same tray as title/⋮ (Form secondary parity) — no ActionBar separator. -->
+            <slot
+              v-if="showActions"
+              name="secondary-actions"
+              :selected-items="selectedItems"
+            />
           </template>
 
           <!-- Only register when filled — empty tray would paint a dangling ActionBar separator. -->
@@ -147,15 +154,7 @@ SPDX-License-Identifier: Apache-2.0
           </template>
 
           <template #header-right>
-            <!-- View-mode chrome, then a hairline, then pager at the trailing edge. -->
-            <div v-if="$slots['header-right']" class="flex items-center gap-1">
-              <slot name="header-right" />
-            </div>
-            <Separator
-              v-if="$slots['header-right'] && showPaginate && canMountPagination"
-              orientation="vertical"
-              class="mx-0 !h-4 w-px shrink-0 max-md:hidden"
-            />
+            <!-- Pager, then a hairline, then view-mode chrome at the trailing edge. -->
             <div v-if="showPaginate && canMountPagination">
               <ChoyPagination
                 class="gap-2"
@@ -163,6 +162,14 @@ SPDX-License-Identifier: Apache-2.0
                 v-model:page="listPageModel"
                 v-model:page-size="listPageSizeModel"
               />
+            </div>
+            <Separator
+              v-if="$slots['header-right'] && showPaginate && canMountPagination"
+              orientation="vertical"
+              class="mx-0 !h-4 w-px shrink-0 max-md:hidden"
+            />
+            <div v-if="$slots['header-right']" class="flex items-center gap-1">
+              <slot name="header-right" />
             </div>
           </template>
         </ChoyViewActionBar>

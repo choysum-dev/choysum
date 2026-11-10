@@ -7,13 +7,14 @@ import { resolveChoysum } from '@/core/service/runtime/choysum_runtime';
 import type JobModel from '@/task/service/models/job';
 import { _t, _lt } from '../i18n';
 import { publishModuleOpChangedTip } from '../tips';
+import MetaModuleCatalogDepend from './module_catalog_depend';
 import MetaModuleOperation from './module_operation';
 
 const Job = createServiceByModel<typeof JobModel>('task.Job');
 
 export type RequestSyncReq = {
+  /** Reserved for callers that always intend a refresh; defaults to true. */
   Force?: boolean;
-  IfStale?: boolean;
 };
 
 export type RequestSyncResp = {
@@ -21,8 +22,6 @@ export type RequestSyncResp = {
 };
 
 const ACTIVE_SYNC_STATUSES = ['draft', 'queued', 'running'];
-// RequestSync currently plans a single local-origin sync; use the local freshness window.
-const LOCAL_STALE_MS = 60 * 1000;
 // Drop abandoned non-terminal sync rows so RequestSync cannot be blocked forever.
 const ACTIVE_SYNC_STALE_MS = 10 * 60 * 1000;
 
@@ -72,6 +71,9 @@ export default class MetaModuleCatalog extends BaseModel {
   @Field({ type: 'varchar', size: 255, string: _lt('Installed Version', { scope: 'meta.model.MetaModuleCatalog.fields' }) })
   InstalledVersion?: string;
 
+  @Field({ type: 'datetime', string: _lt('Installed / Upgraded At', { scope: 'meta.model.MetaModuleCatalog.fields' }) })
+  LastInstalledOrUpgradedAt?: Date;
+
   @Field({ type: 'boolean', index: true, string: _lt('Update Available', { scope: 'meta.model.MetaModuleCatalog.fields' }) })
   UpdateAvailable?: boolean;
 
@@ -87,11 +89,43 @@ export default class MetaModuleCatalog extends BaseModel {
   @Field({ type: 'varchar', size: 512, string: _lt('Local Path', { scope: 'meta.model.MetaModuleCatalog.fields' }) })
   LocalPath?: string;
 
-  @Field({ type: 'jsonobject', string: _lt('Depends', { scope: 'meta.model.MetaModuleCatalog.fields' }) })
+  @Field({ type: 'varchar', size: 512, string: _lt('Registry Package', { scope: 'meta.model.MetaModuleCatalog.fields' }) })
+  RegistryPath?: string;
+
+  @Field({ type: 'varchar', size: 1024, string: _lt('Registry Tarball', { scope: 'meta.model.MetaModuleCatalog.fields' }) })
+  RegistryTarball?: string;
+
+  @Field({ type: 'jsonobject', string: _lt('Depends JSON', { scope: 'meta.model.MetaModuleCatalog.fields' }) })
   DependsJson?: Record<string, unknown> | unknown[] | null;
 
-  @Field({ type: 'jsonobject', string: _lt('Dependents', { scope: 'meta.model.MetaModuleCatalog.fields' }) })
+  @Field({ type: 'jsonobject', string: _lt('Dependents JSON', { scope: 'meta.model.MetaModuleCatalog.fields' }) })
   DependentsJson?: Record<string, unknown> | unknown[] | null;
+
+  /** Modules this catalog row depends on (self ManyToMany; materialized on sync). */
+  @Field({
+    type: 'ManyToMany',
+    relation: {
+      joinModel: () => MetaModuleCatalogDepend,
+      targetModel: () => MetaModuleCatalog,
+      joinField: 'ModuleId',
+      inverseJoinField: 'DependId',
+    },
+    string: _lt('Depends', { scope: 'meta.model.MetaModuleCatalog.fields' }),
+  })
+  Depends?: MetaModuleCatalog[];
+
+  /** Modules that depend on this catalog row (reverse of Depends). */
+  @Field({
+    type: 'ManyToMany',
+    relation: {
+      joinModel: () => MetaModuleCatalogDepend,
+      targetModel: () => MetaModuleCatalog,
+      joinField: 'DependId',
+      inverseJoinField: 'ModuleId',
+    },
+    string: _lt('Dependents', { scope: 'meta.model.MetaModuleCatalog.fields' }),
+  })
+  Dependents?: MetaModuleCatalog[];
 
   @Field({ type: 'boolean', string: _lt('Has Demo', { scope: 'meta.model.MetaModuleCatalog.fields' }) })
   HasDemo?: boolean;
@@ -105,22 +139,11 @@ export default class MetaModuleCatalog extends BaseModel {
   @Field({ type: 'varchar', size: 20, index: true, string: _lt('Active Operation', { scope: 'meta.model.MetaModuleCatalog.fields' }) })
   ActiveOperationId?: string;
 
-  static async RequestSync(req: RequestSyncReq = {}): Promise<RequestSyncResp> {
-    const force = req?.Force !== undefined ? !!req.Force : true;
-    const ifStale = !!req?.IfStale;
-
-    if (ifStale && !force) {
-      const latest = await this.Search([], {
-        limit: 1,
-        orderBy: { field: 'LastSyncAt', order: 'desc' },
-        fields: ['LastSyncAt'],
-      });
-      const lastSyncAt = latest?.[0]?.LastSyncAt ? new Date(latest[0].LastSyncAt as Date).getTime() : NaN;
-      if (!isNaN(lastSyncAt) && Date.now() - lastSyncAt < LOCAL_STALE_MS) {
-        return { Id: '' };
-      }
-    }
-
+  /**
+   * Enqueue a catalog sync (local + registry snapshots, then materialize).
+   * Reuses a non-stale in-flight sync operation when one exists.
+   */
+  static async RequestSync(_req: RequestSyncReq = {}): Promise<RequestSyncResp> {
     const active = await MetaModuleOperation.Search(
       {
         And: [
@@ -151,9 +174,9 @@ export default class MetaModuleCatalog extends BaseModel {
 
     const userId = BaseModel.ensureUserId();
     const bridge = getModuleManagementBridge();
+    // Plan ignores origin for sync; Execute runs SyncSourceSnapshotsThenMaterialize("all").
     const planResult = (await bridge.plan({
       action: 'sync',
-      origin: 'local',
       operatorUserId: userId,
     })) as { id?: string; ok?: boolean; errorMessage?: string };
     if (planResult && planResult.ok === false) {

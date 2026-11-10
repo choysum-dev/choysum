@@ -411,3 +411,247 @@ func TestForceFailTerminalAndMarkReloadFailed(t *testing.T) {
 		t.Fatalf("MarkReloadFailed CAS err = %v", err)
 	}
 }
+
+func TestModuleNamesInclude(t *testing.T) {
+	t.Parallel()
+	if moduleNamesInclude([]string{"core"}, "") {
+		t.Fatal("expected false for empty want")
+	}
+	if moduleNamesInclude(nil, "meta") {
+		t.Fatal("expected false for nil")
+	}
+	if !moduleNamesInclude([]string{"core", "Meta"}, "meta") {
+		t.Fatal("expected case-insensitive match")
+	}
+	if moduleNamesInclude([]string{"core"}, "meta") {
+		t.Fatal("expected miss")
+	}
+}
+
+func TestRun_SyncPersistsSyncResultAndSoftFailsOrigin(t *testing.T) {
+	t.Parallel()
+	db := newOpsTestDB(t)
+	runtimeScope := newOpsTestScope(t, db)
+	o := &Ops{
+		Scope:  runtimeScope,
+		Events: &recordingBus{},
+		LockerFactory: func(scope.Scope) statepkg.Locker {
+			return testLocker{}
+		},
+		SyncLocalSnapshot: func(ctx context.Context, runtimeScope scope.Scope, lockerFactory statepkg.LockerFactory) (lifecycle.ModuleSourceSnapshotSyncStats, error) {
+			return lifecycle.ModuleSourceSnapshotSyncStats{Total: 1, Success: 1}, nil
+		},
+		SyncRegistrySnapshot: func(ctx context.Context, runtimeScope scope.Scope, lockerFactory statepkg.LockerFactory) (lifecycle.ModuleSourceSnapshotSyncStats, error) {
+			return lifecycle.ModuleSourceSnapshotSyncStats{Total: 1, Failed: 1}, errors.New("registry offline")
+		},
+	}
+	if err := db.Create(&modmeta.ModuleSourceSnapshot{
+		ModuleName: "core",
+		SourceType: originLocal,
+		SourceRef:  "local",
+		Available:  true,
+		Version:    nullString("1.0.0"),
+	}).Error; err != nil {
+		t.Fatalf("seed snapshot: %v", err)
+	}
+
+	result, err := o.Plan(context.Background(), PlanRequest{Action: ActionSync})
+	if err != nil {
+		t.Fatalf("Plan: %v", err)
+	}
+	if err := o.Apply(context.Background(), ApplyRequest{Id: result.Id}); err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+	if err := o.Run(context.Background(), RunRequest{Id: result.Id}); err != nil {
+		t.Fatalf("Run soft-fail: %v", err)
+	}
+
+	var row modmeta.ModuleOperation
+	if err := db.Where("id = ?", result.Id).Take(&row).Error; err != nil {
+		t.Fatalf("reload op: %v", err)
+	}
+	if row.Status != StatusSucceeded {
+		t.Fatalf("status=%q want succeeded", row.Status)
+	}
+	doc, err := unmarshalPlanDocument(row.PlanJson)
+	if err != nil {
+		t.Fatalf("PlanJson: %v", err)
+	}
+	if doc.SyncResult == nil {
+		t.Fatal("expected SyncResult in PlanJson")
+	}
+	if doc.SyncResult.Total != 2 || doc.SyncResult.Success != 1 || doc.SyncResult.Failed != 1 {
+		t.Fatalf("SyncResult=%+v", *doc.SyncResult)
+	}
+	if doc.SyncResult.CatalogRows < 1 {
+		t.Fatalf("CatalogRows=%d", doc.SyncResult.CatalogRows)
+	}
+	if doc.SyncResult.Origin != "all" {
+		t.Fatalf("Origin=%q", doc.SyncResult.Origin)
+	}
+}
+
+func TestRun_InstallMetaSoftFailsCatalogSync(t *testing.T) {
+	t.Parallel()
+	db := newOpsTestDB(t)
+	runtimeScope := newOpsTestScope(t, db)
+	mod := &pkgmeta.Module{Name: "meta", Version: "1.0.0", ApplicationStr: "meta"}
+	life := &seedLifecycle{stubLifecycle: &stubLifecycle{}, db: db}
+	o := &Ops{
+		Scope:     runtimeScope,
+		Resolver:  &mapResolver{peek: map[string]*pkgmeta.Module{"meta": mod}},
+		Lifecycle: life,
+		Events:    &recordingBus{},
+		LockerFactory: func(scope.Scope) statepkg.Locker {
+			return testLocker{}
+		},
+		SyncLocalSnapshot: func(context.Context, scope.Scope, statepkg.LockerFactory) (lifecycle.ModuleSourceSnapshotSyncStats, error) {
+			return lifecycle.ModuleSourceSnapshotSyncStats{}, errors.New("offline")
+		},
+		SyncRegistrySnapshot: func(context.Context, scope.Scope, statepkg.LockerFactory) (lifecycle.ModuleSourceSnapshotSyncStats, error) {
+			return lifecycle.ModuleSourceSnapshotSyncStats{}, errors.New("offline")
+		},
+	}
+	if err := db.Create(&modmeta.ModuleSourceSnapshot{
+		ModuleName: "meta", SourceType: originLocal, SourceRef: "local", Available: true,
+		Version: nullString("1.0.0"),
+	}).Error; err != nil {
+		t.Fatalf("seed snapshot: %v", err)
+	}
+	result, err := o.Plan(context.Background(), PlanRequest{ModuleName: "meta", Action: ActionInstall})
+	if err != nil {
+		t.Fatalf("Plan: %v", err)
+	}
+	if err := o.Apply(context.Background(), ApplyRequest{Id: result.Id}); err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+	if err := o.Run(context.Background(), RunRequest{Id: result.Id}); err != nil {
+		t.Fatalf("Run should soft-fail sync: %v", err)
+	}
+	row, err := o.loadOperation(context.Background(), result.Id)
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if row.Status != StatusSucceeded {
+		t.Fatalf("status=%q want succeeded", row.Status)
+	}
+}
+
+func TestRun_InstallMetaSoftFailsMaterialize(t *testing.T) {
+	t.Parallel()
+	db := newOpsTestDB(t)
+	runtimeScope := newOpsTestScope(t, db)
+	mod := &pkgmeta.Module{Name: "meta", Version: "1.0.0", ApplicationStr: "meta"}
+	life := &seedLifecycle{stubLifecycle: &stubLifecycle{}, db: db}
+	const blockMaterialize = "ops_block_meta_install_materialize"
+	o := &Ops{
+		Scope:     runtimeScope,
+		Resolver:  &mapResolver{peek: map[string]*pkgmeta.Module{"meta": mod}},
+		Lifecycle: life,
+		Events:    &recordingBus{},
+		LockerFactory: func(scope.Scope) statepkg.Locker {
+			return testLocker{}
+		},
+		SyncLocalSnapshot: func(context.Context, scope.Scope, statepkg.LockerFactory) (lifecycle.ModuleSourceSnapshotSyncStats, error) {
+			return lifecycle.ModuleSourceSnapshotSyncStats{}, nil
+		},
+		SyncRegistrySnapshot: func(context.Context, scope.Scope, statepkg.LockerFactory) (lifecycle.ModuleSourceSnapshotSyncStats, error) {
+			// After origin sync succeeds, block catalog reads so MaterializeCatalog soft-fails.
+			if err := db.Callback().Query().Before("gorm:query").Register(blockMaterialize, func(tx *gorm.DB) {
+				if tx.Statement != nil && tx.Statement.Table == "meta_module_catalog" {
+					_ = tx.AddError(errors.New("materialize blocked"))
+				}
+			}); err != nil {
+				t.Fatalf("callback: %v", err)
+			}
+			return lifecycle.ModuleSourceSnapshotSyncStats{}, nil
+		},
+	}
+	t.Cleanup(func() { _ = db.Callback().Query().Remove(blockMaterialize) })
+	if err := db.Create(&modmeta.ModuleSourceSnapshot{
+		ModuleName: "meta", SourceType: originLocal, SourceRef: "local", Available: true,
+		Version: nullString("1.0.0"),
+	}).Error; err != nil {
+		t.Fatalf("seed snapshot: %v", err)
+	}
+	result, err := o.Plan(context.Background(), PlanRequest{ModuleName: "meta", Action: ActionInstall})
+	if err != nil {
+		t.Fatalf("Plan: %v", err)
+	}
+	if err := o.Apply(context.Background(), ApplyRequest{Id: result.Id}); err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+	if err := o.Run(context.Background(), RunRequest{Id: result.Id}); err != nil {
+		t.Fatalf("Run should soft-fail materialize: %v", err)
+	}
+	row, err := o.loadOperation(context.Background(), result.Id)
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if row.Status != StatusSucceeded {
+		t.Fatalf("status=%q want succeeded", row.Status)
+	}
+}
+
+func TestRun_InstallMetaRunsFullCatalogSync(t *testing.T) {
+	t.Parallel()
+	db := newOpsTestDB(t)
+	runtimeScope := newOpsTestScope(t, db)
+	mod := &pkgmeta.Module{Name: "meta", Version: "1.0.0", ApplicationStr: "meta"}
+	life := &seedLifecycle{stubLifecycle: &stubLifecycle{}, db: db}
+	var localCalls, registryCalls int
+	o := &Ops{
+		Scope:     runtimeScope,
+		Resolver:  &mapResolver{peek: map[string]*pkgmeta.Module{"meta": mod}},
+		Lifecycle: life,
+		Events:    &recordingBus{},
+		LockerFactory: func(scope.Scope) statepkg.Locker {
+			return testLocker{}
+		},
+		SyncLocalSnapshot: func(ctx context.Context, runtimeScope scope.Scope, lockerFactory statepkg.LockerFactory) (lifecycle.ModuleSourceSnapshotSyncStats, error) {
+			localCalls++
+			return lifecycle.ModuleSourceSnapshotSyncStats{}, nil
+		},
+		SyncRegistrySnapshot: func(ctx context.Context, runtimeScope scope.Scope, lockerFactory statepkg.LockerFactory) (lifecycle.ModuleSourceSnapshotSyncStats, error) {
+			registryCalls++
+			return lifecycle.ModuleSourceSnapshotSyncStats{}, nil
+		},
+	}
+	if err := db.Create(&modmeta.ModuleSourceSnapshot{
+		ModuleName: "meta",
+		SourceType: originLocal,
+		SourceRef:  "local",
+		Available:  true,
+		Version:    nullString("1.0.0"),
+	}).Error; err != nil {
+		t.Fatalf("seed snapshot: %v", err)
+	}
+	// Extra local-only module present in snapshots should appear after full materialize.
+	if err := db.Create(&modmeta.ModuleSourceSnapshot{
+		ModuleName: "sandbox",
+		SourceType: originLocal,
+		SourceRef:  "local",
+		Available:  true,
+		Version:    nullString("0.1.0"),
+	}).Error; err != nil {
+		t.Fatalf("seed sandbox snapshot: %v", err)
+	}
+
+	result, err := o.Plan(context.Background(), PlanRequest{ModuleName: "meta", Action: ActionInstall})
+	if err != nil {
+		t.Fatalf("Plan: %v", err)
+	}
+	if err := o.Apply(context.Background(), ApplyRequest{Id: result.Id}); err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+	if err := o.Run(context.Background(), RunRequest{Id: result.Id}); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if localCalls != 1 || registryCalls != 1 {
+		t.Fatalf("sync calls local=%d registry=%d", localCalls, registryCalls)
+	}
+	var sandbox modmeta.ModuleCatalog
+	if err := db.Where("module_name = ?", "sandbox").Take(&sandbox).Error; err != nil {
+		t.Fatalf("sandbox catalog row: %v", err)
+	}
+}

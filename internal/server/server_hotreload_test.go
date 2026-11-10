@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -328,6 +329,39 @@ func TestEnqueueWatchEventIgnoresChoyTailwindArtifacts(t *testing.T) {
 		t.Fatal("expected source watch event to remain queued")
 	}
 	assertHotreloadCounters(t, srv, 0, 0, "ignored generated artifacts must not count as drops/coalesces")
+}
+
+func TestHandleWatchedFileChangeMarksHotreloadFailed(t *testing.T) {
+	runtimeScope := newRichServerTestScope(t)
+	root := t.TempDir()
+	changedFile := filepath.Join(root, "handler.ts")
+	if err := os.WriteFile(changedFile, []byte("export {}"), 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+	tracked := &fakeWatchedService{
+		name:      "demo",
+		watchDirs: []string{root},
+		watchErr:  errors.New("watch boom"),
+	}
+	srv := &GRPCWebServer{
+		runtimeScope: runtimeScope,
+		hotreload:    hotreloadState{watcher: mustNewWatcher(t), queue: make(chan string, 1)},
+	}
+	srv.hotreload.storeWatchTargets(srv.buildRegisteredWatchTargets(tracked.watchPlans(), tracked.watchCallback))
+
+	var progress bytes.Buffer
+	srv.hotreload.progressLine = logger.NewProgressLine(&progress)
+
+	err := srv.handleWatchedFileChange(changedFile)
+	if err == nil {
+		t.Fatal("expected handleWatchedFileChange to propagate watch handler error")
+	}
+	if tracked.callCount() != 1 {
+		t.Fatalf("watch handler calls = %d, want 1", tracked.callCount())
+	}
+	if !strings.Contains(progress.String(), "Hotreload failed") {
+		t.Fatalf("progress = %q, want Hotreload failed marker", progress.String())
+	}
 }
 
 func TestHandleWatchedFileChangeDefersOnLeaseConflict(t *testing.T) {
@@ -1897,23 +1931,123 @@ func TestHandleWatchedModuleUpgradeNilScope(t *testing.T) {
 	}
 }
 
+func TestHotreloadSetProgressMessageViaProgressLine(t *testing.T) {
+	line := logger.NewProgressLine(io.Discard)
+	h := &hotreloadState{progressLine: line}
+	h.setProgressMessage("Restarting runtime...")
+}
+
+func TestHandleWatchedFileChangeResolvedRestartFails(t *testing.T) {
+	runtimeScope := &noSessionServerScope{serverTestScope: newRichServerTestScope(t)}
+	runtimeScope.cfg.Auth.Enabled = false
+	assignEphemeralServerPort(t, runtimeScope.cfg)
+	runtimeScope.cfg.Server.EnableGrpcWebProxy = false
+	runtimeScope.cfg.Server.HotReload = true
+
+	root := t.TempDir()
+	moduleDir := filepath.Join(root, "modules", "demo")
+	if err := os.MkdirAll(moduleDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll() error = %v", err)
+	}
+	changedFile := filepath.Join(moduleDir, "handler.ts")
+	if err := os.WriteFile(changedFile, []byte("export const v = 1;\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	tracked := &fakeWatchedService{name: "demo", watchDirs: []string{moduleDir}}
+	srv := &GRPCWebServer{runtimeScope: runtimeScope}
+	if err := srv.start(false); err != nil {
+		t.Fatalf("start(false) error = %v", err)
+	}
+	t.Cleanup(func() {
+		_ = srv.stop(false)
+	})
+	srv.hotreload.storeWatchTargets(srv.buildRegisteredWatchTargets(tracked.watchPlans(), tracked.watchCallback))
+
+	resolvedFile, err := resolveWatchPath(changedFile)
+	if err != nil {
+		t.Fatalf("resolveWatchPath() error = %v", err)
+	}
+	hash, ok := fileFingerprint(resolvedFile)
+	if !ok {
+		t.Fatal("fileFingerprint failed")
+	}
+	srv.hotreload.setFingerprintIfAbsentResolved(resolvedFile, hash)
+
+	if err := os.WriteFile(changedFile, []byte("export const v = 2;\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+	runtimeScope.cfg.Server.JsEngineFactory = "missing"
+	srv.jsExecutor = nil
+
+	err = srv.handleWatchedFileChangeResolved(resolvedFile)
+	if err == nil || !strings.Contains(err.Error(), "Failed to restart server") {
+		t.Fatalf("handleWatchedFileChangeResolved() error = %v", err)
+	}
+	if tracked.callCount() != 1 {
+		t.Fatalf("watch handler calls = %d, want 1", tracked.callCount())
+	}
+}
+
+func TestHotreloadProgressSpinnerAnimatesViaTicker(t *testing.T) {
+	buf := bytes.NewBuffer(nil)
+	line := logger.NewProgressLine(buf)
+	h := &hotreloadState{progressLine: line}
+
+	if got := h.beginProgressSpinner(); got != line {
+		t.Fatalf("beginProgressSpinner() = %v, want line", got)
+	}
+	if h.progressTicker == nil {
+		t.Fatal("expected ProgressTicker so Restarting runtime frames advance")
+	}
+	h.setProgressMessage("Restarting runtime...")
+	if got := h.progressTicker.Message(); got != "Restarting runtime..." {
+		t.Fatalf("ticker message = %q", got)
+	}
+	// Success path clears without a permanent Done line.
+	h.stopProgressSpinner()
+	if h.progressTicker != nil {
+		t.Fatal("expected stopProgressSpinner to clear ticker")
+	}
+	if strings.Contains(buf.String(), "Hotreload done") {
+		t.Fatalf("success must not leave a Done line, got %q", buf.String())
+	}
+
+	// Failure / defer still leave a terminal marker.
+	h.beginProgressSpinner()
+	h.setProgressMessage("Restarting runtime...")
+	h.finishProgress("✗", "Restart failed")
+	if h.progressTicker != nil {
+		t.Fatal("expected finishProgress to clear ticker")
+	}
+	if !strings.Contains(buf.String(), "Restart failed") {
+		t.Fatalf("expected failure Done line, got %q", buf.String())
+	}
+}
+
 func TestHotreloadUpgradeContextAppliesQuietProgress(t *testing.T) {
 	t.Parallel()
-	ctx := hotreloadUpgradeContext(nil, nil)
+	ctx := hotreloadUpgradeContext(nil, nil, nil)
 	if ctx == nil || !logger.QuietProgressFromContext(ctx) {
 		t.Fatal("expected QuietProgress on nil ctx fallback")
 	}
-	ctx = hotreloadUpgradeContext(context.Background(), nil)
+	ctx = hotreloadUpgradeContext(context.Background(), nil, nil)
 	if !logger.QuietProgressFromContext(ctx) {
 		t.Fatal("expected QuietProgress on hotreload upgrade context")
 	}
 	line := logger.NewProgressLine(&bytes.Buffer{})
-	ctx = hotreloadUpgradeContext(context.Background(), line)
+	ctx = hotreloadUpgradeContext(context.Background(), line, nil)
 	if !logger.QuietProgressFromContext(ctx) {
 		t.Fatal("expected QuietProgress with ProgressLine")
 	}
 	if logger.ProgressLineFromContext(ctx) != line {
 		t.Fatal("expected ProgressLine attached")
+	}
+	ticker := logger.NewProgressTicker(line, logger.ProgressTickerOptions{})
+	t.Cleanup(ticker.Stop)
+	ctx = hotreloadUpgradeContext(context.Background(), line, ticker)
+	if logger.ProgressTickerFromContext(ctx) != ticker {
+		t.Fatal("expected ProgressTicker attached so nested Upgrade reuses watch spinner")
 	}
 }
 
@@ -1932,9 +2066,11 @@ func TestHandleWatchedModuleUpgradeEmptyModuleName(t *testing.T) {
 func TestHandleWatchedModuleUpgradePropagatesQuietProgress(t *testing.T) {
 	runtimeScope := newRichServerTestScope(t)
 	line := logger.NewProgressLine(&bytes.Buffer{})
+	ticker := logger.NewProgressTicker(line, logger.ProgressTickerOptions{})
+	t.Cleanup(ticker.Stop)
 	srv := &GRPCWebServer{
 		runtimeScope: runtimeScope,
-		hotreload:    hotreloadState{progressLine: line},
+		hotreload:    hotreloadState{progressLine: line, progressTicker: ticker},
 	}
 	prev := hotreloadModuleUpgrade
 	var gotCtx context.Context
@@ -1959,6 +2095,16 @@ func TestHandleWatchedModuleUpgradePropagatesQuietProgress(t *testing.T) {
 	}
 	if logger.ProgressLineFromContext(gotCtx) != line {
 		t.Fatal("expected ProgressLine on nested upgrade context")
+	}
+	if logger.ProgressTickerFromContext(gotCtx) != ticker {
+		t.Fatal("expected ProgressTicker on nested upgrade context")
+	}
+}
+
+func TestDispatchWatchHandlerNilReceiver(t *testing.T) {
+	var srv *GRPCWebServer
+	if _, err := srv.dispatchWatchHandler("/some/file.ts"); err == nil {
+		t.Fatal("expected error from dispatchWatchHandler with nil receiver")
 	}
 }
 

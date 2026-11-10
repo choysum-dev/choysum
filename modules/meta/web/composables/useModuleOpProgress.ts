@@ -3,12 +3,19 @@
 
 import { onTips, subscribeModuleOp } from '@/core/web/tip';
 
+/** Sentinel when status fetch fails without a message; matched by onHardError handlers. */
+export const MODULE_OP_STATUS_FETCH_FAILED = 'Failed to get status';
+
 /** Snapshot derived from MetaModuleOperation.Browse/Read (authoritative). */
 export type ModuleOpStatusSnapshot = {
   status: string;
+  /** Persisted meta_module_operation.phase (queued|executing|reloading|done). */
+  phase?: string;
   summary?: unknown;
   resultStatus?: 'SUCCEEDED' | 'FAILED';
   failureKind?: 'RETRYABLE' | 'NON_RETRYABLE' | 'NONE';
+  /** Sync finished with catalog refresh but some source origins failed. */
+  partialFailure?: boolean;
   ReloadTriggered?: boolean;
   ReloadFailed?: boolean;
   ReloadWeb?: boolean;
@@ -58,7 +65,7 @@ function isTransientNetworkError(message: string): boolean {
   );
 }
 
-function clampRetryDelay(retryAfterMs: number | undefined, fallbackMs: number): number {
+export function clampRetryDelay(retryAfterMs: number | undefined, fallbackMs: number): number {
   if (retryAfterMs == null || !Number.isFinite(retryAfterMs)) {
     return fallbackMs;
   }
@@ -137,7 +144,7 @@ export function createModuleOpProgressSession(hooks: ModuleOpProgressHooks, deps
   }
 
   function notifyHardError(error: unknown): void {
-    hooks.onHardError?.(errorMessage(error) || 'Failed to get status');
+    hooks.onHardError?.(errorMessage(error) || MODULE_OP_STATUS_FETCH_FAILED);
   }
 
   function fireTimeout(generation: number): void {

@@ -63,7 +63,7 @@ SPDX-License-Identifier: Apache-2.0
 
     <ChoyViewBusyHost
       :busy="loading"
-      class="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto p-5"
+      class="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto"
       data-anchor="choy.settings.sheet"
     >
       <div

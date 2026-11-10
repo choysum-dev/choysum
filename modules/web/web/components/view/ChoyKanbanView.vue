@@ -78,6 +78,9 @@ SPDX-License-Identifier: Apache-2.0
                 <slot name="overflow-actions" />
               </template>
             </ChoyPageTitleActions>
+
+            <!-- Same tray as title/⋮ (Form secondary parity) — no ActionBar separator. -->
+            <slot v-if="showActions" name="secondary-actions" />
           </template>
           <!-- Only mount the tray when the product view actually fills it (List parity). -->
           <template v-if="$slots['user-actions'] || $slots.header" #user-actions>
@@ -102,7 +105,7 @@ SPDX-License-Identifier: Apache-2.0
 
     <ChoyViewBusyHost
       :busy="boardBusy"
-      class="choy-kanban-view__body flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-hidden p-3"
+      class="choy-kanban-view__body flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-hidden"
     >
       <div v-if="laneCount > 0 && !isFlatBoard" class="md:hidden">
         <Select :model-value="mobileLaneKey" @update:model-value="onMobileLaneChange">
@@ -132,7 +135,7 @@ SPDX-License-Identifier: Apache-2.0
           <article
             v-for="card in lane.cards"
             :key="card.id"
-            class="choy-kanban-view__card cursor-pointer rounded-md border border-border bg-card p-3 shadow-xs outline-none transition-colors hover:bg-accent/40 focus-visible:ring-2 focus-visible:ring-ring"
+            class="choy-kanban-view__card flex flex-col cursor-pointer rounded-md border border-border bg-card p-3 shadow-xs outline-none transition-colors hover:bg-accent/40 focus-visible:ring-2 focus-visible:ring-ring"
             :data-card-id="card.id"
             tabindex="0"
             role="listitem"

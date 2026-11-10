@@ -34,7 +34,7 @@ describe('o2mKanbanVirtualHelpers', () => {
     expect(o2mKanbanShouldVirtualize('auto', 40)).toBe(true);
     expect(o2mKanbanShouldVirtualize(true, 1)).toBe(true);
     expect(o2mKanbanShouldVirtualize(false, 100)).toBe(false);
-    expect(resolveO2MKanbanEstimateCardSize(undefined)).toBe(88);
+    expect(resolveO2MKanbanEstimateCardSize(undefined)).toBe(128);
     expect(resolveO2MKanbanEstimateCardSize(120)).toBe(120);
   });
 });

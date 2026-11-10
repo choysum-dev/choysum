@@ -87,6 +87,15 @@ func TestCoverage_GuardsAndHelpers(t *testing.T) {
 	if normalizeVersion("not-a-semver") != "not-a-semver" {
 		t.Fatal("normalizeVersion passthrough")
 	}
+	if displayVersion("v1.2.3") != "1.2.3" || displayVersion("1.2.3") != "1.2.3" {
+		t.Fatal("displayVersion should strip leading v for catalog UI")
+	}
+	if displayVersion("") != "" || displayVersion("not-a-semver") != "not-a-semver" {
+		t.Fatal("displayVersion empty/passthrough")
+	}
+	if displayVersion("vnot-a-semver") != "vnot-a-semver" {
+		t.Fatal("displayVersion invalid v-prefix should pass through")
+	}
 	if compareVersion("zzz", "aaa") <= 0 {
 		t.Fatal("non-semver compare")
 	}
@@ -772,7 +781,7 @@ func TestCoverage_SetWithDemoPropagatesOnRun(t *testing.T) {
 }
 
 func TestCoverage_MaterializeErrorAndFailSaveJoin(t *testing.T) {
-	t.Parallel()
+	// Not parallel: mutates package-level applyDemoFiles shared with other load-demo tests.
 	db := newOpsTestDB(t)
 	mod := &pkgmeta.Module{Name: "core", Version: "1.0.0", ApplicationStr: "core"}
 	if err := db.Create(&modmeta.ModuleSourceSnapshot{

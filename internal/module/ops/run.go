@@ -90,8 +90,7 @@ func (o *Ops) Run(ctx context.Context, req RunRequest) error {
 func (o *Ops) executeOperation(ctx context.Context, row *modmeta.ModuleOperation, requestWithDemo bool, doc PlanDocument) error {
 	switch row.Action {
 	case ActionSync:
-		_, err := o.SyncSourceSnapshotsThenMaterialize(ctx, "all")
-		return err
+		return o.executeSync(ctx, row)
 	case ActionLoadDemo:
 		return o.executeLoadDemo(ctx, row)
 	case ActionInstall, ActionUpgrade, ActionUninstall:
@@ -108,6 +107,25 @@ func (o *Ops) executeOperation(ctx context.Context, row *modmeta.ModuleOperation
 		names := affectedModuleNames(doc, row.ModuleName)
 		if err := o.runLifecycle(ctx, row.Action, row.ModuleName, withDemo, doc); err != nil {
 			return err
+		}
+		// First install that lands meta: full local+registry snapshot sync + catalog rewrite
+		// so Catalog UI is populated without a page-open auto sync.
+		// Soft-fail origin/materialize errors: lifecycle Install already succeeded;
+		// offline registry must not mark the install operation failed (same policy as executeSync).
+		if row.Action == ActionInstall && moduleNamesInclude(names, "meta") {
+			// Soft-fail origin and materialize: lifecycle Install already succeeded, and an
+			// offline registry must not mark the install operation failed (same policy as executeSync).
+			if _, originErr := o.syncSourceSnapshots(ctx, "all"); originErr != nil {
+				if o.Scope != nil && o.Scope.Logger() != nil {
+					o.Scope.Logger().Warn("ops: catalog sync after meta install failed", "error", originErr)
+				}
+			}
+			if matErr := o.MaterializeCatalog(ctx, nil); matErr != nil {
+				if o.Scope != nil && o.Scope.Logger() != nil {
+					o.Scope.Logger().Warn("ops: catalog materialize after meta install failed", "error", matErr)
+				}
+			}
+			return nil
 		}
 		if err := o.MaterializeCatalog(ctx, names); err != nil {
 			return fmt.Errorf("ops: materialize catalog after %s: %w", row.Action, err)
@@ -147,6 +165,37 @@ func (o *Ops) runLifecycle(ctx context.Context, action, moduleName string, withD
 	}
 }
 
+// executeSync syncs all origins, materializes catalog, and persists SyncResult on the op.
+// Origin sync failures with a successful materialize are soft (return nil) so the UI can
+// show a partial-failure summary while still refreshing the catalog.
+func (o *Ops) executeSync(ctx context.Context, row *modmeta.ModuleOperation) error {
+	const originType = "all"
+	stats, originErr := o.syncSourceSnapshots(ctx, originType)
+	matErr := o.MaterializeCatalog(ctx, nil)
+	catalogRows, countErr := o.countCatalogRows(ctx)
+	if countErr != nil {
+		catalogRows = 0
+	}
+	summary := SyncResultSummary{
+		Total:       stats.Total,
+		Success:     stats.Success,
+		Failed:      stats.Failed,
+		CatalogRows: catalogRows,
+		Origin:      originType,
+	}
+	if persistErr := o.persistSyncResult(ctx, row, summary); persistErr != nil {
+		return errors.Join(matErr, originErr, persistErr)
+	}
+	if matErr != nil {
+		return matErr
+	}
+	// Soft-fail origin errors: stats.Failed / originErr surface via SyncResult in the UI.
+	if originErr != nil && o.Scope != nil && o.Scope.Logger() != nil {
+		o.Scope.Logger().Warn("ops: catalog sync origin partially failed", "error", originErr)
+	}
+	return nil
+}
+
 func affectedModuleNames(doc PlanDocument, root string) []string {
 	seen := map[string]struct{}{}
 	out := make([]string, 0, len(doc.ModuleOrder)+1)
@@ -169,6 +218,19 @@ func affectedModuleNames(doc PlanDocument, root string) []string {
 	}
 	add(root)
 	return out
+}
+
+func moduleNamesInclude(names []string, want string) bool {
+	want = strings.TrimSpace(want)
+	if want == "" {
+		return false
+	}
+	for _, name := range names {
+		if strings.EqualFold(strings.TrimSpace(name), want) {
+			return true
+		}
+	}
+	return false
 }
 
 func (o *Ops) failOperation(ctx context.Context, row *modmeta.ModuleOperation, domain, code, message string) error {

@@ -7,53 +7,72 @@ import type { WebModelStore } from '@/web/web/stores/modelStore';
 import { unwrapListRecord } from '@/web/web/composables/listRowEdit';
 import type { RowEventPayload } from '@/web';
 import { useModuleCatalogSync } from './useModuleCatalogSync';
+import { useModuleCatalogOpProgress } from './useModuleCatalogOpProgress';
 import {
   catalogInstalledStatus,
   formatModuleCatalogDate,
-  matchesModuleCatalogFilter,
-  moduleCatalogCardBadgeVariant,
   moduleStatusBadgeVariant,
   resolveModuleCatalogPrimaryAction,
-  type ModuleCatalogFilter,
+  type CatalogSyncResultSummary,
 } from '../views/module_catalog_chrome';
 
 export type ModuleCatalogViewMsgs = {
-  all: string;
-  installed: string;
-  upgradeable: string;
-  uninstalled: string;
-  unavailable: string;
-  cards: string;
-  table: string;
   unknown: string;
   install: string;
   upgrade: string;
   progress: string;
-  syncTriggered: (operationId: string) => string;
-  syncTriggeredEmpty: string;
+  installed: string;
+  updateAvailable: string;
+  uninstalled: string;
+  unavailable: string;
   syncFailed: (message: string) => string;
+  syncSettledOk: (summary: string) => string;
+  syncSettledPartial: (summary: string) => string;
+  syncSettledFailed: (message: string) => string;
+  syncJobStillRunning: string;
+  syncServiceRestarting: string;
+  syncFailedToGetStatus: string;
+  formatSyncSummaryOk: (sync: CatalogSyncResultSummary) => string;
+  formatSyncSummaryPartial: (sync: CatalogSyncResultSummary) => string;
+  /** Toast after install/upgrade/uninstall/load_demo reaches a terminal status. */
+  opSettledOk: string;
+  opSettledPartial: string;
+  opSettledFailed: (message: string) => string;
+  opJobStillRunning: string;
+  opServiceRestarting: string;
+  opFailedToGetStatus: string;
+  opReloadingService: () => string;
+  opExecuting: () => string;
+  opQueued: () => string;
+  opFinishing: () => string;
+  opInProgress: () => string;
+  opProgressTitle: (action: string, moduleName: string) => string;
 };
 
-export type ModuleCatalogDrawerAction = '' | 'install' | 'upgrade' | 'uninstall' | 'progress' | 'load_demo';
+export type ModuleCatalogDrawerAction =
+  | ''
+  | 'install'
+  | 'upgrade'
+  | 'uninstall'
+  | 'progress'
+  | 'sync'
+  | 'load_demo';
 
 function isOperationDeepLinkRoute(routeName: unknown): boolean {
   return String(routeName || '') === 'MetaModuleOperationDeepLink';
 }
 
 /**
- * Catalog view model: filters, cards/table mode, sync, and operation drawer shell state.
+ * Catalog view model: sync (button busy + toast), drawer/deep-link, and row action helpers.
  */
 export function useModuleCatalogViewModel(opts: {
   store: WebModelStore<any>;
+  operationStore?: WebModelStore<any> | Ref<WebModelStore<any> | null | undefined> | null;
   route: RouteLocationNormalizedLoaded;
   router: Router;
   initialOperationId?: Ref<string> | (() => string);
-  /** When false, empty-catalog auto-sync is skipped (same gate as the Sync button). */
-  canRequestSync?: () => boolean;
   msgs: ModuleCatalogViewMsgs;
 }) {
-  const filter = ref<ModuleCatalogFilter>('all');
-  const viewMode = ref<'cards' | 'table'>('cards');
   const drawerOpen = ref(false);
   const drawerOperationId = ref('');
   const drawerModuleName = ref('');
@@ -62,51 +81,59 @@ export function useModuleCatalogViewModel(opts: {
   // True when the open drawer was bound from the operation deep-link (or boot prop).
   const drawerBoundToRoute = ref(false);
 
-  const filterOptions = computed(() => [
-    { value: 'all' as const, label: opts.msgs.all },
-    { value: 'installed' as const, label: opts.msgs.installed },
-    { value: 'upgradeable' as const, label: opts.msgs.upgradeable },
-    { value: 'uninstalled' as const, label: opts.msgs.uninstalled },
-    { value: 'unavailable' as const, label: opts.msgs.unavailable },
-  ]);
+  async function refreshCatalog() {
+    try {
+      const list = (opts.store as any)?.state?.list;
+      if (list && typeof list.refresh === 'function') {
+        await list.refresh();
+        return;
+      }
+      if (typeof (opts.store as any)?.Search === 'function') {
+        await (opts.store as any).Search();
+      }
+    } catch {
+      // Refresh is best-effort after an operation settles.
+    }
+  }
 
-  const viewSwitcherOptions = computed(() => [
-    { value: 'cards', label: opts.msgs.cards },
-    { value: 'table', label: opts.msgs.table },
-  ]);
-
-  const { syncLoading, requestSync, watchEmptyCatalogAutoSync } = useModuleCatalogSync(
+  const { syncBusy, syncLoading, onSync, stop: stopSync } = useModuleCatalogSync(
     opts.store,
+    opts.operationStore,
     {
-      triggered: opts.msgs.syncTriggered,
-      triggeredEmpty: opts.msgs.syncTriggeredEmpty,
       failed: opts.msgs.syncFailed,
+      settledOk: opts.msgs.syncSettledOk,
+      settledPartial: opts.msgs.syncSettledPartial,
+      settledFailed: opts.msgs.syncSettledFailed,
+      jobStillRunning: opts.msgs.syncJobStillRunning,
+      serviceRestarting: opts.msgs.syncServiceRestarting,
+      failedToGetStatus: opts.msgs.syncFailedToGetStatus,
+      formatSummaryOk: opts.msgs.formatSyncSummaryOk,
+      formatSummaryPartial: opts.msgs.formatSyncSummaryPartial,
     },
-    { canRequestSync: opts.canRequestSync },
+    { refreshCatalog },
   );
-  watchEmptyCatalogAutoSync();
 
-  function onSync() {
-    void requestSync({ Force: true, IfStale: false });
-  }
-
-  function onViewSelect(value: string) {
-    viewMode.value = value === 'table' ? 'table' : 'cards';
-    const nextQuery = { ...opts.route.query, view: viewMode.value };
-    void opts.router.replace({
-      name: opts.route.name ?? undefined,
-      params: opts.route.params,
-      query: nextQuery,
-    });
-  }
-
-  watch(
-    () => String(opts.route.query.view || ''),
-    view => {
-      if (view === 'table' || view === 'cards') viewMode.value = view;
-    },
-    { immediate: true },
-  );
+  const {
+    progressBusy,
+    progressTitle,
+    progressHeadline,
+    progressValue,
+    startOpProgress,
+    stop: stopOpProgress,
+  } = useModuleCatalogOpProgress(opts.operationStore, {
+    jobStillRunning: opts.msgs.opJobStillRunning,
+    serviceRestarting: opts.msgs.opServiceRestarting,
+    failedToGetStatus: opts.msgs.opFailedToGetStatus,
+    settledOk: opts.msgs.opSettledOk,
+    settledPartial: opts.msgs.opSettledPartial,
+    settledFailed: opts.msgs.opSettledFailed,
+    reloadingService: opts.msgs.opReloadingService,
+    executing: opts.msgs.opExecuting,
+    queued: opts.msgs.opQueued,
+    finishing: opts.msgs.opFinishing,
+    inProgress: opts.msgs.opInProgress,
+    titleFor: opts.msgs.opProgressTitle,
+  }, { refreshCatalog });
 
   function rowRecord(row: unknown): Record<string, unknown> {
     const rec = unwrapListRecord(row);
@@ -118,38 +145,25 @@ export function useModuleCatalogViewModel(opts: {
     return val == null ? '' : String(val);
   }
 
-  function cardKey(row: unknown, index: number): string {
-    return field(row, 'Id') || field(row, 'ModuleName') || `row-${index}`;
-  }
-
   function statusBadgeVariant(row: unknown) {
     const rec = rowRecord(row);
-    return moduleStatusBadgeVariant(catalogInstalledStatus(rec), rec.Available as boolean | undefined);
-  }
-
-  function cardBadgeVariant(row: unknown) {
-    const rec = rowRecord(row);
-    return moduleCatalogCardBadgeVariant(catalogInstalledStatus(rec), rec.Available as boolean | undefined);
+    return moduleStatusBadgeVariant(
+      catalogInstalledStatus(rec),
+      rec.Available as boolean | undefined,
+      rec.UpdateAvailable === true,
+    );
   }
 
   function statusLabel(row: unknown) {
     const rec = rowRecord(row);
     if (rec.Available === false) return opts.msgs.unavailable;
     const val = catalogInstalledStatus(rec).toLowerCase();
-    if (val === 'installed') return opts.msgs.installed;
+    if (val === 'installed') {
+      if (rec.UpdateAvailable === true) return opts.msgs.updateAvailable;
+      return opts.msgs.installed;
+    }
     if (val === 'uninstalled') return opts.msgs.uninstalled;
     return catalogInstalledStatus(rec) || opts.msgs.unknown;
-  }
-
-  function versionLine(row: unknown): string {
-    const rec = rowRecord(row);
-    const installed = String(rec.InstalledVersion || '').trim();
-    const catalog = String(rec.LocalVersion || rec.RegistryVersion || '').trim();
-    if (rec.Installed === true && rec.UpdateAvailable === true && installed && catalog) {
-      return `${installed} → ${catalog}`;
-    }
-    if (rec.Installed === true) return installed || catalog || '—';
-    return catalog || '—';
   }
 
   function primaryActionFor(row: unknown) {
@@ -203,8 +217,7 @@ export function useModuleCatalogViewModel(opts: {
     const action = resolveModuleCatalogPrimaryAction(rec);
     if (!action) return;
     if (action === 'progress') {
-      openDrawer({
-        operationId: String(rec.ActiveOperationId || '').trim(),
+      void startOpProgress(String(rec.ActiveOperationId || '').trim(), {
         moduleName: String(rec.ModuleName || ''),
         action: 'progress',
       });
@@ -217,7 +230,6 @@ export function useModuleCatalogViewModel(opts: {
     });
   }
 
-  /** Uninstall lives in the row menu when there is no primary CTA (§7.1). */
   function canUninstall(row: unknown): boolean {
     const rec = rowRecord(row);
     if (String(rec.ActiveOperationId || '').trim()) return false;
@@ -239,11 +251,7 @@ export function useModuleCatalogViewModel(opts: {
     return Array.isArray(rows) ? rows : [];
   });
 
-  const filteredCardRows = computed(() =>
-    allRows.value.filter(row => matchesModuleCatalogFilter(rowRecord(row), filter.value)),
-  );
-
-  /** Catalog rows that still need demo import (§8.4 button visibility). */
+  /** Catalog rows that still need demo import. */
   const pendingDemoRows = computed(() =>
     allRows.value.filter(row => {
       const rec = rowRecord(row);
@@ -277,19 +285,24 @@ export function useModuleCatalogViewModel(opts: {
     return bestRaw != null ? formatModuleCatalogDate(bestRaw) : '';
   });
 
-  async function refreshCatalog() {
-    try {
-      const list = (opts.store as any)?.state?.list;
-      if (list && typeof list.refresh === 'function') {
-        await list.refresh();
-        return;
-      }
-      if (typeof (opts.store as any)?.Search === 'function') {
-        await (opts.store as any).Search();
-      }
-    } catch {
-      // Refresh is best-effort after an operation settles.
-    }
+  /** After Apply: refresh ActiveOperationId, close confirm dialog, start locked progress strip. */
+  function onOpApplied(operationId?: string) {
+    const id = String(operationId || '').trim();
+    void refreshCatalog();
+    if (!id) return;
+    drawerOpen.value = false;
+    // progress deep-link is not a lifecycle action; keep sync so titleFor can label it.
+    const action = drawerAction.value === 'progress' ? '' : drawerAction.value;
+    void startOpProgress(id, {
+      moduleName: drawerModuleName.value,
+      action,
+    });
+  }
+
+  /** Apply-time failure left in the confirm dialog (success path settles via progress strip). */
+  function onDrawerSettled(_status?: { resultStatus?: string; summary?: unknown } | null) {
+    // confirmApply already toasts Apply errors; keep Form/List/Kanban refresh-only here.
+    void refreshCatalog();
   }
 
   function resolveInitialOperationId(): string {
@@ -305,21 +318,30 @@ export function useModuleCatalogViewModel(opts: {
 
   function syncDrawerFromRoute() {
     if (!isOperationDeepLinkRoute(opts.route.name)) {
-      // Only clear a drawer that was opened from the deep-link; user-opened shells stay put.
-      if (drawerOpen.value && drawerBoundToRoute.value) closeDrawer();
+      // Leaving an operation deep-link: drop route-bound progress/confirm chrome.
+      if (drawerBoundToRoute.value) {
+        stopOpProgress();
+        closeDrawer();
+      }
       return;
     }
     const opId = String(opts.route.params.id || '').trim();
-    if (opId) openDrawer({ operationId: opId, action: 'progress' }, true);
-    else closeDrawer();
+    if (opId) {
+      drawerBoundToRoute.value = true;
+      drawerOpen.value = false;
+      void startOpProgress(opId, { action: 'progress' });
+      return;
+    }
+    stopOpProgress();
+    closeDrawer();
   }
 
   function bootFromRoute() {
     const opId = resolveInitialOperationId();
-    if (opId) openDrawer({ operationId: opId, action: 'progress' }, true);
-    // Stale-aware sync on catalog open (same gate as the Sync button).
-    if (!opts.canRequestSync || opts.canRequestSync()) {
-      void requestSync({ Force: false, IfStale: true });
+    if (opId) {
+      drawerBoundToRoute.value = true;
+      drawerOpen.value = false;
+      void startOpProgress(opId, { action: 'progress' });
     }
   }
 
@@ -331,20 +353,22 @@ export function useModuleCatalogViewModel(opts: {
   );
 
   return {
-    filter,
-    viewMode,
     drawerOpen,
     drawerOperationId,
     drawerModuleName,
     drawerAction,
     drawerRegistryNewerThanLocal,
-    filterOptions,
-    viewSwitcherOptions,
     syncLoading,
-    filteredCardRows,
+    syncBusy,
     lastSyncAtLabel,
     onSync,
-    onViewSelect,
+    stopSync,
+    progressBusy,
+    progressTitle,
+    progressHeadline,
+    progressValue,
+    startOpProgress,
+    stopOpProgress,
     onRowClick,
     onPrimaryAction,
     canUninstall,
@@ -353,15 +377,15 @@ export function useModuleCatalogViewModel(opts: {
     pendingDemoRows,
     onLoadDemo,
     refreshCatalog,
+    onOpApplied,
+    onDrawerSettled,
     openDrawer,
     closeDrawer,
     toShow,
     field,
-    cardKey,
+    rowRecord,
     statusBadgeVariant,
-    cardBadgeVariant,
     statusLabel,
-    versionLine,
     primaryActionFor,
     primaryActionLabel,
     bootFromRoute,

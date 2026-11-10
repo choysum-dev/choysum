@@ -4,7 +4,7 @@
 import { defineAction } from '@/core/web/resource';
 import { createTranslate } from '@/web/web/i18n';
 
-const { _lt } = createTranslate('meta', { scope: 'web/views/module_actions' });
+const { _lt } = createTranslate('meta', { scope: 'web/views/module_catalog_actions' });
 
 /** Install modules: Plan + Apply with Action=install (UI filters by planned action). */
 export const moduleInstallAction = defineAction('meta.action.module_install', {
@@ -33,9 +33,9 @@ export const moduleUninstallAction = defineAction('meta.action.module_uninstall'
   ],
 });
 
-/** Sync the module catalog snapshot (local origin). */
+/** Rescan module sources and refresh the catalog snapshot (local origin). */
 export const moduleSyncAction = defineAction('meta.action.module_sync', {
-  title: _lt('Sync Modules'),
+  title: _lt('Update Module List'),
   requires: [{ model: 'meta.MetaModuleCatalog', method: 'RequestSync' }],
 });
 

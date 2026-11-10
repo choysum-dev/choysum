@@ -7,7 +7,7 @@ import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type MetaModuleCatalog from '@/meta/service/models/module_catalog';
 import type MetaModuleOperation from '@/meta/service/models/module_operation';
 
-export type ModuleShowPageDeps = {
+export type ModuleCatalogDetailPageDeps = {
   scopeManager: unknown;
   moduleName: Ref<string> | (() => string);
   createStore?: typeof createStoreByModel;
@@ -18,7 +18,7 @@ export type ModuleShowPageDeps = {
  * Uses a stable catalog store and a request sequence so stale Search results
  * cannot overwrite a newer module name.
  */
-export function useModuleShowPage(deps: ModuleShowPageDeps): {
+export function useModuleCatalogDetailPage(deps: ModuleCatalogDetailPageDeps): {
   catalogStore: WebModelStore<MetaModuleCatalog>;
   operationStore: WebModelStore<MetaModuleOperation>;
   recordId: Ref<string>;
@@ -33,11 +33,11 @@ export function useModuleShowPage(deps: ModuleShowPageDeps): {
   });
   // Stable store id — Search is keyed by ModuleName, not by this cache label.
   const catalogStore = createStore('meta.MetaModuleCatalog', {
-    storeId: 'MetaModuleCatalog_Show',
+    storeId: 'MetaModuleCatalog_Form',
     scopeManager: deps.scopeManager,
   }) as WebModelStore<MetaModuleCatalog>;
   const operationStore = createStore('meta.MetaModuleOperation', {
-    storeId: 'MetaModuleOperation_ShowDrawer',
+    storeId: 'MetaModuleOperation_FormDrawer',
     scopeManager: deps.scopeManager,
   }) as WebModelStore<MetaModuleOperation>;
   const recordId = ref('');
@@ -57,9 +57,18 @@ export function useModuleShowPage(deps: ModuleShowPageDeps): {
     }
     loading.value = true;
     try {
+      // Include CTA fields so the Form header can resolve Install/Upgrade before Browse settles.
       const rows = (await (catalogStore as any).Search(['ModuleName', '=', name], {
         limit: 1,
-        fields: ['Id', 'ModuleName'],
+        fields: [
+          'Id',
+          'ModuleName',
+          'Installed',
+          'Available',
+          'UpdateAvailable',
+          'ActiveOperationId',
+          'RegistryNewerThanLocal',
+        ],
       })) as Array<{ Id?: string }> | null;
       if (seq !== resolveSeq) return;
       const id = String(rows?.[0]?.Id || '').trim();

@@ -5,10 +5,15 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <ChoyPage :title="pageTitle" :store="catalogStore">
-    <ModuleCatalogView
+    <p v-if="loading" class="p-4 text-sm text-muted-foreground">{{ _t('Loading…') }}</p>
+    <p v-else-if="missing" class="p-4 text-sm text-muted-foreground" data-testid="module-catalog-missing">
+      {{ _t('Module not found.') }}
+    </p>
+    <ModuleCatalogFormView
+      v-else-if="recordId"
       :store="catalogStore"
       :operation-store="operationStore"
-      :initial-operation-id="initialOperationId"
+      :record-id="recordId"
     />
   </ChoyPage>
 </template>
@@ -16,20 +21,21 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useRoute } from 'vue-router';
-import ModuleCatalogView from '../views/ModuleCatalogView.vue';
+import ModuleCatalogFormView from '../views/ModuleCatalogFormView.vue';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
+import { createTranslate } from '@/web/web/i18n';
 import { ChoyPage } from '@/web';
-import { useModuleCatalogPage } from './module_catalog_page';
+import { useModuleCatalogDetailPage } from './module_catalog_detail_page';
 
 defineOptions({ name: 'MetaModuleCatalogPage' });
 
+const { _t } = createTranslate('meta', { scope: 'web/pages/ModuleCatalog' });
 const route = useRoute();
-const { pageTitle, catalogStore, operationStore } = useModuleCatalogPage({
+
+const { catalogStore, operationStore, recordId, loading, missing, moduleName } = useModuleCatalogDetailPage({
   scopeManager: useScopeManager().menuScopeManager,
+  moduleName: () => String(route.params.name || ''),
 });
 
-const initialOperationId = computed(() => {
-  if (String(route.name || '') !== 'MetaModuleOperationDeepLink') return '';
-  return String(route.params.id || '').trim();
-});
+const pageTitle = computed(() => moduleName.value || _t('Module'));
 </script>

@@ -908,15 +908,25 @@ func performModuleLoadDemo(ctx *quickjs.Context, jse *quickjsengine.QuickjsEngin
 }
 
 func planResultToMap(result ops.PlanResult) map[string]any {
-	order := make([]map[string]any, 0, len(result.ModuleOrder))
-	for _, e := range result.ModuleOrder {
-		order = append(order, map[string]any{
+	mapEntry := func(e ops.ModuleOrderEntry) map[string]any {
+		return map[string]any{
 			"moduleName":     e.ModuleName,
+			"application":    e.Application,
+			"role":           e.Role,
+			"effect":         e.Effect,
 			"reason":         e.Reason,
 			"currentVersion": e.CurrentVersion,
 			"targetVersion":  e.TargetVersion,
 			"origin":         e.Origin,
-		})
+		}
+	}
+	order := make([]map[string]any, 0, len(result.ModuleOrder))
+	for _, e := range result.ModuleOrder {
+		order = append(order, mapEntry(e))
+	}
+	ensure := make([]map[string]any, 0, len(result.EnsureModules))
+	for _, e := range result.EnsureModules {
+		ensure = append(ensure, mapEntry(e))
 	}
 	issues := func(list []ops.PlanIssue) []map[string]any {
 		out := make([]map[string]any, 0, len(list))
@@ -930,14 +940,16 @@ func planResultToMap(result ops.PlanResult) map[string]any {
 		return out
 	}
 	return map[string]any{
-		"id":           result.Id,
-		"action":       result.Action,
-		"moduleName":   result.ModuleName,
-		"moduleOrder":  order,
-		"affectedApps": result.AffectedApps,
-		"risks":        issues(result.Risks),
-		"blockers":     issues(result.Blockers),
-		"baseRevision": result.BaseRevision,
+		"id":            result.Id,
+		"action":        result.Action,
+		"moduleName":    result.ModuleName,
+		"moduleOrder":   order,
+		"ensureModules": ensure,
+		"affectedApps":  result.AffectedApps,
+		"risks":         issues(result.Risks),
+		"blockers":      issues(result.Blockers),
+		"baseRevision":  result.BaseRevision,
+		"needsWebBuild": result.NeedsWebBuild,
 	}
 }
 
