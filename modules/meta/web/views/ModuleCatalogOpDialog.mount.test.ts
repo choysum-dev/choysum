@@ -303,6 +303,66 @@ test('ModuleCatalogOpDialog.vue progress without operationId warns and closes', 
   }
 });
 
+test('ModuleCatalogOpDialog.vue shows reload-failed CTA and retries page refresh', async () => {
+  const reloads: number[] = [];
+  const prevWindow = (globalThis as any).window;
+  (globalThis as any).window = {
+    ...(prevWindow || {}),
+    location: { reload: () => reloads.push(1) },
+  };
+  try {
+    const store = {
+      Plan: async () => ({
+        Id: 'op-reload-failed',
+        ModuleOrder: [{ ModuleName: 'core', Effect: 'install', Role: 'target' }],
+        AffectedApps: [],
+        Risks: [],
+        Blockers: [],
+      }),
+      Apply: async () => {
+        throw new Error('apply boom');
+      },
+    };
+    const wrapper = mount(ModuleCatalogOpDialog as any, {
+      props: {
+        open: true,
+        action: 'install',
+        moduleName: 'core',
+        operationStore: store,
+      },
+      global: buildPageMountGlobal({ route: { path: '/meta/modules', fullPath: '/meta/modules' } }),
+    });
+    await flushPromises();
+    await flushPromises();
+    await wrapper.find('[data-testid="module-op-confirm"]').trigger('click');
+    await flushPromises();
+    await flushPromises();
+    expect(wrapper.find('[data-testid="module-op-result"]').exists()).toBe(true);
+
+    // Apply errors land on the result step; overlay a reload-failed snapshot for CTA coverage.
+    const status = (wrapper.vm as any).opStatus;
+    expect(status).toBeTruthy();
+    Object.assign(status, {
+      status: 'succeeded',
+      resultStatus: 'SUCCEEDED',
+      ReloadTriggered: true,
+      ReloadFailed: true,
+    });
+    await flushPromises();
+
+    const reloadRow = wrapper.find('[data-testid="module-op-reload"]');
+    expect(reloadRow.exists()).toBe(true);
+    expect(reloadRow.text()).toMatch(/Trigger Failed/i);
+    const retry = wrapper.find('[data-testid="module-op-reload-retry"]');
+    expect(retry.exists()).toBe(true);
+    await retry.trigger('click');
+    expect(reloads).toEqual([1]);
+    wrapper.unmount();
+  } finally {
+    (globalThis as any).window = prevWindow;
+  }
+});
+
 test('ModuleCatalogOpDialog.vue covers apply failure, registry replan, and close', async () => {
   const plans: any[] = [];
   const store = {

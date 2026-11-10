@@ -273,7 +273,7 @@ def pull_request_outputs(modules):
         # Check before module-path handling so modules/**/*.go still arms go-test.
         if is_go_test_path(path):
             go_test_hit = True
-        if is_meta_reload_e2e_path(path):
+        if is_meta_reload_e2e_path(path) and not is_doc_only_path(path):
             meta_reload_e2e_hit = True
 
         module, kind = classify_module_path(path, module_names)

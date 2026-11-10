@@ -403,18 +403,16 @@ export default class MetaModuleOperation extends BaseModel {
     // Gate on Phase=reloading so each successful op schedules at most one reload.
     // Retries (runErr set / Phase already done) must not restart the process again.
     if (!runErr && phase === 'reloading' && reloadTriggered && !reloadFailed) {
+      let reloadResult: { failed?: boolean } | null | undefined;
+      let reloadThrew = false;
       try {
-        const reloadResult = (await bridge.reload({ id })) as { failed?: boolean } | null | undefined;
-        if (reloadResult && reloadResult.failed) {
-          await this.UpdateById(id, { ReloadFailed: true, Phase: 'done' }, ['Id']);
-          reloadFailed = true;
-          outPhase = 'done';
-        } else {
-          await this.UpdateById(id, { Phase: 'done' }, ['Id']);
-          outPhase = 'done';
-        }
+        reloadResult = (await bridge.reload({ id })) as { failed?: boolean } | null | undefined;
       } catch {
-        // Persist the failure so catalog ReloadWeb stays false and retries skip reload.
+        reloadThrew = true;
+      }
+      // Only mark ReloadFailed when reload itself failed; Phase persist is separate
+      // so a post-success UpdateById error does not misreport Trigger Failed.
+      if (reloadThrew || (reloadResult && reloadResult.failed)) {
         try {
           await this.UpdateById(id, { ReloadFailed: true, Phase: 'done' }, ['Id']);
         } catch {
@@ -422,6 +420,13 @@ export default class MetaModuleOperation extends BaseModel {
         }
         reloadFailed = true;
         outPhase = 'done';
+      } else {
+        try {
+          await this.UpdateById(id, { Phase: 'done' }, ['Id']);
+          outPhase = 'done';
+        } catch {
+          // Best-effort; reload was already scheduled.
+        }
       }
     } else if (!runErr && phase === 'reloading' && reloadTriggered && reloadFailed) {
       // e2e FORCE_RELOAD_FAILED (or prior mark): advance phase without calling reload.

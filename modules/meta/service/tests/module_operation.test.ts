@@ -428,6 +428,39 @@ test('meta.MetaModuleOperation Execute records ReloadFailed when reload throws',
   }
 });
 
+test('meta.MetaModuleOperation Execute does not mark ReloadFailed when Phase persist throws after reload', async () => {
+  OP_STORE.set('op-phase-persist', {
+    Id: 'op-phase-persist',
+    Action: 'install',
+    ModuleName: 'core',
+    Status: 'succeeded',
+    Phase: 'reloading',
+    ReloadTriggered: true,
+    ReloadFailed: false,
+  });
+  const origUpdate = (MetaModuleOperation as any).UpdateById;
+  (MetaModuleOperation as any).UpdateById = async () => {
+    throw new Error('persist boom');
+  };
+  let reloaded = false;
+  const restore = installBridge({
+    run: async () => ({ ok: true }),
+    reload: async () => {
+      reloaded = true;
+      return { triggered: true, failed: false };
+    },
+  });
+  try {
+    const resp = await MetaModuleOperation.Execute({ Id: 'op-phase-persist' });
+    expect(reloaded).toBe(true);
+    expect(resp.ReloadFailed).toBe(false);
+    expect(resp.ReloadTriggered).toBe(true);
+  } finally {
+    (MetaModuleOperation as any).UpdateById = origUpdate;
+    restore();
+  }
+});
+
 test('meta.MetaModuleOperation Execute records ReloadFailed when reload reports failed', async () => {
   OP_STORE.set('op-reload-flag', {
     Id: 'op-reload-flag',

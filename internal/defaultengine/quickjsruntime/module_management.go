@@ -543,15 +543,20 @@ func moduleReloadAsyncFactory(
 			}
 
 			result["triggered"] = true
+			// Bind the ops host on the request Scope before returning so a later
+			// Trigger failure can still MarkReloadFailed after Execute completes
+			// and the engine ExecContext may have been reset.
+			markHost, markHostErr := startOpsHost(jse, scopeProvider, cfg, false)
 			go func() {
+				if markHostErr == nil {
+					defer func() { _ = markHost.Close() }()
+				}
 				time.Sleep(1 * time.Millisecond)
 				if triggerErr := reload.Trigger(); triggerErr != nil {
-					started, startErr := startOpsHost(jse, scopeProvider, cfg, false)
-					if startErr != nil {
+					if markHostErr != nil {
 						return
 					}
-					defer func() { _ = started.Close() }()
-					_ = started.host.MarkReloadFailed(context.WithoutCancel(started.execCtx), id)
+					_ = markHost.host.MarkReloadFailed(context.WithoutCancel(markHost.execCtx), id)
 				}
 			}()
 
