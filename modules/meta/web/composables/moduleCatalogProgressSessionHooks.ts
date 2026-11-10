@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { ChoyMessage } from '@/web';
+import { MODULE_OP_STATUS_FETCH_FAILED } from './useModuleOpProgress';
 
 export type ModuleCatalogProgressNotifyMsgs = {
   jobStillRunning: string;
@@ -19,7 +20,7 @@ export function moduleCatalogProgressNotifyHooks(msgs: ModuleCatalogProgressNoti
       ChoyMessage.warning(msgs.serviceRestarting);
     },
     onHardError: (message: string) => {
-      if (!message || message === 'Failed to get status') {
+      if (!message || message === MODULE_OP_STATUS_FETCH_FAILED) {
         ChoyMessage.error(msgs.failedToGetStatus);
         return;
       }

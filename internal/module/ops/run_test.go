@@ -537,6 +537,62 @@ func TestRun_InstallMetaSoftFailsCatalogSync(t *testing.T) {
 	}
 }
 
+func TestRun_InstallMetaSoftFailsMaterialize(t *testing.T) {
+	t.Parallel()
+	db := newOpsTestDB(t)
+	runtimeScope := newOpsTestScope(t, db)
+	mod := &pkgmeta.Module{Name: "meta", Version: "1.0.0", ApplicationStr: "meta"}
+	life := &seedLifecycle{stubLifecycle: &stubLifecycle{}, db: db}
+	const blockMaterialize = "ops_block_meta_install_materialize"
+	o := &Ops{
+		Scope:     runtimeScope,
+		Resolver:  &mapResolver{peek: map[string]*pkgmeta.Module{"meta": mod}},
+		Lifecycle: life,
+		Events:    &recordingBus{},
+		LockerFactory: func(scope.Scope) statepkg.Locker {
+			return testLocker{}
+		},
+		SyncLocalSnapshot: func(context.Context, scope.Scope, statepkg.LockerFactory) (lifecycle.ModuleSourceSnapshotSyncStats, error) {
+			return lifecycle.ModuleSourceSnapshotSyncStats{}, nil
+		},
+		SyncRegistrySnapshot: func(context.Context, scope.Scope, statepkg.LockerFactory) (lifecycle.ModuleSourceSnapshotSyncStats, error) {
+			// After origin sync succeeds, block catalog reads so MaterializeCatalog soft-fails.
+			if err := db.Callback().Query().Before("gorm:query").Register(blockMaterialize, func(tx *gorm.DB) {
+				if tx.Statement != nil && tx.Statement.Table == "meta_module_catalog" {
+					_ = tx.AddError(errors.New("materialize blocked"))
+				}
+			}); err != nil {
+				t.Fatalf("callback: %v", err)
+			}
+			return lifecycle.ModuleSourceSnapshotSyncStats{}, nil
+		},
+	}
+	t.Cleanup(func() { _ = db.Callback().Query().Remove(blockMaterialize) })
+	if err := db.Create(&modmeta.ModuleSourceSnapshot{
+		ModuleName: "meta", SourceType: originLocal, SourceRef: "local", Available: true,
+		Version: nullString("1.0.0"),
+	}).Error; err != nil {
+		t.Fatalf("seed snapshot: %v", err)
+	}
+	result, err := o.Plan(context.Background(), PlanRequest{ModuleName: "meta", Action: ActionInstall})
+	if err != nil {
+		t.Fatalf("Plan: %v", err)
+	}
+	if err := o.Apply(context.Background(), ApplyRequest{Id: result.Id}); err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+	if err := o.Run(context.Background(), RunRequest{Id: result.Id}); err != nil {
+		t.Fatalf("Run should soft-fail materialize: %v", err)
+	}
+	row, err := o.loadOperation(context.Background(), result.Id)
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if row.Status != StatusSucceeded {
+		t.Fatalf("status=%q want succeeded", row.Status)
+	}
+}
+
 func TestRun_InstallMetaRunsFullCatalogSync(t *testing.T) {
 	t.Parallel()
 	db := newOpsTestDB(t)

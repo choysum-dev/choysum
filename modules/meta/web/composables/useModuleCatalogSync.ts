@@ -59,6 +59,11 @@ export function useModuleCatalogSync(
   let lastTerminal: ModuleOpStatusSnapshot | null = null;
 
   const progress = createModuleOpProgressSession({
+    ...moduleCatalogProgressNotifyHooks({
+      jobStillRunning: msgs.jobStillRunning,
+      serviceRestarting: msgs.serviceRestarting,
+      failedToGetStatus: msgs.failedToGetStatus,
+    }),
     fetchStatus: async operationId => {
       const store = resolveOperationStore();
       if (!store) throw new Error('operation store missing');
@@ -69,11 +74,6 @@ export function useModuleCatalogSync(
     onTerminal: status => {
       lastTerminal = status;
     },
-    ...moduleCatalogProgressNotifyHooks({
-      jobStillRunning: msgs.jobStillRunning,
-      serviceRestarting: msgs.serviceRestarting,
-      failedToGetStatus: msgs.failedToGetStatus,
-    }),
   }, opts?.progressDeps);
 
   function resolveOperationStore(): WebModelStore<any> | null {

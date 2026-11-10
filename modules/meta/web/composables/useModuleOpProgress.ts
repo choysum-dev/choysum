@@ -3,6 +3,9 @@
 
 import { onTips, subscribeModuleOp } from '@/core/web/tip';
 
+/** Sentinel when status fetch fails without a message; matched by onHardError handlers. */
+export const MODULE_OP_STATUS_FETCH_FAILED = 'Failed to get status';
+
 /** Snapshot derived from MetaModuleOperation.Browse/Read (authoritative). */
 export type ModuleOpStatusSnapshot = {
   status: string;
@@ -141,7 +144,7 @@ export function createModuleOpProgressSession(hooks: ModuleOpProgressHooks, deps
   }
 
   function notifyHardError(error: unknown): void {
-    hooks.onHardError?.(errorMessage(error) || 'Failed to get status');
+    hooks.onHardError?.(errorMessage(error) || MODULE_OP_STATUS_FETCH_FAILED);
   }
 
   function fireTimeout(generation: number): void {

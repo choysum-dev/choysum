@@ -113,8 +113,8 @@ func (o *Ops) executeOperation(ctx context.Context, row *modmeta.ModuleOperation
 		// Soft-fail origin/materialize errors: lifecycle Install already succeeded;
 		// offline registry must not mark the install operation failed (same policy as executeSync).
 		if row.Action == ActionInstall && moduleNamesInclude(names, "meta") {
-			// Soft-fail origin and materialize separately so an offline registry does not
-			// trigger a redundant second materialize when the full rewrite already succeeded.
+			// Soft-fail origin and materialize: lifecycle Install already succeeded, and an
+			// offline registry must not mark the install operation failed (same policy as executeSync).
 			if _, originErr := o.syncSourceSnapshots(ctx, "all"); originErr != nil {
 				if o.Scope != nil && o.Scope.Logger() != nil {
 					o.Scope.Logger().Warn("ops: catalog sync after meta install failed", "error", originErr)
@@ -123,9 +123,6 @@ func (o *Ops) executeOperation(ctx context.Context, row *modmeta.ModuleOperation
 			if matErr := o.MaterializeCatalog(ctx, nil); matErr != nil {
 				if o.Scope != nil && o.Scope.Logger() != nil {
 					o.Scope.Logger().Warn("ops: catalog materialize after meta install failed", "error", matErr)
-				}
-				if matErr2 := o.MaterializeCatalog(ctx, names); matErr2 != nil && o.Scope != nil && o.Scope.Logger() != nil {
-					o.Scope.Logger().Warn("ops: catalog materialize (names) after meta install failed", "error", matErr2)
 				}
 			}
 			return nil

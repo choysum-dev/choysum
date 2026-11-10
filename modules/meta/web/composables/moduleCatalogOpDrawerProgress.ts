@@ -1,7 +1,11 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import type { ModuleOpProgressHooks, ModuleOpStatusSnapshot } from './useModuleOpProgress';
+import {
+  MODULE_OP_STATUS_FETCH_FAILED,
+  type ModuleOpProgressHooks,
+  type ModuleOpStatusSnapshot,
+} from './useModuleOpProgress';
 import { parseCatalogSyncResult } from '../views/module_catalog_chrome';
 
 export type ModuleCatalogOpDrawerProgressMessages = {
@@ -127,7 +131,7 @@ export function createModuleCatalogOpDrawerProgressHooks(
       bindings.warn(bindings.messages.serviceRestarting());
     },
     onHardError: message => {
-      if (!message || message === 'Failed to get status') {
+      if (!message || message === MODULE_OP_STATUS_FETCH_FAILED) {
         bindings.error(bindings.messages.failedToGetStatus());
         return;
       }

@@ -260,6 +260,7 @@ import {
   ChoyDialogContent,
   ChoyDialogHeader,
   ChoyDialogTitle,
+  ChoyMessage,
 } from '@/web';
 
 defineOptions({ name: 'ModuleCatalogOpDialog' });
@@ -485,7 +486,11 @@ watch(
     if (action === 'progress' || action === 'sync') {
       const id = String(operationId || '').trim();
       // Emit before close so the host can start progress before this watcher re-enters on close.
-      if (id) emit('applied', id);
+      if (id) {
+        emit('applied', id);
+      } else {
+        ChoyMessage.warning(_t('Failed to get status'));
+      }
       open.value = false;
       return;
     }

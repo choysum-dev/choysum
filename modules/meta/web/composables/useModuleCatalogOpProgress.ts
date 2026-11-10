@@ -65,6 +65,11 @@ export function useModuleCatalogOpProgress(
   let watchGeneration = 0;
 
   const progress = createModuleOpProgressSession({
+    ...moduleCatalogProgressNotifyHooks({
+      jobStillRunning: msgs.jobStillRunning,
+      serviceRestarting: msgs.serviceRestarting,
+      failedToGetStatus: msgs.failedToGetStatus,
+    }),
     fetchStatus: async operationId => {
       const store = resolveOperationStore();
       if (!store) throw new Error('operation store missing');
@@ -78,11 +83,6 @@ export function useModuleCatalogOpProgress(
       lastTerminal = status;
       opStatus.value = status;
     },
-    ...moduleCatalogProgressNotifyHooks({
-      jobStillRunning: msgs.jobStillRunning,
-      serviceRestarting: msgs.serviceRestarting,
-      failedToGetStatus: msgs.failedToGetStatus,
-    }),
   }, opts?.progressDeps);
 
   const progressHeadline = computed(() =>
@@ -170,6 +170,8 @@ export function useModuleCatalogOpProgress(
     } catch {
       // Hard errors normally go through notify hooks; still absorb rejections for void callers.
       if (generation === watchGeneration) {
+        watching.value = false;
+        opStatus.value = null;
         try {
           await opts?.refreshCatalog?.();
         } catch {
