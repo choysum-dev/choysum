@@ -17,6 +17,11 @@ import (
 	"gorm.io/gorm/schema"
 )
 
+// Generic local DSN for dialector construction / optional integration tests.
+// Prefer CHOYSUM_POSTGRES_DSN when a real server is available; do not embed
+// developer-machine usernames here.
+const testPostgresDSN = "host=127.0.0.1 user=choysum dbname=choysum sslmode=disable"
+
 type stubTypeAliasMigrator struct {
 	gorm.Migrator
 	aliases map[string][]string
@@ -65,7 +70,7 @@ func TestOpenPostgresFallbackWhenConcreteTypeMissing(t *testing.T) {
 		if calls == 1 {
 			return nonConcretePostgresDialector{}
 		}
-		inner, ok := postgres.Open("host=127.0.0.1 user=wangbuke dbname=choysum sslmode=disable").(*postgres.Dialector)
+		inner, ok := postgres.Open(testPostgresDSN).(*postgres.Dialector)
 		if !ok {
 			t.Fatal("expected concrete postgres dialector on fallback")
 		}
@@ -80,7 +85,7 @@ func TestOpenPostgresFallbackWhenConcreteTypeMissing(t *testing.T) {
 func TestOpenPostgresKeepsOptionalDialectorInterfaces(t *testing.T) {
 	t.Parallel()
 
-	d := openPostgres("host=127.0.0.1 user=wangbuke dbname=choysum sslmode=disable")
+	d := openPostgres(testPostgresDSN)
 	if _, ok := d.(gorm.SavePointerDialectorInterface); !ok {
 		t.Fatal("openPostgres dialector must implement SavePointerDialectorInterface")
 	}
@@ -92,7 +97,7 @@ func TestOpenPostgresKeepsOptionalDialectorInterfaces(t *testing.T) {
 func TestPostgresDialectorMigratorWrapsBPCharAware(t *testing.T) {
 	t.Parallel()
 
-	d := openPostgres("host=127.0.0.1 user=wangbuke dbname=choysum sslmode=disable")
+	d := openPostgres(testPostgresDSN)
 	db, err := gorm.Open(d, &gorm.Config{DisableAutomaticPing: true})
 	if err != nil {
 		t.Fatalf("gorm.Open: %v", err)
@@ -134,7 +139,7 @@ func containsFold(values []string, want string) bool {
 func TestPostgresAutoMigrateSkipsBPCharCharRewrite(t *testing.T) {
 	dsn := strings.TrimSpace(os.Getenv("CHOYSUM_POSTGRES_DSN"))
 	if dsn == "" {
-		dsn = "host=127.0.0.1 user=wangbuke dbname=choysum sslmode=disable"
+		dsn = testPostgresDSN
 	}
 
 	var sqlLog strings.Builder
