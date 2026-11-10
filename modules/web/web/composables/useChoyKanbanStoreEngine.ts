@@ -395,8 +395,8 @@ export function useChoyKanbanStoreEngine(opts: ChoyKanbanStoreEngineOptions) {
     }
     if (applyError) {
       searchPending.value = false;
-      // refresh() always wants failures surfaced to the caller.
-      throw applyError;
+      if (rethrow) throw applyError;
+      return;
     }
     try {
       await syncLanesFromController();

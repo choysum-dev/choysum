@@ -152,6 +152,10 @@ function release(key: string, role: 'host' | 'reporter', hostWasExpecting?: bool
     }
   } else {
     entry.reporters = Math.max(0, entry.reporters - 1);
+    // No reporter left to emit: drop pending so hosts are not stuck forever.
+    if (entry.reporters === 0 && entry.gate.phase.value === 'pending') {
+      entry.gate.setExpectFirstFrame(false);
+    }
   }
   if (entry.hosts === 0 && entry.reporters === 0) {
     registry.delete(key);

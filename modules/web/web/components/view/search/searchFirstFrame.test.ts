@@ -343,3 +343,32 @@ test('unmounting the last expecting host clears pending while a non-expecting ho
   expect(sharedGate!.shouldDefer.value).toBe(false);
   unmount();
 });
+
+test('unmounting the last reporter clears pending so the host is not stuck', async () => {
+  const store = { storeId: 'demo.ReporterGone' };
+  const showReporter = ref(true);
+  let hostGate: ReturnType<typeof useSearchFirstFrameHost> | null = null;
+
+  const Root = defineComponent({
+    setup() {
+      hostGate = useSearchFirstFrameHost(store, { expectFirstFrame: true });
+      const Reporter = defineComponent({
+        setup() {
+          useSearchFirstFrameReporter(store, { initialEmit: true });
+          return () => h('div');
+        },
+      });
+      return () => h('div', [showReporter.value ? h(Reporter) : null]);
+    },
+  });
+
+  const { unmount } = mountApp(Root);
+  await flushPromises();
+  expect(hostGate!.phase.value).toBe('pending');
+
+  showReporter.value = false;
+  await flushPromises();
+  expect(hostGate!.phase.value).toBe('none');
+  expect(hostGate!.shouldDefer.value).toBe(false);
+  unmount();
+});
