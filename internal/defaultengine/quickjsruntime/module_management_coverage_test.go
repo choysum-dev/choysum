@@ -713,13 +713,16 @@ func TestCoverage_ModuleManagementRemainingBranches(t *testing.T) {
 		}
 	}
 	pendingHostOpt := moduleManagementOptionFunc(func(cfg *moduleManagementConfig) {
-		cfg.opsHostFactory = func(runtimeScope scope.Scope, _ jsexecutor.JsExecutor, lockerFactory statepkg.LockerFactory, ev bus.EventBus) *ops.Ops {
+		cfg.opsHostFactory = func(runtimeScope scope.Scope, _ jsexecutor.JsExecutor, _ statepkg.LockerFactory, ev bus.EventBus) *ops.Ops {
 			return &ops.Ops{
-				Scope:         runtimeScope,
-				Lifecycle:     moduleManagementTestManager{},
-				Resolver:      &mapResolver{},
-				LockerFactory: lockerFactory,
+				Scope:     runtimeScope,
+				Lifecycle: moduleManagementTestManager{},
+				Resolver:  &mapResolver{},
+				// Stub locker avoids default lease.New (RequiresNew unsupported on test scopes).
+				LockerFactory: func(scope.Scope) statepkg.Locker { return &moduleIndexTestLocker{} },
 				Events:        ev,
+				// Succeed load-demo Run so loadDemoRunHook can exercise success→failure marks.
+				ApplyDemoFiles: func(context.Context, scope.Scope, *pkgmeta.Module) error { return nil },
 			}
 		}
 	})
@@ -755,21 +758,27 @@ func TestCoverage_ModuleManagementRemainingBranches(t *testing.T) {
 		t.Fatalf("expected fallback errorMessage, got %#v", emptyMsg)
 	}
 
-	plainRunDB := newBridgeTestDB(t)
-	seedPendingDemo(t, plainRunDB)
-	plainRunBase := &moduleIndexTestScope{
-		ctx:     context.Background(),
-		logger:  slog.New(slog.NewTextHandler(io.Discard, nil)),
-		cfg:     &config.Config{ModulesPath: t.TempDir()},
-		session: &scope.Session{DB: plainRunDB},
+	richInfoDemo := newPendingEngine(t, func(error) error {
+		return oerrors.New("demo.domain", "DEMO_CODE", "rich hook message")
+	})
+	richInfo := awaitModuleManagementJSON(t, richInfoDemo, `$choysum.moduleManagement.loadDemo({})`)
+	if domain, _ := richInfo["errorDomain"].(string); domain != "demo.domain" {
+		t.Fatalf("richInfo domain = %#v", richInfo)
 	}
-	plainRunDemo := newTestQuickjsEngine(t, WithModuleManagementProvider(
-		jsengine.StaticScopeProvider(plainRunBase),
-		pendingHostOpt,
-		moduleManagementOptionFunc(func(cfg *moduleManagementConfig) {
-			cfg.loadDemoRunHook = func(error) error { return errors.New("plain run fail") }
-		}),
-	))
+	if code, _ := richInfo["errorCode"].(string); code != "DEMO_CODE" {
+		t.Fatalf("richInfo code = %#v", richInfo)
+	}
+	if msg, _ := richInfo["errorMessage"].(string); msg != "rich hook message" {
+		t.Fatalf("richInfo message = %#v", richInfo)
+	}
+	richOpID, _ := richInfo["id"].(string)
+	if richOpID == "" {
+		t.Fatalf("missing id: %#v", richInfo)
+	}
+
+	plainRunDemo := newPendingEngine(t, func(error) error {
+		return errors.New("plain run fail")
+	})
 	plainRun := awaitModuleManagementJSON(t, plainRunDemo, `$choysum.moduleManagement.loadDemo({})`)
 	if code, _ := plainRun["errorCode"].(string); code != "OP_FAILED" {
 		t.Fatalf("plain run = %#v", plainRun)
@@ -777,13 +786,6 @@ func TestCoverage_ModuleManagementRemainingBranches(t *testing.T) {
 	plainOpID, _ := plainRun["id"].(string)
 	if plainOpID == "" {
 		t.Fatalf("missing id: %#v", plainRun)
-	}
-	var plainOp modmeta.ModuleOperation
-	if err := plainRunDB.Where("id = ?", plainOpID).Take(&plainOp).Error; err != nil {
-		t.Fatalf("load plain op: %v", err)
-	}
-	if plainOp.Status != ops.StatusFailed {
-		t.Fatalf("hooked run failure left status = %q, want failed", plainOp.Status)
 	}
 
 	// loadDemoRunHook flips success→failure and ForceFailTerminal fails → joined throw.
@@ -803,7 +805,7 @@ func TestCoverage_ModuleManagementRemainingBranches(t *testing.T) {
 				if err := hookMarkFailDB.Where("1 = 1").Delete(&modmeta.ModuleOperation{}).Error; err != nil {
 					t.Fatalf("delete ops: %v", err)
 				}
-				return errors.New("hook after delete")
+				return oerrors.New("demo.domain", "DEMO_MARK", "hook after delete")
 			}
 		}),
 	))

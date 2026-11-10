@@ -161,7 +161,11 @@ func (o *Ops) executeLoadDemo(ctx context.Context, row *modmeta.ModuleOperation)
 			if loadErr != nil {
 				return loadErr
 			}
-			if err := applyDemoFiles(leaseCtx, o.Scope, mod); err != nil {
+			apply := applyDemoFiles
+			if o.ApplyDemoFiles != nil {
+				apply = o.ApplyDemoFiles
+			}
+			if err := apply(leaseCtx, o.Scope, mod); err != nil {
 				return fmt.Errorf("ops: load demo for %q: %w", name, err)
 			}
 			// Latch before DemoLoaded so a latch write failure does not leave modules

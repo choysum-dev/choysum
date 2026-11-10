@@ -22,7 +22,15 @@ import (
 
 func TestPlanAndRun_LoadDemoSetsDemoLoadedAndLatch(t *testing.T) {
 	db := newOpsTestDB(t)
-	o := &Ops{Scope: newOpsTestScope(t, db), Events: &recordingBus{}}
+	var applied []string
+	o := &Ops{
+		Scope:  newOpsTestScope(t, db),
+		Events: &recordingBus{},
+		ApplyDemoFiles: func(_ context.Context, _ scope.Scope, mod *pkgmeta.Module) error {
+			applied = append(applied, mod.Name)
+			return nil
+		},
+	}
 
 	if err := db.Create(&pkgmeta.Module{
 		Name:           "base",
@@ -51,14 +59,6 @@ func TestPlanAndRun_LoadDemoSetsDemoLoadedAndLatch(t *testing.T) {
 		DemoLoaded: true,
 	}).Error; err != nil {
 		t.Fatalf("seed core catalog: %v", err)
-	}
-
-	oldApply := applyDemoFiles
-	defer func() { applyDemoFiles = oldApply }()
-	var applied []string
-	applyDemoFiles = func(_ context.Context, _ scope.Scope, mod *pkgmeta.Module) error {
-		applied = append(applied, mod.Name)
-		return nil
 	}
 
 	result, err := o.Plan(context.Background(), PlanRequest{Action: ActionLoadDemo})

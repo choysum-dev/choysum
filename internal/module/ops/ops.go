@@ -9,6 +9,7 @@ import (
 	"github.com/choysum-dev/choysum/internal/module/lifecycle"
 	"github.com/choysum-dev/choysum/internal/module/plan"
 	"github.com/choysum-dev/choysum/pkg/bus"
+	pkgmeta "github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	statepkg "github.com/choysum-dev/choysum/pkg/state"
 )
@@ -65,4 +66,7 @@ type Ops struct {
 	// Optional sync hooks; nil uses lifecycle.Sync*ModuleSourceSnapshot.
 	SyncLocalSnapshot    SnapshotSyncFunc
 	SyncRegistrySnapshot SnapshotSyncFunc
+
+	// Optional load-demo import hook; nil uses package defaultApplyDemoFiles.
+	ApplyDemoFiles func(ctx context.Context, runtimeScope scope.Scope, mod *pkgmeta.Module) error
 }
