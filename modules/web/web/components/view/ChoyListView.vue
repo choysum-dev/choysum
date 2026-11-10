@@ -474,6 +474,7 @@ const resolvedSearchView = computed(() => {
 });
 const firstFrame = useSearchFirstFrameHost(store, {
   expectFirstFrame: () =>
+    !!props.showHeader &&
     shouldDeferToSearchFirstFrame({
       searchView: resolvedSearchView.value,
       canonicalSearchView: ChoySearchView,

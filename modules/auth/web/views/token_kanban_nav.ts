@@ -88,12 +88,12 @@ export function shouldRestoreTokenKanbanMove(opts: {
   return shouldRestoreKanbanMove(opts);
 }
 
-/** Token alias for kit finishInitialKanbanLoad. */
+/** Token alias for kit finishInitialKanbanLoad (search first-frame defer contract). */
 export async function finishInitialTokenKanbanLoad(opts: {
   getLastSearchQuery: () => unknown;
   applyEmpty: () => Promise<void>;
-  onSearch: (query: any) => Promise<void>;
   syncLanes: () => Promise<void>;
+  deferToSearch?: boolean;
 }): Promise<void> {
   return finishInitialKanbanLoad(opts);
 }

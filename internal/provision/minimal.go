@@ -183,7 +183,15 @@ func ProvisionMinimal(ctx context.Context, runtimeScope scope.Scope, opts Option
 	// post-meta catalog rewrite in ops never runs. Seed local+registry snapshots
 	// and materialize here so /web/meta/modules is not empty until a manual sync.
 	// Soft-fail: install already succeeded (same policy as ops after meta install).
-	seedCatalogAfterMinimalInstall(installCtx, installScope, opts, log)
+	// Fresh timeout + scope: installCtx may already be near its deadline, and
+	// installScope is bound to that cancelled context.
+	seedCtx, seedCancel := context.WithTimeout(context.WithoutCancel(installCtx), moduleInstallTimeout(runtimeScope))
+	seedScope := runtimeScope.WithContext(seedCtx)
+	if seedScope == nil {
+		seedScope = runtimeScope
+	}
+	seedCatalogAfterMinimalInstall(seedCtx, seedScope, opts, log)
+	seedCancel()
 
 	if err := checkProvisionLeaseRenew(handle); err != nil {
 		return Result{}, errors.Join(ErrLeaseLost, err)

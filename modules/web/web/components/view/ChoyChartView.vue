@@ -628,7 +628,8 @@ const props = withDefaults(
 const slots = useSlots();
 const store = resolvePageStore(props.store, 'ChoyChartView');
 const firstFrame = useSearchFirstFrameHost(store, {
-  expectFirstFrame: () => !!slots.search,
+  // Search lives under the showHeader chrome; do not defer when it cannot mount.
+  expectFirstFrame: () => !!props.showHeader && !!slots.search,
 });
 const { pageTitle, pageTitleId, pageTitleActionsIo } = useHostPageTitleInView(
   () => props.showHeader,

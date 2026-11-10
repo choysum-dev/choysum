@@ -185,6 +185,7 @@ export function useChoyKanbanStoreEngine(opts: ChoyKanbanStoreEngineOptions) {
     searchInFlight++;
     searchPending.value = true;
     const keywordFields = toValue(opts.keywordFields);
+    let applyError: unknown;
     try {
       await controller.apply({
         keyword: query.keyword,
@@ -193,6 +194,7 @@ export function useChoyKanbanStoreEngine(opts: ChoyKanbanStoreEngineOptions) {
         ...(keywordFields ? { keywordFields } : {}),
       });
     } catch (e) {
+      applyError = e;
       if (seq === searchSeq) opts.onSearchError?.(e);
     } finally {
       searchInFlight--;
@@ -217,7 +219,10 @@ export function useChoyKanbanStoreEngine(opts: ChoyKanbanStoreEngineOptions) {
         });
         if (recoverSeq === searchSeq) await syncLanesFromController();
       } catch (e) {
-        if (recoverSeq === searchSeq) opts.onSearchError?.(e);
+        if (recoverSeq === searchSeq) {
+          opts.onSearchError?.(e);
+          throw e;
+        }
       } finally {
         searchInFlight--;
         if (searchInFlight === 0) searchPending.value = false;
@@ -229,10 +234,17 @@ export function useChoyKanbanStoreEngine(opts: ChoyKanbanStoreEngineOptions) {
       if (searchInFlight === 0) searchPending.value = false;
       return;
     }
+    if (applyError) {
+      searchPending.value = false;
+      throw applyError;
+    }
     try {
       await syncLanesFromController();
     } catch (e) {
-      if (seq === searchSeq) opts.onSearchError?.(e);
+      if (seq === searchSeq) {
+        opts.onSearchError?.(e);
+        throw e;
+      }
     } finally {
       if (seq === searchSeq) searchPending.value = false;
     }
@@ -324,18 +336,25 @@ export function useChoyKanbanStoreEngine(opts: ChoyKanbanStoreEngineOptions) {
     }
   }
 
-  /** Re-apply the current search (or store queryState). Safe after bootstrap latch. */
+  /**
+   * Re-apply the current search (or store queryState) through the sequenced
+   * applySearch path so concurrent first-frame searches cannot be overwritten.
+   */
   async function refresh(): Promise<void> {
+    if (!bootstrapped) {
+      await bootstrap();
+      if (lastSearchQuery) return;
+    }
     if (lastSearchQuery) {
       await applySearch(lastSearchQuery);
       return;
     }
-    try {
-      await applyCurrentQuery();
-      await syncLanesFromController();
-    } catch (e) {
-      opts.onSearchError?.(e);
-    }
+    // No search yet: synthesize an empty query so searchSeq owns the apply.
+    await applySearch({
+      keyword: '',
+      appliedFilters: [],
+      appliedGroups: [],
+    } as ChoySearchQuery);
   }
 
   watch(

@@ -455,7 +455,8 @@ function handleMoveError(error: unknown): void {
 }
 
 const firstFrame = useSearchFirstFrameHost(boundStore, {
-  expectFirstFrame: () => !!slots.search,
+  // Header (and search slot outlet) only mounts when showHeader is true.
+  expectFirstFrame: () => !!props.showHeader && !!slots.search,
 });
 
 const engine = useChoyKanbanStoreEngine({
