@@ -1476,7 +1476,7 @@ msgctxt "web/views/ModuleCatalogFormView"
 msgid "Install"
 msgstr ""
 
-#: web/views/ModuleCatalogFormView.vue:248
+#: web/views/ModuleCatalogFormView.vue:249
 msgctxt "web/views/ModuleCatalogFormView"
 msgid "Installed"
 msgstr ""
@@ -1518,7 +1518,7 @@ msgctxt "web/views/ModuleCatalogFormView"
 msgid "Module list updated with warnings"
 msgstr ""
 
-#: web/views/ModuleCatalogFormView.vue:250
+#: web/views/ModuleCatalogFormView.vue:251
 msgctxt "web/views/ModuleCatalogFormView"
 msgid "Not Installed"
 msgstr ""
@@ -1559,7 +1559,7 @@ msgctxt "web/views/ModuleCatalogFormView"
 msgid "Status"
 msgstr ""
 
-#: web/views/ModuleCatalogFormView.vue:244
+#: web/views/ModuleCatalogFormView.vue:245
 msgctxt "web/views/ModuleCatalogFormView"
 msgid "Unavailable"
 msgstr ""
@@ -1579,14 +1579,19 @@ msgctxt "web/views/ModuleCatalogFormView"
 msgid "Uninstalling…"
 msgstr ""
 
-#: web/views/ModuleCatalogFormView.vue:251
+#: web/views/ModuleCatalogFormView.vue:252
 msgctxt "web/views/ModuleCatalogFormView"
 msgid "Unknown"
 msgstr ""
 
-#: web/views/ModuleCatalogFormView.vue:247
+#: web/views/ModuleCatalogFormView.vue:248
 msgctxt "web/views/ModuleCatalogFormView"
 msgid "Update available"
+msgstr ""
+
+#: web/views/ModuleCatalogFormView.vue:181
+msgctxt "web/views/ModuleCatalogFormView"
+msgid "Updating module list…"
 msgstr ""
 
 #: web/views/ModuleCatalogFormView.vue:107
@@ -1620,8 +1625,8 @@ msgctxt "web/views/ModuleCatalogFormView"
 msgid "View Progress"
 msgstr ""
 
-#: web/views/ModuleCatalogFormView.vue:181
 #: web/views/ModuleCatalogFormView.vue:182
+#: web/views/ModuleCatalogFormView.vue:183
 msgctxt "web/views/ModuleCatalogFormView"
 msgid "Working on %s"
 msgstr ""
@@ -1631,8 +1636,8 @@ msgctxt "web/views/ModuleCatalogFormView"
 msgid "Working on it, please wait…"
 msgstr ""
 
-#: web/views/ModuleCatalogFormView.vue:181
 #: web/views/ModuleCatalogFormView.vue:182
+#: web/views/ModuleCatalogFormView.vue:183
 msgctxt "web/views/ModuleCatalogFormView"
 msgid "Working…"
 msgstr ""
@@ -1658,13 +1663,13 @@ msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "Failed to get status"
 msgstr ""
 
-#: web/views/ModuleCatalogKanbanView.vue:163
 #: web/views/ModuleCatalogKanbanView.vue:164
+#: web/views/ModuleCatalogKanbanView.vue:165
 msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "Failed to load modules"
 msgstr ""
 
-#: web/views/ModuleCatalogKanbanView.vue:165
+#: web/views/ModuleCatalogKanbanView.vue:166
 msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "Failed to load more"
 msgstr ""
@@ -1818,6 +1823,11 @@ msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "Update available"
 msgstr ""
 
+#: web/views/ModuleCatalogKanbanView.vue:147
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Updating module list…"
+msgstr ""
+
 #: web/views/ModuleCatalogKanbanView.vue:107
 msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "Upgrade"
@@ -1843,8 +1853,8 @@ msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "View switcher"
 msgstr ""
 
-#: web/views/ModuleCatalogKanbanView.vue:147
 #: web/views/ModuleCatalogKanbanView.vue:148
+#: web/views/ModuleCatalogKanbanView.vue:149
 msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "Working on %s"
 msgstr ""
@@ -1854,8 +1864,8 @@ msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "Working on it, please wait…"
 msgstr ""
 
-#: web/views/ModuleCatalogKanbanView.vue:147
 #: web/views/ModuleCatalogKanbanView.vue:148
+#: web/views/ModuleCatalogKanbanView.vue:149
 msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "Working…"
 msgstr ""
@@ -2035,6 +2045,11 @@ msgctxt "web/views/ModuleCatalogListView"
 msgid "Update available"
 msgstr ""
 
+#: web/views/ModuleCatalogListView.vue:146
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Updating module list…"
+msgstr ""
+
 #: web/views/ModuleCatalogListView.vue:106
 msgctxt "web/views/ModuleCatalogListView"
 msgid "Upgrade"
@@ -2065,8 +2080,8 @@ msgctxt "web/views/ModuleCatalogListView"
 msgid "View switcher"
 msgstr ""
 
-#: web/views/ModuleCatalogListView.vue:146
 #: web/views/ModuleCatalogListView.vue:147
+#: web/views/ModuleCatalogListView.vue:148
 msgctxt "web/views/ModuleCatalogListView"
 msgid "Working on %s"
 msgstr ""
@@ -2076,8 +2091,8 @@ msgctxt "web/views/ModuleCatalogListView"
 msgid "Working on it, please wait…"
 msgstr ""
 
-#: web/views/ModuleCatalogListView.vue:146
 #: web/views/ModuleCatalogListView.vue:147
+#: web/views/ModuleCatalogListView.vue:148
 msgctxt "web/views/ModuleCatalogListView"
 msgid "Working…"
 msgstr ""

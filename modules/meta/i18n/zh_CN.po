@@ -1466,7 +1466,7 @@ msgctxt "web/views/ModuleCatalogFormView"
 msgid "Install"
 msgstr "安装"
 
-#: web/views/ModuleCatalogFormView.vue:248
+#: web/views/ModuleCatalogFormView.vue:249
 msgctxt "web/views/ModuleCatalogFormView"
 msgid "Installed"
 msgstr "已安装"
@@ -1506,7 +1506,7 @@ msgctxt "web/views/ModuleCatalogFormView"
 msgid "Module list updated with warnings"
 msgstr "模块列表已更新（有警告）"
 
-#: web/views/ModuleCatalogFormView.vue:250
+#: web/views/ModuleCatalogFormView.vue:251
 msgctxt "web/views/ModuleCatalogFormView"
 msgid "Not Installed"
 msgstr "未安装"
@@ -1546,7 +1546,7 @@ msgctxt "web/views/ModuleCatalogFormView"
 msgid "Status"
 msgstr "状态"
 
-#: web/views/ModuleCatalogFormView.vue:244
+#: web/views/ModuleCatalogFormView.vue:245
 msgctxt "web/views/ModuleCatalogFormView"
 msgid "Unavailable"
 msgstr "不可用"
@@ -1566,15 +1566,20 @@ msgctxt "web/views/ModuleCatalogFormView"
 msgid "Uninstalling…"
 msgstr "正在卸载…"
 
-#: web/views/ModuleCatalogFormView.vue:251
+#: web/views/ModuleCatalogFormView.vue:252
 msgctxt "web/views/ModuleCatalogFormView"
 msgid "Unknown"
 msgstr "未知"
 
-#: web/views/ModuleCatalogFormView.vue:247
+#: web/views/ModuleCatalogFormView.vue:248
 msgctxt "web/views/ModuleCatalogFormView"
 msgid "Update available"
 msgstr "有可用更新"
+
+#: web/views/ModuleCatalogFormView.vue:181
+msgctxt "web/views/ModuleCatalogFormView"
+msgid "Updating module list…"
+msgstr "正在更新模块列表…"
 
 #: web/views/ModuleCatalogFormView.vue:107
 msgctxt "web/views/ModuleCatalogFormView"
@@ -1606,7 +1611,7 @@ msgctxt "web/views/ModuleCatalogFormView"
 msgid "View Progress"
 msgstr "查看进度"
 
-#: web/views/ModuleCatalogFormView.vue:181 web/views/ModuleCatalogFormView.vue:182
+#: web/views/ModuleCatalogFormView.vue:182 web/views/ModuleCatalogFormView.vue:183
 msgctxt "web/views/ModuleCatalogFormView"
 msgid "Working on %s"
 msgstr "正在处理 %s"
@@ -1616,7 +1621,7 @@ msgctxt "web/views/ModuleCatalogFormView"
 msgid "Working on it, please wait…"
 msgstr "处理中，请稍候…"
 
-#: web/views/ModuleCatalogFormView.vue:181 web/views/ModuleCatalogFormView.vue:182
+#: web/views/ModuleCatalogFormView.vue:182 web/views/ModuleCatalogFormView.vue:183
 msgctxt "web/views/ModuleCatalogFormView"
 msgid "Working…"
 msgstr "正在处理…"
@@ -1641,12 +1646,12 @@ msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "Failed to get status"
 msgstr "获取状态失败"
 
-#: web/views/ModuleCatalogKanbanView.vue:163 web/views/ModuleCatalogKanbanView.vue:164
+#: web/views/ModuleCatalogKanbanView.vue:164 web/views/ModuleCatalogKanbanView.vue:165
 msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "Failed to load modules"
 msgstr "加载模块失败"
 
-#: web/views/ModuleCatalogKanbanView.vue:165
+#: web/views/ModuleCatalogKanbanView.vue:166
 msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "Failed to load more"
 msgstr "加载更多失败"
@@ -1796,6 +1801,11 @@ msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "Update available"
 msgstr "有可用更新"
 
+#: web/views/ModuleCatalogKanbanView.vue:147
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Updating module list…"
+msgstr "正在更新模块列表…"
+
 #: web/views/ModuleCatalogKanbanView.vue:107
 msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "Upgrade"
@@ -1821,7 +1831,7 @@ msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "View switcher"
 msgstr "视图切换"
 
-#: web/views/ModuleCatalogKanbanView.vue:147 web/views/ModuleCatalogKanbanView.vue:148
+#: web/views/ModuleCatalogKanbanView.vue:148 web/views/ModuleCatalogKanbanView.vue:149
 msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "Working on %s"
 msgstr "正在处理 %s"
@@ -1831,7 +1841,7 @@ msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "Working on it, please wait…"
 msgstr "处理中，请稍候…"
 
-#: web/views/ModuleCatalogKanbanView.vue:147 web/views/ModuleCatalogKanbanView.vue:148
+#: web/views/ModuleCatalogKanbanView.vue:148 web/views/ModuleCatalogKanbanView.vue:149
 msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "Working…"
 msgstr "正在处理…"
@@ -2006,6 +2016,11 @@ msgctxt "web/views/ModuleCatalogListView"
 msgid "Update available"
 msgstr "有可用更新"
 
+#: web/views/ModuleCatalogListView.vue:146
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Updating module list…"
+msgstr "正在更新模块列表…"
+
 #: web/views/ModuleCatalogListView.vue:106
 msgctxt "web/views/ModuleCatalogListView"
 msgid "Upgrade"
@@ -2036,7 +2051,7 @@ msgctxt "web/views/ModuleCatalogListView"
 msgid "View switcher"
 msgstr "视图切换"
 
-#: web/views/ModuleCatalogListView.vue:146 web/views/ModuleCatalogListView.vue:147
+#: web/views/ModuleCatalogListView.vue:147 web/views/ModuleCatalogListView.vue:148
 msgctxt "web/views/ModuleCatalogListView"
 msgid "Working on %s"
 msgstr "正在处理 %s"
@@ -2046,7 +2061,7 @@ msgctxt "web/views/ModuleCatalogListView"
 msgid "Working on it, please wait…"
 msgstr "处理中，请稍候…"
 
-#: web/views/ModuleCatalogListView.vue:146 web/views/ModuleCatalogListView.vue:147
+#: web/views/ModuleCatalogListView.vue:147 web/views/ModuleCatalogListView.vue:148
 msgctxt "web/views/ModuleCatalogListView"
 msgid "Working…"
 msgstr "正在处理…"

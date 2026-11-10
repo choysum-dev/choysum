@@ -291,9 +291,11 @@ export function useModuleCatalogViewModel(opts: {
     void refreshCatalog();
     if (!id) return;
     drawerOpen.value = false;
+    // progress deep-link is not a lifecycle action; keep sync so titleFor can label it.
+    const action = drawerAction.value === 'progress' ? '' : drawerAction.value;
     void startOpProgress(id, {
       moduleName: drawerModuleName.value,
-      action: drawerAction.value,
+      action,
     });
   }
 

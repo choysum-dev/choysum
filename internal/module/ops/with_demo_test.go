@@ -181,6 +181,69 @@ func TestSetWithDemo_TakeUnexpectedError(t *testing.T) {
 	}
 }
 
+func TestIsDuplicateKeyError(t *testing.T) {
+	t.Parallel()
+	if isDuplicateKeyError(nil) {
+		t.Fatal("nil")
+	}
+	if !isDuplicateKeyError(gorm.ErrDuplicatedKey) {
+		t.Fatal("ErrDuplicatedKey")
+	}
+	if !isDuplicateKeyError(errors.New("UNIQUE constraint failed: meta_app_setting.key")) {
+		t.Fatal("sqlite unique")
+	}
+	if !isDuplicateKeyError(errors.New("Duplicate entry 'x' for key 'PRIMARY'")) {
+		t.Fatal("mysql duplicate")
+	}
+	if isDuplicateKeyError(errors.New("disk full")) {
+		t.Fatal("non-duplicate")
+	}
+}
+
+func TestSetWithDemo_NonDuplicateCreateDoesNotRecover(t *testing.T) {
+	t.Parallel()
+	db := newOpsTestDB(t)
+	o := &Ops{Scope: newOpsTestScope(t, db)}
+	if err := db.AutoMigrate(&metaAppSetting{}); err != nil {
+		t.Fatalf("AutoMigrate: %v", err)
+	}
+	if err := db.Create(&metaAppSetting{Key: withDemoSettingKey, Value: "false"}).Error; err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	takes := 0
+	if err := db.Callback().Query().Before("gorm:query").Register("ops_hide_first_with_demo_take_nondup", func(tx *gorm.DB) {
+		if tx.Statement == nil || tx.Statement.Table != "meta_app_setting" {
+			return
+		}
+		takes++
+		if takes == 1 {
+			_ = tx.AddError(gorm.ErrRecordNotFound)
+		}
+	}); err != nil {
+		t.Fatalf("query callback: %v", err)
+	}
+	t.Cleanup(func() { _ = db.Callback().Query().Remove("ops_hide_first_with_demo_take_nondup") })
+	if err := db.Callback().Create().Before("gorm:create").Register("ops_fail_with_demo_create_nondup", func(tx *gorm.DB) {
+		if tx.Statement != nil && tx.Statement.Table == "meta_app_setting" {
+			_ = tx.AddError(errors.New("disk full"))
+		}
+	}); err != nil {
+		t.Fatalf("create callback: %v", err)
+	}
+	t.Cleanup(func() { _ = db.Callback().Create().Remove("ops_fail_with_demo_create_nondup") })
+	err := o.SetWithDemo(context.Background(), true)
+	if err == nil || !strings.Contains(err.Error(), "disk full") {
+		t.Fatalf("expected disk full, got %v", err)
+	}
+	var row metaAppSetting
+	if err := db.Where(map[string]any{"key": withDemoSettingKey}).Take(&row).Error; err != nil {
+		t.Fatalf("take: %v", err)
+	}
+	if row.Value != "false" {
+		t.Fatalf("value=%q want false (no silent recover)", row.Value)
+	}
+}
+
 func TestSetWithDemo_CreateConflictFallsBackToUpdate(t *testing.T) {
 	t.Parallel()
 	db := newOpsTestDB(t)

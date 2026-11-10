@@ -480,6 +480,7 @@ const {
     if (action === 'install') return name ? _t('Installing %s', name) : _t('Installing…');
     if (action === 'upgrade') return name ? _t('Upgrading %s', name) : _t('Upgrading…');
     if (action === 'uninstall') return name ? _t('Uninstalling %s', name) : _t('Uninstalling…');
+    if (action === 'sync') return _t('Updating module list…');
     if (action === 'progress') return name ? _t('Working on %s', name) : _t('Working…');
     return name ? _t('Working on %s', name) : _t('Working…');
   },
@@ -567,7 +568,7 @@ function onOpApplied(operationId?: string) {
   void refreshDetailRow();
   if (!id) return;
   drawerOpen.value = false;
-  // Dialog progress handoff is not a real lifecycle action for titleFor.
+  // progress deep-link is not a lifecycle action; keep sync so titleFor can label it.
   const action = drawerAction.value === 'progress' ? '' : drawerAction.value;
   void startOpProgress(id, {
     moduleName: drawerModuleName.value,

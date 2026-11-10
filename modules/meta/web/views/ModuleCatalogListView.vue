@@ -291,6 +291,7 @@ const {
       if (action === 'upgrade') return name ? _t('Upgrading %s', name) : _t('Upgrading…');
       if (action === 'uninstall') return name ? _t('Uninstalling %s', name) : _t('Uninstalling…');
       if (action === 'load_demo') return _t('Loading demo data…');
+      if (action === 'sync') return _t('Updating module list…');
       if (action === 'progress') return name ? _t('Working on %s', name) : _t('Working…');
       return name ? _t('Working on %s', name) : _t('Working…');
     },

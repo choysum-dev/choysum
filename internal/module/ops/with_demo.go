@@ -12,6 +12,17 @@ import (
 	"gorm.io/gorm"
 )
 
+func isDuplicateKeyError(err error) bool {
+	if err == nil {
+		return false
+	}
+	if errors.Is(err, gorm.ErrDuplicatedKey) {
+		return true
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "duplicate") || strings.Contains(msg, "unique constraint")
+}
+
 const withDemoSettingKey = "modules.with_demo"
 
 // metaAppSetting is the Go-side row for meta_app_setting (C2/TS AppSetting shape).
@@ -97,10 +108,14 @@ func (o *Ops) SetWithDemo(ctx context.Context, enabled bool) error {
 		Value: "true",
 	}).Error; err != nil {
 		// Lost a create race: another writer inserted the latch; update that row.
+		// Only recover on duplicate-key; other create failures must surface.
 		var existing metaAppSetting
 		takeErr := db.Where(map[string]any{"key": withDemoSettingKey}).Take(&existing).Error
-		if takeErr == nil {
+		if takeErr == nil && isDuplicateKeyError(err) {
 			return db.Model(&existing).Update("value", "true").Error
+		}
+		if takeErr == nil {
+			return err
 		}
 		return errors.Join(err, takeErr)
 	}
