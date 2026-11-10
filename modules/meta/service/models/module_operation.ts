@@ -396,6 +396,18 @@ export default class MetaModuleOperation extends BaseModel {
     if (runErr && !TERMINAL_OP_STATUSES.has(status)) {
       throw runErr;
     }
+    const reloadTriggered = !!row.ReloadTriggered;
+    const reloadFailed = !!row.ReloadFailed;
+    // Install/upgrade/uninstall mark ReloadTriggered so the process restarts and
+    // newly installed apps register services/protos/i18n. Call reload here (task
+    // worker) rather than relying on the browser hard-refresh alone.
+    if (reloadTriggered && !reloadFailed) {
+      try {
+        await bridge.reload();
+      } catch {
+        // Restart is best-effort; catalog UI still hard-refreshes on ReloadWeb.
+      }
+    }
     return {
       Id: String(row.Id || id),
       Action: String(row.Action || ''),
@@ -405,8 +417,8 @@ export default class MetaModuleOperation extends BaseModel {
       ErrorDomain: row.ErrorDomain != null ? String(row.ErrorDomain) : undefined,
       ErrorCode: row.ErrorCode != null ? String(row.ErrorCode) : undefined,
       ErrorMessage: row.ErrorMessage != null ? String(row.ErrorMessage) : undefined,
-      ReloadTriggered: !!row.ReloadTriggered,
-      ReloadFailed: !!row.ReloadFailed,
+      ReloadTriggered: reloadTriggered,
+      ReloadFailed: reloadFailed,
     };
   }
 }
