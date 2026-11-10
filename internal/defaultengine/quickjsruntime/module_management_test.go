@@ -629,6 +629,47 @@ func TestModuleManagementApplyRunHooksForceFailureSeams(t *testing.T) {
 		}
 	})
 
+	t.Run("reload rejects bad args and skips MarkReloadFailed when host bind fails", func(t *testing.T) {
+		engine := newTestQuickjsEngine(t, WithModuleManagementProvider(
+			jsengine.StaticScopeProvider(baseScope),
+			moduleManagementOptionFunc(func(cfg *moduleManagementConfig) {
+				cfg.moduleLifecycleFactory = func(scope.Scope, jsexecutor.JsExecutor, statepkg.LockerFactory) lifecycle.Service {
+					return life
+				}
+				cfg.opsHostFactory = func(runtimeScope scope.Scope, _ jsexecutor.JsExecutor, lockerFactory statepkg.LockerFactory, ev bus.EventBus) *ops.Ops {
+					return &ops.Ops{
+						Scope:         runtimeScope,
+						Lifecycle:     life,
+						Resolver:      &mapResolver{peek: map[string]*pkgmeta.Module{"core": mod}},
+						LockerFactory: lockerFactory,
+						Events:        ev,
+					}
+				}
+			}),
+		))
+		rejectContains(t, engine, `$choysum.moduleManagement.reload("not-json")`, "")
+
+		triggered := make(chan struct{}, 1)
+		reload.Register(func() error {
+			triggered <- struct{}{}
+			return errors.New("restart boom")
+		})
+		t.Cleanup(func() { reload.Register(nil) })
+
+		nilScopeEngine := newTestQuickjsEngine(t, WithModuleManagementProvider(
+			func(context.Context) scope.Scope { return nil },
+		))
+		reloadJSON := awaitModuleManagementJSON(t, nilScopeEngine, `$choysum.moduleManagement.reload({id: "host-bind-miss"})`)
+		if okTriggered, _ := reloadJSON["triggered"].(bool); !okTriggered {
+			t.Fatalf("reload should still schedule when host bind fails, got %#v", reloadJSON)
+		}
+		select {
+		case <-triggered:
+		case <-time.After(2 * time.Second):
+			t.Fatal("expected Trigger to run even when startOpsHost fails")
+		}
+	})
+
 	t.Run("result-failed ForceFailTerminal load error is joined", func(t *testing.T) {
 		engine := newTestQuickjsEngine(t, WithModuleManagementProvider(
 			jsengine.StaticScopeProvider(baseScope),

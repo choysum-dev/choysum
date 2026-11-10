@@ -403,16 +403,20 @@ export default class MetaModuleOperation extends BaseModel {
     // Gate on Phase=reloading so each successful op schedules at most one reload.
     // Retries (runErr set / Phase already done) must not restart the process again.
     if (!runErr && phase === 'reloading' && reloadTriggered && !reloadFailed) {
-      let reloadResult: { failed?: boolean } | null | undefined;
+      let reloadResult: { triggered?: boolean; failed?: boolean } | null | undefined;
       let reloadThrew = false;
       try {
-        reloadResult = (await bridge.reload({ id })) as { failed?: boolean } | null | undefined;
+        reloadResult = (await bridge.reload({ id })) as
+          | { triggered?: boolean; failed?: boolean }
+          | null
+          | undefined;
       } catch {
         reloadThrew = true;
       }
       // Only mark ReloadFailed when reload itself failed; Phase persist is separate
       // so a post-success UpdateById error does not misreport Trigger Failed.
-      if (reloadThrew || (reloadResult && reloadResult.failed)) {
+      const reloadDidNotTrigger = !!reloadResult && reloadResult.triggered === false;
+      if (reloadThrew || (reloadResult && reloadResult.failed) || reloadDidNotTrigger) {
         try {
           await this.UpdateById(id, { ReloadFailed: true, Phase: 'done' }, ['Id']);
         } catch {

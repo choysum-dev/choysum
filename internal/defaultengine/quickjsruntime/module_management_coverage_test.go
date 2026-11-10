@@ -17,6 +17,7 @@ import (
 	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	"github.com/choysum-dev/choysum/internal/module/ops"
 	"github.com/choysum-dev/choysum/internal/module/plan"
+	"github.com/choysum-dev/choysum/internal/server/reload"
 	"github.com/choysum-dev/choysum/pkg/bus"
 	"github.com/choysum-dev/choysum/pkg/config"
 	"github.com/choysum-dev/choysum/pkg/jsengine"
@@ -547,12 +548,20 @@ func TestCoverage_ModuleManagementRemainingBranches(t *testing.T) {
 		t.Fatalf("expected rejected promise, got %s", ret.String())
 	}
 
-	// Reload marshal failure.
+	// Reload marshal failure on the scheduled (hook-registered) success path.
 	quickjsMarshal = func(*quickjs.Context, any) (*quickjs.Value, error) {
 		return nil, errors.New("marshal boom")
 	}
+	reload.Register(func() error { return nil })
+	t.Cleanup(func() { reload.Register(nil) })
 	reloadEngine := newTestQuickjsEngine(t, WithModuleManagement(base))
 	rejectContains(t, reloadEngine, `$choysum.moduleManagement.reload({id: "marshal-reload"})`, "")
+	quickjsMarshal = prevMarshal
+	// Also cover marshal failure on the early failed (no-id) path.
+	quickjsMarshal = func(*quickjs.Context, any) (*quickjs.Value, error) {
+		return nil, errors.New("marshal boom early")
+	}
+	rejectContains(t, newTestQuickjsEngine(t, WithModuleManagement(base)), `$choysum.moduleManagement.reload({})`, "")
 	quickjsMarshal = prevMarshal
 
 	// Close with non-nil executor Stop.

@@ -279,6 +279,10 @@ func operationRequiresProcessReload(row *modmeta.ModuleOperation) bool {
 			switch strings.TrimSpace(e.Effect) {
 			case EffectInstall, EffectUpgrade, EffectUninstall:
 				return true
+			case EffectAlreadySatisfied, "":
+				continue
+			default:
+				return true
 			}
 		}
 		return false
