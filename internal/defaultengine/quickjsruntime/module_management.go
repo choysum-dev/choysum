@@ -548,12 +548,11 @@ func moduleReloadAsyncFactory(
 			// and the engine ExecContext may have been reset.
 			markHost, markHostErr := startOpsHost(jse, scopeProvider, cfg, false)
 			go func() {
-				if markHostErr == nil {
-					defer func() { _ = markHost.Close() }()
-				}
+				// Close is nil-safe on the zero host returned with startOpsHost errors.
+				defer func() { _ = markHost.Close() }()
 				time.Sleep(1 * time.Millisecond)
 				if triggerErr := reload.Trigger(); triggerErr != nil {
-					if markHostErr != nil {
+					if markHostErr != nil || markHost.host == nil {
 						return
 					}
 					_ = markHost.host.MarkReloadFailed(context.WithoutCancel(markHost.execCtx), id)

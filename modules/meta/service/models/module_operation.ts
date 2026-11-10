@@ -415,7 +415,8 @@ export default class MetaModuleOperation extends BaseModel {
       }
       // Only mark ReloadFailed when reload itself failed; Phase persist is separate
       // so a post-success UpdateById error does not misreport Trigger Failed.
-      const reloadDidNotTrigger = !!reloadResult && reloadResult.triggered === false;
+      // Missing result or explicit non-trigger both mean no process reload was scheduled.
+      const reloadDidNotTrigger = !reloadResult || reloadResult.triggered === false;
       if (reloadThrew || (reloadResult && reloadResult.failed) || reloadDidNotTrigger) {
         try {
           await this.UpdateById(id, { ReloadFailed: true, Phase: 'done' }, ['Id']);

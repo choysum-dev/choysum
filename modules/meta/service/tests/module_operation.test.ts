@@ -491,6 +491,34 @@ test('meta.MetaModuleOperation Execute records ReloadFailed when reload reports 
   }
 });
 
+test('meta.MetaModuleOperation Execute records ReloadFailed when reload returns null', async () => {
+  OP_STORE.set('op-reload-null', {
+    Id: 'op-reload-null',
+    Action: 'install',
+    ModuleName: 'core',
+    Status: 'succeeded',
+    Phase: 'reloading',
+    ReloadTriggered: true,
+    ReloadFailed: false,
+  });
+  let reloaded = false;
+  const restore = installBridge({
+    run: async () => ({ ok: true }),
+    reload: async () => {
+      reloaded = true;
+      return null;
+    },
+  });
+  try {
+    const resp = await MetaModuleOperation.Execute({ Id: 'op-reload-null' });
+    expect(reloaded).toBe(true);
+    expect(resp.ReloadFailed).toBe(true);
+    expect(resp.Phase).toBe('done');
+  } finally {
+    restore();
+  }
+});
+
 test('meta.MetaModuleOperation Execute rethrows when run fails and status stays non-terminal', async () => {
   OP_STORE.set('op-stuck', {
     Id: 'op-stuck',
