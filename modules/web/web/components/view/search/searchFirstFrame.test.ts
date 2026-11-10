@@ -246,6 +246,46 @@ test('sole host expect vote clear sets phase to none', async () => {
   unmount();
 });
 
+test('flip expect off then unmount does not double-decrement sibling host vote', async () => {
+  const store = { storeId: 'demo.NoDoubleDec' };
+  const expectA = ref(true);
+  const showA = ref(true);
+
+  const Root = defineComponent({
+    setup() {
+      const HostA = defineComponent({
+        setup() {
+          useSearchFirstFrameHost(store, { expectFirstFrame: () => expectA.value });
+          return () => h('div');
+        },
+      });
+      const HostB = defineComponent({
+        setup() {
+          useSearchFirstFrameHost(store, { expectFirstFrame: true });
+          return () => h('div');
+        },
+      });
+      return () => h('div', [showA.value ? h(HostA) : null, h(HostB)]);
+    },
+  });
+
+  const { unmount } = mountApp(Root);
+  await flushPromises();
+  expect(peekSearchFirstFrameGateForTests('demo.NoDoubleDec')?.phase.value).toBe('pending');
+
+  // Vote down via watch first; dispose must not decrement again.
+  expectA.value = false;
+  await flushPromises();
+  expect(peekSearchFirstFrameGateForTests('demo.NoDoubleDec')?.phase.value).toBe('pending');
+
+  showA.value = false;
+  await flushPromises();
+  expect(peekSearchFirstFrameGateForTests('demo.NoDoubleDec')?.phase.value).toBe('pending');
+  expect(peekSearchFirstFrameGateForTests('demo.NoDoubleDec')?.shouldDefer.value).toBe(true);
+
+  unmount();
+});
+
 test('null-store host watch updates private gate expectation', async () => {
   const expectFF = ref(true);
   let gate: ReturnType<typeof useSearchFirstFrameHost> | null = null;

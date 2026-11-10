@@ -169,11 +169,13 @@ export function useSearchFirstFrameHost(
   const expectNow = () => !!toValue(opts.expectFirstFrame);
   // Only join the registry when a scope can release the entry (avoids leaks).
   const hasScope = !!getCurrentScope();
-  let expecting = expectNow();
-  const gate = key && hasScope ? acquire(key, 'host', expecting) : createGate(expecting);
+  // Ref so dispose always sees the latest vote (after watch flips), never a
+  // stale initial true that would double-decrement expectCount.
+  const expecting = ref(expectNow());
+  const gate = key && hasScope ? acquire(key, 'host', expecting.value) : createGate(expecting.value);
 
   if (key && hasScope) {
-    onScopeDispose(() => release(key, 'host', expecting));
+    onScopeDispose(() => release(key, 'host', expecting.value));
   }
 
   if (hasScope) {
@@ -181,11 +183,11 @@ export function useSearchFirstFrameHost(
       () => !!toValue(opts.expectFirstFrame),
       (v) => {
         if (key) {
-          updateHostExpectVote(key, expecting, v);
+          updateHostExpectVote(key, expecting.value, v);
         } else {
           gate.setExpectFirstFrame(v);
         }
-        expecting = v;
+        expecting.value = v;
       },
     );
   }
