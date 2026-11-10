@@ -117,16 +117,20 @@ export function useModuleCatalogOpProgress(
     } catch {
       // Refresh is best-effort.
     }
-    if (status.resultStatus === 'FAILED') {
-      const err =
-        typeof status.summary === 'string' && status.summary.trim()
-          ? status.summary.trim()
-          : status.errorCode || 'failed';
-      ChoyMessage.error(msgs.settledFailed(err));
-      return;
-    }
-    if (status.resultStatus === 'SUCCEEDED') {
-      ChoyMessage.success(msgs.settledOk);
+    try {
+      if (status.resultStatus === 'FAILED') {
+        const err =
+          typeof status.summary === 'string' && status.summary.trim()
+            ? status.summary.trim()
+            : status.errorCode || 'failed';
+        ChoyMessage.error(msgs.settledFailed(err));
+        return;
+      }
+      if (status.resultStatus === 'SUCCEEDED') {
+        ChoyMessage.success(msgs.settledOk);
+      }
+    } catch {
+      // Toast failures must not abort settle handling.
     }
   }
 

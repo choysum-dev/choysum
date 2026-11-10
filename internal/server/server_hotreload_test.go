@@ -331,6 +331,39 @@ func TestEnqueueWatchEventIgnoresChoyTailwindArtifacts(t *testing.T) {
 	assertHotreloadCounters(t, srv, 0, 0, "ignored generated artifacts must not count as drops/coalesces")
 }
 
+func TestHandleWatchedFileChangeMarksHotreloadFailed(t *testing.T) {
+	runtimeScope := newRichServerTestScope(t)
+	root := t.TempDir()
+	changedFile := filepath.Join(root, "handler.ts")
+	if err := os.WriteFile(changedFile, []byte("export {}"), 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+	tracked := &fakeWatchedService{
+		name:      "demo",
+		watchDirs: []string{root},
+		watchErr:  errors.New("watch boom"),
+	}
+	srv := &GRPCWebServer{
+		runtimeScope: runtimeScope,
+		hotreload:    hotreloadState{watcher: mustNewWatcher(t), queue: make(chan string, 1)},
+	}
+	srv.hotreload.storeWatchTargets(srv.buildRegisteredWatchTargets(tracked.watchPlans(), tracked.watchCallback))
+
+	var progress bytes.Buffer
+	srv.hotreload.progressLine = logger.NewProgressLine(&progress)
+
+	err := srv.handleWatchedFileChange(changedFile)
+	if err == nil {
+		t.Fatal("expected handleWatchedFileChange to propagate watch handler error")
+	}
+	if tracked.callCount() != 1 {
+		t.Fatalf("watch handler calls = %d, want 1", tracked.callCount())
+	}
+	if !strings.Contains(progress.String(), "Hotreload failed") {
+		t.Fatalf("progress = %q, want Hotreload failed marker", progress.String())
+	}
+}
+
 func TestHandleWatchedFileChangeDefersOnLeaseConflict(t *testing.T) {
 	prevMax := hotreloadLeaseRetryMax
 	hotreloadLeaseRetryMax = 0

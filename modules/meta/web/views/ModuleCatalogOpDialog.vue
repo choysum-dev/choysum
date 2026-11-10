@@ -478,6 +478,7 @@ watch(
       prev[0] === true &&
       prev[1] === action &&
       prev[2] === moduleName &&
+      prev[3] === operationId &&
       prev[4] === props.operationStore;
     if (sameTarget && step.value !== 'plan') return;
 

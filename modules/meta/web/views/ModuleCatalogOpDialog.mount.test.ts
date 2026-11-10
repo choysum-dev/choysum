@@ -270,6 +270,39 @@ test('ModuleCatalogOpDialog.vue progress action hands off via applied and closes
   wrapper.unmount();
 });
 
+test('ModuleCatalogOpDialog.vue progress without operationId warns and closes', async () => {
+  const { ChoyMessage } = await import('@/web');
+  const applied: string[] = [];
+  const warnings: string[] = [];
+  const openUpdates: boolean[] = [];
+  const origWarn = ChoyMessage.warning;
+  ChoyMessage.warning = ((m: string) => {
+    warnings.push(m);
+    return 0;
+  }) as typeof ChoyMessage.warning;
+  try {
+    const wrapper = mount(ModuleCatalogOpDialog as any, {
+      props: {
+        open: true,
+        action: 'progress',
+        moduleName: 'core',
+        operationId: '   ',
+        onApplied: (id: string) => applied.push(id),
+        'onUpdate:open': (next: boolean) => openUpdates.push(next),
+      },
+      global: buildPageMountGlobal({ route: { path: '/meta/modules', fullPath: '/meta/modules' } }),
+    });
+    await flushPromises();
+    await flushPromises();
+    expect(applied).toEqual([]);
+    expect(warnings.length).toBe(1);
+    expect(openUpdates.includes(false)).toBe(true);
+    wrapper.unmount();
+  } finally {
+    ChoyMessage.warning = origWarn;
+  }
+});
+
 test('ModuleCatalogOpDialog.vue covers apply failure, registry replan, and close', async () => {
   const plans: any[] = [];
   const store = {

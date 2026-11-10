@@ -12,7 +12,7 @@ SPDX-License-Identifier: Apache-2.0
       role="alertdialog"
       aria-modal="true"
       aria-busy="true"
-      aria-labelledby="module-op-progress-title"
+      :aria-labelledby="title ? 'module-op-progress-title' : undefined"
       aria-describedby="module-op-progress-headline"
       @keydown.esc.prevent
       @pointerdown.prevent
