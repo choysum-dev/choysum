@@ -44,6 +44,45 @@ func TestEnsureMetaAppSettingTableNilDB(t *testing.T) {
 	}
 }
 
+func TestEnsureMetaAppSettingTable_CreateRaceTolerated(t *testing.T) {
+	t.Parallel()
+	dbPath := filepath.Join(t.TempDir(), "race.db")
+	db, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	prev := metaAppSettingCreateTable
+	t.Cleanup(func() { metaAppSettingCreateTable = prev })
+
+	// Simulate lost create race: peer created the table, our CreateTable errors.
+	metaAppSettingCreateTable = func(m gorm.Migrator) error {
+		if err := m.CreateTable(&metaAppSetting{}); err != nil {
+			return err
+		}
+		return errors.New("simulated create race")
+	}
+	if err := ensureMetaAppSettingTable(db); err != nil {
+		t.Fatalf("ensure after simulated race: %v", err)
+	}
+	if !db.Migrator().HasTable(&metaAppSetting{}) {
+		t.Fatal("expected table after race recovery")
+	}
+
+	// Create fails and table still missing → surface the create error.
+	db2Path := filepath.Join(t.TempDir(), "race-fail.db")
+	db2, err := gorm.Open(sqlite.Open(db2Path), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	metaAppSettingCreateTable = func(gorm.Migrator) error {
+		return errors.New("disk full")
+	}
+	err = ensureMetaAppSettingTable(db2)
+	if err == nil || !strings.Contains(err.Error(), "disk full") {
+		t.Fatalf("ensure create fail = %v, want disk full", err)
+	}
+}
+
 func TestEnsureMetaAppSettingTable_CreateOnceOnly(t *testing.T) {
 	t.Parallel()
 	dbPath := filepath.Join(t.TempDir(), "ensure.db")

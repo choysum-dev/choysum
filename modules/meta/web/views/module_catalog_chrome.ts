@@ -169,8 +169,7 @@ export function formatModuleOpSummary(summary: unknown): string {
 
 /** True when summary carries a syncResult with failed > 0. */
 export function catalogSyncSummaryPartial(summary: unknown): boolean {
-  if (!summary || typeof summary !== 'object') return false;
-  const sync = (summary as { syncResult?: CatalogSyncResultSummary }).syncResult;
+  const sync = parseCatalogSyncResult(summary);
   return !!sync && sync.failed > 0;
 }
 

@@ -25,6 +25,11 @@ type metaAppSetting struct {
 
 func (metaAppSetting) TableName() string { return "meta_app_setting" }
 
+// metaAppSettingCreateTable creates the latch table; tests may stub it.
+var metaAppSettingCreateTable = func(m gorm.Migrator) error {
+	return m.CreateTable(&metaAppSetting{})
+}
+
 // ensureMetaAppSettingTable creates meta_app_setting only when absent.
 // Never AutoMigrate: altering an existing table (e.g. varchar→char on audit
 // uids) is owned by meta schema evolve / explicit migrations.
@@ -36,7 +41,7 @@ func ensureMetaAppSettingTable(db *gorm.DB) error {
 	if m.HasTable(&metaAppSetting{}) {
 		return nil
 	}
-	if err := m.CreateTable(&metaAppSetting{}); err != nil {
+	if err := metaAppSettingCreateTable(m); err != nil {
 		// Lost a create race with a concurrent writer; table now exists.
 		if m.HasTable(&metaAppSetting{}) {
 			return nil

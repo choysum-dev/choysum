@@ -750,12 +750,10 @@ func fillCatalogFromManifest(row *modmeta.ModuleCatalog, raw datatypes.JSON) {
 	}
 	if !row.HasDemo {
 		demo := m.Demo
-		if len(demo) == 0 || string(demo) == "null" {
+		if len(demo) == 0 || strings.TrimSpace(string(demo)) == "null" {
 			demo = nested.Demo
 		}
-		if len(demo) > 0 && string(demo) != "null" && string(demo) != "[]" && string(demo) != "{}" {
-			row.HasDemo = true
-		}
+		row.HasDemo = hasDemoPayload(datatypes.JSON(demo))
 	}
 }
 

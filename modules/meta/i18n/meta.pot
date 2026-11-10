@@ -1445,7 +1445,7 @@ msgctxt "web/views/MetaModelDataListView"
 msgid "Resource Id"
 msgstr ""
 
-#: web/views/ModuleCatalogFormView.vue:160
+#: web/views/ModuleCatalogFormView.vue:171
 msgctxt "web/views/ModuleCatalogFormView"
 msgid "Almost done, refreshing…"
 msgstr ""
@@ -1461,12 +1461,12 @@ msgctxt "web/views/ModuleCatalogFormView"
 msgid "Dependencies"
 msgstr ""
 
-#: web/views/ModuleCatalogFormView.vue:157
+#: web/views/ModuleCatalogFormView.vue:167
 msgctxt "web/views/ModuleCatalogFormView"
 msgid "Failed to get status"
 msgstr ""
 
-#: web/views/ModuleCatalogFormView.vue:162
+#: web/views/ModuleCatalogFormView.vue:173
 msgctxt "web/views/ModuleCatalogFormView"
 msgid "Getting ready…"
 msgstr ""
@@ -1476,22 +1476,22 @@ msgctxt "web/views/ModuleCatalogFormView"
 msgid "Install"
 msgstr ""
 
-#: web/views/ModuleCatalogFormView.vue:236
+#: web/views/ModuleCatalogFormView.vue:248
 msgctxt "web/views/ModuleCatalogFormView"
 msgid "Installed"
 msgstr ""
 
-#: web/views/ModuleCatalogFormView.vue:167
+#: web/views/ModuleCatalogFormView.vue:178
 msgctxt "web/views/ModuleCatalogFormView"
 msgid "Installing %s"
 msgstr ""
 
-#: web/views/ModuleCatalogFormView.vue:167
+#: web/views/ModuleCatalogFormView.vue:178
 msgctxt "web/views/ModuleCatalogFormView"
 msgid "Installing…"
 msgstr ""
 
-#: web/views/ModuleCatalogFormView.vue:155
+#: web/views/ModuleCatalogFormView.vue:165
 msgctxt "web/views/ModuleCatalogFormView"
 msgid "Job is still running in the background; refresh later"
 msgstr ""
@@ -1513,17 +1513,22 @@ msgctxt "web/views/ModuleCatalogFormView"
 msgid "Module Name"
 msgstr ""
 
-#: web/views/ModuleCatalogFormView.vue:238
+#: web/views/ModuleCatalogFormView.vue:169
+msgctxt "web/views/ModuleCatalogFormView"
+msgid "Module list updated with warnings"
+msgstr ""
+
+#: web/views/ModuleCatalogFormView.vue:250
 msgctxt "web/views/ModuleCatalogFormView"
 msgid "Not Installed"
 msgstr ""
 
-#: web/views/ModuleCatalogFormView.vue:159
+#: web/views/ModuleCatalogFormView.vue:170
 msgctxt "web/views/ModuleCatalogFormView"
 msgid "Operation Failed: %s"
 msgstr ""
 
-#: web/views/ModuleCatalogFormView.vue:158
+#: web/views/ModuleCatalogFormView.vue:168
 msgctxt "web/views/ModuleCatalogFormView"
 msgid "Operation Succeeded"
 msgstr ""
@@ -1533,7 +1538,7 @@ msgctxt "web/views/ModuleCatalogFormView"
 msgid "Overview"
 msgstr ""
 
-#: web/views/ModuleCatalogFormView.vue:164
+#: web/views/ModuleCatalogFormView.vue:175
 msgctxt "web/views/ModuleCatalogFormView"
 msgid "Please wait…"
 msgstr ""
@@ -1543,7 +1548,7 @@ msgctxt "web/views/ModuleCatalogFormView"
 msgid "Registry"
 msgstr ""
 
-#: web/views/ModuleCatalogFormView.vue:156
+#: web/views/ModuleCatalogFormView.vue:166
 msgctxt "web/views/ModuleCatalogFormView"
 msgid "Service is restarting; status will retry automatically"
 msgstr ""
@@ -1554,7 +1559,7 @@ msgctxt "web/views/ModuleCatalogFormView"
 msgid "Status"
 msgstr ""
 
-#: web/views/ModuleCatalogFormView.vue:232
+#: web/views/ModuleCatalogFormView.vue:244
 msgctxt "web/views/ModuleCatalogFormView"
 msgid "Unavailable"
 msgstr ""
@@ -1564,22 +1569,22 @@ msgctxt "web/views/ModuleCatalogFormView"
 msgid "Uninstall"
 msgstr ""
 
-#: web/views/ModuleCatalogFormView.vue:169
+#: web/views/ModuleCatalogFormView.vue:180
 msgctxt "web/views/ModuleCatalogFormView"
 msgid "Uninstalling %s"
 msgstr ""
 
-#: web/views/ModuleCatalogFormView.vue:169
+#: web/views/ModuleCatalogFormView.vue:180
 msgctxt "web/views/ModuleCatalogFormView"
 msgid "Uninstalling…"
 msgstr ""
 
-#: web/views/ModuleCatalogFormView.vue:239
+#: web/views/ModuleCatalogFormView.vue:251
 msgctxt "web/views/ModuleCatalogFormView"
 msgid "Unknown"
 msgstr ""
 
-#: web/views/ModuleCatalogFormView.vue:235
+#: web/views/ModuleCatalogFormView.vue:247
 msgctxt "web/views/ModuleCatalogFormView"
 msgid "Update available"
 msgstr ""
@@ -1589,12 +1594,12 @@ msgctxt "web/views/ModuleCatalogFormView"
 msgid "Upgrade"
 msgstr ""
 
-#: web/views/ModuleCatalogFormView.vue:168
+#: web/views/ModuleCatalogFormView.vue:179
 msgctxt "web/views/ModuleCatalogFormView"
 msgid "Upgrading %s"
 msgstr ""
 
-#: web/views/ModuleCatalogFormView.vue:168
+#: web/views/ModuleCatalogFormView.vue:179
 msgctxt "web/views/ModuleCatalogFormView"
 msgid "Upgrading…"
 msgstr ""
@@ -1615,24 +1620,24 @@ msgctxt "web/views/ModuleCatalogFormView"
 msgid "View Progress"
 msgstr ""
 
-#: web/views/ModuleCatalogFormView.vue:170
-#: web/views/ModuleCatalogFormView.vue:171
+#: web/views/ModuleCatalogFormView.vue:181
+#: web/views/ModuleCatalogFormView.vue:182
 msgctxt "web/views/ModuleCatalogFormView"
 msgid "Working on %s"
 msgstr ""
 
-#: web/views/ModuleCatalogFormView.vue:161
+#: web/views/ModuleCatalogFormView.vue:172
 msgctxt "web/views/ModuleCatalogFormView"
 msgid "Working on it, please wait…"
 msgstr ""
 
-#: web/views/ModuleCatalogFormView.vue:170
-#: web/views/ModuleCatalogFormView.vue:171
+#: web/views/ModuleCatalogFormView.vue:181
+#: web/views/ModuleCatalogFormView.vue:182
 msgctxt "web/views/ModuleCatalogFormView"
 msgid "Working…"
 msgstr ""
 
-#: web/views/ModuleCatalogFormView.vue:163
+#: web/views/ModuleCatalogFormView.vue:174
 msgctxt "web/views/ModuleCatalogFormView"
 msgid "Wrapping up…"
 msgstr ""
@@ -1642,60 +1647,60 @@ msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "All"
 msgstr ""
 
-#: web/views/ModuleCatalogKanbanView.vue:133
+#: web/views/ModuleCatalogKanbanView.vue:136
 msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "Almost done, refreshing…"
 msgstr ""
 
-#: web/views/ModuleCatalogKanbanView.vue:119
-#: web/views/ModuleCatalogKanbanView.vue:132
+#: web/views/ModuleCatalogKanbanView.vue:121
+#: web/views/ModuleCatalogKanbanView.vue:135
 msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "Failed to get status"
 msgstr ""
 
-#: web/views/ModuleCatalogKanbanView.vue:160
-#: web/views/ModuleCatalogKanbanView.vue:161
+#: web/views/ModuleCatalogKanbanView.vue:163
+#: web/views/ModuleCatalogKanbanView.vue:164
 msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "Failed to load modules"
 msgstr ""
 
-#: web/views/ModuleCatalogKanbanView.vue:162
+#: web/views/ModuleCatalogKanbanView.vue:165
 msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "Failed to load more"
 msgstr ""
 
-#: web/views/ModuleCatalogKanbanView.vue:135
+#: web/views/ModuleCatalogKanbanView.vue:138
 msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "Getting ready…"
 msgstr ""
 
-#: web/views/ModuleCatalogKanbanView.vue:104
+#: web/views/ModuleCatalogKanbanView.vue:106
 msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "Install"
 msgstr ""
 
-#: web/views/ModuleCatalogKanbanView.vue:107
+#: web/views/ModuleCatalogKanbanView.vue:109
 msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "Installed"
 msgstr ""
 
-#: web/views/ModuleCatalogKanbanView.vue:140
+#: web/views/ModuleCatalogKanbanView.vue:143
 msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "Installing %s"
 msgstr ""
 
-#: web/views/ModuleCatalogKanbanView.vue:140
+#: web/views/ModuleCatalogKanbanView.vue:143
 msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "Installing…"
 msgstr ""
 
-#: web/views/ModuleCatalogKanbanView.vue:117
-#: web/views/ModuleCatalogKanbanView.vue:130
+#: web/views/ModuleCatalogKanbanView.vue:119
+#: web/views/ModuleCatalogKanbanView.vue:133
 msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "Job is still running in the background; refresh later"
 msgstr ""
 
-#: web/views/ModuleCatalogKanbanView.vue:63
+#: web/views/ModuleCatalogKanbanView.vue:65
 msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "Kanban View"
 msgstr ""
@@ -1705,7 +1710,7 @@ msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "Last sync %s"
 msgstr ""
 
-#: web/views/ModuleCatalogKanbanView.vue:64
+#: web/views/ModuleCatalogKanbanView.vue:66
 msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "List View"
 msgstr ""
@@ -1715,27 +1720,28 @@ msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "Load Demo Data"
 msgstr ""
 
-#: web/views/ModuleCatalogKanbanView.vue:143
+#: web/views/ModuleCatalogKanbanView.vue:146
 msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "Loading demo data…"
 msgstr ""
 
-#: web/views/ModuleCatalogKanbanView.vue:120
+#: web/views/ModuleCatalogKanbanView.vue:122
 msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "Module catalog updated, %s modules"
 msgstr ""
 
-#: web/views/ModuleCatalogKanbanView.vue:122
+#: web/views/ModuleCatalogKanbanView.vue:124
 msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "Module catalog updated, %s modules (%s failed)"
 msgstr ""
 
-#: web/views/ModuleCatalogKanbanView.vue:113
+#: web/views/ModuleCatalogKanbanView.vue:115
 msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "Module list updated"
 msgstr ""
 
-#: web/views/ModuleCatalogKanbanView.vue:115
+#: web/views/ModuleCatalogKanbanView.vue:117
+#: web/views/ModuleCatalogKanbanView.vue:131
 msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "Module list updated with warnings"
 msgstr ""
@@ -1745,39 +1751,39 @@ msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "No modules match this filter."
 msgstr ""
 
-#: web/views/ModuleCatalogKanbanView.vue:109
+#: web/views/ModuleCatalogKanbanView.vue:111
 msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "Not Installed"
 msgstr ""
 
-#: web/views/ModuleCatalogKanbanView.vue:129
+#: web/views/ModuleCatalogKanbanView.vue:132
 msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "Operation Failed: %s"
 msgstr ""
 
-#: web/views/ModuleCatalogKanbanView.vue:128
+#: web/views/ModuleCatalogKanbanView.vue:130
 msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "Operation Succeeded"
 msgstr ""
 
-#: web/views/ModuleCatalogKanbanView.vue:137
+#: web/views/ModuleCatalogKanbanView.vue:140
 msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "Please wait…"
 msgstr ""
 
-#: web/views/ModuleCatalogKanbanView.vue:118
-#: web/views/ModuleCatalogKanbanView.vue:131
+#: web/views/ModuleCatalogKanbanView.vue:120
+#: web/views/ModuleCatalogKanbanView.vue:134
 msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "Service is restarting; status will retry automatically"
 msgstr ""
 
-#: web/views/ModuleCatalogKanbanView.vue:111
-#: web/views/ModuleCatalogKanbanView.vue:116
+#: web/views/ModuleCatalogKanbanView.vue:113
+#: web/views/ModuleCatalogKanbanView.vue:118
 msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "Sync failed: %s"
 msgstr ""
 
-#: web/views/ModuleCatalogKanbanView.vue:110
+#: web/views/ModuleCatalogKanbanView.vue:112
 msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "Unavailable"
 msgstr ""
@@ -1787,17 +1793,17 @@ msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "Uninstall"
 msgstr ""
 
-#: web/views/ModuleCatalogKanbanView.vue:142
+#: web/views/ModuleCatalogKanbanView.vue:145
 msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "Uninstalling %s"
 msgstr ""
 
-#: web/views/ModuleCatalogKanbanView.vue:142
+#: web/views/ModuleCatalogKanbanView.vue:145
 msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "Uninstalling…"
 msgstr ""
 
-#: web/views/ModuleCatalogKanbanView.vue:103
+#: web/views/ModuleCatalogKanbanView.vue:105
 msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "Unknown"
 msgstr ""
@@ -1807,27 +1813,27 @@ msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "Update Module List"
 msgstr ""
 
-#: web/views/ModuleCatalogKanbanView.vue:108
+#: web/views/ModuleCatalogKanbanView.vue:110
 msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "Update available"
 msgstr ""
 
-#: web/views/ModuleCatalogKanbanView.vue:105
+#: web/views/ModuleCatalogKanbanView.vue:107
 msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "Upgrade"
 msgstr ""
 
-#: web/views/ModuleCatalogKanbanView.vue:141
+#: web/views/ModuleCatalogKanbanView.vue:144
 msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "Upgrading %s"
 msgstr ""
 
-#: web/views/ModuleCatalogKanbanView.vue:141
+#: web/views/ModuleCatalogKanbanView.vue:144
 msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "Upgrading…"
 msgstr ""
 
-#: web/views/ModuleCatalogKanbanView.vue:106
+#: web/views/ModuleCatalogKanbanView.vue:108
 msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "View Progress"
 msgstr ""
@@ -1837,24 +1843,24 @@ msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "View switcher"
 msgstr ""
 
-#: web/views/ModuleCatalogKanbanView.vue:144
-#: web/views/ModuleCatalogKanbanView.vue:145
+#: web/views/ModuleCatalogKanbanView.vue:147
+#: web/views/ModuleCatalogKanbanView.vue:148
 msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "Working on %s"
 msgstr ""
 
-#: web/views/ModuleCatalogKanbanView.vue:134
+#: web/views/ModuleCatalogKanbanView.vue:137
 msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "Working on it, please wait…"
 msgstr ""
 
-#: web/views/ModuleCatalogKanbanView.vue:144
-#: web/views/ModuleCatalogKanbanView.vue:145
+#: web/views/ModuleCatalogKanbanView.vue:147
+#: web/views/ModuleCatalogKanbanView.vue:148
 msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "Working…"
 msgstr ""
 
-#: web/views/ModuleCatalogKanbanView.vue:136
+#: web/views/ModuleCatalogKanbanView.vue:139
 msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "Wrapping up…"
 msgstr ""
@@ -1864,18 +1870,18 @@ msgctxt "web/views/ModuleCatalogListView"
 msgid "Action"
 msgstr ""
 
-#: web/views/ModuleCatalogListView.vue:134
+#: web/views/ModuleCatalogListView.vue:135
 msgctxt "web/views/ModuleCatalogListView"
 msgid "Almost done, refreshing…"
 msgstr ""
 
 #: web/views/ModuleCatalogListView.vue:120
-#: web/views/ModuleCatalogListView.vue:133
+#: web/views/ModuleCatalogListView.vue:134
 msgctxt "web/views/ModuleCatalogListView"
 msgid "Failed to get status"
 msgstr ""
 
-#: web/views/ModuleCatalogListView.vue:136
+#: web/views/ModuleCatalogListView.vue:137
 msgctxt "web/views/ModuleCatalogListView"
 msgid "Getting ready…"
 msgstr ""
@@ -1895,18 +1901,18 @@ msgctxt "web/views/ModuleCatalogListView"
 msgid "Installed / Upgraded At"
 msgstr ""
 
-#: web/views/ModuleCatalogListView.vue:141
+#: web/views/ModuleCatalogListView.vue:142
 msgctxt "web/views/ModuleCatalogListView"
 msgid "Installing %s"
 msgstr ""
 
-#: web/views/ModuleCatalogListView.vue:141
+#: web/views/ModuleCatalogListView.vue:142
 msgctxt "web/views/ModuleCatalogListView"
 msgid "Installing…"
 msgstr ""
 
 #: web/views/ModuleCatalogListView.vue:118
-#: web/views/ModuleCatalogListView.vue:131
+#: web/views/ModuleCatalogListView.vue:132
 msgctxt "web/views/ModuleCatalogListView"
 msgid "Job is still running in the background; refresh later"
 msgstr ""
@@ -1931,7 +1937,7 @@ msgctxt "web/views/ModuleCatalogListView"
 msgid "Load Demo Data"
 msgstr ""
 
-#: web/views/ModuleCatalogListView.vue:144
+#: web/views/ModuleCatalogListView.vue:145
 msgctxt "web/views/ModuleCatalogListView"
 msgid "Loading demo data…"
 msgstr ""
@@ -1952,6 +1958,7 @@ msgid "Module list updated"
 msgstr ""
 
 #: web/views/ModuleCatalogListView.vue:116
+#: web/views/ModuleCatalogListView.vue:130
 msgctxt "web/views/ModuleCatalogListView"
 msgid "Module list updated with warnings"
 msgstr ""
@@ -1961,7 +1968,7 @@ msgctxt "web/views/ModuleCatalogListView"
 msgid "Not Installed"
 msgstr ""
 
-#: web/views/ModuleCatalogListView.vue:130
+#: web/views/ModuleCatalogListView.vue:131
 msgctxt "web/views/ModuleCatalogListView"
 msgid "Operation Failed: %s"
 msgstr ""
@@ -1971,13 +1978,13 @@ msgctxt "web/views/ModuleCatalogListView"
 msgid "Operation Succeeded"
 msgstr ""
 
-#: web/views/ModuleCatalogListView.vue:138
+#: web/views/ModuleCatalogListView.vue:139
 msgctxt "web/views/ModuleCatalogListView"
 msgid "Please wait…"
 msgstr ""
 
 #: web/views/ModuleCatalogListView.vue:119
-#: web/views/ModuleCatalogListView.vue:132
+#: web/views/ModuleCatalogListView.vue:133
 msgctxt "web/views/ModuleCatalogListView"
 msgid "Service is restarting; status will retry automatically"
 msgstr ""
@@ -2003,12 +2010,12 @@ msgctxt "web/views/ModuleCatalogListView"
 msgid "Uninstall"
 msgstr ""
 
-#: web/views/ModuleCatalogListView.vue:143
+#: web/views/ModuleCatalogListView.vue:144
 msgctxt "web/views/ModuleCatalogListView"
 msgid "Uninstalling %s"
 msgstr ""
 
-#: web/views/ModuleCatalogListView.vue:143
+#: web/views/ModuleCatalogListView.vue:144
 msgctxt "web/views/ModuleCatalogListView"
 msgid "Uninstalling…"
 msgstr ""
@@ -2033,12 +2040,12 @@ msgctxt "web/views/ModuleCatalogListView"
 msgid "Upgrade"
 msgstr ""
 
-#: web/views/ModuleCatalogListView.vue:142
+#: web/views/ModuleCatalogListView.vue:143
 msgctxt "web/views/ModuleCatalogListView"
 msgid "Upgrading %s"
 msgstr ""
 
-#: web/views/ModuleCatalogListView.vue:142
+#: web/views/ModuleCatalogListView.vue:143
 msgctxt "web/views/ModuleCatalogListView"
 msgid "Upgrading…"
 msgstr ""
@@ -2058,24 +2065,24 @@ msgctxt "web/views/ModuleCatalogListView"
 msgid "View switcher"
 msgstr ""
 
-#: web/views/ModuleCatalogListView.vue:145
 #: web/views/ModuleCatalogListView.vue:146
+#: web/views/ModuleCatalogListView.vue:147
 msgctxt "web/views/ModuleCatalogListView"
 msgid "Working on %s"
 msgstr ""
 
-#: web/views/ModuleCatalogListView.vue:135
+#: web/views/ModuleCatalogListView.vue:136
 msgctxt "web/views/ModuleCatalogListView"
 msgid "Working on it, please wait…"
 msgstr ""
 
-#: web/views/ModuleCatalogListView.vue:145
 #: web/views/ModuleCatalogListView.vue:146
+#: web/views/ModuleCatalogListView.vue:147
 msgctxt "web/views/ModuleCatalogListView"
 msgid "Working…"
 msgstr ""
 
-#: web/views/ModuleCatalogListView.vue:137
+#: web/views/ModuleCatalogListView.vue:138
 msgctxt "web/views/ModuleCatalogListView"
 msgid "Wrapping up…"
 msgstr ""
@@ -2100,7 +2107,7 @@ msgctxt "web/views/ModuleCatalogOpDrawer"
 msgid "Close"
 msgstr ""
 
-#: web/views/ModuleCatalogOpDialog.vue:63
+#: web/views/ModuleCatalogOpDialog.vue:64
 msgctxt "web/views/ModuleCatalogOpDrawer"
 msgid "Completed"
 msgstr ""
@@ -2110,7 +2117,7 @@ msgctxt "web/views/ModuleCatalogOpDrawer"
 msgid "Confirm"
 msgstr ""
 
-#: web/views/ModuleCatalogOpDialog.vue:65
+#: web/views/ModuleCatalogOpDialog.vue:66
 msgctxt "web/views/ModuleCatalogOpDrawer"
 msgid "Data written; page did not refresh"
 msgstr ""
@@ -2130,17 +2137,18 @@ msgctxt "web/views/ModuleCatalogOpDrawer"
 msgid "Execution Status"
 msgstr ""
 
-#: web/views/ModuleCatalogOpDialog.vue:62
+#: web/views/ModuleCatalogOpDialog.vue:248
+#: web/views/ModuleCatalogOpDialog.vue:63
 msgctxt "web/views/ModuleCatalogOpDrawer"
 msgid "Failed to get status"
 msgstr ""
 
-#: web/views/ModuleCatalogOpDialog.vue:58
+#: web/views/ModuleCatalogOpDialog.vue:59
 msgctxt "web/views/ModuleCatalogOpDrawer"
 msgid "Failed to load plan"
 msgstr ""
 
-#: web/views/ModuleCatalogOpDialog.vue:141
+#: web/views/ModuleCatalogOpDialog.vue:142
 msgctxt "web/views/ModuleCatalogOpDrawer"
 msgid "Install Module"
 msgstr ""
@@ -2150,32 +2158,32 @@ msgctxt "web/views/ModuleCatalogOpDrawer"
 msgid "Installed"
 msgstr ""
 
-#: web/views/ModuleCatalogOpDialog.vue:60
+#: web/views/ModuleCatalogOpDialog.vue:61
 msgctxt "web/views/ModuleCatalogOpDrawer"
 msgid "Job is still running in the background; refresh later"
 msgstr ""
 
-#: web/views/ModuleCatalogOpDialog.vue:144
+#: web/views/ModuleCatalogOpDialog.vue:145
 msgctxt "web/views/ModuleCatalogOpDrawer"
 msgid "Load Demo Data"
 msgstr ""
 
-#: web/views/ModuleCatalogOpDialog.vue:140
+#: web/views/ModuleCatalogOpDialog.vue:141
 msgctxt "web/views/ModuleCatalogOpDrawer"
 msgid "Module Operation"
 msgstr ""
 
-#: web/views/ModuleCatalogOpDialog.vue:179
+#: web/views/ModuleCatalogOpDialog.vue:184
 msgctxt "web/views/ModuleCatalogOpDrawer"
 msgid "Module catalog updated, %s modules"
 msgstr ""
 
-#: web/views/ModuleCatalogOpDialog.vue:173
+#: web/views/ModuleCatalogOpDialog.vue:178
 msgctxt "web/views/ModuleCatalogOpDrawer"
 msgid "Module catalog updated, %s modules (%s failed)"
 msgstr ""
 
-#: web/views/ModuleCatalogOpDialog.vue:67
+#: web/views/ModuleCatalogOpDialog.vue:68
 msgctxt "web/views/ModuleCatalogOpDrawer"
 msgid "Module list updated with warnings"
 msgstr ""
@@ -2190,17 +2198,17 @@ msgctxt "web/views/ModuleCatalogOpDrawer"
 msgid "No module changes required"
 msgstr ""
 
-#: web/views/ModuleCatalogOpDialog.vue:64
+#: web/views/ModuleCatalogOpDialog.vue:65
 msgctxt "web/views/ModuleCatalogOpDrawer"
 msgid "Operation Failed"
 msgstr ""
 
-#: web/views/ModuleCatalogOpDialog.vue:66
+#: web/views/ModuleCatalogOpDialog.vue:67
 msgctxt "web/views/ModuleCatalogOpDrawer"
 msgid "Operation Succeeded"
 msgstr ""
 
-#: web/views/ModuleCatalogOpDialog.vue:59
+#: web/views/ModuleCatalogOpDialog.vue:60
 msgctxt "web/views/ModuleCatalogOpDrawer"
 msgid "Operation request failed"
 msgstr ""
@@ -2230,7 +2238,7 @@ msgctxt "web/views/ModuleCatalogOpDrawer"
 msgid "Select a module action to plan an operation."
 msgstr ""
 
-#: web/views/ModuleCatalogOpDialog.vue:61
+#: web/views/ModuleCatalogOpDialog.vue:62
 msgctxt "web/views/ModuleCatalogOpDrawer"
 msgid "Service is restarting; status will retry automatically"
 msgstr ""
@@ -2240,12 +2248,12 @@ msgctxt "web/views/ModuleCatalogOpDrawer"
 msgid "Summary:"
 msgstr ""
 
-#: web/views/ModuleCatalogOpDialog.vue:143
+#: web/views/ModuleCatalogOpDialog.vue:144
 msgctxt "web/views/ModuleCatalogOpDrawer"
 msgid "Uninstall Module"
 msgstr ""
 
-#: web/views/ModuleCatalogOpDialog.vue:142
+#: web/views/ModuleCatalogOpDialog.vue:143
 msgctxt "web/views/ModuleCatalogOpDrawer"
 msgid "Upgrade Module"
 msgstr ""
@@ -2260,27 +2268,27 @@ msgctxt "web/views/ModuleCatalogOpDrawer"
 msgid "Using registry version"
 msgstr ""
 
-#: web/views/ModuleCatalogOpDialog.vue:96
+#: web/views/ModuleCatalogOpDialog.vue:97
 msgctxt "web/views/ModuleCatalogOpDrawer"
 msgid "Will install"
 msgstr ""
 
-#: web/views/ModuleCatalogOpDialog.vue:100
+#: web/views/ModuleCatalogOpDialog.vue:101
 msgctxt "web/views/ModuleCatalogOpDrawer"
 msgid "Will uninstall"
 msgstr ""
 
-#: web/views/ModuleCatalogOpDialog.vue:98
+#: web/views/ModuleCatalogOpDialog.vue:99
 msgctxt "web/views/ModuleCatalogOpDrawer"
 msgid "Will upgrade"
 msgstr ""
 
-#: web/views/ModuleCatalogOpDialog.vue:89
+#: web/views/ModuleCatalogOpDialog.vue:90
 msgctxt "web/views/ModuleCatalogOpDrawer"
 msgid "local"
 msgstr ""
 
-#: web/views/ModuleCatalogOpDialog.vue:88
+#: web/views/ModuleCatalogOpDialog.vue:89
 msgctxt "web/views/ModuleCatalogOpDrawer"
 msgid "registry"
 msgstr ""

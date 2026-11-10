@@ -102,6 +102,10 @@ test('parseCatalogSyncResult / catalogSyncSummaryPartial', () => {
   expect(parsed).toEqual({ total: 2, success: 1, failed: 1, catalogRows: 9, origin: 'all' });
   expect(catalogSyncSummaryPartial({ syncResult: parsed! })).toBe(true);
   expect(catalogSyncSummaryPartial({ syncResult: { ...parsed!, failed: 0 } })).toBe(false);
+  expect(catalogSyncSummaryPartial({ SyncResult: { Failed: 2, Total: 3, Success: 1, CatalogRows: 1 } })).toBe(
+    true,
+  );
+  expect(catalogSyncSummaryPartial(null)).toBe(false);
 });
 
 test('formatModuleOpSummary: plan moduleOrder uses Effect not Reason', () => {
