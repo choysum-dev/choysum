@@ -395,11 +395,15 @@ export function useChoyKanbanStoreEngine(opts: ChoyKanbanStoreEngineOptions) {
     }
     if (applyError) {
       searchPending.value = false;
-      if (rethrow) throw applyError;
-      return;
+      // Only refresh() calls this path; always surface apply failures.
+      throw applyError;
     }
     try {
       await syncLanesFromController();
+    } catch (e) {
+      // Match runSearch: report lane-sync failures, do not rethrow (watcher may
+      // also surface the same throw as an unhandled rejection).
+      if (seq === searchSeq) opts.onSearchError?.(e);
     } finally {
       if (seq === searchSeq) searchPending.value = false;
     }

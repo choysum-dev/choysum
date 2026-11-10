@@ -397,6 +397,49 @@ test('refreshFromQueryState rethrows apply failures', async () => {
   mounted.unmount();
 });
 
+test('refreshFromQueryState reports lane-sync failures via onSearchError', async () => {
+  const s = store();
+  s.fieldsMetadata = { Title: { type: 'varchar' } };
+  s.state.queryState = { pagination: { limit: 20, offset: 0 }, appliedGroups: [] };
+  const errors: unknown[] = [];
+  let explode = false;
+
+  const Harness = defineComponent({
+    name: 'KanbanEngineQueryStateSyncErrHarness',
+    setup() {
+      return useChoyKanbanStoreEngine({
+        store: s,
+        autoBootstrap: false,
+        deferFirstFrame: false,
+        flatLaneLabel: () => {
+          if (explode) throw new Error('queryState sync boom');
+          return 'All';
+        },
+        onSearchError: (e) => errors.push(e),
+      });
+    },
+    render() {
+      return h('div');
+    },
+  });
+
+  const mounted = mountApp(Harness as any);
+  await flushPromises();
+  const engine = mounted.root;
+  engine.controller.setKeywordFields = async () => undefined;
+  await engine.bootstrap();
+  await flushPromises();
+
+  // No-op apply so the lanes watcher does not race a second sync.
+  engine.controller.apply = async () => undefined;
+  explode = true;
+  await engine.refresh();
+  await flushPromises();
+  expect(errors.some((e) => String(e).includes('queryState sync boom'))).toBe(true);
+
+  mounted.unmount();
+});
+
 test('refreshFromQueryState recovers when a newer refresh finishes first', async () => {
   const s = store();
   s.fieldsMetadata = { Title: { type: 'varchar' } };
