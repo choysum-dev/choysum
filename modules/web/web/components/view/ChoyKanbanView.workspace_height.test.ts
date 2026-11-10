@@ -45,13 +45,43 @@ describe('ChoyKanbanView workspace height', () => {
     expect(body!.className).toContain('min-h-0');
     expect(body!.className).toContain('flex-1');
     expect(body!.className).toContain('overflow-hidden');
-    expect(body!.className).toContain('p-3');
+    expect(body!.className.split(/\s+/)).not.toContain('p-3');
     expect(body!.className.split(/\s+/)).not.toContain('p-1');
 
     const board = mounted.q('.choy-kanban-view__board') as HTMLElement | null;
     expect(board).not.toBeNull();
     expect(board!.className).toContain('min-h-0');
     expect(board!.className).toContain('flex-1');
+
+    mounted.unmount();
+  });
+
+  test('flat board cards use intrinsic height (no h-full / min-h-0 shrink)', async () => {
+    const mounted = mountApp(ChoyKanbanView as any, {
+      props: {
+        store: makeStore(),
+        autoBootstrap: false,
+        showHeader: false,
+      },
+    });
+    await flushPromises();
+    const state = mounted.setupState() as {
+      displayLanes: Array<{ key: string; label: string; cards: Array<{ id: string; title: string; laneKey: string }> }>;
+    };
+    state.displayLanes = [
+      {
+        key: '__all__',
+        label: 'All',
+        cards: [{ id: '1', title: 'Alpha', laneKey: '__all__' }],
+      },
+    ];
+    await flushPromises();
+
+    const card = mounted.q('.choy-kanban-view__card') as HTMLElement | null;
+    expect(card).not.toBeNull();
+    const cls = card!.className.split(/\s+/);
+    expect(cls).not.toContain('h-full');
+    expect(cls).not.toContain('min-h-0');
 
     mounted.unmount();
   });

@@ -1512,6 +1512,11 @@ msgctxt "web/pages/Setup"
 msgid "Complete Setup"
 msgstr ""
 
+#: web/pages/Setup.vue
+msgctxt "web/pages/Setup"
+msgid "Failed to load demo data. You can retry from Modules later."
+msgstr ""
+
 #: web/pages/Setup.vue:74
 msgctxt "web/pages/Setup"
 msgid "Create the administrator account"
@@ -1784,9 +1789,14 @@ msgctxt "web/pages/setup/SetupReviewStep"
 msgid "Organization Name"
 msgstr ""
 
-#: web/pages/setup/SetupReviewStep.vue:22
+#: web/pages/setup/SetupReviewStep.vue
 msgctxt "web/pages/setup/SetupReviewStep"
-msgid "The base currency is used for accounting and cannot be changed once transactions exist."
+msgid "Load demo data"
+msgstr ""
+
+#: web/pages/setup/SetupReviewStep.vue
+msgctxt "web/pages/setup/SetupReviewStep"
+msgid "Optional"
 msgstr ""
 
 #: web/pages/setup/SetupReviewStep.vue:25

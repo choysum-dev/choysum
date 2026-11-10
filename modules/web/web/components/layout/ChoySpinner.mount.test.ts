@@ -13,6 +13,8 @@ describe('ChoySpinner mount', () => {
     const el = def.q('[data-testid=choy-spinner]');
     expect(el).not.toBeNull();
     expect(el?.getAttribute('aria-label')).toBe('Loading');
+    expect(String(el?.getAttribute('class') || '')).toContain('text-primary');
+    expect(String(el?.getAttribute('class') || '')).toContain('spin-extra');
     def.unmount();
 
     const custom = mountApp(ChoySpinner as any, {
@@ -21,5 +23,16 @@ describe('ChoySpinner mount', () => {
     await flushPromises();
     expect(custom.q('[data-testid=choy-spinner]')?.getAttribute('aria-label')).toBe('Saving');
     custom.unmount();
+  });
+
+  test('text-* class overrides default primary color', async () => {
+    const muted = mountApp(ChoySpinner as any, {
+      props: { class: 'text-muted-foreground' },
+    });
+    await flushPromises();
+    const cls = String(muted.q('[data-testid=choy-spinner]')?.getAttribute('class') || '');
+    expect(cls).toContain('text-muted-foreground');
+    expect(cls).not.toContain('text-primary');
+    muted.unmount();
   });
 });

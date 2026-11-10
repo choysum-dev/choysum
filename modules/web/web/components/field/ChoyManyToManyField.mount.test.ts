@@ -215,7 +215,8 @@ function installStubs(mode: 'edit' | 'display' | 'both' = 'edit') {
       baseIndex: { type: Number, default: undefined },
       virtualize: { type: Boolean, default: true },
     },
-    setup(props: any, { slots, expose }: any) {
+    emits: ['row-click'],
+    setup(props: any, { slots, expose, emit }: any) {
       const scrollToRow = fnRecorder();
       expose({ scrollToRow });
       return () =>
@@ -229,13 +230,27 @@ function installStubs(mode: 'edit' | 'display' | 'both' = 'edit') {
           },
           [
             slots.default?.(),
-            ...(props.data || []).map((_: any, i: number) =>
-              h('div', { class: 'ov-row', 'data-index': String(i) }, [
-                // Invoke Actions column default slot with $index.
-                ...(Array.isArray(slots.default?.())
-                  ? []
-                  : []),
-              ])
+            ...(props.data || []).map((row: any, i: number) =>
+              h(
+                'div',
+                {
+                  class: 'ov-row',
+                  'data-index': String(i),
+                  'data-testid': 'choy-m2m-table-row',
+                  onClick: () =>
+                    emit('row-click', {
+                      rowData: row,
+                      rowIndex: i,
+                      rowKey: String(row?.Id ?? i),
+                    }),
+                },
+                [
+                  // Invoke Actions column default slot with $index.
+                  ...(Array.isArray(slots.default?.())
+                    ? []
+                    : []),
+                ]
+              )
             ),
             !(props.data || []).length ? slots.empty?.() : null,
             props.footerHeight
@@ -605,5 +620,26 @@ describe('ChoyManyToManyField mount coverage', () => {
     expect((em.q('[data-testid="choy-m2m-summary"]')?.textContent || '').trim()).toBe('');
     expect(em.q('.ov-table-stub')).toBeNull();
     em.unmount();
+  });
+
+  test('forwards table row-click to the host', async () => {
+    const clicks: any[] = [];
+    const { binding } = makeBinding({
+      items: [{ Id: 'row-1', Name: 'Alpha' }],
+      relationStore: { fullModelName: 'demo.Tag' },
+    });
+    const m = mountField({
+      binding,
+      searchList: SearchListStub,
+      onRowClick: (payload: unknown) => clicks.push(payload),
+    });
+    await nextTick();
+    const row = m.q('[data-testid="choy-m2m-table-row"]') as HTMLElement | null;
+    expect(row).toBeTruthy();
+    row?.click();
+    await nextTick();
+    expect(clicks.length).toBe(1);
+    expect(String((clicks[0] as any)?.rowData?.Id || '')).toBe('row-1');
+    m.unmount();
   });
 });

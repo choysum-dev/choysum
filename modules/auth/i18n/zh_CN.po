@@ -1476,6 +1476,11 @@ msgctxt "web/pages/Setup"
 msgid "Complete Setup"
 msgstr "完成设置"
 
+#: web/pages/Setup.vue
+msgctxt "web/pages/Setup"
+msgid "Failed to load demo data. You can retry from Modules later."
+msgstr "演示数据加载失败，可稍后在「模块」中重试。"
+
 #: web/pages/Setup.vue:74
 msgctxt "web/pages/Setup"
 msgid "Create the administrator account"
@@ -1746,10 +1751,24 @@ msgctxt "web/pages/setup/SetupReviewStep"
 msgid "Organization Name"
 msgstr "组织名称"
 
-#: web/pages/setup/SetupReviewStep.vue:22
+#: web/pages/setup/SetupReviewStep.vue
 msgctxt "web/pages/setup/SetupReviewStep"
-msgid "The base currency is used for accounting and cannot be changed once transactions exist."
-msgstr "本位币用于记账，产生业务数据后不可更改。"
+msgid "Load demo data"
+msgstr "加载演示数据"
+
+#~ msgid "The base currency is used for accounting and cannot be changed once transactions exist."
+#~ msgstr "本位币用于记账，产生业务数据后不可更改。"
+
+#: web/pages/setup/SetupReviewStep.vue
+msgctxt "web/pages/setup/SetupReviewStep"
+msgid "Optional"
+msgstr "可选"
+
+#~ msgid "Writes sample records for evaluation. You can also load them later from Modules."
+#~ msgstr "写入试用样例，也可稍后在模块页加载。"
+
+#~ msgid "Sample records for evaluation. You can also load them later from Modules."
+#~ msgstr "试用样例记录；也可稍后在「模块」中加载。"
 
 #: web/pages/setup/SetupReviewStep.vue:25
 msgctxt "web/pages/setup/SetupReviewStep"

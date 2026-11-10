@@ -88,7 +88,7 @@ func (c *countingPrefetchOriginCoordinator) lookup(input string) *meta.Module {
 func TestPrefetchInstallModulesThenResolveUsesCache(t *testing.T) {
 	t.Parallel()
 	modulesPath := t.TempDir()
-	db := newModuleIndexSyncDB(t)
+	db := newModuleSourceSnapshotSyncDB(t)
 	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
 		t.Fatalf("auto migrate: %v", err)
 	}
@@ -111,7 +111,7 @@ func TestPrefetchInstallModulesThenResolveUsesCache(t *testing.T) {
 		},
 	}
 
-	runtimeScope := newModuleIndexSyncScope(modulesPath, db)
+	runtimeScope := newModuleSourceSnapshotSyncScope(modulesPath, db)
 	locker := &moduleIndexSyncTestLocker{}
 	manager := NewModuleManager(
 		runtimeScope,
@@ -164,7 +164,7 @@ func TestPrefetchInstallModulesThenResolveUsesCache(t *testing.T) {
 func TestPrefetchInstallModulesLogLevelUsesProgressDetailChannel(t *testing.T) {
 	t.Parallel()
 	modulesPath := t.TempDir()
-	db := newModuleIndexSyncDB(t)
+	db := newModuleSourceSnapshotSyncDB(t)
 	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
 		t.Fatalf("auto migrate: %v", err)
 	}
@@ -186,7 +186,7 @@ func TestPrefetchInstallModulesLogLevelUsesProgressDetailChannel(t *testing.T) {
 
 	t.Run("default context stays Info", func(t *testing.T) {
 		capture := &prefetchLogCapture{}
-		runtimeScope := newModuleIndexSyncScope(modulesPath, db)
+		runtimeScope := newModuleSourceSnapshotSyncScope(modulesPath, db)
 		runtimeScope.logger = slog.New(capture)
 		manager := NewModuleManager(
 			runtimeScope,
@@ -207,7 +207,7 @@ func TestPrefetchInstallModulesLogLevelUsesProgressDetailChannel(t *testing.T) {
 
 	t.Run("quiet progress demotes to Debug", func(t *testing.T) {
 		capture := &prefetchLogCapture{}
-		runtimeScope := newModuleIndexSyncScope(modulesPath, db)
+		runtimeScope := newModuleSourceSnapshotSyncScope(modulesPath, db)
 		runtimeScope.logger = slog.New(capture)
 		manager := NewModuleManager(
 			runtimeScope,

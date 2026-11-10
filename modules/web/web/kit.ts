@@ -15,6 +15,7 @@ export { default as ChoyConfirmHost } from './components/layout/ChoyConfirmHost.
 export { default as ChoySkeleton } from './components/layout/ChoySkeleton.vue';
 export { default as ChoyEmpty } from './components/layout/ChoyEmpty.vue';
 export { default as ChoySpinner } from './components/layout/ChoySpinner.vue';
+export { default as ChoyProgress } from './components/layout/ChoyProgress.vue';
 export { default as ChoyBadge } from './components/layout/ChoyBadge.vue';
 export { default as ChoyCard } from './components/layout/ChoyCard.vue';
 export { default as ChoySection } from './components/layout/ChoySection.vue';
@@ -169,6 +170,19 @@ export {
   shouldRecoverStaleKanbanSearch,
   shouldRestoreKanbanMove,
 } from './components/view/kanbanStoreHelpers';
+export {
+  finishInitialSearchBoundLoad,
+  shouldDeferToSearchFirstFrame,
+  shouldDeferViewFirstFrame,
+  type DeferToSearchFirstFrameOpts,
+} from './components/view/viewFirstFrame';
+export {
+  useSearchFirstFrameHost,
+  useSearchFirstFrameReporter,
+  SearchFirstFrameKey,
+  type SearchFirstFrameGate,
+  type SearchFirstFramePhase,
+} from './components/view/search/searchFirstFrame';
 export { useChoyKanbanStoreEngine } from './composables/useChoyKanbanStoreEngine';
 export type { ChoyKanbanStoreEngineOptions } from './composables/useChoyKanbanStoreEngine';
 export {
@@ -239,6 +253,7 @@ export { default as ChoyManyToManyRefTagsField } from './components/field/ChoyMa
 export { default as ChoyManyToManyRefTreeField } from './components/field/ChoyManyToManyRefTreeField.vue';
 export { default as ChoyOneToManyField } from './components/field/ChoyOneToManyField.vue';
 export { default as ChoyOneToManyKanbanField } from './components/field/ChoyOneToManyKanbanField.vue';
+export { default as ChoyManyToManyKanbanField } from './components/field/ChoyManyToManyKanbanField.vue';
 export { default as ChoyBinaryField } from './components/field/ChoyBinaryField.vue';
 export { default as ChoyImageField } from './components/field/ChoyImageField.vue';
 export { default as ChoyHtmlField } from './components/field/ChoyHtmlField.vue';

@@ -141,11 +141,11 @@ func TestWriteBackendBundleToDir(t *testing.T) {
 func TestBuildBackendBundlesToDir_NoRepresentativeReturnsNil(t *testing.T) {
 	t.Parallel()
 	modulesPath := t.TempDir()
-	db := newModuleIndexSyncDB(t)
+	db := newModuleSourceSnapshotSyncDB(t)
 	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
 		t.Fatalf("auto migrate: %v", err)
 	}
-	runtimeScope := newModuleIndexSyncScope(modulesPath, db)
+	runtimeScope := newModuleSourceSnapshotSyncScope(modulesPath, db)
 	manager := NewModuleManager(runtimeScope, nil)
 	manager.bootstrapOnce.Do(func() {})
 
@@ -156,7 +156,7 @@ func TestBuildBackendBundlesToDir_NoRepresentativeReturnsNil(t *testing.T) {
 
 func TestBuildBackendBundlesToDir_SuccessfulWrite(t *testing.T) {
 	modulesPath := t.TempDir()
-	db := newModuleIndexSyncDB(t)
+	db := newModuleSourceSnapshotSyncDB(t)
 	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
 		t.Fatalf("auto migrate: %v", err)
 	}
@@ -182,7 +182,7 @@ func TestBuildBackendBundlesToDir_SuccessfulWrite(t *testing.T) {
 	writeBackendBundleToDirFn = func(context.Context, any, string) error { return nil }
 	t.Cleanup(func() { writeBackendBundleToDirFn = prev })
 
-	runtimeScope := newModuleIndexSyncScope(modulesPath, db)
+	runtimeScope := newModuleSourceSnapshotSyncScope(modulesPath, db)
 	manager := NewModuleManager(runtimeScope, nil)
 	manager.bootstrapOnce.Do(func() {})
 	if err := manager.buildBackendBundlesToDir(context.Background(), t.TempDir(), nil); err != nil {
@@ -192,7 +192,7 @@ func TestBuildBackendBundlesToDir_SuccessfulWrite(t *testing.T) {
 
 func TestBuildBackendBundlesToDir_EntryDirCreateError(t *testing.T) {
 	modulesPath := t.TempDir()
-	db := newModuleIndexSyncDB(t)
+	db := newModuleSourceSnapshotSyncDB(t)
 	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
 		t.Fatalf("auto migrate: %v", err)
 	}
@@ -219,7 +219,7 @@ func TestBuildBackendBundlesToDir_EntryDirCreateError(t *testing.T) {
 	}
 	distBundlesDir := filepath.Join(blocker, "dist")
 
-	runtimeScope := newModuleIndexSyncScope(modulesPath, db)
+	runtimeScope := newModuleSourceSnapshotSyncScope(modulesPath, db)
 	manager := NewModuleManager(runtimeScope, nil)
 	manager.bootstrapOnce.Do(func() {})
 	err := manager.buildBackendBundlesToDir(context.Background(), distBundlesDir, nil)
@@ -231,7 +231,7 @@ func TestBuildBackendBundlesToDir_EntryDirCreateError(t *testing.T) {
 func TestBuildBackendBundlesToDir_EmptyEntryOnlyStillInjectsTranslationTerm(t *testing.T) {
 	t.Parallel()
 	modulesPath := t.TempDir()
-	db := newModuleIndexSyncDB(t)
+	db := newModuleSourceSnapshotSyncDB(t)
 	if err := db.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
 		t.Fatalf("auto migrate: %v", err)
 	}
@@ -257,7 +257,7 @@ func TestBuildBackendBundlesToDir_EmptyEntryOnlyStillInjectsTranslationTerm(t *t
 		t.Fatalf("seed module: %v", err)
 	}
 
-	runtimeScope := newModuleIndexSyncScope(modulesPath, db)
+	runtimeScope := newModuleSourceSnapshotSyncScope(modulesPath, db)
 	manager := NewModuleManager(runtimeScope, nil)
 	manager.bootstrapOnce.Do(func() {})
 	distBundlesDir := t.TempDir()

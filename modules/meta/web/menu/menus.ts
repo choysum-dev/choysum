@@ -51,29 +51,21 @@ export const metaSettingsAppMenu: MenuItem = defineMenu('meta.menu.settings_app'
   ],
 });
 
+/** Modules app root + Catalog leaf — breadcrumb Modules > Catalog. */
 export const metaMenus: MenuItem[] = [
   defineMenu('meta.menu.root', {
-    title: _lt('Module Management'),
+    title: _lt('Modules'),
     sequence: 60,
     icon: Boxes,
+    defaultRoles: ['sys.admin'],
     children: [
-      defineMenu('meta.menu.module_board', {
-        title: _lt('Module Board'),
+      defineMenu('meta.menu.modules', {
+        title: _lt('Catalog'),
         path: '/meta/modules',
         sequence: 10,
-        requires: [{ model: 'meta.MetaModuleIndex' }, { model: 'meta.MetaModule' }],
-      }),
-      defineMenu('meta.menu.module_list', {
-        title: _lt('Module List'),
-        path: '/meta/modules/list',
-        sequence: 20,
-        requires: [{ model: 'meta.MetaModuleIndex' }, { model: 'meta.MetaModule' }],
-      }),
-      defineMenu('meta.menu.module_history', {
-        title: _lt('Operation History'),
-        path: '/meta/modules/history',
-        sequence: 30,
-        requires: [{ model: 'meta.ModuleManagementLog' }, { model: 'meta.MetaModule' }, { model: 'meta.MetaModuleIndex' }],
+        defaultRoles: ['sys.admin'],
+        // Catalog browse only; install/upgrade/sync stay gated by action requires.
+        requires: [{ model: 'meta.MetaModuleCatalog' }],
       }),
     ],
   }),

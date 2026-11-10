@@ -20,11 +20,12 @@ const (
 	defaultMaxStreamsPerUser = 8
 	tipBufferSize            = 16
 
-	payloadKeyModel     = "model"
-	payloadKeyResID     = "resId"
-	payloadKeyMessageID = "messageId"
-	payloadKeyUserID    = "userId"
-	payloadKeyJobID     = "jobId"
+	payloadKeyModel       = "model"
+	payloadKeyResID       = "resId"
+	payloadKeyMessageID   = "messageId"
+	payloadKeyUserID      = "userId"
+	payloadKeyJobID       = "jobId"
+	payloadKeyOperationID = "operationId"
 )
 
 // Hub serves TipHub server-streaming RPCs by subscribing to the host EventBus.
@@ -101,26 +102,40 @@ func (h *Hub) SubscribeNotifications(_ *tippb.SubscribeNotificationsReq, stream 
 	})
 }
 
-// SubscribeModuleOp streams tips for one Meta module-op job owned by the caller.
-// Auth is pinned to the tip payload userId matching the authenticated operator;
-// job ownership is enforced by matching that userId (tips are stamped by the publisher).
+// SubscribeModuleOp streams tips for one Meta module operation owned by the caller.
+// Auth is pinned to the tip payload userId matching the authenticated operator
+// (tip is best-effort; callers re-read meta_module_operation for ownership/status).
+// Prefer operation_id, which matches payload operationId and, when that field is
+// absent, resId (ops sets both to the operation id). job_id remains a transitional
+// fallback that matches payload jobId, else resId for older job-only tips.
 func (h *Hub) SubscribeModuleOp(req *tippb.SubscribeModuleOpReq, stream grpc.ServerStreamingServer[tippb.Tip]) error {
 	identity, err := requireIdentity(stream.Context())
 	if err != nil {
 		return err
 	}
+	operationID := strings.TrimSpace(req.GetOperationId())
 	jobID := strings.TrimSpace(req.GetJobId())
-	if jobID == "" {
-		return status.Error(codes.InvalidArgument, "job_id is required")
+	if operationID == "" && jobID == "" {
+		return status.Error(codes.InvalidArgument, "operation_id is required")
 	}
 	userID := strings.TrimSpace(identity.GetUserID())
 	match := func(event bus.Event) bool {
-		payloadJob := payloadString(event, payloadKeyJobID)
-		if payloadJob == "" {
-			payloadJob = payloadString(event, payloadKeyResID)
-		}
-		if payloadJob == "" || payloadJob != jobID {
-			return false
+		if operationID != "" {
+			payloadOp := payloadString(event, payloadKeyOperationID)
+			if payloadOp == "" {
+				payloadOp = payloadString(event, payloadKeyResID)
+			}
+			if payloadOp == "" || payloadOp != operationID {
+				return false
+			}
+		} else {
+			payloadJob := payloadString(event, payloadKeyJobID)
+			if payloadJob == "" {
+				payloadJob = payloadString(event, payloadKeyResID)
+			}
+			if payloadJob == "" || payloadJob != jobID {
+				return false
+			}
 		}
 		payloadUser := payloadString(event, payloadKeyUserID)
 		return payloadUser != "" && payloadUser == userID

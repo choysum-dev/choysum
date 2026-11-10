@@ -138,8 +138,20 @@ test('finishInitialTokenKanbanLoad: skips empty apply when search already landed
     applyEmpty: async () => {
       calls.push('empty');
     },
-    onSearch: async () => {
-      calls.push('search');
+    syncLanes: async () => {
+      calls.push('sync');
+    },
+  });
+  expect(calls).toEqual([]);
+});
+
+test('finishInitialTokenKanbanLoad: deferToSearch skips empty apply', async () => {
+  const calls: string[] = [];
+  await finishInitialTokenKanbanLoad({
+    getLastSearchQuery: () => null,
+    deferToSearch: true,
+    applyEmpty: async () => {
+      calls.push('empty');
     },
     syncLanes: async () => {
       calls.push('sync');
@@ -148,34 +160,12 @@ test('finishInitialTokenKanbanLoad: skips empty apply when search already landed
   expect(calls).toEqual([]);
 });
 
-test('finishInitialTokenKanbanLoad: re-applies late first-frame search', async () => {
-  const calls: string[] = [];
-  let late: { keyword: string } | null = null;
-  await finishInitialTokenKanbanLoad({
-    getLastSearchQuery: () => late,
-    applyEmpty: async () => {
-      calls.push('empty');
-      late = { keyword: 'hi' };
-    },
-    onSearch: async (q) => {
-      calls.push(`search:${q.keyword}`);
-    },
-    syncLanes: async () => {
-      calls.push('sync');
-    },
-  });
-  expect(calls).toEqual(['empty', 'search:hi']);
-});
-
-test('finishInitialTokenKanbanLoad: syncs when no search arrives', async () => {
+test('finishInitialTokenKanbanLoad: without defer applies empty then syncs', async () => {
   const calls: string[] = [];
   await finishInitialTokenKanbanLoad({
     getLastSearchQuery: () => null,
     applyEmpty: async () => {
       calls.push('empty');
-    },
-    onSearch: async () => {
-      calls.push('search');
     },
     syncLanes: async () => {
       calls.push('sync');

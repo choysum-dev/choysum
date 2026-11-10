@@ -1,0 +1,416 @@
+// SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+// SPDX-License-Identifier: LGPL-3.0-or-later
+
+package lifecycle
+
+import (
+	"context"
+	"errors"
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"time"
+
+	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
+	"github.com/choysum-dev/choysum/internal/module/origin/contract"
+	"github.com/choysum-dev/choysum/pkg/oerrors"
+	"github.com/choysum-dev/choysum/pkg/scope"
+	statepkg "github.com/choysum-dev/choysum/pkg/state"
+	"github.com/rs/xid"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+	"gorm.io/datatypes"
+	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
+)
+
+type ModuleSourceSnapshotSyncStats struct {
+	Total   int
+	Success int
+	Failed  int
+}
+
+func SyncLocalModuleSourceSnapshot(ctx context.Context, runtimeScope scope.Scope, lockerFactory statepkg.LockerFactory) (ModuleSourceSnapshotSyncStats, error) {
+	stats := ModuleSourceSnapshotSyncStats{}
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	if lockerFactory == nil {
+		return stats, errors.New("locker factory is nil")
+	}
+
+	locker := lockerFactory(runtimeScope)
+	resource := "module_source_snapshot_sync_local"
+	ownerID := xid.New().String()
+	ttl := moduleIndexLockTTL(ctx, runtimeScope)
+
+	if err := locker.Acquire(ctx, resource, ownerID, ttl); err != nil {
+		if errors.Is(err, statepkg.ErrLeaseBusy) {
+			retryAfterMs := int64(ttl / time.Millisecond)
+			return stats, oerrors.New("meta.lock", "LEASE_CONFLICT", "lease is busy").WithMetadata("retry_after_ms", strconv.FormatInt(retryAfterMs, 10))
+		}
+		return stats, err
+	}
+
+	heartbeatCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		ticker := time.NewTicker(ttl / 2)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-heartbeatCtx.Done():
+				return
+			case <-ticker.C:
+				if err := locker.Renew(heartbeatCtx, resource, ownerID, ttl); err != nil {
+					runtimeScope.Logger().Warn("module source snapshot lease renew failed", "resource", resource, "error", err)
+				}
+			}
+		}
+	}()
+
+	defer func() {
+		cancel()
+		<-done
+		releaseLeaseWithContextFallback(runtimeScope, locker, ctx, resource, ownerID, "module origin")
+	}()
+
+	modulesPath := strings.TrimSpace(runtimeOptionsFromScope(runtimeScope).modulesPath)
+	if modulesPath == "" {
+		return stats, status.Error(codes.InvalidArgument, "modules_path is required")
+	}
+
+	session, ok := scope.SessionForScope(ctx, runtimeScope)
+	if !ok || session == nil || session.DB == nil {
+		return stats, errors.New("module source snapshot session is unavailable")
+	}
+
+	entries, err := os.ReadDir(modulesPath)
+	if err != nil {
+		return stats, err
+	}
+
+	seen := make(map[string]struct{})
+	now := time.Now()
+	hasError := false
+	for _, entry := range entries {
+		select {
+		case <-ctx.Done():
+			return stats, ctx.Err()
+		default:
+		}
+		if !entry.IsDir() {
+			continue
+		}
+		name := entry.Name()
+		if shouldSkipModuleDir(name) {
+			continue
+		}
+		packageJSONPath := filepath.Join(modulesPath, name, "package.json")
+		info, err := os.Stat(packageJSONPath)
+		if err != nil {
+			continue
+		}
+
+		stats.Total++
+		seen[name] = struct{}{}
+
+		revision := fmtSyncRevision(info)
+		packageJSONData, version, err := readPackageJSON(packageJSONPath)
+		if err != nil {
+			hasError = true
+			if upsertErr := upsertModuleIndexFailure(ctx, runtimeScope, session, name, revision, err); upsertErr != nil {
+				runtimeScope.Logger().Warn("module source snapshot failure upsert failed", "module", name, "error", upsertErr)
+			}
+			stats.Failed++
+			continue
+		}
+
+		if upsertErr := upsertModuleIndexSuccess(ctx, runtimeScope, session, name, revision, version, packageJSONData, now); upsertErr != nil {
+			hasError = true
+			runtimeScope.Logger().Warn("module source snapshot upsert failed", "module", name, "error", upsertErr)
+			stats.Failed++
+			continue
+		}
+		stats.Success++
+	}
+
+	if err := reconcileMissingModules(ctx, runtimeScope, session, seen); err != nil {
+		hasError = true
+		runtimeScope.Logger().Warn("module source snapshot reconcile failed", "error", err)
+	}
+
+	if !hasError {
+		if err := withModuleIndexWriteRetry(ctx, runtimeScope, session, func(txSession *scope.Session) error {
+			return txSession.WithContext(ctx).
+				Model(&modmeta.ModuleSourceSnapshot{}).
+				Where("source_type = ? AND source_ref = ?", "local", "local").
+				Updates(map[string]any{"last_batch_sync_at": now}).Error
+		}); err != nil {
+			if !isTableMissingInSession(session, "meta_module_source_snapshot") {
+				runtimeScope.Logger().Warn("module source snapshot sync timestamp update failed", "error", err)
+			}
+		}
+	}
+
+	return stats, nil
+}
+
+// moduleIndexLockTTLDefault is the code default for the local module-index sync
+// lease (aligned with moduleManagerLeaseTTL).
+const moduleIndexLockTTLDefault = 60 * time.Second
+
+type moduleIndexLockTTLContextKey struct{}
+
+// withModuleIndexLockTTL overrides the sync lease TTL for ctx (tests only).
+func withModuleIndexLockTTL(ctx context.Context, ttl time.Duration) context.Context {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	if ttl <= 0 {
+		return ctx
+	}
+	return context.WithValue(ctx, moduleIndexLockTTLContextKey{}, ttl)
+}
+
+func moduleIndexLockTTL(ctx context.Context, _ scope.Scope) time.Duration {
+	if ctx != nil {
+		if ttl, ok := ctx.Value(moduleIndexLockTTLContextKey{}).(time.Duration); ok && ttl > 0 {
+			return ttl
+		}
+	}
+	return moduleIndexLockTTLDefault
+}
+
+func shouldSkipModuleDir(name string) bool {
+	if name == "" {
+		return true
+	}
+	if strings.HasPrefix(name, ".") {
+		return true
+	}
+	if name == "tmp" || name == "node_modules" || name == "dist" {
+		return true
+	}
+	return false
+}
+
+func fmtSyncRevision(info os.FileInfo) string {
+	if info == nil {
+		return ""
+	}
+	return strconv.FormatInt(info.ModTime().UnixNano(), 10) + ":" + strconv.FormatInt(info.Size(), 10)
+}
+
+func readPackageJSON(path string) ([]byte, string, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, "", err
+	}
+	result, err := contract.ParsePackageJSONToModule(data, filepath.Dir(path), nil)
+	if err != nil {
+		return data, "", err
+	}
+	if result == nil || result.Module == nil {
+		return data, "", status.Error(codes.InvalidArgument, "package.json parse returned empty module")
+	}
+	version := strings.TrimSpace(result.Module.Version)
+	if version == "" {
+		return data, "", status.Error(codes.InvalidArgument, "package.json is missing version")
+	}
+	return data, version, nil
+}
+
+func upsertModuleIndexSuccess(ctx context.Context, runtimeScope scope.Scope, session *scope.Session, moduleName, revision, version string, raw []byte, now time.Time) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	entry := modmeta.ModuleSourceSnapshot{
+		ModuleName: moduleName,
+		SourceType: "local",
+		SourceRef:  "local",
+		Available:  true,
+		Version:    nullString(version),
+		ManifestJson: func() datatypes.JSON {
+			if len(raw) == 0 {
+				return nil
+			}
+			return datatypes.JSON(raw)
+		}(),
+		LocalPath:        nullString(filepath.Join(runtimeOptionsFromScope(runtimeScope).modulesPath, moduleName)),
+		LastSyncAt:       &now,
+		SyncRevision:     nullString(revision),
+		LastErrorMessage: nullString(""),
+	}
+
+	return withModuleIndexWriteRetry(ctx, runtimeScope, session, func(txSession *scope.Session) error {
+		return txSession.WithContext(ctx).
+			Clauses(clause.OnConflict{
+				Columns:   []clause.Column{{Name: "module_name"}, {Name: "source_type"}, {Name: "source_ref"}},
+				DoUpdates: clause.AssignmentColumns([]string{"available", "version", "manifest_json", "local_path", "last_sync_at", "sync_revision", "last_error_message"}),
+			}).
+			Create(&entry).Error
+	})
+}
+
+func upsertModuleIndexFailure(ctx context.Context, runtimeScope scope.Scope, session *scope.Session, moduleName, revision string, cause error) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	msg := SanitizeModuleIndexError(runtimeScope, cause)
+	entry := modmeta.ModuleSourceSnapshot{
+		ModuleName:       moduleName,
+		SourceType:       "local",
+		SourceRef:        "local",
+		Available:        false,
+		SyncRevision:     nullString(revision),
+		LastErrorMessage: nullString(msg),
+	}
+	return withModuleIndexWriteRetry(ctx, runtimeScope, session, func(txSession *scope.Session) error {
+		return txSession.WithContext(ctx).
+			Clauses(clause.OnConflict{
+				Columns:   []clause.Column{{Name: "module_name"}, {Name: "source_type"}, {Name: "source_ref"}},
+				DoUpdates: clause.AssignmentColumns([]string{"available", "sync_revision", "last_error_message"}),
+			}).
+			Create(&entry).Error
+	})
+}
+
+func reconcileMissingModules(ctx context.Context, runtimeScope scope.Scope, session *scope.Session, seen map[string]struct{}) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	names := make([]string, 0, len(seen))
+	for name := range seen {
+		names = append(names, name)
+	}
+	return withModuleIndexWriteRetry(ctx, runtimeScope, session, func(txSession *scope.Session) error {
+		query := txSession.WithContext(ctx).
+			Model(&modmeta.ModuleSourceSnapshot{}).
+			Where("source_type = ? AND source_ref = ?", "local", "local")
+		if len(names) > 0 {
+			query = query.Where("module_name NOT IN ?", names)
+		}
+		return query.Updates(map[string]any{
+			"available":          false,
+			"last_error_message": "package.json not found",
+		}).Error
+	})
+}
+
+func SanitizeModuleIndexError(runtimeScope scope.Scope, cause error) string {
+	msg := strings.TrimSpace("package.json parsing failed")
+	if cause == nil {
+		return msg
+	}
+
+	if st, ok := status.FromError(cause); ok {
+		if raw := strings.TrimSpace(st.Message()); raw != "" {
+			return redactModuleIndexError(runtimeScope, raw)
+		}
+	}
+
+	var pathErr *os.PathError
+	if errors.As(cause, &pathErr) {
+		op := strings.TrimSpace(pathErr.Op)
+		base := strings.TrimSpace(filepath.Base(pathErr.Path))
+		if base == "" || base == "." || base == string(filepath.Separator) {
+			base = "package.json"
+		}
+		if op != "" {
+			return redactModuleIndexError(runtimeScope, op+" "+base)
+		}
+		return redactModuleIndexError(runtimeScope, base)
+	}
+
+	raw := strings.TrimSpace(cause.Error())
+	if raw == "" {
+		return msg
+	}
+	return redactModuleIndexError(runtimeScope, raw)
+}
+
+func redactModuleIndexError(runtimeScope scope.Scope, msg string) string {
+	msg = strings.TrimSpace(msg)
+	if msg == "" {
+		return "package.json parsing failed"
+	}
+	if runtimeOpts := runtimeOptionsFromScope(runtimeScope); strings.TrimSpace(runtimeOpts.modulesPath) != "" {
+		msg = strings.ReplaceAll(msg, runtimeOpts.modulesPath, "<modulesPath>")
+	}
+	return msg
+}
+
+func isTableMissingInSession(session *scope.Session, tableName string) bool {
+	if session == nil || session.DB == nil {
+		return false
+	}
+	tableName = strings.TrimSpace(tableName)
+	if tableName == "" {
+		return false
+	}
+	return !session.DB.Migrator().HasTable(tableName)
+}
+
+func withModuleIndexWriteRetry(ctx context.Context, runtimeScope scope.Scope, session *scope.Session, op func(txSession *scope.Session) error) error {
+	if session == nil || session.DB == nil {
+		return errors.New("module source snapshot session is unavailable")
+	}
+	if op == nil {
+		return errors.New("module source snapshot write operation is required")
+	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	dialect := strings.ToLower(strings.TrimSpace(session.DB.Dialector.Name()))
+	maxRetries := 1
+	baseSleep := 150 * time.Millisecond
+	if dialect == "sqlite" || dialect == "sqlite3" {
+		maxRetries = 8
+	}
+
+	var lastErr error
+	for attempt := 0; attempt < maxRetries; attempt++ {
+		err := session.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+			txSession := &scope.Session{DB: tx.WithContext(ctx)}
+			return op(txSession)
+		})
+		if err != nil {
+			lastErr = err
+			if maxRetries == 1 || !isSQLiteLockError(err) || attempt == maxRetries-1 {
+				return err
+			}
+			sleep := time.Duration(attempt+1) * baseSleep
+			if runtimeScope != nil {
+				runtimeScope.Logger().Warn("module source snapshot sqlite lock retry", "attempt", attempt+1, "sleep", sleep, "error", err)
+			}
+			timer := time.NewTimer(sleep)
+			select {
+			case <-ctx.Done():
+				timer.Stop()
+				return ctx.Err()
+			case <-timer.C:
+			}
+			continue
+		}
+		return nil
+	}
+
+	if lastErr != nil {
+		return lastErr
+	}
+	return nil
+}
+
+func isSQLiteLockError(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "database is locked") || strings.Contains(msg, "database is busy") || strings.Contains(msg, "locking protocol")
+}

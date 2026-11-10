@@ -91,7 +91,7 @@ describe('ChoyFormView workspace height', () => {
     expect(body!.className).toContain('min-h-0');
     expect(body!.className).toContain('flex-1');
     expect(body!.className).toContain('overflow-y-auto');
-    expect(body!.className).toContain('p-5');
+    expect(body!.className.split(/\s+/)).not.toContain('p-5');
     expect(body!.className.split(/\s+/)).not.toContain('pt-2');
 
     mounted.unmount();

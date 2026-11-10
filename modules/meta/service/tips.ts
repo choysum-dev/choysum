@@ -6,11 +6,11 @@ import { resolveChoysum } from '@/core/service/runtime/choysum_runtime';
 /** Frozen tip topic for Meta module-op progress (matches pkg/bus). */
 export const TOPIC_META_MODULE_OP_CHANGED = 'meta.module_op.changed';
 
-/** Tip source stamped on MetaModule enqueue / status writes. */
-export const META_MODULE_OP_TIP_SOURCE = 'meta.MetaModule';
+/** Tip source stamped on Meta module-op enqueue / status writes. */
+export const META_MODULE_OP_TIP_SOURCE = 'meta.MetaModuleOperation';
 
-/** Tip model locator for task jobs. */
-export const META_MODULE_OP_TIP_MODEL = 'task.Job';
+/** Tip model locator for module operations (authoritative row). */
+export const META_MODULE_OP_TIP_MODEL = 'meta.MetaModuleOperation';
 
 export type PublishTipFn = (event: {
   topic: string;
@@ -37,18 +37,20 @@ export function resolvePublishTip(): PublishTipFn | null {
 }
 
 /**
- * Best-effort tip after a Meta module-op job status is visible. Never throws;
- * tip is not authoritative — clients re-read via GetOpStatus.
+ * Best-effort tip after a Meta module operation status is visible. Never throws;
+ * tip is not authoritative — clients re-read the operation row.
  */
 export async function publishModuleOpChangedTip(input: {
+  operationId?: string | null;
   jobId?: string | null;
   userId?: string | null;
   source?: string | null;
 }): Promise<void> {
   const publish = resolvePublishTip();
+  const operationId = String(input.operationId || '').trim();
   const jobId = String(input.jobId || '').trim();
   const userId = String(input.userId || '').trim();
-  if (!publish || !jobId) return;
+  if (!publish || !operationId) return;
   const source = String(input.source || META_MODULE_OP_TIP_SOURCE).trim() || META_MODULE_OP_TIP_SOURCE;
   try {
     await publish({
@@ -56,12 +58,13 @@ export async function publishModuleOpChangedTip(input: {
       source,
       payload: {
         model: META_MODULE_OP_TIP_MODEL,
-        resId: jobId,
-        jobId,
+        resId: operationId,
+        operationId,
+        ...(jobId ? { jobId } : {}),
         ...(userId ? { userId } : {}),
       },
     });
   } catch {
-    // Tip is best-effort; authoritative state remains task.Job + GetOpStatus.
+    // Tip is best-effort; authoritative state remains meta_module_operation.
   }
 }

@@ -70,6 +70,7 @@ html {
   --choy-space-6: 1.5rem;
   --choy-space-8: 2rem;
 
+  --choy-font-size-xs: 0.75rem;
   --choy-font-size-sm: 0.875rem;
   --choy-font-size-base: 1rem;
   --choy-font-size-lg: 1.125rem;
@@ -278,6 +279,7 @@ html[data-density='compact'] {
   --choy-space-4: 0.8rem;
   --choy-space-6: 1.2rem;
   --choy-space-8: 1.6rem;
+  --choy-font-size-xs: 0.6875rem;
   --choy-font-size-sm: 0.8125rem;
   --choy-font-size-base: 0.9375rem;
   --choy-font-size-lg: 1.0625rem;

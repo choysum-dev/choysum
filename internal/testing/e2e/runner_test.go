@@ -21,6 +21,7 @@ import (
 	"testing"
 	"time"
 
+	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -428,6 +429,51 @@ func TestTopoClosureAndScenarioFixtures(t *testing.T) {
 		t.Fatalf("unexpected topo order: %#v", order)
 	}
 
+	full := map[string]*sourceModulePackage{
+		"core": {},
+		"task": {Depends: []string{"core"}},
+		"meta": {Depends: []string{"core", "task"}, DirName: "meta"},
+		"base": {Depends: []string{"core"}},
+		"auth": {Depends: []string{"core", "base", "meta"}},
+		"web":  {Depends: []string{"core", "auth", "meta"}},
+	}
+	runtimeOrder, err := e2eRuntimeClosure("meta", []string{"auth", "web"}, full)
+	if err != nil {
+		t.Fatalf("e2eRuntimeClosure error: %v", err)
+	}
+	wantRuntime := []string{"core", "task", "meta", "base", "auth", "web"}
+	if !reflect.DeepEqual(runtimeOrder, wantRuntime) {
+		t.Fatalf("e2eRuntimeClosure order = %#v, want %#v", runtimeOrder, wantRuntime)
+	}
+	_, err = e2eRuntimeClosure("meta", []string{"missing-host"}, full)
+	if err == nil || !strings.Contains(err.Error(), "hostModules") {
+		t.Fatalf("expected unknown hostModules error, got %v", err)
+	}
+	skipped, err := e2eRuntimeClosure("meta", []string{"", "meta", "web"}, full)
+	if err != nil {
+		t.Fatalf("e2eRuntimeClosure skip self/empty: %v", err)
+	}
+	if !reflect.DeepEqual(skipped, []string{"core", "task", "meta", "base", "auth", "web"}) {
+		t.Fatalf("e2eRuntimeClosure skip self/empty = %#v", skipped)
+	}
+	if _, err := topoClosureRoots([]string{"", "meta"}, full); err != nil {
+		t.Fatalf("topoClosureRoots empty root: %v", err)
+	}
+	withEmptyDep := map[string]*sourceModulePackage{
+		"core": {},
+		"meta": {Depends: []string{"", "core"}},
+	}
+	gotEmptyDep, err := topoClosureRoots([]string{"meta"}, withEmptyDep)
+	if err != nil {
+		t.Fatalf("topoClosureRoots empty depends entry: %v", err)
+	}
+	if !reflect.DeepEqual(gotEmptyDep, []string{"core", "meta"}) {
+		t.Fatalf("topoClosureRoots empty depends = %#v", gotEmptyDep)
+	}
+	if got := e2eHostModules(&sourceModulePackage{E2E: &packageE2E{HostModules: []string{" auth ", "web", "auth", ""}}}); !reflect.DeepEqual(got, []string{"auth", "web"}) {
+		t.Fatalf("e2eHostModules = %#v", got)
+	}
+
 	_, err = topoClosure("auth", map[string]*sourceModulePackage{"auth": {Depends: []string{"missing"}}})
 	if err == nil || !strings.Contains(err.Error(), "missing dependency") {
 		t.Fatalf("expected missing dependency error, got %v", err)
@@ -755,7 +801,7 @@ func TestInstallApplySeedConfigLoadErrors(t *testing.T) {
 
 	err = seedModuleIndexForE2E(ctx, missing, map[string]*sourceModulePackage{})
 	if err == nil || !strings.Contains(err.Error(), "load temp config") {
-		t.Fatalf("expected seed module index config load error, got %v", err)
+		t.Fatalf("expected seed module origin config load error, got %v", err)
 	}
 }
 
@@ -964,9 +1010,76 @@ func TestSeedModuleIndexForE2EAutoMigrateError(t *testing.T) {
 	}
 
 	err := seedModuleIndexForE2E(context.Background(), writeTempE2EConfig(t, t.TempDir()), map[string]*sourceModulePackage{})
-	if err == nil || !strings.Contains(err.Error(), "auto-migrate modmeta.ModuleIndex") {
+	if err == nil || !strings.Contains(err.Error(), "auto-migrate modmeta.ModuleSourceSnapshot") {
 		t.Fatalf("seedModuleIndexForE2E() error = %v, want auto-migrate failure", err)
 	}
+}
+
+func TestSeedModuleIndexForE2EUpsertError(t *testing.T) {
+	oldHook := newE2ERuntimeScopeHook
+	defer func() { newE2ERuntimeScopeHook = oldHook }()
+
+	root := t.TempDir()
+	modulesPath := filepath.Join(root, "modules")
+	if err := os.MkdirAll(filepath.Join(modulesPath, "auth"), 0o755); err != nil {
+		t.Fatalf("mkdir auth: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(modulesPath, "auth", "package.json"), []byte(`{"name":"@choysum-dev/auth","version":"1.0.0","choysum":{"moduleName":"auth","application":"auth"}}`), 0o644); err != nil {
+		t.Fatalf("write package.json: %v", err)
+	}
+	dbPath := filepath.Join(root, "seed-upsert.db")
+	db, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	if err := db.AutoMigrate(&modmeta.ModuleSourceSnapshot{}); err != nil {
+		t.Fatalf("auto migrate: %v", err)
+	}
+	if err := db.Exec(`
+CREATE TRIGGER block_module_source_snapshot_insert
+BEFORE INSERT ON meta_module_source_snapshot
+BEGIN
+  SELECT RAISE(ABORT, 'insert blocked');
+END;`).Error; err != nil {
+		t.Fatalf("create trigger: %v", err)
+	}
+
+	newE2ERuntimeScopeHook = func(ctx context.Context, configPath string) (scope.Scope, e2eRuntimeOptions, error) {
+		return &fixedDBE2EScope{db: db}, e2eRuntimeOptions{modulesPath: modulesPath}, nil
+	}
+
+	err = seedModuleIndexForE2E(context.Background(), writeTempE2EConfig(t, root), map[string]*sourceModulePackage{
+		"auth": {DirName: "auth"},
+	})
+	if err == nil || !strings.Contains(err.Error(), "upsert module origin") {
+		t.Fatalf("seedModuleIndexForE2E() error = %v, want upsert module origin", err)
+	}
+}
+
+type fixedDBE2EScope struct{ db *gorm.DB }
+
+func (s *fixedDBE2EScope) Run(fn func(scope.Scope) error) error { return fn(s) }
+func (s *fixedDBE2EScope) Transactor() scope.Transactor         { return fixedDBE2ETransactor{scope: s} }
+func (s *fixedDBE2EScope) Session() *scope.Session              { return &scope.Session{DB: s.db} }
+func (s *fixedDBE2EScope) WithContext(ctx context.Context) scope.Scope {
+	return s
+}
+func (s *fixedDBE2EScope) Context() context.Context { return context.Background() }
+func (s *fixedDBE2EScope) Logger() *slog.Logger     { return slog.Default() }
+
+type fixedDBE2ETransactor struct{ scope *fixedDBE2EScope }
+
+func (t fixedDBE2ETransactor) Do(ctx context.Context, opts scope.TransactionOptions, fn scope.TxFunc) error {
+	return fn(t.scope, nil)
+}
+func (t fixedDBE2ETransactor) Required(ctx context.Context, fn scope.TxFunc) error {
+	return fn(t.scope, nil)
+}
+func (t fixedDBE2ETransactor) RequiresNew(ctx context.Context, fn scope.TxFunc) error {
+	return scope.ErrRequiresNewUnsupported
+}
+func (t fixedDBE2ETransactor) Nested(ctx context.Context, fn scope.TxFunc) error {
+	return scope.ErrNestedUnsupported
 }
 
 type brokenAutoMigrateE2EScope struct{}

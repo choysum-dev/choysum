@@ -54,6 +54,7 @@ SPDX-License-Identifier: Apache-2.0
             :base-index="1"
             :virtualize="'auto'"
             :frameless="true"
+            @row-click="onTableRowClick"
           >
             <ChoyTableColumn v-if="showIndex" type="index" label="#" :vColumnProps="{ align: 'end', width: 44 }" />
             <slot />
@@ -117,6 +118,7 @@ SPDX-License-Identifier: Apache-2.0
             :base-index="1"
             :virtualize="'auto'"
             :frameless="true"
+            @row-click="onTableRowClick"
           >
             <ChoyTableColumn v-if="showIndex" type="index" label="#" :vColumnProps="{ align: 'end', width: 44 }" />
             <slot />
@@ -182,7 +184,7 @@ import ChoyTableColumn from '@/web/web/components/table/ChoyTableColumn.vue';
 import { useField } from '@/web/web/composables/useField';
 import type { UseField } from '@/web/web/composables/useField';
 import ChoyViewScope from '@/web/web/components/view/ChoyViewScope.vue';
-import type { SelectionExpose } from '@/web/web/components/view/listViewTypes';
+import type { RowEventHandlerParams, SelectionExpose } from '@/web/web/components/view/listViewTypes';
 import { createStoreByModel } from '@/web/web/stores/registry';
 import { useProvidedOnchange } from '@/web/web/composables/useOnchange';
 import { createTranslate } from '@/web/web/i18n';
@@ -198,6 +200,10 @@ import {
 const { _t } = createTranslate('web', { scope: 'web/components/field/ChoyManyToManyField' });
 
 defineOptions({ name: 'ChoyManyToManyField', inheritAttrs: false });
+
+const emit = defineEmits<{
+  (e: 'row-click', payload: RowEventHandlerParams): void;
+}>();
 
 type IsAny<T> = 0 extends 1 & T ? true : false;
 
@@ -442,6 +448,10 @@ function createRowKey(v: any) {
 
 function onRemove(i: number) {
   removeItemAt(i);
+}
+
+function onTableRowClick(payload: RowEventHandlerParams) {
+  emit('row-click', payload);
 }
 
 async function confirmAdd() {

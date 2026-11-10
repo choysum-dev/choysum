@@ -98,6 +98,7 @@ test('resolveSetupInitialValues: server defaults and browser timezone', () => {
     CountryCode: 'CN',
     CurrencyCode: 'CNY',
     Timezone: 'Europe/Berlin',
+    WithDemo: false,
   });
   const fallback = resolveSetupInitialValues({
     options: options(),

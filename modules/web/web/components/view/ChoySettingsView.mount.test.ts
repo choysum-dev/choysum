@@ -84,7 +84,9 @@ test('ChoySettingsView chrome and form-root field binding', async () => {
   expect(mounted.q('[data-testid=choy-settings-view]')).not.toBeNull();
   expect(mounted.q('[data-testid=settings-save]')).not.toBeNull();
   expect(mounted.q('[data-testid=settings-discard]')).not.toBeNull();
-  expect(mounted.q('[data-anchor="choy.settings.sheet"]')).not.toBeNull();
+  const sheet = mounted.q('[data-anchor="choy.settings.sheet"]') as HTMLElement | null;
+  expect(sheet).not.toBeNull();
+  expect(sheet!.className.split(/\s+/)).not.toContain('p-5');
   expect(mounted.text()).toContain('Sandbox Settings');
 
   const toggle = mounted.q('[data-testid=toggle-demo]') as HTMLElement | null;

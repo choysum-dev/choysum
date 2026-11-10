@@ -80,7 +80,7 @@ func TestLifecycleRuntimeOptionsFromScopeAndResolved(t *testing.T) {
 		t.Fatalf("runtimeOptionsFromScope(nil).compileBundleMode = %q, want %q", nilScopeOpts.compileBundleMode, defaults.BundleMode)
 	}
 
-	runtimeScope := newModuleIndexSyncScope("/workspace/modules", nil)
+	runtimeScope := newModuleSourceSnapshotSyncScope("/workspace/modules", nil)
 	runtimeScope.cfg.DistPath = "/workspace/dist"
 	runtimeScope.cfg.TmpPath = "/workspace/tmp"
 	runtimeScope.cfg.DefaultChoysumPath = "/workspace/.choysum"

@@ -47,6 +47,7 @@ import {
   choySearchQueryFromPayload,
   type ChoySearchQuery
 } from './searchViewHelpers';
+import { useSearchFirstFrameReporter } from './search/searchFirstFrame';
 
 defineOptions({ name: 'ChoySearchView', inheritAttrs: false });
 
@@ -91,6 +92,10 @@ const rawPropKeys = new Set(
 const hasExplicitKeywordProp = () => rawPropKeys.has('keyword');
 
 const boundStore = resolvePageStore(props.store ?? pageStore.value, 'ChoySearchView');
+
+const firstFrame = useSearchFirstFrameReporter(boundStore, {
+  initialEmit: () => !!props.initialEmit,
+});
 
 const effectivePlaceholder = computed(() => props.placeholder ?? _t('Search...'));
 
@@ -172,6 +177,7 @@ async function emitFirstFrameIfNeeded(): Promise<void> {
   const query = choySearchQueryFromPayload(payload ?? {});
   keyword.value = query.keyword;
   emit('query-update', query);
+  firstFrame.markEmitted();
   mounted.value = true;
 }
 
@@ -182,6 +188,7 @@ async function onDefaultsReady(defaults: NamedFilter[]): Promise<void> {
 
 onMounted(() => {
   if (!props.initialEmit) {
+    firstFrame.markNone();
     mounted.value = true;
   }
 });

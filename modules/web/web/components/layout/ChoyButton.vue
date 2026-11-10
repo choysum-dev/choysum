@@ -30,7 +30,7 @@ type ButtonVariant =
   | 'ghost'
   | 'destructive'
   | 'link';
-type ButtonSize = 'default' | 'sm' | 'lg' | 'icon';
+type ButtonSize = 'default' | 'sm' | 'lg' | 'icon' | 'xs' | 'icon-xs' | 'icon-sm' | 'icon-lg';
 
 /**
  * Public L1 button for custom pages (login and domain shells). Wraps L2 ui/button so

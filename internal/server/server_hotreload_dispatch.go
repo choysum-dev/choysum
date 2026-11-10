@@ -74,14 +74,19 @@ func (s *GRPCWebServer) dispatchWatchTarget(target registeredWatchTarget, file s
 	return nil
 }
 
-// hotreloadUpgradeContext attaches ProgressLine (when present) and QuietProgress
-// so nested lifecycle Upgrade demotes detail/boundary Info under the watch spinner.
-func hotreloadUpgradeContext(ctx context.Context, line *logutil.ProgressLine) context.Context {
+// hotreloadUpgradeContext attaches ProgressLine / ProgressTicker (when present)
+// and QuietProgress so nested lifecycle Upgrade reuses the watch spinner instead
+// of starting a second ticker on the same stderr line (which looks like a
+// double-speed flicker), and demotes detail/boundary Info under that spinner.
+func hotreloadUpgradeContext(ctx context.Context, line *logutil.ProgressLine, ticker *logutil.ProgressTicker) context.Context {
 	if ctx == nil {
 		ctx = context.Background()
 	}
 	if line != nil {
 		ctx = logutil.WithProgressLine(ctx, line)
+	}
+	if ticker != nil {
+		ctx = logutil.WithProgressTicker(ctx, ticker)
 	}
 	return logutil.WithQuietProgress(ctx)
 }
@@ -94,17 +99,16 @@ func (s *GRPCWebServer) handleWatchedModuleUpgrade(moduleName string, file strin
 		return xfmt.Errorf("runtime scope is nil")
 	}
 	s.runtimeScope.Logger().Debug("watch module upgrade started", "module", moduleName, "file", file)
+	s.hotreload.setProgressMessage(fmt.Sprintf("Upgrading module: %s", moduleName))
 	s.hotreload.progressMu.Lock()
 	line := s.hotreload.progressLine
-	if line != nil {
-		line.Update(0, fmt.Sprintf("Upgrading module: %s", moduleName))
-	}
+	ticker := s.hotreload.progressTicker
 	s.hotreload.progressMu.Unlock()
 	ctx := s.runtimeScope.Context()
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	ctx = hotreloadUpgradeContext(ctx, line)
+	ctx = hotreloadUpgradeContext(ctx, line, ticker)
 	if err := hotreloadModuleUpgrade(s, ctx, moduleName); err != nil {
 		return xfmt.Errorf("error running watch handler: %w", err)
 	}
@@ -148,12 +152,11 @@ func (s *GRPCWebServer) handleWatchedFileChangeResolved(resolvedFile string) err
 		return nil
 	}
 
-	s.hotreload.progressMu.Lock()
-	line := s.hotreload.progressLine
+	line := s.hotreload.beginProgressSpinner()
 	if line != nil {
-		line.Update(0, fmt.Sprintf("Detected change: %s", filepath.Base(resolvedFile)))
+		s.hotreload.setProgressMessage(fmt.Sprintf("Detected change: %s", filepath.Base(resolvedFile)))
 	}
-	s.hotreload.progressMu.Unlock()
+	defer s.hotreload.stopProgressSpinner()
 
 	dispatched, err := s.dispatchWatchHandlerResolved(resolvedFile)
 	if err != nil {
@@ -165,12 +168,7 @@ func (s *GRPCWebServer) handleWatchedFileChangeResolved(resolvedFile string) err
 		// watch Upgrade must not kill the server — soft-defer and auto-retry.
 		if isModuleLeaseConflict(err) {
 			s.hotreload.clearFingerprint(resolvedFile)
-			if line != nil {
-				s.hotreload.progressMu.Lock()
-				line.Clear()
-				line.Done("→", fmt.Sprintf("Deferred (module busy): %s", filepath.Base(resolvedFile)))
-				s.hotreload.progressMu.Unlock()
-			}
+			s.hotreload.finishProgress("→", fmt.Sprintf("Deferred (module busy): %s", filepath.Base(resolvedFile)))
 			s.runtimeScope.Logger().Warn(
 				"watch reload deferred: module management lease busy",
 				"file", resolvedFile,
@@ -182,49 +180,30 @@ func (s *GRPCWebServer) handleWatchedFileChangeResolved(resolvedFile string) err
 		}
 		// Evict fingerprint so the user can retry by saving again.
 		s.hotreload.clearFingerprint(resolvedFile)
-		if line != nil {
-			s.hotreload.progressMu.Lock()
-			line.Clear()
-			line.Done("✗", fmt.Sprintf("Hotreload failed: %s", filepath.Base(resolvedFile)))
-			s.hotreload.progressMu.Unlock()
-		}
+		s.hotreload.finishProgress("✗", fmt.Sprintf("Hotreload failed: %s", filepath.Base(resolvedFile)))
 		return xfmt.Errorf("Failed to dispatch watch handler: %w", err)
 	}
 	// Skip restart when no module matched the changed file (e.g. file outside
 	// any registered watch root).
 	if dispatched == 0 {
-		if line != nil {
-			s.hotreload.progressMu.Lock()
-			line.Done("→", fmt.Sprintf("Skipped (no module matched): %s", filepath.Base(resolvedFile)))
-			s.hotreload.progressMu.Unlock()
-		}
+		s.hotreload.finishProgress("→", fmt.Sprintf("Skipped (no module matched): %s", filepath.Base(resolvedFile)))
 		s.runtimeScope.Logger().Debug("watch file did not match any module, skipping restart", "file", resolvedFile)
 		return nil
 	}
 
-	if line != nil {
-		s.hotreload.progressMu.Lock()
-		line.Update(1, "Restarting runtime...")
-		s.hotreload.progressMu.Unlock()
-	}
+	s.hotreload.setProgressMessage("Restarting runtime...")
 	if err := s.restart(); err != nil {
 		// Evict fingerprint so the user can retry by saving again.
 		s.hotreload.clearFingerprint(resolvedFile)
-		if line != nil {
-			s.hotreload.progressMu.Lock()
-			line.Clear()
-			line.Done("✗", "Restart failed")
-			s.hotreload.progressMu.Unlock()
-		}
+		s.hotreload.finishProgress("✗", "Restart failed")
 		return xfmt.Errorf("Failed to restart server: %w", err)
 	}
 
 	s.hotreload.clearLeaseRetry(resolvedFile)
-	if line != nil {
-		s.hotreload.progressMu.Lock()
-		line.Done("✓", fmt.Sprintf("Hotreload done (dropped/coalesced: %d/%d)", s.watchDroppedCount(), s.watchCoalescedCount()))
-		s.hotreload.progressMu.Unlock()
-	}
+	// Success: erase the live spinner only. A permanent "✓ Hotreload done"
+	// line duplicates the Info log below and pollutes the TTY on every save;
+	// dropped/coalesced stay on the structured log.
+	s.hotreload.stopProgressSpinner()
 	s.runtimeScope.Logger().Info(
 		"watch reload completed",
 		"file", resolvedFile,

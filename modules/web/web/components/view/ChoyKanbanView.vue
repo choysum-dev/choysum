@@ -78,6 +78,9 @@ SPDX-License-Identifier: Apache-2.0
                 <slot name="overflow-actions" />
               </template>
             </ChoyPageTitleActions>
+
+            <!-- Same tray as title/⋮ (Form secondary parity) — no ActionBar separator. -->
+            <slot v-if="showActions" name="secondary-actions" />
           </template>
           <!-- Only mount the tray when the product view actually fills it (List parity). -->
           <template v-if="$slots['user-actions'] || $slots.header" #user-actions>
@@ -102,7 +105,7 @@ SPDX-License-Identifier: Apache-2.0
 
     <ChoyViewBusyHost
       :busy="boardBusy"
-      class="choy-kanban-view__body flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-hidden p-3"
+      class="choy-kanban-view__body flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-hidden"
     >
       <div v-if="laneCount > 0 && !isFlatBoard" class="md:hidden">
         <Select :model-value="mobileLaneKey" @update:model-value="onMobileLaneChange">
@@ -132,7 +135,7 @@ SPDX-License-Identifier: Apache-2.0
           <article
             v-for="card in lane.cards"
             :key="card.id"
-            class="choy-kanban-view__card cursor-pointer rounded-md border border-border bg-card p-3 shadow-xs outline-none transition-colors hover:bg-accent/40 focus-visible:ring-2 focus-visible:ring-ring"
+            class="choy-kanban-view__card flex flex-col cursor-pointer rounded-md border border-border bg-card p-3 shadow-xs outline-none transition-colors hover:bg-accent/40 focus-visible:ring-2 focus-visible:ring-ring"
             :data-card-id="card.id"
             tabindex="0"
             role="listitem"
@@ -320,6 +323,7 @@ import {
   useRegisterPageActionTarget,
 } from '@/web/web/composables/usePageContext';
 import { useChoyKanbanStoreEngine } from '@/web/web/composables/useChoyKanbanStoreEngine';
+import { useSearchFirstFrameHost } from '@/web/web/components/view/search/searchFirstFrame';
 import { ChoyMessage } from '../../composables/useChoyMessage';
 import { createTranslate } from '@/web/web/i18n';
 import {
@@ -450,6 +454,11 @@ function handleMoveError(error: unknown): void {
   ChoyMessage.error(message);
 }
 
+const firstFrame = useSearchFirstFrameHost(boundStore, {
+  // Header (and search slot outlet) only mounts when showHeader is true.
+  expectFirstFrame: () => !!props.showHeader && !!slots.search,
+});
+
 const engine = useChoyKanbanStoreEngine({
   store: boundStore,
   keywordFields: () => props.keywordFields,
@@ -462,6 +471,7 @@ const engine = useChoyKanbanStoreEngine({
   resolveMoveRecordId: props.resolveMoveRecordId,
   beforeBootstrap: props.beforeBootstrap,
   autoBootstrap: props.autoBootstrap,
+  firstFrameGate: firstFrame,
   onLoadError: props.onLoadError,
   onSearchError: props.onSearchError,
   onLoadMoreError: props.onLoadMoreError,
@@ -476,7 +486,7 @@ useRegisterPageActionTarget({
       // Kanban has no row selection chrome; IO export uses an empty selection.
       return [] as Array<{ Id?: string }>;
     },
-    refresh: () => engine.bootstrap(),
+    refresh: () => engine.refresh(),
   },
 });
 
@@ -548,7 +558,7 @@ function onCreate(): void {
 }
 
 function onRefresh(): void {
-  void engine.bootstrap().catch(() => undefined);
+  void engine.refresh().catch(() => undefined);
 }
 
 function onLaneLoadMore(lane: ChoyKanbanLane): void {
@@ -637,6 +647,7 @@ function onLaneDrop(event: DragEvent, lane: ChoyKanbanLane): void {
 
 defineExpose({
   bootstrap: () => engine.bootstrap(),
+  refresh: () => engine.refresh(),
   applySearch: engine.applySearch,
   syncLanes: () => engine.syncLanesFromController(),
   boardBusy,

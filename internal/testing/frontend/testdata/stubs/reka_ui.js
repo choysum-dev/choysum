@@ -83,6 +83,8 @@ export const CalendarNext = stub('CalendarNext');
 export const CalendarPrev = stub('CalendarPrev');
 export const CalendarRoot = stub('CalendarRoot');
 export const CheckboxIndicator = stub('CheckboxIndicator');
+export const ProgressIndicator = stub('ProgressIndicator');
+export const ProgressRoot = stub('ProgressRoot');
 /** Toggleable checkbox host so kit Checkbox v-model works under FE-QJS. */
 export const CheckboxRoot = defineComponent({
   name: 'CheckboxRoot',

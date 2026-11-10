@@ -199,14 +199,14 @@ func TestModuleUtilityHelpers(t *testing.T) {
 
 	payload := moduleIndexViewToPayload(moduleIndexView{
 		ModuleName:    " auth ",
-		OriginType:    " registry ",
-		OriginRef:     " auth@v1.2.3 ",
+		SourceType:    " registry ",
+		SourceRef:     " auth@v1.2.3 ",
 		Available:     true,
 		Version:       sql.NullString{String: " v1.2.3 ", Valid: true},
 		LocalPath:     sql.NullString{String: " /tmp/auth ", Valid: true},
 		InstallStatus: sql.NullString{},
 	})
-	if payload["moduleName"] != "auth" || payload["originType"] != "registry" || payload["originRef"] != "auth@v1.2.3" {
+	if payload["moduleName"] != "auth" || payload["sourceType"] != "registry" || payload["sourceRef"] != "auth@v1.2.3" {
 		t.Fatalf("unexpected payload identity fields: %#v", payload)
 	}
 	if payload["version"] != "v1.2.3" || payload["localPath"] != "/tmp/auth" || payload["installStatus"] != "" {
@@ -558,7 +558,7 @@ func (e *moduleQueryTestScope) FactoryInput() scope.FactoryInput {
 }
 
 func TestQueryModuleIndexViewsBranches(t *testing.T) {
-	t.Run("returns empty when module index table is missing", func(t *testing.T) {
+	t.Run("returns empty when module origin table is missing", func(t *testing.T) {
 		runtimeScope, _ := newModuleQueryTestScope(t)
 
 		views, hasIndex, err := queryModuleIndexViews(runtimeScope, "")
@@ -566,7 +566,7 @@ func TestQueryModuleIndexViewsBranches(t *testing.T) {
 			t.Fatalf("queryModuleIndexViews() error = %v", err)
 		}
 		if hasIndex {
-			t.Fatal("expected hasIndex=false when module index table is missing")
+			t.Fatal("expected hasIndex=false when module origin table is missing")
 		}
 		if len(views) != 0 {
 			t.Fatalf("expected empty views, got %#v", views)
@@ -575,16 +575,16 @@ func TestQueryModuleIndexViewsBranches(t *testing.T) {
 
 	t.Run("queries index without module table join", func(t *testing.T) {
 		runtimeScope, db := newModuleQueryTestScope(t)
-		if err := db.AutoMigrate(&modmeta.ModuleIndex{}); err != nil {
-			t.Fatalf("auto migrate module index: %v", err)
+		if err := db.AutoMigrate(&modmeta.ModuleSourceSnapshot{}); err != nil {
+			t.Fatalf("auto migrate module origin: %v", err)
 		}
-		if err := db.Create(&modmeta.ModuleIndex{
+		if err := db.Create(&modmeta.ModuleSourceSnapshot{
 			ModuleName: "auth",
-			OriginType: "local",
-			OriginRef:  "modules/auth",
+			SourceType: "local",
+			SourceRef:  "modules/auth",
 			Available:  true,
 		}).Error; err != nil {
-			t.Fatalf("seed module index row: %v", err)
+			t.Fatalf("seed module origin row: %v", err)
 		}
 
 		views, hasIndex, err := queryModuleIndexViews(runtimeScope, "")
@@ -604,16 +604,16 @@ func TestQueryModuleIndexViewsBranches(t *testing.T) {
 
 	t.Run("joins module install status when module table exists", func(t *testing.T) {
 		runtimeScope, db := newModuleQueryTestScope(t)
-		if err := db.AutoMigrate(&modmeta.ModuleIndex{}, &meta.Module{}); err != nil {
+		if err := db.AutoMigrate(&modmeta.ModuleSourceSnapshot{}, &meta.Module{}); err != nil {
 			t.Fatalf("auto migrate module tables: %v", err)
 		}
-		if err := db.Create(&modmeta.ModuleIndex{
+		if err := db.Create(&modmeta.ModuleSourceSnapshot{
 			ModuleName: "auth",
-			OriginType: "local",
-			OriginRef:  "modules/auth",
+			SourceType: "local",
+			SourceRef:  "modules/auth",
 			Available:  true,
 		}).Error; err != nil {
-			t.Fatalf("seed module index row: %v", err)
+			t.Fatalf("seed module origin row: %v", err)
 		}
 		if err := db.Create(&meta.Module{
 			Name:           "auth",
