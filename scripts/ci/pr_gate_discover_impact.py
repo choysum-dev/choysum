@@ -97,6 +97,26 @@ def has_smoke_spec(module):
     return (MODULES_ROOT / module / "e2e" / "smoke.spec.ts").is_file()
 
 
+def is_meta_reload_e2e_path(path: str) -> bool:
+    """Paths that should run meta e2e with the reload-failed scenario on PR gate."""
+    if path.startswith("modules/meta/e2e/"):
+        return True
+    if path == "modules/meta/service/models/module_operation.ts":
+        return True
+    if path == "modules/meta/web/views/ModuleCatalogOpDialog.vue":
+        return True
+    if path.startswith("internal/server/reload/"):
+        return True
+    if path.startswith("internal/defaultengine/quickjsruntime/module_management"):
+        return True
+    if path in {
+        "internal/module/ops/run.go",
+        "scripts/ci/run_e2e_with_retry.sh",
+    }:
+        return True
+    return False
+
+
 def classify_module_path(path, module_names):
     pure = PurePosixPath(path)
     parts = pure.parts
@@ -248,10 +268,13 @@ def pull_request_outputs(modules):
     go_test_hit = fallback_full
     docs_only = not fallback_full
 
+    meta_reload_e2e_hit = False
     for path in changed_paths:
         # Check before module-path handling so modules/**/*.go still arms go-test.
         if is_go_test_path(path):
             go_test_hit = True
+        if is_meta_reload_e2e_path(path):
+            meta_reload_e2e_hit = True
 
         module, kind = classify_module_path(path, module_names)
         if module is not None:
@@ -326,6 +349,16 @@ def pull_request_outputs(modules):
     direct_e2e_full_modules = {
         module for module in direct_e2e_modules if module in final_impacted
     }
+    # Reload bridge / Execute / ops.Run edits need meta e2e with reload-failed,
+    # not smoke-only, even when modules/meta/e2e/** was not touched.
+    if meta_reload_e2e_hit and "meta" in modules:
+        final_impacted.add("meta")
+        direct_e2e_full_modules.add("meta")
+        if docs_only:
+            docs_only = False
+            run_full = False
+            if reason == "docs-only":
+                reason = "meta-reload-e2e"
     # Smoke is the cheap fan-out path; skip modules already scheduled for full e2e.
     smoke_modules = {
         module

@@ -68,7 +68,7 @@ func TestCoverage_ModuleManagementConfigAndHelpers(t *testing.T) {
 			}
 		}),
 	))
-	_ = awaitModuleManagementJSON(t, engine, `$choysum.moduleManagement.reload()`)
+	_ = awaitModuleManagementJSON(t, engine, `$choysum.moduleManagement.reload({id: "coverage-reload"})`)
 
 	if err := (startedOpsHost{}).Close(); err != nil {
 		t.Fatalf("nil executor Close: %v", err)
@@ -552,7 +552,7 @@ func TestCoverage_ModuleManagementRemainingBranches(t *testing.T) {
 		return nil, errors.New("marshal boom")
 	}
 	reloadEngine := newTestQuickjsEngine(t, WithModuleManagement(base))
-	rejectContains(t, reloadEngine, `$choysum.moduleManagement.reload()`, "")
+	rejectContains(t, reloadEngine, `$choysum.moduleManagement.reload({id: "marshal-reload"})`, "")
 	quickjsMarshal = prevMarshal
 
 	// Close with non-nil executor Stop.

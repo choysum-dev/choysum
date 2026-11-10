@@ -193,6 +193,16 @@ SPDX-License-Identifier: Apache-2.0
               <span class="font-semibold text-foreground">{{ _t('Result:') }}</span>
               <span data-testid="module-op-result">{{ opStatus?.resultStatus }}</span>
             </div>
+            <div
+              v-if="opStatus?.ReloadTriggered"
+              class="flex flex-wrap gap-2 text-xs"
+              data-testid="module-op-reload"
+            >
+              <span class="font-semibold text-foreground">{{ _t('Reload:') }}</span>
+              <span class="text-foreground/80">{{
+                opStatus?.ReloadFailed ? _t('Trigger Failed') : _t('Triggered')
+              }}</span>
+            </div>
             <div v-if="opStatus?.summary" class="flex flex-wrap gap-2 text-xs">
               <span class="font-semibold text-foreground">{{ _t('Summary:') }}</span>
               <span class="text-foreground/80">{{ formatSummary(opStatus?.summary) }}</span>
@@ -230,14 +240,20 @@ SPDX-License-Identifier: Apache-2.0
         >
           {{ _t('Confirm') }}
         </ChoyButton>
-        <ChoyButton
-          v-else-if="step === 'result'"
-          type="button"
-          data-testid="module-op-done"
-          @click="close"
-        >
-          {{ _t('Done') }}
-        </ChoyButton>
+        <template v-else-if="step === 'result'">
+          <ChoyButton
+            v-if="opStatus?.ReloadFailed"
+            type="button"
+            variant="outline"
+            data-testid="module-op-reload-retry"
+            @click="onReloadRetry"
+          >
+            {{ _t('Retry page refresh') }}
+          </ChoyButton>
+          <ChoyButton type="button" data-testid="module-op-done" @click="close">
+            {{ _t('Done') }}
+          </ChoyButton>
+        </template>
       </div>
     </ChoyDialogContent>
   </ChoyDialog>
@@ -437,6 +453,12 @@ function onOpenChange(next: boolean) {
 
 function close() {
   open.value = false;
+}
+
+function onReloadRetry() {
+  if (typeof window !== 'undefined' && typeof window.location?.reload === 'function') {
+    window.location.reload();
+  }
 }
 
 async function onConfirm() {

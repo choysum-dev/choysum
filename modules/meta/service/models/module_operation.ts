@@ -396,26 +396,40 @@ export default class MetaModuleOperation extends BaseModel {
     if (runErr && !TERMINAL_OP_STATUSES.has(status)) {
       throw runErr;
     }
+    const phase = String(row.Phase || '').toLowerCase();
+    let outPhase = String(row.Phase || '');
     const reloadTriggered = !!row.ReloadTriggered;
     let reloadFailed = !!row.ReloadFailed;
-    // Only reload after a successful run in this invocation. Retries against an
-    // already-terminal row leave runErr set (ops.Run rejects non-queued/draft)
-    // so they must not schedule another process restart.
-    if (!runErr && reloadTriggered && !reloadFailed) {
+    // Gate on Phase=reloading so each successful op schedules at most one reload.
+    // Retries (runErr set / Phase already done) must not restart the process again.
+    if (!runErr && phase === 'reloading' && reloadTriggered && !reloadFailed) {
       try {
-        const reloadResult = (await bridge.reload()) as { failed?: boolean } | null | undefined;
+        const reloadResult = (await bridge.reload({ id })) as { failed?: boolean } | null | undefined;
         if (reloadResult && reloadResult.failed) {
-          await this.UpdateById(id, { ReloadFailed: true }, ['Id']);
+          await this.UpdateById(id, { ReloadFailed: true, Phase: 'done' }, ['Id']);
           reloadFailed = true;
+          outPhase = 'done';
+        } else {
+          await this.UpdateById(id, { Phase: 'done' }, ['Id']);
+          outPhase = 'done';
         }
       } catch {
         // Persist the failure so catalog ReloadWeb stays false and retries skip reload.
         try {
-          await this.UpdateById(id, { ReloadFailed: true }, ['Id']);
+          await this.UpdateById(id, { ReloadFailed: true, Phase: 'done' }, ['Id']);
         } catch {
           // Best-effort persist; still report failure in this response.
         }
         reloadFailed = true;
+        outPhase = 'done';
+      }
+    } else if (!runErr && phase === 'reloading' && reloadTriggered && reloadFailed) {
+      // e2e FORCE_RELOAD_FAILED (or prior mark): advance phase without calling reload.
+      try {
+        await this.UpdateById(id, { Phase: 'done' }, ['Id']);
+        outPhase = 'done';
+      } catch {
+        // Best-effort; response still reflects ReloadFailed.
       }
     }
     return {
@@ -423,7 +437,7 @@ export default class MetaModuleOperation extends BaseModel {
       Action: String(row.Action || ''),
       ModuleName: String(row.ModuleName || ''),
       Status: String(row.Status || ''),
-      Phase: String(row.Phase || ''),
+      Phase: outPhase,
       ErrorDomain: row.ErrorDomain != null ? String(row.ErrorDomain) : undefined,
       ErrorCode: row.ErrorCode != null ? String(row.ErrorCode) : undefined,
       ErrorMessage: row.ErrorMessage != null ? String(row.ErrorMessage) : undefined,

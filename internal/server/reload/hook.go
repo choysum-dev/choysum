@@ -17,6 +17,16 @@ func Register(fn func() error) {
 	current.Store(hookFunc(fn))
 }
 
+// Registered reports whether a non-nil restart hook is installed.
+func Registered() bool {
+	if v := current.Load(); v != nil {
+		if fn, ok := v.(hookFunc); ok && fn != nil {
+			return true
+		}
+	}
+	return false
+}
+
 func Trigger() error {
 	if v := current.Load(); v != nil {
 		if fn, ok := v.(hookFunc); ok && fn != nil {

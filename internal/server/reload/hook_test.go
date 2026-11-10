@@ -12,8 +12,19 @@ func TestTriggerWithoutRegisteredHookReturnsNil(t *testing.T) {
 	Register(nil)
 	t.Cleanup(func() { Register(nil) })
 
+	if Registered() {
+		t.Fatal("Registered() = true, want false with nil hook")
+	}
 	if err := Trigger(); err != nil {
 		t.Fatalf("Trigger() error = %v, want nil", err)
+	}
+}
+
+func TestRegisteredAfterRegister(t *testing.T) {
+	t.Cleanup(func() { Register(nil) })
+	Register(func() error { return nil })
+	if !Registered() {
+		t.Fatal("Registered() = false, want true")
 	}
 }
 

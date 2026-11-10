@@ -177,7 +177,7 @@ declare var $choysum: {
       errorCode?: string;
       errorMessage?: string;
     }>;
-    reload(): Promise<{ triggered: boolean; failed: boolean; error?: string }>;
+    reload(params: { id: string }): Promise<{ triggered: boolean; failed: boolean; error?: string }>;
     syncCatalog(params: { originType?: 'local' | 'registry' | 'all'; force?: boolean }): Promise<{
       ok: boolean;
       originType?: string;

@@ -2106,6 +2106,26 @@ msgctxt "web/views/ModuleCatalogOpDrawer"
 msgid "Data written; page did not refresh"
 msgstr "数据已写入；页面未刷新"
 
+#: web/views/ModuleCatalogOpDialog.vue
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Reload:"
+msgstr "重载："
+
+#: web/views/ModuleCatalogOpDialog.vue
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Retry page refresh"
+msgstr "重试刷新页面"
+
+#: web/views/ModuleCatalogOpDialog.vue
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Trigger Failed"
+msgstr "触发失败"
+
+#: web/views/ModuleCatalogOpDialog.vue
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Triggered"
+msgstr "已触发"
+
 #: web/views/ModuleCatalogOpDialog.vue:124
 msgctxt "web/views/ModuleCatalogOpDrawer"
 msgid "Done"

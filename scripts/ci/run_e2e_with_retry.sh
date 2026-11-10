@@ -7,6 +7,8 @@
 # Env:
 #   CHOYSUM_BIN, MODULE (required)
 #   E2E_EXTRA_ARGS       optional whitespace-separated CLI args after MODULE
+#   E2E_META_SCENARIO_MATRIX  when 1 and MODULE=meta and E2E_EXTRA_ARGS empty,
+#                            run default + reload-failed + result-failed + lock-conflict
 #   E2E_MAX_ATTEMPTS     positive integer, default 2
 #   E2E_ATTEMPT_TIMEOUT  GNU timeout duration per attempt, default 30m
 
@@ -42,6 +44,13 @@ extra_args=()
 if [[ -n "${E2E_EXTRA_ARGS:-}" ]]; then
   # Split on whitespace without pathname glob expansion.
   read -r -a extra_args <<< "${E2E_EXTRA_ARGS}"
+elif [[ "${MODULE}" == "meta" && "${E2E_META_SCENARIO_MATRIX:-}" == "1" ]]; then
+  extra_args=(
+    --scenario default
+    --scenario reload-failed
+    --scenario result-failed
+    --scenario lock-conflict
+  )
 fi
 
 attempt=1

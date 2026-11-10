@@ -761,36 +761,31 @@ async function runActionExpectReloadFailed(page: Page, moduleName: string, actio
 
   const completion = await waitForOperationTerminalState(page);
   if (completion === 'reloaded') {
-    await waitForModuleCatalog(page);
-  } else {
-    const reloadRow = dialog.locator('[data-testid="module-op-reload"]');
-    if ((await reloadRow.count()) === 0) {
-      throw new Error('expected reload status row to be present in reload-failed flow');
-    }
-    await expect(reloadRow).toHaveText(/Trigger Failed/i);
+    throw new Error('reload-failed scenario must not hard-refresh the page');
+  }
 
-    const resultTag = dialog.locator('[data-testid="module-op-result"]');
-    const resultText = ((await resultTag.textContent().catch(() => '')) || '').trim();
-    if (/FAILED/i.test(resultText)) {
-      throw new Error(`expected successful operation before reload failure, got result=${resultText}`);
-    }
+  const reloadRow = dialog.locator('[data-testid="module-op-reload"]');
+  await expect(reloadRow).toBeVisible({ timeout: 15000 });
+  await expect(reloadRow).toHaveText(/Trigger Failed/i);
 
-    const doneButton = page.getByRole('button', { name: 'Done' });
-    const doneVisible = await doneButton.isVisible().catch(() => false);
-    if (doneVisible) {
-      await doneButton.click();
-      await dialog.waitFor({ state: 'hidden', timeout: 15000 }).catch(() => null);
-    }
+  const resultTag = dialog.locator('[data-testid="module-op-result"]');
+  const resultText = ((await resultTag.textContent().catch(() => '')) || '').trim();
+  if (/FAILED/i.test(resultText)) {
+    throw new Error(`expected successful operation before reload failure, got result=${resultText}`);
+  }
+
+  const retryButton = page.getByTestId('module-op-reload-retry');
+  await expect(retryButton).toBeVisible();
+
+  const doneButton = page.getByRole('button', { name: 'Done' });
+  const doneVisible = await doneButton.isVisible().catch(() => false);
+  if (doneVisible) {
+    await doneButton.click();
+    await dialog.waitFor({ state: 'hidden', timeout: 15000 }).catch(() => null);
   }
 
   const expectedStatus = action === 'uninstall' ? 'Not Installed' : 'Installed';
-  if (completion === 'reloaded') {
-    await waitForModuleStatus(page, moduleName, expectedStatus);
-    return;
-  }
-
-  // When reload is intentionally forced to fail, catalog data may remain stale
-  // until a later snapshot refresh. Keep status verification best-effort.
+  // Catalog may stay stale until a later snapshot refresh when reload is forced to fail.
   await hasExpectedModuleStatus(page, moduleName, expectedStatus).catch(() => false);
 }
 
