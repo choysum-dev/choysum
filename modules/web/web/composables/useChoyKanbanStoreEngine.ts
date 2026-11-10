@@ -22,10 +22,8 @@ import {
   shouldRecoverStaleKanbanSearch,
   shouldRestoreKanbanMove,
 } from '@/web/web/components/view/kanbanStoreHelpers';
-import {
-  finishInitialSearchBoundLoad,
-  shouldDeferToSearchFirstFrame,
-} from '@/web/web/components/view/viewFirstFrame';
+import { finishInitialSearchBoundLoad } from '@/web/web/components/view/viewFirstFrame';
+import type { SearchFirstFrameGate } from '@/web/web/components/view/search/searchFirstFrame';
 
 export type ChoyKanbanStoreEngineOptions = {
   store: WebModelStore<any>;
@@ -48,9 +46,11 @@ export type ChoyKanbanStoreEngineOptions = {
   autoBootstrap?: boolean;
   /**
    * When true, skip empty first apply and wait for Search first-frame
-   * query-update (List parity when ChoySearchView fills the search slot).
+   * query-update (legacy; prefer firstFrameGate).
    */
   deferFirstFrame?: MaybeRefOrGetter<boolean | undefined>;
+  /** Preferred: gate from useSearchFirstFrameHost. */
+  firstFrameGate?: SearchFirstFrameGate | null;
   onLoadError?: (error: unknown) => void;
   onSearchError?: (error: unknown) => void;
   onLoadMoreError?: (error: unknown) => void;
@@ -310,9 +310,8 @@ export function useChoyKanbanStoreEngine(opts: ChoyKanbanStoreEngineOptions) {
       }
       await finishInitialSearchBoundLoad({
         getLastSearchQuery: () => lastSearchQuery,
-        deferToSearch: shouldDeferToSearchFirstFrame({
-          hasSearchSlot: !!toValue(opts.deferFirstFrame),
-        }),
+        gate: opts.firstFrameGate,
+        deferToSearch: !!toValue(opts.deferFirstFrame),
         applyEmpty: () =>
           controller.apply(keywordFields?.length ? { keywordFields } : {}),
         afterEmpty: syncLanesFromController,

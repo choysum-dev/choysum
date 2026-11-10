@@ -1,21 +1,24 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
+import { toValue, type MaybeRefOrGetter } from 'vue';
+import type { SearchFirstFrameGate } from './search/searchFirstFrame';
+
 /**
- * Shared first-frame load contract for search-bound collection views
- * (List / Kanban / Chart).
- *
- * ChoySearchView emits exactly one mount-time `query-update` after UserFilter
- * defaults are ready. Hosts that mount it must not apply an empty query first,
- * or the board will double-fetch (empty apply + first-frame search).
+ * Shared first-frame load helpers for search-bound collection views
+ * (List / Kanban / Chart). Prefer the Search first-frame gate from
+ * `useSearchFirstFrameHost` / `useSearchFirstFrameReporter`; fallbacks cover
+ * hosts that have not joined the protocol yet.
  */
 
 export type DeferToSearchFirstFrameOpts = {
-  /** List: `:searchView` prop compared by identity to ChoySearchView. */
+  /** Preferred: gate from useSearchFirstFrameHost. */
+  gate?: SearchFirstFrameGate | null;
+  /** List fallback: `:searchView` prop compared by identity to ChoySearchView. */
   searchView?: unknown;
-  /** List: the ChoySearchView component reference closed over by the host. */
+  /** List fallback: the ChoySearchView component reference. */
   canonicalSearchView?: unknown;
-  /** Kanban/Chart: true when the `#search` slot is filled. */
+  /** Kanban/Chart fallback: true when the `#search` slot is filled. */
   hasSearchSlot?: boolean;
 };
 
@@ -24,6 +27,7 @@ export type DeferToSearchFirstFrameOpts = {
  * Search's first-frame `query-update`.
  */
 export function shouldDeferToSearchFirstFrame(opts: DeferToSearchFirstFrameOpts): boolean {
+  if (opts.gate) return opts.gate.shouldDefer.value;
   if (opts.hasSearchSlot) return true;
   if (opts.searchView != null && opts.canonicalSearchView != null) {
     return opts.searchView === opts.canonicalSearchView;
@@ -41,7 +45,7 @@ export function shouldDeferViewFirstFrame(searchView: unknown, canonicalSearchVi
 
 /**
  * Initial load for search-bound collection views.
- * - deferToSearch: no empty apply; first applySearch / onSearch owns the load
+ * - deferToSearch / gate.shouldDefer: no empty apply; first applySearch owns the load
  *   (unless a search query already landed).
  * - otherwise: applyEmpty once, then optional afterEmpty (e.g. kanban lane sync).
  */
@@ -49,10 +53,14 @@ export async function finishInitialSearchBoundLoad(opts: {
   getLastSearchQuery?: () => unknown;
   applyEmpty: () => Promise<void>;
   afterEmpty?: () => Promise<void>;
-  deferToSearch?: boolean;
+  deferToSearch?: MaybeRefOrGetter<boolean>;
+  gate?: SearchFirstFrameGate | null;
 }): Promise<void> {
   if (opts.getLastSearchQuery?.()) return;
-  if (opts.deferToSearch) return;
+  const defer = opts.gate
+    ? opts.gate.shouldDefer.value
+    : !!toValue(opts.deferToSearch);
+  if (defer) return;
   await opts.applyEmpty();
   if (opts.afterEmpty) await opts.afterEmpty();
 }

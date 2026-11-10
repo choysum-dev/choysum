@@ -1,0 +1,170 @@
+// SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+// SPDX-License-Identifier: Apache-2.0
+
+import {
+  computed,
+  getCurrentScope,
+  onScopeDispose,
+  provide,
+  ref,
+  toValue,
+  watch,
+  type ComputedRef,
+  type InjectionKey,
+  type MaybeRefOrGetter,
+  type Ref,
+} from 'vue';
+
+/**
+ * Search-owned first-frame protocol for collection views (List / Kanban / Chart).
+ *
+ * Why a storeId registry (not only provide/inject): product pages often put
+ * ChoySearchView in a parent-owned `#search` slot. That vnode's inject parent is
+ * the page, not ChoyKanbanView/ChoyChartView — so a provide on the collection
+ * view never reaches Search. Host + Reporter both join the same gate by storeId.
+ *
+ * Contract:
+ * - Host calls useSearchFirstFrameHost when it may mount Search that initialEmits.
+ * - Reporter (ChoySearchView) calls useSearchFirstFrameReporter and markEmitted
+ *   on the single mount-time query-update (or markNone when initialEmit is false).
+ * - Bootstrap uses gate.shouldDefer instead of inventing per-view defer rules.
+ */
+
+export type SearchFirstFramePhase = 'none' | 'pending' | 'emitted';
+
+export type SearchFirstFrameGate = {
+  readonly phase: Ref<SearchFirstFramePhase>;
+  /** Skip empty bootstrap apply; Search first-frame owns the first load. */
+  readonly shouldDefer: ComputedRef<boolean>;
+  markEmitted: () => void;
+  markNone: () => void;
+  /** Host updates whether a first-frame emit is expected. */
+  setExpectFirstFrame: (expect: boolean) => void;
+};
+
+export const SearchFirstFrameKey: InjectionKey<SearchFirstFrameGate> = Symbol.for(
+  'choysum.searchFirstFrame',
+);
+
+type RegistryEntry = {
+  gate: SearchFirstFrameGate;
+  hosts: number;
+  reporters: number;
+};
+
+const registry = new Map<string, RegistryEntry>();
+
+function createGate(expectFirstFrame: boolean): SearchFirstFrameGate {
+  const phase = ref<SearchFirstFramePhase>(expectFirstFrame ? 'pending' : 'none');
+  return {
+    phase,
+    shouldDefer: computed(() => phase.value === 'pending' || phase.value === 'emitted'),
+    markEmitted() {
+      if (phase.value === 'pending') phase.value = 'emitted';
+    },
+    markNone() {
+      phase.value = 'none';
+    },
+    setExpectFirstFrame(expect: boolean) {
+      if (expect) {
+        if (phase.value === 'none') phase.value = 'pending';
+        return;
+      }
+      if (phase.value === 'pending') phase.value = 'none';
+    },
+  };
+}
+
+function storeKey(store: { storeId?: string } | null | undefined): string {
+  return String(store?.storeId ?? '').trim();
+}
+
+function acquire(
+  key: string,
+  role: 'host' | 'reporter',
+  expectFirstFrame: boolean,
+): SearchFirstFrameGate {
+  let entry = registry.get(key);
+  if (!entry) {
+    entry = { gate: createGate(expectFirstFrame), hosts: 0, reporters: 0 };
+    registry.set(key, entry);
+  } else if (role === 'host') {
+    entry.gate.setExpectFirstFrame(expectFirstFrame);
+  }
+  if (role === 'host') entry.hosts += 1;
+  else entry.reporters += 1;
+  return entry.gate;
+}
+
+function release(key: string, role: 'host' | 'reporter'): void {
+  const entry = registry.get(key);
+  if (!entry) return;
+  if (role === 'host') entry.hosts = Math.max(0, entry.hosts - 1);
+  else entry.reporters = Math.max(0, entry.reporters - 1);
+  if (entry.hosts === 0 && entry.reporters === 0) {
+    registry.delete(key);
+  }
+}
+
+/**
+ * Collection view host: join (and provide) the first-frame gate for this store.
+ */
+export function useSearchFirstFrameHost(
+  store: { storeId?: string } | null | undefined,
+  opts: { expectFirstFrame: MaybeRefOrGetter<boolean> },
+): SearchFirstFrameGate {
+  const key = storeKey(store);
+  const expectNow = () => !!toValue(opts.expectFirstFrame);
+  const gate = key ? acquire(key, 'host', expectNow()) : createGate(expectNow());
+
+  if (key && getCurrentScope()) {
+    onScopeDispose(() => release(key, 'host'));
+  }
+
+  if (getCurrentScope()) {
+    watch(
+      () => !!toValue(opts.expectFirstFrame),
+      (v) => gate.setExpectFirstFrame(v),
+    );
+  }
+
+  provide(SearchFirstFrameKey, gate);
+  return gate;
+}
+
+/**
+ * ChoySearchView: attach to the host gate (by storeId) and report first-frame emit.
+ */
+export function useSearchFirstFrameReporter(
+  store: { storeId?: string } | null | undefined,
+  opts: { initialEmit: MaybeRefOrGetter<boolean> },
+): { markEmitted: () => void; markNone: () => void } {
+  const key = storeKey(store);
+  const initialEmit = () => !!toValue(opts.initialEmit);
+  const gate = key ? acquire(key, 'reporter', initialEmit()) : createGate(initialEmit());
+
+  if (key && getCurrentScope()) {
+    onScopeDispose(() => release(key, 'reporter'));
+  }
+
+  if (!initialEmit()) {
+    gate.markNone();
+  } else {
+    gate.setExpectFirstFrame(true);
+  }
+
+  return {
+    markEmitted: () => gate.markEmitted(),
+    markNone: () => gate.markNone(),
+  };
+}
+
+/** Test / diagnostics: clear the registry between cases. */
+export function resetSearchFirstFrameRegistryForTests(): void {
+  registry.clear();
+}
+
+/** Test helper: peek gate without acquiring. */
+export function peekSearchFirstFrameGateForTests(storeId: string): SearchFirstFrameGate | null {
+  return registry.get(String(storeId || '').trim())?.gate ?? null;
+}

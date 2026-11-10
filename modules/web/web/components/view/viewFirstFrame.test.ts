@@ -1,11 +1,13 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
+import { ref, computed } from 'vue';
 import {
   finishInitialSearchBoundLoad,
   shouldDeferToSearchFirstFrame,
   shouldDeferViewFirstFrame,
 } from './viewFirstFrame';
+import type { SearchFirstFrameGate } from './search/searchFirstFrame';
 
 test('shouldDeferToSearchFirstFrame: search slot defers', () => {
   expect(shouldDeferToSearchFirstFrame({ hasSearchSlot: true })).toBe(true);
@@ -72,4 +74,38 @@ test('finishInitialSearchBoundLoad: without defer applies empty then afterEmpty'
     },
   });
   expect(calls).toEqual(['empty', 'after']);
+});
+
+test('shouldDeferToSearchFirstFrame / finishInitial prefer gate', async () => {
+  const phase = ref<'none' | 'pending' | 'emitted'>('pending');
+  const gate = {
+    phase,
+    shouldDefer: computed(() => phase.value === 'pending' || phase.value === 'emitted'),
+    markEmitted: () => {
+      phase.value = 'emitted';
+    },
+    markNone: () => {
+      phase.value = 'none';
+    },
+    setExpectFirstFrame: () => undefined,
+  } as SearchFirstFrameGate;
+
+  expect(shouldDeferToSearchFirstFrame({ gate, hasSearchSlot: false })).toBe(true);
+  let applied = false;
+  await finishInitialSearchBoundLoad({
+    gate,
+    applyEmpty: async () => {
+      applied = true;
+    },
+  });
+  expect(applied).toBe(false);
+
+  gate.markNone();
+  await finishInitialSearchBoundLoad({
+    gate,
+    applyEmpty: async () => {
+      applied = true;
+    },
+  });
+  expect(applied).toBe(true);
 });

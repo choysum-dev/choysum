@@ -323,6 +323,7 @@ import {
   useRegisterPageActionTarget,
 } from '@/web/web/composables/usePageContext';
 import { useChoyKanbanStoreEngine } from '@/web/web/composables/useChoyKanbanStoreEngine';
+import { useSearchFirstFrameHost } from '@/web/web/components/view/search/searchFirstFrame';
 import { ChoyMessage } from '../../composables/useChoyMessage';
 import { createTranslate } from '@/web/web/i18n';
 import {
@@ -453,6 +454,10 @@ function handleMoveError(error: unknown): void {
   ChoyMessage.error(message);
 }
 
+const firstFrame = useSearchFirstFrameHost(boundStore, {
+  expectFirstFrame: () => !!slots.search,
+});
+
 const engine = useChoyKanbanStoreEngine({
   store: boundStore,
   keywordFields: () => props.keywordFields,
@@ -465,8 +470,7 @@ const engine = useChoyKanbanStoreEngine({
   resolveMoveRecordId: props.resolveMoveRecordId,
   beforeBootstrap: props.beforeBootstrap,
   autoBootstrap: props.autoBootstrap,
-  // ChoySearchView first-frame owns the initial apply when the search slot is filled.
-  deferFirstFrame: () => !!slots.search,
+  firstFrameGate: firstFrame,
   onLoadError: props.onLoadError,
   onSearchError: props.onSearchError,
   onLoadMoreError: props.onLoadMoreError,

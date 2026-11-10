@@ -176,6 +176,13 @@ export {
   shouldDeferViewFirstFrame,
   type DeferToSearchFirstFrameOpts,
 } from './components/view/viewFirstFrame';
+export {
+  useSearchFirstFrameHost,
+  useSearchFirstFrameReporter,
+  SearchFirstFrameKey,
+  type SearchFirstFrameGate,
+  type SearchFirstFramePhase,
+} from './components/view/search/searchFirstFrame';
 export { useChoyKanbanStoreEngine } from './composables/useChoyKanbanStoreEngine';
 export type { ChoyKanbanStoreEngineOptions } from './composables/useChoyKanbanStoreEngine';
 export {

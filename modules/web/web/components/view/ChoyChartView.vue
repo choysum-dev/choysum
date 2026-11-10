@@ -515,6 +515,7 @@ import { createChartController } from '@/web/web/controllers/chartController';
 import { resolvePageStore, useHostPageTitleInView } from '@/web/web/composables/usePageContext';
 import { awaitFieldSelection } from '@/web/web/query/utils/registry/fieldReady';
 import { shouldDeferToSearchFirstFrame } from '@/web/web/components/view/viewFirstFrame';
+import { useSearchFirstFrameHost } from '@/web/web/components/view/search/searchFirstFrame';
 import { exportMetrics } from '@/web/web/query/utils/registry/metric';
 import {
   availableChartTypes,
@@ -625,6 +626,10 @@ const props = withDefaults(
 );
 
 const slots = useSlots();
+const store = resolvePageStore(props.store, 'ChoyChartView');
+const firstFrame = useSearchFirstFrameHost(store, {
+  expectFirstFrame: () => !!slots.search,
+});
 const { pageTitle, pageTitleId, pageTitleActionsIo } = useHostPageTitleInView(
   () => props.showHeader,
 );
@@ -656,7 +661,6 @@ const emit = defineEmits<{
   'query-update': [query: ChoySearchQuery];
 }>();
 
-const store = resolvePageStore(props.store, 'ChoyChartView');
 const controller = createChartController(store as WebModelStore<BaseModel>);
 
 const categories = ref<string[]>([]);
@@ -777,8 +781,8 @@ async function bootstrap(): Promise<void> {
   if (props.beforeBootstrap) await props.beforeBootstrap();
   await awaitFieldSelection(store, { requireNonEmpty: false });
   initMetricOptions();
-  // Search slot: ChoySearchView first-frame owns the initial apply (List/Kanban parity).
-  if (shouldDeferToSearchFirstFrame({ hasSearchSlot: !!slots.search })) {
+  // Search first-frame protocol: skip empty apply when Search owns the first load.
+  if (shouldDeferToSearchFirstFrame({ gate: firstFrame })) {
     return;
   }
   try {
