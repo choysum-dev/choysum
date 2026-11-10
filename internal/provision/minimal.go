@@ -6,11 +6,13 @@ package provision
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"os"
 	"time"
 
 	"github.com/choysum-dev/choysum/internal/logger"
 	"github.com/choysum-dev/choysum/internal/module/lifecycle"
+	"github.com/choysum-dev/choysum/internal/module/ops"
 	"github.com/choysum-dev/choysum/internal/module/plan"
 	configpkg "github.com/choysum-dev/choysum/pkg/config"
 	"github.com/choysum-dev/choysum/pkg/jsexecutor"
@@ -43,6 +45,10 @@ type InstallFunc func(
 // ExecutorFactory builds the compiler executor used during provision install.
 type ExecutorFactory func(scope.Scope) (jsexecutor.JsExecutor, error)
 
+// CatalogSeedFunc syncs source snapshots and materializes meta_module_catalog
+// after a successful minimal install (overridable in tests).
+type CatalogSeedFunc func(ctx context.Context, runtimeScope scope.Scope, lockerFactory statepkg.LockerFactory) error
+
 // Options configures ProvisionMinimal. Zero values use production defaults.
 type Options struct {
 	// InstallTimeout bounds the install (and executor) work. Zero uses
@@ -54,6 +60,8 @@ type Options struct {
 	NewExecutor ExecutorFactory
 	// LockerFactory overrides the system:init lease locker (tests).
 	LockerFactory statepkg.LockerFactory
+	// SeedCatalog overrides the post-install catalog materialize (tests).
+	SeedCatalog CatalogSeedFunc
 }
 
 // Result describes the outcome of ProvisionMinimal.
@@ -171,6 +179,12 @@ func ProvisionMinimal(ctx context.Context, runtimeScope scope.Scope, opts Option
 		return Result{}, xfmt.Errorf("provision install %s: %w", req.Input, err)
 	}
 
+	// First-run install goes through lifecycle.InstallModule, not ops.Run, so the
+	// post-meta catalog rewrite in ops never runs. Seed local+registry snapshots
+	// and materialize here so /web/meta/modules is not empty until a manual sync.
+	// Soft-fail: install already succeeded (same policy as ops after meta install).
+	seedCatalogAfterMinimalInstall(installCtx, installScope, opts, log)
+
 	if err := checkProvisionLeaseRenew(handle); err != nil {
 		return Result{}, errors.Join(ErrLeaseLost, err)
 	}
@@ -196,6 +210,29 @@ func ProvisionMinimal(ctx context.Context, runtimeScope scope.Scope, opts Option
 		log.Info("minimal install finished; waiting for initial setup", "phase", string(phase), "root", MinimalRootModule)
 	}
 	return Result{Skipped: false, Phase: phase}, nil
+}
+
+func seedCatalogAfterMinimalInstall(ctx context.Context, runtimeScope scope.Scope, opts Options, log *slog.Logger) {
+	lockerFactory := opts.LockerFactory
+	if lockerFactory == nil {
+		lockerFactory = defaultLockerFactory
+	}
+	seed := opts.SeedCatalog
+	if seed == nil {
+		seed = defaultSeedCatalogAfterMinimalInstall
+	}
+	if err := seed(ctx, runtimeScope, lockerFactory); err != nil && log != nil {
+		log.Warn("provision: catalog seed after minimal install failed", "error", err)
+	}
+}
+
+func defaultSeedCatalogAfterMinimalInstall(ctx context.Context, runtimeScope scope.Scope, lockerFactory statepkg.LockerFactory) error {
+	host := &ops.Ops{
+		Scope:         runtimeScope,
+		LockerFactory: lockerFactory,
+	}
+	_, err := host.SyncSourceSnapshotsThenMaterialize(ctx, "all")
+	return err
 }
 
 type bootstrapModuleInstallTimeoutInput interface {

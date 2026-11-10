@@ -84,6 +84,7 @@ func TestProvisionMinimalInstallsWebMinimalAndStaysSetupPending(t *testing.T) {
 	createMetaModuleTable(t, db)
 	createAuthAppSettingTable(t, db)
 	var sawReq lifecycle.InstallModuleRequest
+	var seedCalls int
 	result, err := ProvisionMinimal(context.Background(), runtimeScope, Options{
 		InstallTimeout: time.Minute,
 		LockerFactory:  func(scope.Scope) statepkg.Locker { return &okLocker{} },
@@ -95,6 +96,10 @@ func TestProvisionMinimalInstallsWebMinimalAndStaysSetupPending(t *testing.T) {
 			insertAuthModule(t, db, meta.Installed)
 			return nil
 		},
+		SeedCatalog: func(context.Context, scope.Scope, statepkg.LockerFactory) error {
+			seedCalls++
+			return errors.New("seed boom")
+		},
 	})
 	if err != nil {
 		t.Fatalf("ProvisionMinimal: %v", err)
@@ -104,6 +109,9 @@ func TestProvisionMinimalInstallsWebMinimalAndStaysSetupPending(t *testing.T) {
 	}
 	if sawReq.Input != "web" || sawReq.WithDemo || sawReq.WebShellProfile != plan.WebShellProfileMinimal {
 		t.Fatalf("InstallModule request=%+v", sawReq)
+	}
+	if seedCalls != 1 {
+		t.Fatalf("SeedCatalog calls=%d want 1", seedCalls)
 	}
 
 	var count int64
