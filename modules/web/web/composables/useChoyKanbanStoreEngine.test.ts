@@ -397,6 +397,164 @@ test('refreshFromQueryState rethrows apply failures', async () => {
   mounted.unmount();
 });
 
+test('refreshFromQueryState recovers when a newer refresh finishes first', async () => {
+  const s = store();
+  s.fieldsMetadata = { Title: { type: 'varchar' } };
+
+  const Harness = defineComponent({
+    name: 'KanbanEngineQueryStateRecoverHarness',
+    setup() {
+      return useChoyKanbanStoreEngine({
+        store: s,
+        autoBootstrap: false,
+        deferFirstFrame: false,
+      });
+    },
+    render() {
+      return h('div');
+    },
+  });
+
+  const mounted = mountApp(Harness as any);
+  await flushPromises();
+  const engine = mounted.root;
+
+  let applies = 0;
+  engine.controller.apply = (async () => {
+    applies += 1;
+  }) as any;
+  engine.controller.setKeywordFields = async () => undefined;
+  await engine.bootstrap();
+  await flushPromises();
+  const afterBootstrap = applies;
+
+  engine.controller.apply = (async () => {
+    applies += 1;
+    if (applies === afterBootstrap + 1) {
+      await new Promise((r) => setTimeout(r, 30));
+    }
+  }) as any;
+
+  const first = engine.refresh();
+  await new Promise((r) => setTimeout(r, 5));
+  const second = engine.refresh();
+  await Promise.all([first, second]);
+  // first apply + second apply + stale recover apply
+  expect(applies).toBe(afterBootstrap + 3);
+
+  mounted.unmount();
+});
+
+test('refreshFromQueryState recover path rethrows failures', async () => {
+  const s = store();
+  s.fieldsMetadata = { Title: { type: 'varchar' } };
+  const errors: unknown[] = [];
+
+  const Harness = defineComponent({
+    name: 'KanbanEngineQueryStateRecoverErrHarness',
+    setup() {
+      return useChoyKanbanStoreEngine({
+        store: s,
+        autoBootstrap: false,
+        deferFirstFrame: false,
+        onSearchError: (e) => errors.push(e),
+      });
+    },
+    render() {
+      return h('div');
+    },
+  });
+
+  const mounted = mountApp(Harness as any);
+  await flushPromises();
+  const engine = mounted.root;
+
+  let applies = 0;
+  engine.controller.apply = (async () => {
+    applies += 1;
+  }) as any;
+  engine.controller.setKeywordFields = async () => undefined;
+  await engine.bootstrap();
+  await flushPromises();
+  const afterBootstrap = applies;
+
+  engine.controller.apply = (async () => {
+    applies += 1;
+    if (applies === afterBootstrap + 1) {
+      await new Promise((r) => setTimeout(r, 30));
+      return;
+    }
+    if (applies === afterBootstrap + 2) return;
+    throw new Error('recover qs boom');
+  }) as any;
+
+  const first = engine.refresh();
+  await new Promise((r) => setTimeout(r, 5));
+  const second = engine.refresh();
+
+  let threw: unknown = null;
+  await Promise.all([
+    first.then(
+      () => undefined,
+      (e: unknown) => {
+        threw = e;
+      },
+    ),
+    second,
+  ]);
+  expect(String(threw)).toContain('recover qs boom');
+  expect(errors.some((e) => String(e).includes('recover qs boom'))).toBe(true);
+
+  mounted.unmount();
+});
+
+test('refreshFromQueryState skips sync when superseded while still in flight', async () => {
+  const s = store();
+  s.fieldsMetadata = { Title: { type: 'varchar' } };
+
+  const Harness = defineComponent({
+    name: 'KanbanEngineQueryStateStaleHarness',
+    setup() {
+      return useChoyKanbanStoreEngine({
+        store: s,
+        autoBootstrap: false,
+        deferFirstFrame: false,
+      });
+    },
+    render() {
+      return h('div');
+    },
+  });
+
+  const mounted = mountApp(Harness as any);
+  await flushPromises();
+  const engine = mounted.root;
+
+  let applies = 0;
+  engine.controller.apply = (async () => {
+    applies += 1;
+  }) as any;
+  engine.controller.setKeywordFields = async () => undefined;
+  await engine.bootstrap();
+  await flushPromises();
+  const afterBootstrap = applies;
+
+  engine.controller.apply = (async () => {
+    applies += 1;
+    await new Promise((r) => setTimeout(r, 25));
+  }) as any;
+
+  const first = engine.refresh();
+  await new Promise((r) => setTimeout(r, 5));
+  const second = engine.refresh();
+  await Promise.all([first, second]);
+  // Both applies run; the first is superseded while the second is still in flight
+  // (no recover), so only two post-bootstrap applies.
+  expect(applies).toBe(afterBootstrap + 2);
+
+  mounted.unmount();
+});
+
 test('applySearch reports apply failures without rejecting (emit-safe)', async () => {
   const s = store();
   s.fieldsMetadata = { Title: { type: 'varchar' } };

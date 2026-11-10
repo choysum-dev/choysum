@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { defineComponent, h } from 'vue';
+import { defineComponent, h, ref } from 'vue';
 import { flushPromises, mountApp } from '@/web/web/__tests__/mountApp';
 import {
   peekSearchFirstFrameGateForTests,
@@ -177,5 +177,129 @@ test('non-expecting host does not clear another host pending first-frame', async
   await flushPromises();
   expect(expectingGate!.phase.value).toBe('pending');
   expect(expectingGate!.shouldDefer.value).toBe(true);
+  unmount();
+});
+
+test('host expect vote flips while another host still expects', async () => {
+  const store = { storeId: 'demo.ExpectVote' };
+  const expectA = ref(true);
+  let gate: ReturnType<typeof useSearchFirstFrameHost> | null = null;
+
+  const Root = defineComponent({
+    setup() {
+      const HostA = defineComponent({
+        setup() {
+          gate = useSearchFirstFrameHost(store, { expectFirstFrame: () => expectA.value });
+          return () => h('div');
+        },
+      });
+      const HostB = defineComponent({
+        setup() {
+          useSearchFirstFrameHost(store, { expectFirstFrame: true });
+          return () => h('div');
+        },
+      });
+      return () => h('div', [h(HostA), h(HostB)]);
+    },
+  });
+
+  const { unmount } = mountApp(Root);
+  await flushPromises();
+  expect(gate!.phase.value).toBe('pending');
+
+  // Flip one host off; another host still expects — stay pending.
+  expectA.value = false;
+  await flushPromises();
+  expect(peekSearchFirstFrameGateForTests('demo.ExpectVote')?.phase.value).toBe('pending');
+
+  // Raise back to cover the true branch of updateHostExpectVote.
+  expectA.value = true;
+  await flushPromises();
+  expect(peekSearchFirstFrameGateForTests('demo.ExpectVote')?.phase.value).toBe('pending');
+
+  unmount();
+  await flushPromises();
+  expect(peekSearchFirstFrameGateForTests('demo.ExpectVote')).toBeNull();
+});
+
+test('sole host expect vote clear sets phase to none', async () => {
+  const store = { storeId: 'demo.SoleExpectVote' };
+  const expectFF = ref(true);
+  let gate: ReturnType<typeof useSearchFirstFrameHost> | null = null;
+
+  const Host = defineComponent({
+    setup() {
+      gate = useSearchFirstFrameHost(store, { expectFirstFrame: () => expectFF.value });
+      return () => h('div');
+    },
+  });
+
+  const { unmount } = mountApp(Host);
+  await flushPromises();
+  expect(gate!.phase.value).toBe('pending');
+
+  expectFF.value = false;
+  await flushPromises();
+  expect(gate!.phase.value).toBe('none');
+  expect(gate!.shouldDefer.value).toBe(false);
+
+  unmount();
+});
+
+test('null-store host watch updates private gate expectation', async () => {
+  const expectFF = ref(true);
+  let gate: ReturnType<typeof useSearchFirstFrameHost> | null = null;
+
+  const Host = defineComponent({
+    setup() {
+      gate = useSearchFirstFrameHost(null, { expectFirstFrame: () => expectFF.value });
+      return () => h('div');
+    },
+  });
+
+  const { unmount } = mountApp(Host);
+  await flushPromises();
+  expect(gate!.phase.value).toBe('pending');
+  expectFF.value = false;
+  await flushPromises();
+  expect(gate!.phase.value).toBe('none');
+  expectFF.value = true;
+  await flushPromises();
+  expect(gate!.phase.value).toBe('pending');
+  unmount();
+});
+
+test('unmounting the last expecting host clears pending while a non-expecting host remains', async () => {
+  const store = { storeId: 'demo.ReleaseExpect' };
+  const showExpecting = ref(true);
+  let sharedGate: ReturnType<typeof useSearchFirstFrameHost> | null = null;
+
+  const Root = defineComponent({
+    setup() {
+      const HostExpect = defineComponent({
+        setup() {
+          sharedGate = useSearchFirstFrameHost(store, { expectFirstFrame: true });
+          return () => h('div');
+        },
+      });
+      const HostIdle = defineComponent({
+        setup() {
+          sharedGate = useSearchFirstFrameHost(store, { expectFirstFrame: false });
+          return () => h('div');
+        },
+      });
+      return () =>
+        h('div', [showExpecting.value ? h(HostExpect) : null, h(HostIdle)]);
+    },
+  });
+
+  const { unmount } = mountApp(Root);
+  await flushPromises();
+  expect(peekSearchFirstFrameGateForTests('demo.ReleaseExpect')?.phase.value).toBe('pending');
+
+  showExpecting.value = false;
+  await flushPromises();
+  expect(peekSearchFirstFrameGateForTests('demo.ReleaseExpect')?.phase.value).toBe('none');
+  expect(sharedGate!.shouldDefer.value).toBe(false);
   unmount();
 });

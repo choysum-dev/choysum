@@ -59,7 +59,7 @@ type RegistryEntry = {
 const registry = new Map<string, RegistryEntry>();
 
 /** Stable keys for stores without storeId so host + reporter still join. */
-const fallbackKeys = new WeakMap<object, string>();
+let fallbackKeys = new WeakMap<object, string>();
 let fallbackSeq = 0;
 
 function createGate(expectFirstFrame: boolean): SearchFirstFrameGate {
@@ -225,6 +225,8 @@ export function useSearchFirstFrameReporter(
 /** Test / diagnostics: clear the registry between cases. */
 export function resetSearchFirstFrameRegistryForTests(): void {
   registry.clear();
+  fallbackKeys = new WeakMap<object, string>();
+  fallbackSeq = 0;
 }
 
 /** Test helper: peek gate without acquiring. */

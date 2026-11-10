@@ -191,6 +191,9 @@ func ProvisionMinimal(ctx context.Context, runtimeScope scope.Scope, opts Option
 	// Soft-fail: install already succeeded (same policy as ops after meta install).
 	// Fresh timeout under provisionCtx: install deadline must not starve seed, and
 	// renew/caller cancel still abort seed via provisionCtx.
+	if err := checkProvisionLeaseRenew(handle); err != nil {
+		return Result{}, errors.Join(ErrLeaseLost, err)
+	}
 	seedCtx, seedCancel := context.WithTimeout(provisionCtx, moduleInstallTimeout(runtimeScope))
 	defer seedCancel()
 	seedScope := runtimeScope.WithContext(seedCtx)
