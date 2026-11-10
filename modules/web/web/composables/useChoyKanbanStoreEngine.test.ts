@@ -258,12 +258,13 @@ test('deferFirstFrame bootstrap skips empty apply; refresh re-applies after latc
   mounted.unmount();
 });
 
-test('refresh synthesizes empty search when not deferring', async () => {
+test('refresh reapplies store queryState when not deferring and no search landed', async () => {
   const s = store();
   s.fieldsMetadata = { Title: { type: 'varchar' } };
+  s.state.queryState = { keyword: 'from-store', appliedFilters: [], appliedGroups: [] };
 
   const Harness = defineComponent({
-    name: 'KanbanEngineRefreshEmptyHarness',
+    name: 'KanbanEngineRefreshQueryStateHarness',
     setup() {
       return useChoyKanbanStoreEngine({
         store: s,
@@ -281,9 +282,11 @@ test('refresh synthesizes empty search when not deferring', async () => {
   const engine = mounted.root;
 
   let applies = 0;
-  engine.controller.apply = async () => {
+  let lastKeyword: string | undefined;
+  engine.controller.apply = (async (payload: any) => {
     applies += 1;
-  };
+    lastKeyword = payload?.keyword;
+  }) as any;
   engine.controller.setKeywordFields = async () => undefined;
 
   // First refresh bootstraps (empty apply) and must not double-apply.
@@ -291,10 +294,105 @@ test('refresh synthesizes empty search when not deferring', async () => {
   await flushPromises();
   expect(applies).toBe(1);
 
-  // Already bootstrapped with no lastSearchQuery: synthesize empty via runSearch.
+  // Already bootstrapped with no lastSearchQuery: re-apply store queryState.
   await engine.refresh();
   await flushPromises();
   expect(applies).toBe(2);
+  expect(lastKeyword).toBe('from-store');
+
+  mounted.unmount();
+});
+
+test('refresh re-runs search that landed during first bootstrap', async () => {
+  const s = store();
+  s.fieldsMetadata = { Title: { type: 'varchar' } };
+  let engine: ReturnType<typeof useChoyKanbanStoreEngine> | null = null;
+  let applies = 0;
+  const keywords: string[] = [];
+
+  const Harness = defineComponent({
+    name: 'KanbanEngineRefreshDuringBootstrapHarness',
+    setup() {
+      engine = useChoyKanbanStoreEngine({
+        store: s,
+        autoBootstrap: false,
+        deferFirstFrame: true,
+        beforeBootstrap: async () => {
+          await engine!.applySearch({
+            keyword: 'early',
+            filters: [],
+            appliedFilters: [],
+            appliedGroups: [],
+          });
+        },
+      });
+      return engine;
+    },
+    render() {
+      return h('div');
+    },
+  });
+
+  const mounted = mountApp(Harness as any);
+  await flushPromises();
+  engine!.controller.apply = (async (payload: any) => {
+    applies += 1;
+    keywords.push(String(payload?.keyword ?? ''));
+  }) as any;
+  engine!.controller.setKeywordFields = async () => undefined;
+
+  await engine!.refresh();
+  await flushPromises();
+  // beforeBootstrap applySearch + post-bootstrap refresh re-run.
+  expect(applies).toBeGreaterThanOrEqual(2);
+  expect(keywords.filter((k) => k === 'early').length).toBeGreaterThanOrEqual(2);
+
+  mounted.unmount();
+});
+
+test('refreshFromQueryState rethrows apply failures', async () => {
+  const s = store();
+  s.fieldsMetadata = { Title: { type: 'varchar' } };
+  const errors: unknown[] = [];
+
+  const Harness = defineComponent({
+    name: 'KanbanEngineQueryStateErrHarness',
+    setup() {
+      return useChoyKanbanStoreEngine({
+        store: s,
+        autoBootstrap: false,
+        deferFirstFrame: false,
+        onSearchError: (e) => errors.push(e),
+      });
+    },
+    render() {
+      return h('div');
+    },
+  });
+
+  const mounted = mountApp(Harness as any);
+  await flushPromises();
+  const engine = mounted.root;
+
+  let applies = 0;
+  engine.controller.apply = (async () => {
+    applies += 1;
+    if (applies > 1) throw new Error('queryState boom');
+  }) as any;
+  engine.controller.setKeywordFields = async () => undefined;
+
+  await engine.bootstrap();
+  await flushPromises();
+
+  let threw: unknown = null;
+  await engine.refresh().then(
+    () => undefined,
+    (e: unknown) => {
+      threw = e;
+    },
+  );
+  expect(String(threw)).toContain('queryState boom');
+  expect(errors.some((e) => String(e).includes('queryState boom'))).toBe(true);
 
   mounted.unmount();
 });

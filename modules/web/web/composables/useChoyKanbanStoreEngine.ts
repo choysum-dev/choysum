@@ -5,10 +5,7 @@ import { computed, onMounted, ref, toValue, watch, type MaybeRefOrGetter, type R
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import { createKanbanController } from '@/web/web/controllers/kanbanController';
 import { awaitFieldSelection } from '@/web/web/query/utils/registry/fieldReady';
-import {
-  buildChoySearchQuery,
-  type ChoySearchQuery,
-} from '@/web/web/components/view/searchViewHelpers';
+import type { ChoySearchQuery } from '@/web/web/components/view/searchViewHelpers';
 import type { Lane } from '@/web/web/query/types';
 import {
   CHOY_KANBAN_FLAT_LANE_KEY,
@@ -349,6 +346,29 @@ export function useChoyKanbanStoreEngine(opts: ChoyKanbanStoreEngineOptions) {
   }
 
   /**
+   * Re-apply store queryState through searchSeq without latching lastSearchQuery
+   * (avoids caching a synthetic empty Search query over real store filters).
+   */
+  async function refreshFromQueryState(rethrow: boolean): Promise<void> {
+    const seq = ++searchSeq;
+    searchInFlight++;
+    searchPending.value = true;
+    try {
+      await applyCurrentQuery();
+      if (seq !== searchSeq) return;
+      await syncLanesFromController();
+    } catch (e) {
+      if (seq === searchSeq) {
+        opts.onSearchError?.(e);
+        if (rethrow) throw e;
+      }
+    } finally {
+      searchInFlight--;
+      if (seq === searchSeq) searchPending.value = false;
+    }
+  }
+
+  /**
    * Re-apply the current search (or store queryState) through the sequenced
    * applySearch path so concurrent first-frame searches cannot be overwritten.
    */
@@ -366,12 +386,11 @@ export function useChoyKanbanStoreEngine(opts: ChoyKanbanStoreEngineOptions) {
       await runSearch(lastSearchQuery, true);
       return;
     }
-    // No search yet: do not synthesize an empty apply while Search still owns
-    // the first frame (would race the pending query-update).
+    // No search yet: do not apply while Search still owns the first frame.
     if (opts.firstFrameGate?.shouldDefer.value || !!toValue(opts.deferFirstFrame)) {
       return;
     }
-    await runSearch(buildChoySearchQuery(''), true);
+    await refreshFromQueryState(true);
   }
 
   watch(

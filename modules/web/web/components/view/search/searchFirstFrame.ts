@@ -129,13 +129,15 @@ export function useSearchFirstFrameHost(
 ): SearchFirstFrameGate {
   const key = storeKey(store);
   const expectNow = () => !!toValue(opts.expectFirstFrame);
-  const gate = key ? acquire(key, 'host', expectNow()) : createGate(expectNow());
+  // Only join the registry when a scope can release the entry (avoids leaks).
+  const hasScope = !!getCurrentScope();
+  const gate = key && hasScope ? acquire(key, 'host', expectNow()) : createGate(expectNow());
 
-  if (key && getCurrentScope()) {
+  if (key && hasScope) {
     onScopeDispose(() => release(key, 'host'));
   }
 
-  if (getCurrentScope()) {
+  if (hasScope) {
     watch(
       () => !!toValue(opts.expectFirstFrame),
       (v) => gate.setExpectFirstFrame(v),
@@ -155,9 +157,10 @@ export function useSearchFirstFrameReporter(
 ): { markEmitted: () => void; markNone: () => void } {
   const key = storeKey(store);
   const initialEmit = () => !!toValue(opts.initialEmit);
-  const gate = key ? acquire(key, 'reporter', initialEmit()) : createGate(initialEmit());
+  const hasScope = !!getCurrentScope();
+  const gate = key && hasScope ? acquire(key, 'reporter', initialEmit()) : createGate(initialEmit());
 
-  if (key && getCurrentScope()) {
+  if (key && hasScope) {
     onScopeDispose(() => release(key, 'reporter'));
   }
 

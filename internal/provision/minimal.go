@@ -108,10 +108,16 @@ func ProvisionMinimal(ctx context.Context, runtimeScope scope.Scope, opts Option
 	if installTimeout <= 0 {
 		installTimeout = moduleInstallTimeout(runtimeScope)
 	}
-	installCtx, cancel := context.WithTimeout(ctx, installTimeout)
-	defer cancel()
+	// Lease renew spans install + catalog seed. Renew failure cancels this
+	// context so seed cannot keep writing after the lease is lost. Caller
+	// cancellation on ctx still propagates.
+	provisionCtx, provisionCancel := context.WithCancel(ctx)
+	defer provisionCancel()
 
-	handle, err := acquireProvisionLease(installCtx, runtimeScope, opts.LockerFactory, cancel)
+	installCtx, installCancel := context.WithTimeout(provisionCtx, installTimeout)
+	defer installCancel()
+
+	handle, err := acquireProvisionLease(provisionCtx, runtimeScope, opts.LockerFactory, provisionCancel)
 	if err != nil {
 		if errors.Is(err, ErrLeaseBusy) {
 			return Result{}, xfmt.Errorf("provision lease busy: %w", err)
@@ -183,9 +189,9 @@ func ProvisionMinimal(ctx context.Context, runtimeScope scope.Scope, opts Option
 	// post-meta catalog rewrite in ops never runs. Seed local+registry snapshots
 	// and materialize here so /web/meta/modules is not empty until a manual sync.
 	// Soft-fail: install already succeeded (same policy as ops after meta install).
-	// Fresh timeout + scope: installCtx may already be near its deadline, and
-	// installScope is bound to that cancelled context.
-	seedCtx, seedCancel := context.WithTimeout(context.WithoutCancel(installCtx), moduleInstallTimeout(runtimeScope))
+	// Fresh timeout under provisionCtx: install deadline must not starve seed, and
+	// renew/caller cancel still abort seed via provisionCtx.
+	seedCtx, seedCancel := context.WithTimeout(provisionCtx, moduleInstallTimeout(runtimeScope))
 	defer seedCancel()
 	seedScope := runtimeScope.WithContext(seedCtx)
 	if seedScope == nil {
