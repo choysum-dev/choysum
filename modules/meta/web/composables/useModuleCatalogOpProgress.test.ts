@@ -100,6 +100,8 @@ test('useModuleCatalogOpProgress: empty id and missing store are no-ops', async 
   expect(api.progressBusy.value).toBe(false);
   await api.startOpProgress('op-nostore', { moduleName: 'x', action: 'install' });
   expect(api.progressBusy.value).toBe(false);
+  expect(api.progressModuleName.value).toBe('');
+  expect(api.progressAction.value).toBe('');
   expect(refreshed).toBe(1);
   expect(warnings).toEqual([msgs.failedToGetStatus]);
   ChoyMessage.warning = origWarn;

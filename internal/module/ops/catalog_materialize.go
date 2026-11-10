@@ -439,7 +439,10 @@ func loadCatalogLifecycleTimes(db *gorm.DB, names []string, filtered bool) (map[
 	q := db.Model(&modmeta.ModuleOperation{}).
 		Select("module_name", "action", "finished_at").
 		Where("status = ? AND action IN ? AND finished_at IS NOT NULL", StatusSucceeded, []string{ActionInstall, ActionUpgrade})
-	if filtered && len(names) > 0 {
+	if filtered {
+		if len(names) == 0 {
+			return out, nil
+		}
 		q = q.Where("module_name IN ?", names)
 	}
 	if err := q.Find(&rows).Error; err != nil {

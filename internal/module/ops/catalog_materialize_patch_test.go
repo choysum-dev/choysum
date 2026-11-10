@@ -380,6 +380,15 @@ func TestLoadCatalogLifecycleTimes_NilDB(t *testing.T) {
 	}
 }
 
+func TestLoadCatalogLifecycleTimes_EmptyFilteredNames(t *testing.T) {
+	t.Parallel()
+	db := newOpsTestDB(t)
+	got, err := loadCatalogLifecycleTimes(db, nil, true)
+	if err != nil || len(got) != 0 {
+		t.Fatalf("filtered empty names => %#v %v", got, err)
+	}
+}
+
 func TestExecuteSync_MaterializeAndPersistErrors(t *testing.T) {
 	db := newOpsTestDB(t)
 	o := &Ops{

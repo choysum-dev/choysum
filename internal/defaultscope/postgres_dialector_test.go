@@ -89,6 +89,20 @@ func TestOpenPostgresKeepsOptionalDialectorInterfaces(t *testing.T) {
 	}
 }
 
+func TestPostgresDialectorMigratorWrapsBPCharAware(t *testing.T) {
+	t.Parallel()
+
+	d := openPostgres("host=127.0.0.1 user=wangbuke dbname=choysum sslmode=disable")
+	db, err := gorm.Open(d, &gorm.Config{})
+	if err != nil {
+		t.Fatalf("gorm.Open: %v", err)
+	}
+	m := d.Migrator(db)
+	if _, ok := m.(bpcharAwareMigrator); !ok {
+		t.Fatalf("Migrator type %T, want bpcharAwareMigrator", m)
+	}
+}
+
 func TestBPCharAwareMigratorGetTypeAliases(t *testing.T) {
 	t.Parallel()
 

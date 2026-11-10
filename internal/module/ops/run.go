@@ -117,6 +117,10 @@ func (o *Ops) executeOperation(ctx context.Context, row *modmeta.ModuleOperation
 				if o.Scope != nil && o.Scope.Logger() != nil {
 					o.Scope.Logger().Warn("ops: catalog sync after meta install failed", "error", err)
 				}
+				// Best-effort names-scoped rewrite if the full sync/materialize path failed.
+				if matErr := o.MaterializeCatalog(ctx, names); matErr != nil && o.Scope != nil && o.Scope.Logger() != nil {
+					o.Scope.Logger().Warn("ops: catalog materialize after meta install failed", "error", matErr)
+				}
 			}
 			return nil
 		}

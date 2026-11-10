@@ -237,7 +237,12 @@ function installStubs(mode: 'edit' | 'display' | 'both' = 'edit') {
                   class: 'ov-row',
                   'data-index': String(i),
                   'data-testid': 'choy-m2m-table-row',
-                  onClick: () => emit('row-click', { row, index: i }),
+                  onClick: () =>
+                    emit('row-click', {
+                      rowData: row,
+                      rowIndex: i,
+                      rowKey: String(row?.Id ?? i),
+                    }),
                 },
                 [
                   // Invoke Actions column default slot with $index.
@@ -634,7 +639,7 @@ describe('ChoyManyToManyField mount coverage', () => {
     row?.click();
     await nextTick();
     expect(clicks.length).toBe(1);
-    expect(String((clicks[0] as any)?.row?.Id || '')).toBe('row-1');
+    expect(String((clicks[0] as any)?.rowData?.Id || '')).toBe('row-1');
     m.unmount();
   });
 });
