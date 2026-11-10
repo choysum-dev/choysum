@@ -99,13 +99,17 @@ test('ModuleCatalogKanbanView.vue card helpers label status and navigate on clic
   });
   await flushPromises();
   const vm = wrapper.vm as any;
-  const card = moduleCatalogKanbanRowToCard({
-    Id: '1',
-    ModuleName: 'partner',
-    Installed: true,
-    UpdateAvailable: true,
-    Available: true,
-  });
+  const card = moduleCatalogKanbanRowToCard(
+    {
+      Id: '1',
+      ModuleName: 'partner',
+      Installed: true,
+      UpdateAvailable: true,
+      Available: true,
+    },
+    0,
+    'all',
+  );
   expect(String(vm.cardStatusLabel(card)).length).toBeGreaterThan(0);
   vm.onCardClick(card);
   expect(pushed).toContain('/meta/modules/partner');

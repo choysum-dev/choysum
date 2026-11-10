@@ -93,6 +93,9 @@ func TestCoverage_GuardsAndHelpers(t *testing.T) {
 	if displayVersion("") != "" || displayVersion("not-a-semver") != "not-a-semver" {
 		t.Fatal("displayVersion empty/passthrough")
 	}
+	if displayVersion("vnot-a-semver") != "vnot-a-semver" {
+		t.Fatal("displayVersion invalid v-prefix should pass through")
+	}
 	if compareVersion("zzz", "aaa") <= 0 {
 		t.Fatal("non-semver compare")
 	}

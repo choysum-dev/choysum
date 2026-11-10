@@ -88,6 +88,52 @@ describe('ChoyManyToManyKanbanField mount', () => {
     filled.unmount();
   });
 
+  test('renders relation count summary in table cell mode', async () => {
+    installStubs();
+    const m = mountApp(ChoyManyToManyKanbanField as any, {
+      props: {
+        binding: makeBinding({
+          isForm: false,
+          items: [{ Id: '1', ModuleName: 'core' }, { Id: '2', ModuleName: 'auth' }],
+        }).binding,
+        cardTitleField: 'ModuleName',
+        readonly: true,
+      },
+    });
+    await nextTick();
+    await flushPromises();
+    expect(m.q('[data-testid=choy-m2m-kanban-summary]')).not.toBeNull();
+    expect(String(m.q('[data-testid=choy-m2m-kanban]')?.textContent || '')).toBe('');
+    m.unmount();
+  });
+
+  test('emits card-click on Enter and shows subtitle when set', async () => {
+    installStubs();
+    const clicks: any[] = [];
+    const m = mountApp(ChoyManyToManyKanbanField as any, {
+      props: {
+        binding: makeBinding({
+          items: [{ Id: '1', ModuleName: 'core', Summary: 'Core module' }],
+        }).binding,
+        cardTitleField: 'ModuleName',
+        cardSubtitleField: 'Summary',
+        readonly: true,
+        onCardClick: (payload: unknown) => clicks.push(payload),
+      },
+    });
+    await nextTick();
+    await flushPromises();
+    const card = m.q('[data-testid=choy-m2m-kanban-card]') as HTMLElement | null;
+    expect(card).not.toBeNull();
+    expect(String(card?.textContent || '')).toContain('Core module');
+    const enter = new Event('keydown', { bubbles: true, cancelable: true });
+    Object.defineProperty(enter, 'key', { value: 'Enter' });
+    card?.dispatchEvent(enter);
+    await flushPromises();
+    expect(clicks.length).toBe(1);
+    m.unmount();
+  });
+
   test('emits card-click with the related row', async () => {
     installStubs();
     const clicks: any[] = [];

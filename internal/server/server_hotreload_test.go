@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -1897,6 +1898,64 @@ func TestHandleWatchedModuleUpgradeNilScope(t *testing.T) {
 	}
 }
 
+func TestHotreloadSetProgressMessageViaProgressLine(t *testing.T) {
+	line := logger.NewProgressLine(io.Discard)
+	h := &hotreloadState{progressLine: line}
+	h.setProgressMessage("Restarting runtime...")
+}
+
+func TestHandleWatchedFileChangeResolvedRestartFails(t *testing.T) {
+	runtimeScope := &noSessionServerScope{serverTestScope: newRichServerTestScope(t)}
+	runtimeScope.cfg.Auth.Enabled = false
+	assignEphemeralServerPort(t, runtimeScope.cfg)
+	runtimeScope.cfg.Server.EnableGrpcWebProxy = false
+	runtimeScope.cfg.Server.HotReload = true
+
+	root := t.TempDir()
+	moduleDir := filepath.Join(root, "modules", "demo")
+	if err := os.MkdirAll(moduleDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll() error = %v", err)
+	}
+	changedFile := filepath.Join(moduleDir, "handler.ts")
+	if err := os.WriteFile(changedFile, []byte("export const v = 1;\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	tracked := &fakeWatchedService{name: "demo", watchDirs: []string{moduleDir}}
+	srv := &GRPCWebServer{runtimeScope: runtimeScope}
+	if err := srv.start(false); err != nil {
+		t.Fatalf("start(false) error = %v", err)
+	}
+	t.Cleanup(func() {
+		_ = srv.stop(false)
+	})
+	srv.hotreload.storeWatchTargets(srv.buildRegisteredWatchTargets(tracked.watchPlans(), tracked.watchCallback))
+
+	resolvedFile, err := resolveWatchPath(changedFile)
+	if err != nil {
+		t.Fatalf("resolveWatchPath() error = %v", err)
+	}
+	hash, ok := fileFingerprint(resolvedFile)
+	if !ok {
+		t.Fatal("fileFingerprint failed")
+	}
+	srv.hotreload.setFingerprintIfAbsentResolved(resolvedFile, hash)
+
+	if err := os.WriteFile(changedFile, []byte("export const v = 2;\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+	runtimeScope.cfg.Server.JsEngineFactory = "missing"
+	srv.jsExecutor = nil
+
+	err = srv.handleWatchedFileChangeResolved(resolvedFile)
+	if err == nil || !strings.Contains(err.Error(), "Failed to restart server") {
+		t.Fatalf("handleWatchedFileChangeResolved() error = %v", err)
+	}
+	if tracked.callCount() != 1 {
+		t.Fatalf("watch handler calls = %d, want 1", tracked.callCount())
+	}
+}
+
 func TestHotreloadProgressSpinnerAnimatesViaTicker(t *testing.T) {
 	buf := bytes.NewBuffer(nil)
 	line := logger.NewProgressLine(buf)
@@ -2006,6 +2065,13 @@ func TestHandleWatchedModuleUpgradePropagatesQuietProgress(t *testing.T) {
 	}
 	if logger.ProgressTickerFromContext(gotCtx) != ticker {
 		t.Fatal("expected ProgressTicker on nested upgrade context")
+	}
+}
+
+func TestDispatchWatchHandlerNilReceiver(t *testing.T) {
+	var srv *GRPCWebServer
+	if _, err := srv.dispatchWatchHandler("/some/file.ts"); err == nil {
+		t.Fatal("expected error from dispatchWatchHandler with nil receiver")
 	}
 }
 

@@ -163,6 +163,15 @@ export function useModuleCatalogOpProgress(
       await progress.watch(id);
       if (generation !== watchGeneration) return;
       if (lastTerminal) await settleOp(lastTerminal);
+    } catch {
+      // Hard errors normally go through notify hooks; still absorb rejections for void callers.
+      if (generation === watchGeneration) {
+        try {
+          await opts?.refreshCatalog?.();
+        } catch {
+          // ignore
+        }
+      }
     } finally {
       if (generation === watchGeneration) {
         watching.value = false;

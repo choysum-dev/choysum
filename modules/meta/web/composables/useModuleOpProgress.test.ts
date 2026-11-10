@@ -851,7 +851,7 @@ test('createModuleOpProgressSession: tip refresh ignores stale generation after 
     },
     {
       ...deps,
-      onTips: (async (_stream, callback) => {
+      onTips: (async (_stream: unknown, callback: () => void | Promise<void>) => {
         tipCalls += 1;
         if (tipCalls === 1) await callback();
         tipSession.stop();
@@ -888,7 +888,7 @@ test('createModuleOpProgressSession: tip refresh errors after stop stay silent',
     },
     {
       ...deps,
-      onTips: (async (_stream, callback) => {
+      onTips: (async (_stream: unknown, callback: () => void | Promise<void>) => {
         await callback();
         await advance(80);
       }) as any,

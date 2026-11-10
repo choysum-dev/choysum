@@ -390,13 +390,15 @@ const titleText = computed(() => {
   return name ? `${label} · ${name}` : label;
 });
 
-const showRegistryOption = computed(
-  () =>
-    props.action === 'upgrade' &&
+const showRegistryOption = computed(() => {
+  const action = String(props.action || activeAction.value || '').trim();
+  return (
+    action === 'upgrade' &&
     props.registryNewerThanLocal &&
     step.value === 'plan' &&
-    !!plan.value,
-);
+    !!plan.value
+  );
+});
 
 const resultAlertBoxClass = computed(() => {
   if (!opStatus.value) return 'border-border bg-muted/40 text-foreground';

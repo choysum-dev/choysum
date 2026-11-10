@@ -100,9 +100,10 @@ test('useModuleCatalogSync: missing operation store warns without refresh or Bro
   let refreshed = 0;
   const warnings: string[] = [];
   const orig = ChoyMessage.warning;
-  ChoyMessage.warning = (m: string) => {
+  ChoyMessage.warning = ((m: string) => {
     warnings.push(m);
-  };
+    return 0;
+  }) as typeof ChoyMessage.warning;
   const catalogStore = {
     RequestSync: async () => ({ Id: 'op-no-op-store' }),
   } as any;

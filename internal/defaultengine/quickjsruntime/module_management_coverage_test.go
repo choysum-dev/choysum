@@ -322,17 +322,38 @@ func TestCoverage_ModuleManagementThrowOrOpResultAndParse(t *testing.T) {
 		Action: "install",
 		ModuleOrder: []ops.ModuleOrderEntry{{
 			ModuleName:     "core",
+			Application:    "core",
+			Role:           "target",
+			Effect:         "install",
 			Reason:         "root",
 			CurrentVersion: "1",
 			TargetVersion:  "2",
 			Origin:         "local",
 		}},
-		Risks:    []ops.PlanIssue{{Code: "R", Level: "warn", Message: "m"}},
-		Blockers: []ops.PlanIssue{{Code: "B", Level: "error", Message: "b"}},
+		EnsureModules: []ops.ModuleOrderEntry{{
+			ModuleName:     "auth",
+			Application:    "auth",
+			Role:           "dependency",
+			Effect:         "already_satisfied",
+			Reason:         "dependency",
+			CurrentVersion: "1",
+			TargetVersion:  "1",
+			Origin:         "local",
+		}},
+		NeedsWebBuild: true,
+		Risks:         []ops.PlanIssue{{Code: "R", Level: "warn", Message: "m"}},
+		Blockers:      []ops.PlanIssue{{Code: "B", Level: "error", Message: "b"}},
 	})
 	order, _ := mapped["moduleOrder"].([]map[string]any)
 	if len(order) != 1 {
 		t.Fatalf("moduleOrder = %#v", mapped["moduleOrder"])
+	}
+	ensure, _ := mapped["ensureModules"].([]map[string]any)
+	if len(ensure) != 1 || ensure[0]["moduleName"] != "auth" || ensure[0]["effect"] != "already_satisfied" {
+		t.Fatalf("ensureModules = %#v", mapped["ensureModules"])
+	}
+	if mapped["needsWebBuild"] != true {
+		t.Fatalf("needsWebBuild = %#v", mapped["needsWebBuild"])
 	}
 
 	// marshalOpResult message fallbacks via the live QuickJS context.

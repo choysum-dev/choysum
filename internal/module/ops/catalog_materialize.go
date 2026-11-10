@@ -479,6 +479,26 @@ func decodeDependsNames(raw datatypes.JSON) []string {
 	return uniqueTrimmedNames(names)
 }
 
+// dependsNamesForEdges preserves duplicate depends entries until replaceCatalogDependsEdges dedupes edges.
+func dependsNamesForEdges(raw datatypes.JSON) []string {
+	if len(raw) == 0 {
+		return nil
+	}
+	var names []string
+	if err := json.Unmarshal(raw, &names); err != nil {
+		return nil
+	}
+	out := make([]string, 0, len(names))
+	for _, name := range names {
+		name = strings.TrimSpace(name)
+		if name == "" {
+			continue
+		}
+		out = append(out, name)
+	}
+	return out
+}
+
 func fillCatalogDependents(rows []modmeta.ModuleCatalog) {
 	depends := make(map[string][]string, len(rows))
 	for _, row := range rows {
@@ -592,7 +612,7 @@ func (o *Ops) replaceCatalogDependsEdges(ctx context.Context) error {
 		if moduleID == "" {
 			continue
 		}
-		for _, depName := range decodeDependsNames(row.DependsJson) {
+		for _, depName := range dependsNamesForEdges(row.DependsJson) {
 			dependID := idByName[depName]
 			if dependID == "" || dependID == moduleID {
 				continue

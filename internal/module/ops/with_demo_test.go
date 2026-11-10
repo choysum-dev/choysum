@@ -37,6 +37,13 @@ func TestResolveWithDemo_DefaultFalseThenSetTrue(t *testing.T) {
 	}
 }
 
+func TestEnsureMetaAppSettingTableNilDB(t *testing.T) {
+	t.Parallel()
+	if err := ensureMetaAppSettingTable(nil); err == nil || !strings.Contains(err.Error(), "nil db") {
+		t.Fatalf("ensureMetaAppSettingTable(nil) = %v", err)
+	}
+}
+
 func TestEnsureMetaAppSettingTable_CreateOnceOnly(t *testing.T) {
 	t.Parallel()
 	dbPath := filepath.Join(t.TempDir(), "ensure.db")

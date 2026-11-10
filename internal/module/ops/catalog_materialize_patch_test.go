@@ -268,6 +268,45 @@ func TestReplaceCatalogDependsEdges_FindAndDeleteErrors(t *testing.T) {
 	}
 }
 
+func TestDependsNamesForEdges(t *testing.T) {
+	t.Parallel()
+	if dependsNamesForEdges(nil) != nil {
+		t.Fatal("empty raw should be nil")
+	}
+	if dependsNamesForEdges(datatypes.JSON(`{`)) != nil {
+		t.Fatal("bad json should be nil")
+	}
+	got := dependsNamesForEdges(datatypes.JSON(`[" base ","","auth"]`))
+	if len(got) != 2 || got[0] != "base" || got[1] != "auth" {
+		t.Fatalf("normalize = %v", got)
+	}
+}
+
+func TestReplaceCatalogDependsEdges_DedupesDuplicateDepends(t *testing.T) {
+	t.Parallel()
+	db := newOpsTestDB(t)
+	o := &Ops{Scope: newOpsTestScope(t, db)}
+	for _, name := range []string{"base", "auth"} {
+		if err := db.Create(&modmeta.ModuleCatalog{ModuleName: name, DependsJson: datatypes.JSON("[]")}).Error; err != nil {
+			t.Fatalf("seed %s: %v", name, err)
+		}
+	}
+	if err := db.Model(&modmeta.ModuleCatalog{}).Where("module_name = ?", "auth").
+		Update("depends_json", datatypes.JSON(`["base","base"]`)).Error; err != nil {
+		t.Fatalf("set depends: %v", err)
+	}
+	if err := o.replaceCatalogDependsEdges(context.Background()); err != nil {
+		t.Fatalf("replace: %v", err)
+	}
+	var n int64
+	if err := db.Model(&modmeta.ModuleCatalogDepend{}).Count(&n).Error; err != nil {
+		t.Fatal(err)
+	}
+	if n != 1 {
+		t.Fatalf("edge count = %d, want 1 after duplicate depends dedupe", n)
+	}
+}
+
 func TestReplaceCatalogDependsEdges_SkipsInvalidRows(t *testing.T) {
 	t.Parallel()
 	db := newOpsTestDB(t)

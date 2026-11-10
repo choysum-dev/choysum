@@ -13,9 +13,10 @@ const msgs = {
 test('moduleCatalogProgressNotifyHooks: timeout and network toasts', () => {
   const warnings: string[] = [];
   const orig = ChoyMessage.warning;
-  ChoyMessage.warning = (m: string) => {
+  ChoyMessage.warning = ((m: string) => {
     warnings.push(m);
-  };
+    return 0;
+  }) as typeof ChoyMessage.warning;
   const hooks = moduleCatalogProgressNotifyHooks(msgs);
   hooks.onTimeout();
   hooks.onTransientNetworkError();
@@ -26,9 +27,10 @@ test('moduleCatalogProgressNotifyHooks: timeout and network toasts', () => {
 test('moduleCatalogProgressNotifyHooks: hard errors use generic or status fallback', () => {
   const errors: string[] = [];
   const orig = ChoyMessage.error;
-  ChoyMessage.error = (m: string) => {
+  ChoyMessage.error = ((m: string) => {
     errors.push(m);
-  };
+    return 0;
+  }) as typeof ChoyMessage.error;
   const hooks = moduleCatalogProgressNotifyHooks(msgs);
   hooks.onHardError('');
   hooks.onHardError('Failed to get status');

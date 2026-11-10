@@ -161,6 +161,28 @@ func TestBuildOrderEntry_EnsureStepEffects(t *testing.T) {
 	if depUpgrade.Effect != EffectUpgrade {
 		t.Fatalf("dependency upgrade = %#v", depUpgrade)
 	}
+	missingUpgrade := o.buildOrderEntry(ctx, ActionUpgrade, "partner", "document", originLocal, false)
+	if missingUpgrade.Effect != EffectInstall {
+		t.Fatalf("upgrade missing module = %#v", missingUpgrade)
+	}
+	o.Resolver = &mapResolver{
+		peek: map[string]*pkgmeta.Module{
+			"core": {Name: "core", Version: "2.0.0", ApplicationStr: "core"},
+		},
+		load: map[string]*pkgmeta.Module{
+			"core": {Name: "core", Version: "v2.0.0", ApplicationStr: "core", Status: pkgmeta.Installed},
+		},
+	}
+	if err := db.Create(&modmeta.ModuleSourceSnapshot{
+		ModuleName: "core", SourceType: originLocal, SourceRef: "local", Available: true,
+		Version: nullString("2.0.0"),
+	}).Error; err != nil {
+		t.Fatalf("seed core snapshot: %v", err)
+	}
+	sameVersion := o.buildOrderEntry(ctx, ActionUpgrade, "partner", "core", originLocal, false)
+	if sameVersion.Effect != EffectAlreadySatisfied {
+		t.Fatalf("upgrade same version = %#v", sameVersion)
+	}
 	app, installed := (&Ops{}).applicationAndInstalled(ctx, "core")
 	if app != "" || installed {
 		t.Fatalf("nil resolver applicationAndInstalled = %q %v", app, installed)

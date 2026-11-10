@@ -56,7 +56,7 @@ func (nonConcretePostgresDialector) QuoteTo(writer clause.Writer, str string)   
 func (nonConcretePostgresDialector) Explain(sql string, vars ...any) string             { return sql }
 
 func TestOpenPostgresFallbackWhenConcreteTypeMissing(t *testing.T) {
-	t.Parallel()
+	// Not parallel: mutates package-level postgresOpen shared with other dialector tests.
 	prev := postgresOpen
 	t.Cleanup(func() { postgresOpen = prev })
 	calls := 0
@@ -142,8 +142,13 @@ func TestPostgresAutoMigrateSkipsBPCharCharRewrite(t *testing.T) {
 		t.Skipf("postgres ping: %v", err)
 	}
 
+	// Create once so the second AutoMigrate hits existing-column comparison (bpchar vs char).
 	if err := db.AutoMigrate(&meta.Application{}); err != nil {
-		t.Fatalf("AutoMigrate Application: %v", err)
+		t.Fatalf("AutoMigrate Application (create): %v", err)
+	}
+	sqlLog.Reset()
+	if err := db.AutoMigrate(&meta.Application{}); err != nil {
+		t.Fatalf("AutoMigrate Application (existing): %v", err)
 	}
 	logged := strings.ToLower(sqlLog.String())
 	if strings.Contains(logged, `alter column "created_uid" type`) ||
