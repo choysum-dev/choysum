@@ -1,7 +1,9 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { reactive, ref } from 'vue';
+import { defineComponent, h, reactive, ref } from 'vue';
+import { flushPromises, mountApp } from '@/web/web/__tests__/mountApp';
+import { providePageContext } from '@/web/web/composables/usePageContext';
 import { useModuleCatalogViewModel } from './useModuleCatalogViewModel';
 
 const msgs = {
@@ -379,16 +381,18 @@ test('useModuleCatalogViewModel: lastSyncAtLabel picks newest raw timestamp', ()
   expect(api.lastSyncAtLabel.value).toContain('2026');
 });
 
-test('useModuleCatalogViewModel: refreshCatalog prefers list.refresh then Search', async () => {
-  let refreshed = 0;
+test('useModuleCatalogViewModel: refreshCatalog prefers page actionTarget then host then Search', async () => {
+  let pageRefreshed = 0;
+  let hostRefreshed = 0;
+  let listRefreshed = 0;
   let searched = 0;
-  const withList = {
+  const store = {
     state: {
       result: { rows: [] },
       loading: false,
       list: {
         refresh: async () => {
-          refreshed += 1;
+          listRefreshed += 1;
         },
       },
     },
@@ -396,29 +400,77 @@ test('useModuleCatalogViewModel: refreshCatalog prefers list.refresh then Search
       searched += 1;
     },
   } as any;
-  const api = useModuleCatalogViewModel({
-    store: withList,
+
+  let pageApi: ReturnType<typeof useModuleCatalogViewModel> | null = null;
+  const Child = defineComponent({
+    setup() {
+      pageApi = useModuleCatalogViewModel({
+        store,
+        route: makeRoute(),
+        router: { push: async () => undefined, replace: async () => undefined } as any,
+        msgs,
+        refreshCatalog: async () => {
+          hostRefreshed += 1;
+        },
+      });
+      return () => h('div');
+    },
+  });
+  const Parent = defineComponent({
+    setup() {
+      const ctx = providePageContext({ store });
+      ctx.actionTarget.value = {
+        refresh: async () => {
+          pageRefreshed += 1;
+        },
+      };
+      return () => h(Child);
+    },
+  });
+  const { unmount } = mountApp(Parent);
+  await pageApi!.refreshCatalog();
+  expect(pageRefreshed).toBe(1);
+  expect(hostRefreshed).toBe(0);
+  expect(listRefreshed).toBe(0);
+  expect(searched).toBe(0);
+  unmount();
+  await flushPromises();
+
+  const hostOnly = useModuleCatalogViewModel({
+    store,
+    route: makeRoute(),
+    router: { push: async () => undefined, replace: async () => undefined } as any,
+    msgs,
+    refreshCatalog: async () => {
+      hostRefreshed += 1;
+    },
+  });
+  await hostOnly.refreshCatalog();
+  expect(hostRefreshed).toBe(1);
+  expect(listRefreshed).toBe(0);
+
+  const withList = useModuleCatalogViewModel({
+    store,
     route: makeRoute(),
     router: { push: async () => undefined, replace: async () => undefined } as any,
     msgs,
   });
-  await api.refreshCatalog();
-  expect(refreshed).toBe(1);
+  await withList.refreshCatalog();
+  expect(listRefreshed).toBe(1);
   expect(searched).toBe(0);
 
-  const searchOnly = {
-    state: { result: { rows: [] }, loading: false },
-    Search: async () => {
-      searched += 1;
-    },
-  } as any;
-  const api2 = useModuleCatalogViewModel({
-    store: searchOnly,
+  const searchOnly = useModuleCatalogViewModel({
+    store: {
+      state: { result: { rows: [] }, loading: false },
+      Search: async () => {
+        searched += 1;
+      },
+    } as any,
     route: makeRoute(),
     router: { push: async () => undefined, replace: async () => undefined } as any,
     msgs,
   });
-  await api2.refreshCatalog();
+  await searchOnly.refreshCatalog();
   expect(searched).toBe(1);
 });
 

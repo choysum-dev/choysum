@@ -214,6 +214,8 @@ function versionLineFor(row: unknown): string {
   );
 }
 
+const { listRef, expose } = useListViewExpose<MetaModuleCatalog>();
+
 const {
   drawerOpen,
   drawerOperationId,
@@ -248,6 +250,7 @@ const {
   route,
   router,
   initialOperationId: () => String(props.initialOperationId || ''),
+  refreshCatalog: () => expose.refresh(),
   msgs: {
     unknown: _t('Unknown'),
     install: _t('Install'),
@@ -302,7 +305,6 @@ onMounted(() => {
   bootFromRoute();
 });
 
-const { listRef, expose } = useListViewExpose<MetaModuleCatalog>();
 defineExpose({
   ...expose,
   openDrawer,
