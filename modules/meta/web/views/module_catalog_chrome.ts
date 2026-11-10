@@ -116,6 +116,7 @@ export function parseCatalogSyncResult(planJson: unknown): CatalogSyncResultSumm
   const raw = (doc.syncResult ?? doc.SyncResult) as Record<string, unknown> | undefined;
   if (!raw || typeof raw !== 'object') return null;
   const num = (v: unknown) => {
+    if (typeof v !== 'number' && typeof v !== 'string') return 0;
     const n = typeof v === 'number' ? v : Number(v);
     return Number.isFinite(n) ? Math.max(0, Math.floor(n)) : 0;
   };

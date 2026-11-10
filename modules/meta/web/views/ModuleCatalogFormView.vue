@@ -434,13 +434,23 @@ const showActiveOperation = computed(() => !!String(currentRow.value.ActiveOpera
 async function refreshDetailRow() {
   const id = String(recordId.value || '').trim();
   if (!id) return;
+  // Keep CTA/header fields selected so Install/Upgrade/Progress state does not go stale.
+  const fields = [
+    'Id',
+    'ModuleName',
+    'Installed',
+    'Available',
+    'UpdateAvailable',
+    'ActiveOperationId',
+    'RegistryNewerThanLocal',
+  ];
   try {
     if (typeof (store as any)?.Browse === 'function') {
-      await (store as any).Browse(id);
+      await (store as any).Browse(id, fields);
       return;
     }
     if (typeof (store as any)?.Search === 'function') {
-      await (store as any).Search(['Id', '=', id], { limit: 1 });
+      await (store as any).Search(['Id', '=', id], { limit: 1, fields });
     }
   } catch {
     // Refresh is best-effort after an operation settles.

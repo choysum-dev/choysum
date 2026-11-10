@@ -107,6 +107,38 @@ test('useModuleCatalogOpProgress: empty id and missing store are no-ops', async 
   ChoyMessage.warning = origWarn;
 });
 
+test('useModuleCatalogOpProgress: hard watch rejection clears strip and refreshes', async () => {
+  let refreshed = 0;
+  const store = {
+    Browse: async () => ({
+      Status: 'running',
+      Phase: 'executing',
+    }),
+  } as any;
+  const api = useModuleCatalogOpProgress(store, msgs, {
+    refreshCatalog: async () => {
+      refreshed += 1;
+      throw new Error('refresh boom');
+    },
+    progressDeps: {
+      // Tip path is armed so deadline schedule runs; throw there to reject watch().
+      onTips: async () => undefined,
+      subscribeModuleOp: () => ({
+        [Symbol.asyncIterator]: async function* () {
+          /* empty tip stream */
+        },
+      }),
+      schedule: () => {
+        throw new Error('schedule boom');
+      },
+    },
+  });
+  await api.startOpProgress('op-hard', { moduleName: 'core', action: 'install' });
+  expect(api.progressBusy.value).toBe(false);
+  expect(api.progressModuleName.value).toBe('core');
+  expect(refreshed).toBe(1);
+});
+
 test('useModuleCatalogOpProgress: absorbs settle toast rejection and refreshes', async () => {
   let refreshed = 0;
   const origSuccess = ChoyMessage.success;
