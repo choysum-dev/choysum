@@ -432,7 +432,7 @@ describe('OSearch behavior', () => {
 
   test('locked groups survive clear grouping and hide the clear control when alone', async () => {
     const m = mountSearch({
-      currentAppliedGroups: [{ field: 'InstalledStatus' }, { field: 'OriginType' }],
+      currentAppliedGroups: [{ field: 'InstalledStatus' }, { field: 'SourceType' }],
       lockedGroups: ['InstalledStatus'],
     });
     await nextTick();

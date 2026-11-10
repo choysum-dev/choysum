@@ -15,10 +15,9 @@ import (
 	cliruntime "github.com/choysum-dev/choysum/internal/cli/runtime"
 	"github.com/choysum-dev/choysum/internal/esmresolver"
 	logutil "github.com/choysum-dev/choysum/internal/logger"
-	"github.com/choysum-dev/choysum/internal/module/lifecycle"
+	"github.com/choysum-dev/choysum/internal/module/ops"
 	internalorigin "github.com/choysum-dev/choysum/internal/module/origin"
 	"github.com/choysum-dev/choysum/internal/module/plan"
-	"github.com/choysum-dev/choysum/pkg/jsexecutor"
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	"github.com/spf13/cobra"
@@ -123,23 +122,21 @@ func newInstallCmd(envGetter func() scope.Scope) *cobra.Command {
 
 				installScope := env.WithContext(ctx)
 				err = func() error {
-					compilerExecutor, startErr := jsexecutor.NewCompilerExecutor(installScope)
-					if startErr != nil {
-						return xfmt.Errorf("Error creating compiler executor: %w", startErr)
-					}
-					if startErr = compilerExecutor.Start(); startErr != nil {
-						return xfmt.Errorf("Error starting compiler executor: %w", startErr)
-					}
-					defer compilerExecutor.Stop()
-
 					installScope.Logger().Debug("module install started", "input", rootInput)
-					if installErr := lifecycle.InstallModule(ctx, installScope, compilerExecutor, lifecycle.InstallModuleRequest{
-						Input:           rootInput,
+					origin := "local"
+					if parsed.Kind == internalorigin.InputKindRegistry {
+						origin = "registry"
+					}
+					if runErr := runCLIModuleOp(ctx, env, cliModuleOpOptions{
+						Action:          ops.ActionInstall,
+						ModuleName:      moduleName,
+						Origin:          origin,
+						LifecycleInput:  rootInput,
 						WithDemo:        withDemo,
 						SkipWebShell:    noWeb,
 						WebShellProfile: profile,
-					}); installErr != nil {
-						return xfmt.Errorf("error installing module %s: %w", rootInput, installErr)
+					}); runErr != nil {
+						return xfmt.Errorf("error installing module %s: %w", rootInput, runErr)
 					}
 					installScope.Logger().Debug("module installed", "input", rootInput)
 					return nil

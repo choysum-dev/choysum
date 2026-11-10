@@ -532,266 +532,385 @@ msgctxt "meta.model.MetaModelRaw.fields"
 msgid "Table Name"
 msgstr ""
 
-#: service/models/module.ts:203
-#: service/models/module.ts:242
+#: service/models/module.ts:34
+#: service/models/module.ts:73
 msgctxt "meta.model.MetaModule.fields"
 msgid "Application"
 msgstr ""
 
-#: service/models/module.ts:221
+#: service/models/module.ts:52
 msgctxt "meta.model.MetaModule.fields"
 msgid "Author"
 msgstr ""
 
-#: service/models/module.ts:239
+#: service/models/module.ts:70
 msgctxt "meta.model.MetaModule.fields"
 msgid "Category"
 msgstr ""
 
-#: service/models/module.ts:255
+#: service/models/module.ts:86
 msgctxt "meta.model.MetaModule.fields"
 msgid "Components"
 msgstr ""
 
-#: service/models/module.ts:215
-#: service/models/module.ts:274
+#: service/models/module.ts:46
 msgctxt "meta.model.MetaModule.fields"
 msgid "Dependencies"
 msgstr ""
 
-#: service/models/module.ts:286
-msgctxt "meta.model.MetaModule.fields"
-msgid "Dependents"
-msgstr ""
-
-#: service/models/module.ts:200
+#: service/models/module.ts:31
 msgctxt "meta.model.MetaModule.fields"
 msgid "Description"
 msgstr ""
 
-#: service/models/module.ts:206
+#: service/models/module.ts:37
 msgctxt "meta.model.MetaModule.fields"
 msgid "Entry Points"
 msgstr ""
 
-#: service/models/module.ts:218
+#: service/models/module.ts:49
 msgctxt "meta.model.MetaModule.fields"
 msgid "External Dependencies"
 msgstr ""
 
-#: service/models/module.ts:227
+#: service/models/module.ts:58
 msgctxt "meta.model.MetaModule.fields"
 msgid "Homepage"
 msgstr ""
 
-#: service/models/module.ts:224
+#: service/models/module.ts:55
 msgctxt "meta.model.MetaModule.fields"
 msgid "License"
 msgstr ""
 
-#: service/models/module.ts:248
+#: service/models/module.ts:79
 msgctxt "meta.model.MetaModule.fields"
 msgid "Models"
 msgstr ""
 
-#: service/models/module.ts:185
+#: service/models/module.ts:16
 msgctxt "meta.model.MetaModule.fields"
 msgid "Name"
 msgstr ""
 
-#: service/models/module.ts:233
+#: service/models/module.ts:64
 msgctxt "meta.model.MetaModule.fields"
 msgid "Path"
 msgstr ""
 
-#: service/models/module.ts:230
+#: service/models/module.ts:61
 msgctxt "meta.model.MetaModule.fields"
 msgid "Repository"
 msgstr ""
 
-#: service/models/module.ts:212
+#: service/models/module.ts:43
 msgctxt "meta.model.MetaModule.fields"
 msgid "Service Entry Point"
 msgstr ""
 
-#: service/models/module.ts:188
+#: service/models/module.ts:19
 msgctxt "meta.model.MetaModule.fields"
 msgid "Short Description"
 msgstr ""
 
-#: service/models/module.ts:236
+#: service/models/module.ts:67
 msgctxt "meta.model.MetaModule.fields"
 msgid "Status"
 msgstr ""
 
-#: service/models/module.ts:197
+#: service/models/module.ts:28
 msgctxt "meta.model.MetaModule.fields"
 msgid "Summary"
 msgstr ""
 
-#: service/models/module.ts:194
+#: service/models/module.ts:25
 msgctxt "meta.model.MetaModule.fields"
 msgid "Tarball"
 msgstr ""
 
-#: service/models/module.ts:262
+#: service/models/module.ts:93
 msgctxt "meta.model.MetaModule.fields"
 msgid "UI Resources"
 msgstr ""
 
-#: service/models/module.ts:191
+#: service/models/module.ts:22
 msgctxt "meta.model.MetaModule.fields"
 msgid "Version"
 msgstr ""
 
-#: service/models/module.ts:209
+#: service/models/module.ts:40
 msgctxt "meta.model.MetaModule.fields"
 msgid "Web Entry Point"
 msgstr ""
 
-#: service/models/module_dependency.ts:25
-msgctxt "meta.model.MetaModuleDependency.fields"
-msgid "Dependent Module"
+#: service/models/module_catalog.ts:139
+msgctxt "meta.model.MetaModuleCatalog.fields"
+msgid "Active Operation"
 msgstr ""
 
-#: service/models/module_dependency.ts:19
-msgctxt "meta.model.MetaModuleDependency.fields"
-msgid "Module"
+#: service/models/module_catalog.ts:53
+msgctxt "meta.model.MetaModuleCatalog.fields"
+msgid "Application"
 msgstr ""
 
-#: service/models/module_index.ts:104
-msgctxt "meta.model.MetaModuleIndex.fields"
+#: service/models/module_catalog.ts:56
+msgctxt "meta.model.MetaModuleCatalog.fields"
+msgid "Author"
+msgstr ""
+
+#: service/models/module_catalog.ts:83
+msgctxt "meta.model.MetaModuleCatalog.fields"
 msgid "Available"
 msgstr ""
 
-#: service/models/module_index.ts:119
-msgctxt "meta.model.MetaModuleIndex.fields"
-msgid "Batch Synced At"
+#: service/models/module_catalog.ts:50
+msgctxt "meta.model.MetaModuleCatalog.fields"
+msgid "Category"
 msgstr ""
 
-#: service/models/module_index.ts:125
-msgctxt "meta.model.MetaModuleIndex.fields"
-msgid "Error Message"
+#: service/models/module_catalog.ts:133
+msgctxt "meta.model.MetaModuleCatalog.fields"
+msgid "Demo Loaded"
 msgstr ""
 
-#: service/models/module_index.ts:167
-msgctxt "meta.model.MetaModuleIndex.fields"
-msgid "Install Status"
+#: service/models/module_catalog.ts:126
+msgctxt "meta.model.MetaModuleCatalog.fields"
+msgid "Dependents"
 msgstr ""
 
-#: service/models/module_index.ts:187
-msgctxt "meta.model.MetaModuleIndex.fields"
+#: service/models/module_catalog.ts:101
+msgctxt "meta.model.MetaModuleCatalog.fields"
+msgid "Dependents JSON"
+msgstr ""
+
+#: service/models/module_catalog.ts:113
+msgctxt "meta.model.MetaModuleCatalog.fields"
+msgid "Depends"
+msgstr ""
+
+#: service/models/module_catalog.ts:98
+msgctxt "meta.model.MetaModuleCatalog.fields"
+msgid "Depends JSON"
+msgstr ""
+
+#: service/models/module_catalog.ts:47
+msgctxt "meta.model.MetaModuleCatalog.fields"
+msgid "Description"
+msgstr ""
+
+#: service/models/module_catalog.ts:130
+msgctxt "meta.model.MetaModuleCatalog.fields"
+msgid "Has Demo"
+msgstr ""
+
+#: service/models/module_catalog.ts:68
+msgctxt "meta.model.MetaModuleCatalog.fields"
+msgid "Installed"
+msgstr ""
+
+#: service/models/module_catalog.ts:74
+msgctxt "meta.model.MetaModuleCatalog.fields"
+msgid "Installed / Upgraded At"
+msgstr ""
+
+#: service/models/module_catalog.ts:71
+msgctxt "meta.model.MetaModuleCatalog.fields"
 msgid "Installed Version"
 msgstr ""
 
-#: service/models/module_index.ts:116
-msgctxt "meta.model.MetaModuleIndex.fields"
-msgid "Last Synced At"
+#: service/models/module_catalog.ts:136
+msgctxt "meta.model.MetaModuleCatalog.fields"
+msgid "Last Sync At"
 msgstr ""
 
-#: service/models/module_index.ts:113
-msgctxt "meta.model.MetaModuleIndex.fields"
+#: service/models/module_catalog.ts:59
+msgctxt "meta.model.MetaModuleCatalog.fields"
+msgid "License"
+msgstr ""
+
+#: service/models/module_catalog.ts:89
+msgctxt "meta.model.MetaModuleCatalog.fields"
 msgid "Local Path"
 msgstr ""
 
-#: service/models/module_index.ts:143
-msgctxt "meta.model.MetaModuleIndex.fields"
+#: service/models/module_catalog.ts:62
+msgctxt "meta.model.MetaModuleCatalog.fields"
 msgid "Local Version"
 msgstr ""
 
-#: service/models/module_index.ts:110
-msgctxt "meta.model.MetaModuleIndex.fields"
-msgid "Manifest JSON"
-msgstr ""
-
-#: service/models/module_index.ts:95
-msgctxt "meta.model.MetaModuleIndex.fields"
+#: service/models/module_catalog.ts:41
+msgctxt "meta.model.MetaModuleCatalog.fields"
 msgid "Module Name"
 msgstr ""
 
-#: service/models/module_index.ts:101
-msgctxt "meta.model.MetaModuleIndex.fields"
-msgid "Origin Ref"
+#: service/models/module_catalog.ts:80
+msgctxt "meta.model.MetaModuleCatalog.fields"
+msgid "Registry Newer Than Local"
 msgstr ""
 
-#: service/models/module_index.ts:98
-msgctxt "meta.model.MetaModuleIndex.fields"
-msgid "Origin Type"
+#: service/models/module_catalog.ts:92
+msgctxt "meta.model.MetaModuleCatalog.fields"
+msgid "Registry Package"
 msgstr ""
 
-#: service/models/module_index.ts:131
-msgctxt "meta.model.MetaModuleIndex.fields"
-msgid "Origin Types"
+#: service/models/module_catalog.ts:95
+msgctxt "meta.model.MetaModuleCatalog.fields"
+msgid "Registry Tarball"
 msgstr ""
 
-#: service/models/module_index.ts:155
-msgctxt "meta.model.MetaModuleIndex.fields"
+#: service/models/module_catalog.ts:65
+msgctxt "meta.model.MetaModuleCatalog.fields"
 msgid "Registry Version"
 msgstr ""
 
-#: service/models/module_index.ts:122
-msgctxt "meta.model.MetaModuleIndex.fields"
-msgid "Sync Revision"
+#: service/models/module_catalog.ts:44
+msgctxt "meta.model.MetaModuleCatalog.fields"
+msgid "Summary"
 msgstr ""
 
-#: service/models/module_index.ts:107
-msgctxt "meta.model.MetaModuleIndex.fields"
-msgid "Version"
+#: service/models/module_catalog.ts:86
+msgctxt "meta.model.MetaModuleCatalog.fields"
+msgid "Unavailable Reason"
 msgstr ""
 
-#: service/models/module_migration_history.ts:25
-msgctxt "meta.model.MetaModuleMigrationHistory.fields"
+#: service/models/module_catalog.ts:77
+msgctxt "meta.model.MetaModuleCatalog.fields"
+msgid "Update Available"
+msgstr ""
+
+#: service/models/module_catalog_depend.ts:33
+msgctxt "meta.model.MetaModuleCatalogDepend.fields"
+msgid "Depend"
+msgstr ""
+
+#: service/models/module_catalog_depend.ts:23
+msgctxt "meta.model.MetaModuleCatalogDepend.fields"
+msgid "Module"
+msgstr ""
+
+#: service/models/module_migration.ts:25
+msgctxt "meta.model.MetaModuleMigration.fields"
 msgid "Checksum"
 msgstr ""
 
-#: service/models/module_migration_history.ts:37
-msgctxt "meta.model.MetaModuleMigrationHistory.fields"
+#: service/models/module_migration.ts:37
+msgctxt "meta.model.MetaModuleMigration.fields"
 msgid "Error"
 msgstr ""
 
-#: service/models/module_migration_history.ts:34
-msgctxt "meta.model.MetaModuleMigrationHistory.fields"
+#: service/models/module_migration.ts:34
+msgctxt "meta.model.MetaModuleMigration.fields"
 msgid "Finished At"
 msgstr ""
 
-#: service/models/module_migration_history.ts:43
-msgctxt "meta.model.MetaModuleMigrationHistory.fields"
+#: service/models/module_migration.ts:43
+msgctxt "meta.model.MetaModuleMigration.fields"
 msgid "Job"
 msgstr ""
 
-#: service/models/module_migration_history.ts:13
-msgctxt "meta.model.MetaModuleMigrationHistory.fields"
+#: service/models/module_migration.ts:13
+msgctxt "meta.model.MetaModuleMigration.fields"
 msgid "Module Name"
 msgstr ""
 
-#: service/models/module_migration_history.ts:19
-msgctxt "meta.model.MetaModuleMigrationHistory.fields"
+#: service/models/module_migration.ts:19
+msgctxt "meta.model.MetaModuleMigration.fields"
 msgid "Phase"
 msgstr ""
 
-#: service/models/module_migration_history.ts:22
-msgctxt "meta.model.MetaModuleMigrationHistory.fields"
+#: service/models/module_migration.ts:22
+msgctxt "meta.model.MetaModuleMigration.fields"
 msgid "Script"
 msgstr ""
 
-#: service/models/module_migration_history.ts:31
-msgctxt "meta.model.MetaModuleMigrationHistory.fields"
+#: service/models/module_migration.ts:31
+msgctxt "meta.model.MetaModuleMigration.fields"
 msgid "Started At"
 msgstr ""
 
-#: service/models/module_migration_history.ts:28
-msgctxt "meta.model.MetaModuleMigrationHistory.fields"
+#: service/models/module_migration.ts:28
+msgctxt "meta.model.MetaModuleMigration.fields"
 msgid "Status"
 msgstr ""
 
-#: service/models/module_migration_history.ts:40
-msgctxt "meta.model.MetaModuleMigrationHistory.fields"
+#: service/models/module_migration.ts:40
+msgctxt "meta.model.MetaModuleMigration.fields"
 msgid "Trace ID"
 msgstr ""
 
-#: service/models/module_migration_history.ts:16
-msgctxt "meta.model.MetaModuleMigrationHistory.fields"
+#: service/models/module_migration.ts:16
+msgctxt "meta.model.MetaModuleMigration.fields"
 msgid "Version"
+msgstr ""
+
+#: service/models/module_operation.ts:188
+msgctxt "meta.model.MetaModuleOperation.fields"
+msgid "Action"
+msgstr ""
+
+#: service/models/module_operation.ts:206
+msgctxt "meta.model.MetaModuleOperation.fields"
+msgid "Error Code"
+msgstr ""
+
+#: service/models/module_operation.ts:203
+msgctxt "meta.model.MetaModuleOperation.fields"
+msgid "Error Domain"
+msgstr ""
+
+#: service/models/module_operation.ts:209
+msgctxt "meta.model.MetaModuleOperation.fields"
+msgid "Error Message"
+msgstr ""
+
+#: service/models/module_operation.ts:227
+msgctxt "meta.model.MetaModuleOperation.fields"
+msgid "Finished At"
+msgstr ""
+
+#: service/models/module_operation.ts:221
+msgctxt "meta.model.MetaModuleOperation.fields"
+msgid "Job"
+msgstr ""
+
+#: service/models/module_operation.ts:191
+msgctxt "meta.model.MetaModuleOperation.fields"
+msgid "Module Name"
+msgstr ""
+
+#: service/models/module_operation.ts:218
+msgctxt "meta.model.MetaModuleOperation.fields"
+msgid "Operator"
+msgstr ""
+
+#: service/models/module_operation.ts:200
+msgctxt "meta.model.MetaModuleOperation.fields"
+msgid "Phase"
+msgstr ""
+
+#: service/models/module_operation.ts:194
+msgctxt "meta.model.MetaModuleOperation.fields"
+msgid "Plan"
+msgstr ""
+
+#: service/models/module_operation.ts:215
+msgctxt "meta.model.MetaModuleOperation.fields"
+msgid "Reload Failed"
+msgstr ""
+
+#: service/models/module_operation.ts:212
+msgctxt "meta.model.MetaModuleOperation.fields"
+msgid "Reload Triggered"
+msgstr ""
+
+#: service/models/module_operation.ts:224
+msgctxt "meta.model.MetaModuleOperation.fields"
+msgid "Started At"
+msgstr ""
+
+#: service/models/module_operation.ts:197
+msgctxt "meta.model.MetaModuleOperation.fields"
+msgid "Status"
 msgstr ""
 
 #: service/models/parameter.ts:13
@@ -1035,76 +1154,6 @@ msgctxt "meta.model.MetaUiResourceRouteAction.fields"
 msgid "Route"
 msgstr ""
 
-#: service/models/module_management_log.ts:19
-msgctxt "meta.model.ModuleManagementLog.fields"
-msgid "Action"
-msgstr ""
-
-#: service/models/module_management_log.ts:49
-msgctxt "meta.model.ModuleManagementLog.fields"
-msgid "Attempt"
-msgstr ""
-
-#: service/models/module_management_log.ts:37
-msgctxt "meta.model.ModuleManagementLog.fields"
-msgid "Error Code"
-msgstr ""
-
-#: service/models/module_management_log.ts:43
-msgctxt "meta.model.ModuleManagementLog.fields"
-msgid "Error Detail"
-msgstr ""
-
-#: service/models/module_management_log.ts:34
-msgctxt "meta.model.ModuleManagementLog.fields"
-msgid "Error Domain"
-msgstr ""
-
-#: service/models/module_management_log.ts:13
-msgctxt "meta.model.ModuleManagementLog.fields"
-msgid "Job"
-msgstr ""
-
-#: service/models/module_management_log.ts:28
-msgctxt "meta.model.ModuleManagementLog.fields"
-msgid "Job Created At"
-msgstr ""
-
-#: service/models/module_management_log.ts:31
-msgctxt "meta.model.ModuleManagementLog.fields"
-msgid "Job Finished At"
-msgstr ""
-
-#: service/models/module_management_log.ts:52
-msgctxt "meta.model.ModuleManagementLog.fields"
-msgid "Max Attempts"
-msgstr ""
-
-#: service/models/module_management_log.ts:16
-msgctxt "meta.model.ModuleManagementLog.fields"
-msgid "Module Name"
-msgstr ""
-
-#: service/models/module_management_log.ts:22
-msgctxt "meta.model.ModuleManagementLog.fields"
-msgid "Operator"
-msgstr ""
-
-#: service/models/module_management_log.ts:25
-msgctxt "meta.model.ModuleManagementLog.fields"
-msgid "Result Status"
-msgstr ""
-
-#: service/models/module_management_log.ts:46
-msgctxt "meta.model.ModuleManagementLog.fields"
-msgid "Server Instance"
-msgstr ""
-
-#: service/models/module_management_log.ts:40
-msgctxt "meta.model.ModuleManagementLog.fields"
-msgid "Summary"
-msgstr ""
-
 #: service/models/model_data.ts:81
 msgctxt "service/models/model_data"
 msgid "external id %s not found"
@@ -1125,34 +1174,90 @@ msgctxt "service/models/model_data"
 msgid "external id key must not have empty module or name"
 msgstr ""
 
-#: service/models/module.ts:390
-msgctxt "service/models/module"
-msgid "jobId cannot be empty"
+#: service/models/module_catalog.ts:233
+msgctxt "service/models/module_catalog"
+msgid "enqueue returned empty job id"
 msgstr ""
 
-#: service/models/module.ts:376
-msgctxt "service/models/module"
-msgid "lease conflict"
+#: service/models/module_catalog.ts:205
+msgctxt "service/models/module_catalog"
+msgid "sync apply failed"
 msgstr ""
 
-#: service/models/module.ts:320
-msgctxt "service/models/module"
-msgid "module not found"
+#: service/models/module_catalog.ts:169
+msgctxt "service/models/module_catalog"
+msgid "sync operation timed out"
 msgstr ""
 
-#: service/models/module.ts:348
-msgctxt "service/models/module"
+#: service/models/module_catalog.ts:183
+msgctxt "service/models/module_catalog"
+msgid "sync plan failed"
+msgstr ""
+
+#: service/models/module_catalog.ts:187
+msgctxt "service/models/module_catalog"
+msgid "sync plan returned empty id"
+msgstr ""
+
+#: service/models/module_operation.ts:234
+msgctxt "service/models/module_operation"
+msgid "action must be install, upgrade, or uninstall"
+msgstr ""
+
+#: service/models/module_operation.ts:314
+msgctxt "service/models/module_operation"
+msgid "apply failed"
+msgstr ""
+
+#: service/models/module_operation.ts:344
+msgctxt "service/models/module_operation"
+msgid "enqueue returned empty job id"
+msgstr ""
+
+#: service/models/module_operation.ts:283
+msgctxt "service/models/module_operation"
+msgid "load demo failed"
+msgstr ""
+
+#: service/models/module_operation.ts:238
+msgctxt "service/models/module_operation"
 msgid "moduleName cannot be empty"
 msgstr ""
 
-#: service/models/module.ts:308
-msgctxt "service/models/module"
-msgid "plan was regenerated from the latest module state"
+#: service/models/module_operation.ts:295
+#: service/models/module_operation.ts:357
+msgctxt "service/models/module_operation"
+msgid "operation id cannot be empty"
+msgstr ""
+
+#: service/models/module_operation.ts:393
+msgctxt "service/models/module_operation"
+msgid "operation not found"
+msgstr ""
+
+#: service/models/module_operation.ts:134
+msgctxt "service/models/module_operation"
+msgid "plan failed"
+msgstr ""
+
+#: service/models/module_operation.ts:138
+msgctxt "service/models/module_operation"
+msgid "plan returned empty id"
+msgstr ""
+
+#: service/models/module_operation.ts:367
+msgctxt "service/models/module_operation"
+msgid "run failed"
 msgstr ""
 
 #: service/models/ui_resource.ts:110
 msgctxt "service/models/ui_resource"
 msgid "Cycle detected: %s cannot be assigned under one of its descendants"
+msgstr ""
+
+#: web/menu/menus.ts:63
+msgctxt "web/menu/menus"
+msgid "Catalog"
 msgstr ""
 
 #: web/menu/menus.ts:46
@@ -1165,24 +1270,9 @@ msgctxt "web/menu/menus"
 msgid "Field Defaults"
 msgstr ""
 
-#: web/menu/menus.ts:61
+#: web/menu/menus.ts:57
 msgctxt "web/menu/menus"
-msgid "Module Board"
-msgstr ""
-
-#: web/menu/menus.ts:67
-msgctxt "web/menu/menus"
-msgid "Module List"
-msgstr ""
-
-#: web/menu/menus.ts:56
-msgctxt "web/menu/menus"
-msgid "Module Management"
-msgstr ""
-
-#: web/menu/menus.ts:73
-msgctxt "web/menu/menus"
-msgid "Operation History"
+msgid "Modules"
 msgstr ""
 
 #: web/menu/menus.ts:22
@@ -1210,117 +1300,117 @@ msgctxt "web/pages/MetaModelDataList"
 msgid "External IDs"
 msgstr ""
 
-#: web/pages/ModuleHistory.vue:12
-msgctxt "web/pages/ModuleHistory"
-msgid "Module History"
+#: web/pages/ModuleCatalog.vue:3
+msgctxt "web/pages/ModuleCatalog"
+msgid "Loading…"
 msgstr ""
 
-#: web/pages/ModuleList.vue:13
-msgctxt "web/pages/ModuleList"
-msgid "Module Board"
+#: web/pages/ModuleCatalog.vue:20
+msgctxt "web/pages/ModuleCatalog"
+msgid "Module"
 msgstr ""
 
-#: web/pages/ModuleListTable.vue:12
-msgctxt "web/pages/ModuleListTable"
-msgid "Module List"
+#: web/pages/ModuleCatalog.vue:5
+msgctxt "web/pages/ModuleCatalog"
+msgid "Module not found."
 msgstr ""
 
-#: web/route/routes.ts:109
+#: web/route/routes.ts:29
+msgctxt "web/route/routes"
+msgid "Catalog"
+msgstr ""
+
+#: web/route/routes.ts:170
 msgctxt "web/route/routes"
 msgid "External ID"
 msgstr ""
 
-#: web/route/routes.ts:99
+#: web/route/routes.ts:160
 msgctxt "web/route/routes"
 msgid "External IDs"
 msgstr ""
 
-#: web/route/routes.ts:80
+#: web/route/routes.ts:141
 msgctxt "web/route/routes"
 msgid "Field Defaults"
 msgstr ""
 
-#: web/route/routes.ts:52
+#: web/route/routes.ts:98
 msgctxt "web/route/routes"
-msgid "Module Detail"
+msgid "Module"
 msgstr ""
 
-#: web/route/routes.ts:32
+#: web/route/routes.ts:53
 msgctxt "web/route/routes"
 msgid "Module List"
 msgstr ""
 
-#: web/route/routes.ts:22
+#: web/route/routes.ts:76
 msgctxt "web/route/routes"
-msgid "Module Management"
+msgid "Module Operation"
 msgstr ""
 
-#: web/route/routes.ts:42
-msgctxt "web/route/routes"
-msgid "Operation History"
-msgstr ""
-
-#: web/route/routes.ts:89
+#: web/route/routes.ts:150
 msgctxt "web/route/routes"
 msgid "Parameters"
 msgstr ""
 
-#: web/route/routes.ts:71
+#: web/route/routes.ts:132
 msgctxt "web/route/routes"
 msgid "Property Definitions"
 msgstr ""
 
-#: web/route/routes.ts:62
+#: web/route/routes.ts:123
 msgctxt "web/route/routes"
 msgid "Translations"
 msgstr ""
 
-#: web/views/MetaModelDataFormView.vue:22
+#: web/views/MetaModelDataFormView.vue:23
 msgctxt "web/views/MetaModelDataFormView"
 msgid "Application"
 msgstr ""
 
-#: web/views/MetaModelDataFormView.vue:8
+#: web/views/MetaModelDataFormView.vue:9
 msgctxt "web/views/MetaModelDataFormView"
 msgid "External ID"
 msgstr ""
 
-#: web/views/MetaModelDataFormView.vue:11
+#: web/views/MetaModelDataFormView.vue:12
 msgctxt "web/views/MetaModelDataFormView"
 msgid "Full key is Module.Name (first dot splits module vs name)."
 msgstr ""
 
-#: web/views/MetaModelDataFormView.vue:28
+#: web/views/MetaModelDataFormView.vue:29
 msgctxt "web/views/MetaModelDataFormView"
 msgid "Model"
 msgstr ""
 
-#: web/views/MetaModelDataFormView.vue:25
+#: web/views/MetaModelDataFormView.vue:26
 msgctxt "web/views/MetaModelDataFormView"
 msgid "Model Name"
 msgstr ""
 
-#: web/views/MetaModelDataFormView.vue:11
+#: web/views/MetaModelDataFormView.vue:12
 msgctxt "web/views/MetaModelDataFormView"
 msgid "Module"
 msgstr ""
 
-#: web/views/MetaModelDataFormView.vue:14
+#: web/views/MetaModelDataFormView.vue:15
 msgctxt "web/views/MetaModelDataFormView"
 msgid "Name"
 msgstr ""
 
-#: web/views/MetaModelDataFormView.vue:34
+#: web/views/MetaModelDataFormView.vue:35
 msgctxt "web/views/MetaModelDataFormView"
 msgid "No Update"
 msgstr ""
 
-#: web/views/MetaModelDataFormView.vue:31
+#: web/views/MetaModelDataFormView.vue:32
 msgctxt "web/views/MetaModelDataFormView"
 msgid "Resource Id"
 msgstr ""
 
-#: web/views/MetaModelDataFormView.vue:19
+#: web/views/MetaModelDataFormView.vue:20
 msgctxt "web/views/MetaModelDataFormView"
 msgid "Target"
 msgstr ""
@@ -1355,523 +1445,891 @@ msgctxt "web/views/MetaModelDataListView"
 msgid "Resource Id"
 msgstr ""
 
-#: web/views/ModuleDetailView.vue:3
-msgctxt "web/views/ModuleDetailView"
-msgid "Basic Information"
+#: web/views/ModuleCatalogFormView.vue:171
+msgctxt "web/views/ModuleCatalogFormView"
+msgid "Almost done, refreshing…"
 msgstr ""
 
-#: web/views/ModuleDetailView.vue:27
-msgctxt "web/views/ModuleDetailView"
-msgid "Copy Module Index"
+#: web/views/ModuleCatalogFormView.vue:114
+#: web/views/ModuleCatalogFormView.vue:162
+msgctxt "web/views/ModuleCatalogFormView"
+msgid "Application"
 msgstr ""
 
-#: web/views/ModuleDetailView.vue:27
-msgctxt "web/views/ModuleDetailView"
-msgid "Create Module Index"
+#: web/views/ModuleCatalogFormView.vue:80
+msgctxt "web/views/ModuleCatalogFormView"
+msgid "Dependencies"
 msgstr ""
 
-#: web/views/ModuleDetailView.vue:27
-msgctxt "web/views/ModuleDetailView"
-msgid "Delete Module Index"
-msgstr ""
-
-#: web/views/ModuleDetailView.vue:27
-msgctxt "web/views/ModuleDetailView"
-msgid "Edit Module Index"
-msgstr ""
-
-#: web/views/ModuleDetailView.vue:28
-msgctxt "web/views/ModuleDetailView"
-msgid "Module Index"
-msgstr ""
-
-#: web/views/ModuleDetailView.vue:33
-msgctxt "web/views/ModuleDetailView"
-msgid "Sync Information"
-msgstr ""
-
-#: web/views/ModuleDetailView.vue:56
-msgctxt "web/views/ModuleDetailView"
-msgid "Timestamps"
-msgstr ""
-
-#: web/views/ModuleKanbanView.vue:96
-msgctxt "web/views/ModuleKanbanView"
-msgid "Affected Modules"
-msgstr ""
-
-#: web/views/ModuleKanbanView.vue:16
-#: web/views/ModuleKanbanView.vue:175
-msgctxt "web/views/ModuleKanbanView"
-msgid "All"
-msgstr ""
-
-#: web/views/ModuleKanbanView.vue:120
-msgctxt "web/views/ModuleKanbanView"
-msgid "Blockers"
-msgstr ""
-
-#: web/views/ModuleKanbanView.vue:221
-msgctxt "web/views/ModuleKanbanView"
-msgid "Board View"
-msgstr ""
-
-#: web/views/ModuleKanbanView.vue:272
-msgctxt "web/views/ModuleKanbanView"
-msgid "Broken"
-msgstr ""
-
-#: web/views/ModuleKanbanView.vue:180
-msgctxt "web/views/ModuleKanbanView"
-msgid "Cancel"
-msgstr ""
-
-#: web/views/ModuleKanbanView.vue:140
-msgctxt "web/views/ModuleKanbanView"
-msgid "Completed"
-msgstr ""
-
-#: web/views/ModuleKanbanView.vue:182
-msgctxt "web/views/ModuleKanbanView"
-msgid "Confirm"
-msgstr ""
-
-#: web/views/ModuleKanbanView.vue:92
-msgctxt "web/views/ModuleKanbanView"
-msgid "Confirm the impact of this operation"
-msgstr ""
-
-#: web/views/ModuleKanbanView.vue:271
-msgctxt "web/views/ModuleKanbanView"
-msgid "Disabled"
-msgstr ""
-
-#: web/views/ModuleKanbanView.vue:275
-msgctxt "web/views/ModuleKanbanView"
-msgid "Dispatching"
-msgstr ""
-
-#: web/views/ModuleKanbanView.vue:174
-msgctxt "web/views/ModuleKanbanView"
-msgid "Do not refresh; status updates automatically."
-msgstr ""
-
-#: web/views/ModuleKanbanView.vue:184
-msgctxt "web/views/ModuleKanbanView"
-msgid "Done"
-msgstr ""
-
-#: web/views/ModuleKanbanView.vue:163
-msgctxt "web/views/ModuleKanbanView"
-msgid "Error:"
-msgstr ""
-
-#: web/views/ModuleKanbanView.vue:147
-msgctxt "web/views/ModuleKanbanView"
-msgid "Execution Status"
-msgstr ""
-
-#: web/views/ModuleKanbanView.vue:274
-msgctxt "web/views/ModuleKanbanView"
-msgid "Failed"
-msgstr ""
-
-#: web/views/ModuleKanbanView.vue:128
-msgctxt "web/views/ModuleKanbanView"
+#: web/views/ModuleCatalogFormView.vue:167
+msgctxt "web/views/ModuleCatalogFormView"
 msgid "Failed to get status"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:209
-#: web/views/ModuleKanbanView.vue:214
-msgctxt "web/views/ModuleKanbanView"
-msgid "Failed to load kanban"
+#: web/views/ModuleCatalogFormView.vue:173
+msgctxt "web/views/ModuleCatalogFormView"
+msgid "Getting ready…"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:310
-msgctxt "web/views/ModuleKanbanView"
-msgid "Failed to load plan"
-msgstr ""
-
-#: web/views/ModuleKanbanView.vue:159
-msgctxt "web/views/ModuleKanbanView"
-msgid "Failure Kind:"
-msgstr ""
-
-#: web/views/ModuleKanbanView.vue:133
-msgctxt "web/views/ModuleKanbanView"
-msgid "Include demo data"
-msgstr ""
-
-#: web/views/ModuleKanbanView.vue:58
-msgctxt "web/views/ModuleKanbanView"
+#: web/views/ModuleCatalogFormView.vue:106
+msgctxt "web/views/ModuleCatalogFormView"
 msgid "Install"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:135
-#: web/views/ModuleKanbanView.vue:70
-msgctxt "web/views/ModuleKanbanView"
-msgid "Install Module"
-msgstr ""
-
-#: web/views/ModuleKanbanView.vue:269
-msgctxt "web/views/ModuleKanbanView"
+#: web/views/ModuleCatalogFormView.vue:249
+msgctxt "web/views/ModuleCatalogFormView"
 msgid "Installed"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:126
-msgctxt "web/views/ModuleKanbanView"
+#: web/views/ModuleCatalogFormView.vue:178
+msgctxt "web/views/ModuleCatalogFormView"
+msgid "Installing %s"
+msgstr ""
+
+#: web/views/ModuleCatalogFormView.vue:178
+msgctxt "web/views/ModuleCatalogFormView"
+msgid "Installing…"
+msgstr ""
+
+#: web/views/ModuleCatalogFormView.vue:165
+msgctxt "web/views/ModuleCatalogFormView"
 msgid "Job is still running in the background; refresh later"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:224
-msgctxt "web/views/ModuleKanbanView"
-msgid "List View"
+#: web/views/ModuleCatalogFormView.vue:121
+#: web/views/ModuleCatalogFormView.vue:169
+msgctxt "web/views/ModuleCatalogFormView"
+msgid "License"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:71
-msgctxt "web/views/ModuleKanbanView"
-msgid "No modules"
+#: web/views/ModuleCatalogFormView.vue:61
+msgctxt "web/views/ModuleCatalogFormView"
+msgid "Local"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:270
-msgctxt "web/views/ModuleKanbanView"
+#: web/views/ModuleCatalogFormView.vue:143
+#: web/views/ModuleCatalogFormView.vue:95
+msgctxt "web/views/ModuleCatalogFormView"
+msgid "Module Name"
+msgstr ""
+
+#: web/views/ModuleCatalogFormView.vue:169
+msgctxt "web/views/ModuleCatalogFormView"
+msgid "Module list updated with warnings"
+msgstr ""
+
+#: web/views/ModuleCatalogFormView.vue:251
+msgctxt "web/views/ModuleCatalogFormView"
 msgid "Not Installed"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:141
-msgctxt "web/views/ModuleKanbanView"
-msgid "Operation Failed"
+#: web/views/ModuleCatalogFormView.vue:170
+msgctxt "web/views/ModuleCatalogFormView"
+msgid "Operation Failed: %s"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:23
-msgctxt "web/views/ModuleKanbanView"
-msgid "Operation History"
-msgstr ""
-
-#: web/views/ModuleKanbanView.vue:142
-msgctxt "web/views/ModuleKanbanView"
+#: web/views/ModuleCatalogFormView.vue:168
+msgctxt "web/views/ModuleCatalogFormView"
 msgid "Operation Succeeded"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:142
-msgctxt "web/views/ModuleKanbanView"
-msgid "Operation in progress, please wait"
+#: web/views/ModuleCatalogFormView.vue:28
+msgctxt "web/views/ModuleCatalogFormView"
+msgid "Overview"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:338
-msgctxt "web/views/ModuleKanbanView"
-msgid "Operation request failed"
+#: web/views/ModuleCatalogFormView.vue:175
+msgctxt "web/views/ModuleCatalogFormView"
+msgid "Please wait…"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:276
-msgctxt "web/views/ModuleKanbanView"
-msgid "Queued"
+#: web/views/ModuleCatalogFormView.vue:67
+msgctxt "web/views/ModuleCatalogFormView"
+msgid "Registry"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:167
-msgctxt "web/views/ModuleKanbanView"
-msgid "Reload:"
-msgstr ""
-
-#: web/views/ModuleKanbanView.vue:89
-msgctxt "web/views/ModuleKanbanView"
-msgid "Resolve blockers before continuing"
-msgstr ""
-
-#: web/views/ModuleKanbanView.vue:151
-msgctxt "web/views/ModuleKanbanView"
-msgid "Result:"
-msgstr ""
-
-#: web/views/ModuleKanbanView.vue:108
-msgctxt "web/views/ModuleKanbanView"
-msgid "Risks"
-msgstr ""
-
-#: web/views/ModuleKanbanView.vue:127
-msgctxt "web/views/ModuleKanbanView"
+#: web/views/ModuleCatalogFormView.vue:166
+msgctxt "web/views/ModuleCatalogFormView"
 msgid "Service is restarting; status will retry automatically"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:149
-msgctxt "web/views/ModuleKanbanView"
-msgid "Status:"
+#: web/views/ModuleCatalogFormView.vue:107
+#: web/views/ModuleCatalogFormView.vue:155
+msgctxt "web/views/ModuleCatalogFormView"
+msgid "Status"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:273
-msgctxt "web/views/ModuleKanbanView"
-msgid "Succeeded"
-msgstr ""
-
-#: web/views/ModuleKanbanView.vue:142
-msgctxt "web/views/ModuleKanbanView"
-msgid "Succeeded but reload failed"
-msgstr ""
-
-#: web/views/ModuleKanbanView.vue:155
-msgctxt "web/views/ModuleKanbanView"
-msgid "Summary:"
-msgstr ""
-
-#: web/views/ModuleKanbanView.vue:27
-msgctxt "web/views/ModuleKanbanView"
-msgid "Sync Index"
-msgstr ""
-
-#: web/views/ModuleKanbanView.vue:82
-msgctxt "web/views/ModuleKanbanView"
-msgid "Sync Module Index"
-msgstr ""
-
-#: web/views/ModuleKanbanView.vue:393
-msgctxt "web/views/ModuleKanbanView"
-msgid "Sync failed: %s"
-msgstr ""
-
-#: web/views/ModuleKanbanView.vue:391
-msgctxt "web/views/ModuleKanbanView"
-msgid "Sync job triggered"
-msgstr ""
-
-#: web/views/ModuleKanbanView.vue:391
-msgctxt "web/views/ModuleKanbanView"
-msgid "Sync job triggered: all:%s"
-msgstr ""
-
-#: web/views/ModuleKanbanView.vue:169
-msgctxt "web/views/ModuleKanbanView"
-msgid "Trigger Failed"
-msgstr ""
-
-#: web/views/ModuleKanbanView.vue:169
-msgctxt "web/views/ModuleKanbanView"
-msgid "Triggered"
-msgstr ""
-
-#: web/views/ModuleKanbanView.vue:267
-msgctxt "web/views/ModuleKanbanView"
+#: web/views/ModuleCatalogFormView.vue:245
+msgctxt "web/views/ModuleCatalogFormView"
 msgid "Unavailable"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:64
-msgctxt "web/views/ModuleKanbanView"
+#: web/views/ModuleCatalogFormView.vue:23
+msgctxt "web/views/ModuleCatalogFormView"
 msgid "Uninstall"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:135
-#: web/views/ModuleKanbanView.vue:78
-msgctxt "web/views/ModuleKanbanView"
-msgid "Uninstall Module"
+#: web/views/ModuleCatalogFormView.vue:180
+msgctxt "web/views/ModuleCatalogFormView"
+msgid "Uninstalling %s"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:277
-msgctxt "web/views/ModuleKanbanView"
+#: web/views/ModuleCatalogFormView.vue:180
+msgctxt "web/views/ModuleCatalogFormView"
+msgid "Uninstalling…"
+msgstr ""
+
+#: web/views/ModuleCatalogFormView.vue:252
+msgctxt "web/views/ModuleCatalogFormView"
 msgid "Unknown"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:61
-msgctxt "web/views/ModuleKanbanView"
+#: web/views/ModuleCatalogFormView.vue:248
+msgctxt "web/views/ModuleCatalogFormView"
+msgid "Update available"
+msgstr ""
+
+#: web/views/ModuleCatalogFormView.vue:181
+msgctxt "web/views/ModuleCatalogFormView"
+msgid "Updating module list…"
+msgstr ""
+
+#: web/views/ModuleCatalogFormView.vue:107
+msgctxt "web/views/ModuleCatalogFormView"
 msgid "Upgrade"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:135
-#: web/views/ModuleKanbanView.vue:74
-msgctxt "web/views/ModuleKanbanView"
-msgid "Upgrade Module"
+#: web/views/ModuleCatalogFormView.vue:179
+msgctxt "web/views/ModuleCatalogFormView"
+msgid "Upgrading %s"
 msgstr ""
 
-#: web/views/ModuleKanbanView.vue:37
-msgctxt "web/views/ModuleKanbanView"
-msgid "View switcher"
+#: web/views/ModuleCatalogFormView.vue:179
+msgctxt "web/views/ModuleCatalogFormView"
+msgid "Upgrading…"
 msgstr ""
 
-#: web/views/ModuleListView.vue:96
-msgctxt "web/views/ModuleListView"
-msgid "Board View"
+#: web/views/ModuleCatalogFormView.vue:102
+#: web/views/ModuleCatalogFormView.vue:150
+msgctxt "web/views/ModuleCatalogFormView"
+msgid "Version"
 msgstr ""
 
-#: web/views/ModuleListView.vue:133
-msgctxt "web/views/ModuleListView"
-msgid "Broken"
+#: web/views/ModuleCatalogFormView.vue:58
+msgctxt "web/views/ModuleCatalogFormView"
+msgid "Versions & Source"
 msgstr ""
 
-#: web/views/ModuleListView.vue:53
-msgctxt "web/views/ModuleListView"
-msgid "Copy Module Index"
+#: web/views/ModuleCatalogFormView.vue:108
+msgctxt "web/views/ModuleCatalogFormView"
+msgid "View Progress"
 msgstr ""
 
-#: web/views/ModuleListView.vue:53
-msgctxt "web/views/ModuleListView"
-msgid "Create Module Index"
+#: web/views/ModuleCatalogFormView.vue:182
+#: web/views/ModuleCatalogFormView.vue:183
+msgctxt "web/views/ModuleCatalogFormView"
+msgid "Working on %s"
 msgstr ""
 
-#: web/views/ModuleListView.vue:53
-msgctxt "web/views/ModuleListView"
-msgid "Delete Module Index"
+#: web/views/ModuleCatalogFormView.vue:172
+msgctxt "web/views/ModuleCatalogFormView"
+msgid "Working on it, please wait…"
 msgstr ""
 
-#: web/views/ModuleListView.vue:132
-msgctxt "web/views/ModuleListView"
-msgid "Disabled"
+#: web/views/ModuleCatalogFormView.vue:182
+#: web/views/ModuleCatalogFormView.vue:183
+msgctxt "web/views/ModuleCatalogFormView"
+msgid "Working…"
 msgstr ""
 
-#: web/views/ModuleListView.vue:136
-msgctxt "web/views/ModuleListView"
-msgid "Dispatching"
+#: web/views/ModuleCatalogFormView.vue:174
+msgctxt "web/views/ModuleCatalogFormView"
+msgid "Wrapping up…"
 msgstr ""
 
-#: web/views/ModuleListView.vue:24
-msgctxt "web/views/ModuleListView"
-msgid "Display Version"
+#: web/views/ModuleCatalogKanbanView.vue:16
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "All"
 msgstr ""
 
-#: web/views/ModuleListView.vue:53
-msgctxt "web/views/ModuleListView"
-msgid "Edit Module Index"
+#: web/views/ModuleCatalogKanbanView.vue:136
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Almost done, refreshing…"
 msgstr ""
 
-#: web/views/ModuleListView.vue:135
-msgctxt "web/views/ModuleListView"
-msgid "Failed"
+#: web/views/ModuleCatalogKanbanView.vue:121
+#: web/views/ModuleCatalogKanbanView.vue:135
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Failed to get status"
 msgstr ""
 
-#: web/views/ModuleListView.vue:27
-msgctxt "web/views/ModuleListView"
-msgid "Install Status"
+#: web/views/ModuleCatalogKanbanView.vue:164
+#: web/views/ModuleCatalogKanbanView.vue:165
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Failed to load modules"
 msgstr ""
 
-#: web/views/ModuleListView.vue:130
-msgctxt "web/views/ModuleListView"
+#: web/views/ModuleCatalogKanbanView.vue:166
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Failed to load more"
+msgstr ""
+
+#: web/views/ModuleCatalogKanbanView.vue:138
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Getting ready…"
+msgstr ""
+
+#: web/views/ModuleCatalogKanbanView.vue:106
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Install"
+msgstr ""
+
+#: web/views/ModuleCatalogKanbanView.vue:109
+msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "Installed"
 msgstr ""
 
-#: web/views/ModuleListView.vue:99
-msgctxt "web/views/ModuleListView"
+#: web/views/ModuleCatalogKanbanView.vue:143
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Installing %s"
+msgstr ""
+
+#: web/views/ModuleCatalogKanbanView.vue:143
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Installing…"
+msgstr ""
+
+#: web/views/ModuleCatalogKanbanView.vue:119
+#: web/views/ModuleCatalogKanbanView.vue:133
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Job is still running in the background; refresh later"
+msgstr ""
+
+#: web/views/ModuleCatalogKanbanView.vue:65
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Kanban View"
+msgstr ""
+
+#: web/views/ModuleCatalogKanbanView.vue:34
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Last sync %s"
+msgstr ""
+
+#: web/views/ModuleCatalogKanbanView.vue:66
+msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "List View"
 msgstr ""
 
-#: web/views/ModuleListView.vue:54
-msgctxt "web/views/ModuleListView"
-msgid "Module Index"
+#: web/views/ModuleCatalogKanbanView.vue:28
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Load Demo Data"
 msgstr ""
 
-#: web/views/ModuleListView.vue:131
-msgctxt "web/views/ModuleListView"
+#: web/views/ModuleCatalogKanbanView.vue:146
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Loading demo data…"
+msgstr ""
+
+#: web/views/ModuleCatalogKanbanView.vue:122
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Module catalog updated, %s modules"
+msgstr ""
+
+#: web/views/ModuleCatalogKanbanView.vue:124
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Module catalog updated, %s modules (%s failed)"
+msgstr ""
+
+#: web/views/ModuleCatalogKanbanView.vue:115
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Module list updated"
+msgstr ""
+
+#: web/views/ModuleCatalogKanbanView.vue:117
+#: web/views/ModuleCatalogKanbanView.vue:131
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Module list updated with warnings"
+msgstr ""
+
+#: web/views/ModuleCatalogKanbanView.vue:48
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "No modules match this filter."
+msgstr ""
+
+#: web/views/ModuleCatalogKanbanView.vue:111
+msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "Not Installed"
 msgstr ""
 
-#: web/views/ModuleListView.vue:7
-msgctxt "web/views/ModuleListView"
-msgid "Operation History"
+#: web/views/ModuleCatalogKanbanView.vue:132
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Operation Failed: %s"
 msgstr ""
 
-#: web/views/ModuleListView.vue:37
-msgctxt "web/views/ModuleListView"
-msgid "Origin"
+#: web/views/ModuleCatalogKanbanView.vue:130
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Operation Succeeded"
 msgstr ""
 
-#: web/views/ModuleListView.vue:38
-msgctxt "web/views/ModuleListView"
-msgid "Path"
+#: web/views/ModuleCatalogKanbanView.vue:140
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Please wait…"
 msgstr ""
 
-#: web/views/ModuleListView.vue:137
-msgctxt "web/views/ModuleListView"
-msgid "Queued"
+#: web/views/ModuleCatalogKanbanView.vue:120
+#: web/views/ModuleCatalogKanbanView.vue:134
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Service is restarting; status will retry automatically"
 msgstr ""
 
-#: web/views/ModuleListView.vue:134
-msgctxt "web/views/ModuleListView"
-msgid "Succeeded"
-msgstr ""
-
-#: web/views/ModuleListView.vue:11
-msgctxt "web/views/ModuleListView"
-msgid "Sync Index"
-msgstr ""
-
-#: web/views/ModuleListView.vue:50
-msgctxt "web/views/ModuleListView"
-msgid "Sync Module Index"
-msgstr ""
-
-#: web/views/ModuleListView.vue:70
-msgctxt "web/views/ModuleListView"
+#: web/views/ModuleCatalogKanbanView.vue:113
+#: web/views/ModuleCatalogKanbanView.vue:118
+msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "Sync failed: %s"
 msgstr ""
 
-#: web/views/ModuleListView.vue:68
-msgctxt "web/views/ModuleListView"
-msgid "Sync job triggered"
-msgstr ""
-
-#: web/views/ModuleListView.vue:68
-msgctxt "web/views/ModuleListView"
-msgid "Sync job triggered: all:%s"
-msgstr ""
-
-#: web/views/ModuleListView.vue:39
-msgctxt "web/views/ModuleListView"
-msgid "Synced At"
-msgstr ""
-
-#: web/views/ModuleListView.vue:128
-msgctxt "web/views/ModuleListView"
+#: web/views/ModuleCatalogKanbanView.vue:112
+msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "Unavailable"
 msgstr ""
 
-#: web/views/ModuleListView.vue:138
-msgctxt "web/views/ModuleListView"
+#: web/views/ModuleCatalogKanbanCard.vue:23
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Uninstall"
+msgstr ""
+
+#: web/views/ModuleCatalogKanbanView.vue:145
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Uninstalling %s"
+msgstr ""
+
+#: web/views/ModuleCatalogKanbanView.vue:145
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Uninstalling…"
+msgstr ""
+
+#: web/views/ModuleCatalogKanbanView.vue:105
+msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "Unknown"
 msgstr ""
 
-#: web/views/ModuleListView.vue:17
-msgctxt "web/views/ModuleListView"
+#: web/views/ModuleCatalogKanbanView.vue:25
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Update Module List"
+msgstr ""
+
+#: web/views/ModuleCatalogKanbanView.vue:110
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Update available"
+msgstr ""
+
+#: web/views/ModuleCatalogKanbanView.vue:147
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Updating module list…"
+msgstr ""
+
+#: web/views/ModuleCatalogKanbanView.vue:107
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Upgrade"
+msgstr ""
+
+#: web/views/ModuleCatalogKanbanView.vue:144
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Upgrading %s"
+msgstr ""
+
+#: web/views/ModuleCatalogKanbanView.vue:144
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Upgrading…"
+msgstr ""
+
+#: web/views/ModuleCatalogKanbanView.vue:108
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "View Progress"
+msgstr ""
+
+#: web/views/ModuleCatalogKanbanView.vue:36
+msgctxt "web/views/ModuleCatalogKanbanView"
 msgid "View switcher"
 msgstr ""
 
-#: web/views/ModuleLogListView.vue:14
-msgctxt "web/views/ModuleLogListView"
-msgid "Attempts"
+#: web/views/ModuleCatalogKanbanView.vue:148
+#: web/views/ModuleCatalogKanbanView.vue:149
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Working on %s"
 msgstr ""
 
-#: web/views/ModuleLogListView.vue:27
-msgctxt "web/views/ModuleLogListView"
-msgid "Copy Module Operation History"
+#: web/views/ModuleCatalogKanbanView.vue:137
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Working on it, please wait…"
 msgstr ""
 
-#: web/views/ModuleLogListView.vue:27
-msgctxt "web/views/ModuleLogListView"
-msgid "Create Module Operation History"
+#: web/views/ModuleCatalogKanbanView.vue:148
+#: web/views/ModuleCatalogKanbanView.vue:149
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Working…"
 msgstr ""
 
-#: web/views/ModuleLogListView.vue:27
-msgctxt "web/views/ModuleLogListView"
-msgid "Delete Module Operation History"
+#: web/views/ModuleCatalogKanbanView.vue:139
+msgctxt "web/views/ModuleCatalogKanbanView"
+msgid "Wrapping up…"
 msgstr ""
 
-#: web/views/ModuleLogListView.vue:27
-msgctxt "web/views/ModuleLogListView"
-msgid "Edit Module Operation History"
+#: web/views/ModuleCatalogListView.vue:49
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Action"
 msgstr ""
 
-#: web/views/ModuleLogListView.vue:4
-msgctxt "web/views/ModuleLogListView"
-msgid "Module"
+#: web/views/ModuleCatalogListView.vue:135
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Almost done, refreshing…"
 msgstr ""
 
-#: web/views/ModuleLogListView.vue:28
-msgctxt "web/views/ModuleLogListView"
-msgid "Module Operation History"
+#: web/views/ModuleCatalogListView.vue:120
+#: web/views/ModuleCatalogListView.vue:134
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Failed to get status"
 msgstr ""
 
-#: web/views/ModuleLogListView.vue:6
-msgctxt "web/views/ModuleLogListView"
-msgid "Result"
+#: web/views/ModuleCatalogListView.vue:137
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Getting ready…"
 msgstr ""
 
-#: web/views/ModuleLogListView.vue:8
-msgctxt "web/views/ModuleLogListView"
-msgid "Started At"
+#: web/views/ModuleCatalogListView.vue:105
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Install"
+msgstr ""
+
+#: web/views/ModuleCatalogListView.vue:108
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Installed"
+msgstr ""
+
+#: web/views/ModuleCatalogListView.vue:40
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Installed / Upgraded At"
+msgstr ""
+
+#: web/views/ModuleCatalogListView.vue:142
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Installing %s"
+msgstr ""
+
+#: web/views/ModuleCatalogListView.vue:142
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Installing…"
+msgstr ""
+
+#: web/views/ModuleCatalogListView.vue:118
+#: web/views/ModuleCatalogListView.vue:132
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Job is still running in the background; refresh later"
+msgstr ""
+
+#: web/views/ModuleCatalogListView.vue:58
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Kanban View"
+msgstr ""
+
+#: web/views/ModuleCatalogListView.vue:20
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Last sync %s"
+msgstr ""
+
+#: web/views/ModuleCatalogListView.vue:59
+msgctxt "web/views/ModuleCatalogListView"
+msgid "List View"
+msgstr ""
+
+#: web/views/ModuleCatalogListView.vue:14
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Load Demo Data"
+msgstr ""
+
+#: web/views/ModuleCatalogListView.vue:145
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Loading demo data…"
+msgstr ""
+
+#: web/views/ModuleCatalogListView.vue:121
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Module catalog updated, %s modules"
+msgstr ""
+
+#: web/views/ModuleCatalogListView.vue:123
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Module catalog updated, %s modules (%s failed)"
+msgstr ""
+
+#: web/views/ModuleCatalogListView.vue:114
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Module list updated"
+msgstr ""
+
+#: web/views/ModuleCatalogListView.vue:116
+#: web/views/ModuleCatalogListView.vue:130
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Module list updated with warnings"
+msgstr ""
+
+#: web/views/ModuleCatalogListView.vue:110
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Not Installed"
+msgstr ""
+
+#: web/views/ModuleCatalogListView.vue:131
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Operation Failed: %s"
+msgstr ""
+
+#: web/views/ModuleCatalogListView.vue:129
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Operation Succeeded"
+msgstr ""
+
+#: web/views/ModuleCatalogListView.vue:139
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Please wait…"
+msgstr ""
+
+#: web/views/ModuleCatalogListView.vue:119
+#: web/views/ModuleCatalogListView.vue:133
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Service is restarting; status will retry automatically"
+msgstr ""
+
+#: web/views/ModuleCatalogListView.vue:42
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Status"
+msgstr ""
+
+#: web/views/ModuleCatalogListView.vue:112
+#: web/views/ModuleCatalogListView.vue:117
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Sync failed: %s"
+msgstr ""
+
+#: web/views/ModuleCatalogListView.vue:111
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Unavailable"
+msgstr ""
+
+#: web/views/ModuleCatalogListView.vue:56
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Uninstall"
+msgstr ""
+
+#: web/views/ModuleCatalogListView.vue:144
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Uninstalling %s"
+msgstr ""
+
+#: web/views/ModuleCatalogListView.vue:144
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Uninstalling…"
+msgstr ""
+
+#: web/views/ModuleCatalogListView.vue:104
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Unknown"
+msgstr ""
+
+#: web/views/ModuleCatalogListView.vue:11
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Update Module List"
+msgstr ""
+
+#: web/views/ModuleCatalogListView.vue:109
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Update available"
+msgstr ""
+
+#: web/views/ModuleCatalogListView.vue:146
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Updating module list…"
+msgstr ""
+
+#: web/views/ModuleCatalogListView.vue:106
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Upgrade"
+msgstr ""
+
+#: web/views/ModuleCatalogListView.vue:143
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Upgrading %s"
+msgstr ""
+
+#: web/views/ModuleCatalogListView.vue:143
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Upgrading…"
+msgstr ""
+
+#: web/views/ModuleCatalogListView.vue:35
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Version"
+msgstr ""
+
+#: web/views/ModuleCatalogListView.vue:107
+msgctxt "web/views/ModuleCatalogListView"
+msgid "View Progress"
+msgstr ""
+
+#: web/views/ModuleCatalogListView.vue:22
+msgctxt "web/views/ModuleCatalogListView"
+msgid "View switcher"
+msgstr ""
+
+#: web/views/ModuleCatalogListView.vue:147
+#: web/views/ModuleCatalogListView.vue:148
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Working on %s"
+msgstr ""
+
+#: web/views/ModuleCatalogListView.vue:136
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Working on it, please wait…"
+msgstr ""
+
+#: web/views/ModuleCatalogListView.vue:147
+#: web/views/ModuleCatalogListView.vue:148
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Working…"
+msgstr ""
+
+#: web/views/ModuleCatalogListView.vue:138
+msgctxt "web/views/ModuleCatalogListView"
+msgid "Wrapping up…"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDialog.vue:40
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Also %s dependencies with no changes"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDialog.vue:69
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Blockers"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDialog.vue:118
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Cancel"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDialog.vue:118
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Close"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDialog.vue:64
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Completed"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDialog.vue:121
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Confirm"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDialog.vue:66
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Data written; page did not refresh"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDialog.vue:124
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Done"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDialog.vue:109
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Error:"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDialog.vue:98
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Execution Status"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDialog.vue:248
+#: web/views/ModuleCatalogOpDialog.vue:63
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Failed to get status"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDialog.vue:59
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Failed to load plan"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDialog.vue:142
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Install Module"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDialog.vue:52
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Installed"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDialog.vue:61
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Job is still running in the background; refresh later"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDialog.vue:145
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Load Demo Data"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDialog.vue:141
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Module Operation"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDialog.vue:184
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Module catalog updated, %s modules"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDialog.vue:178
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Module catalog updated, %s modules (%s failed)"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDialog.vue:68
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Module list updated with warnings"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDialog.vue:19
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Modules that will change"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDialog.vue:32
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "No module changes required"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDialog.vue:65
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Operation Failed"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDialog.vue:67
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Operation Succeeded"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDialog.vue:60
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Operation request failed"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDialog.vue:89
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Planning for %s…"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDialog.vue:15
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Resolve blockers before continuing"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDialog.vue:101
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Result:"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDialog.vue:59
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Risks"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDialog.vue:89
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Select a module action to plan an operation."
+msgstr ""
+
+#: web/views/ModuleCatalogOpDialog.vue:62
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Service is restarting; status will retry automatically"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDialog.vue:105
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Summary:"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDialog.vue:144
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Uninstall Module"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDialog.vue:143
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Upgrade Module"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDialog.vue:84
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Use registry version"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDialog.vue:83
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Using registry version"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDialog.vue:97
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Will install"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDialog.vue:101
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Will uninstall"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDialog.vue:99
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Will upgrade"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDialog.vue:90
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "local"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDialog.vue:89
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "registry"
+msgstr ""
+
+#: web/views/module_catalog_actions.ts:11
+msgctxt "web/views/module_catalog_actions"
+msgid "Install Module"
+msgstr ""
+
+#: web/views/module_catalog_actions.ts:44
+msgctxt "web/views/module_catalog_actions"
+msgid "Load Demo Data"
+msgstr ""
+
+#: web/views/module_catalog_actions.ts:29
+msgctxt "web/views/module_catalog_actions"
+msgid "Uninstall Module"
+msgstr ""
+
+#: web/views/module_catalog_actions.ts:38
+msgctxt "web/views/module_catalog_actions"
+msgid "Update Module List"
+msgstr ""
+
+#: web/views/module_catalog_actions.ts:20
+msgctxt "web/views/module_catalog_actions"
+msgid "Upgrade Module"
 msgstr ""
 

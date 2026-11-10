@@ -125,6 +125,11 @@ SPDX-License-Identifier: Apache-2.0
                 {{ _t('Delete') }}
               </ChoyButton>
             </template>
+            <!-- Same tray as title/⋮ (List/Kanban secondary-actions parity) — no ActionBar separator. -->
+            <slot
+              v-if="resolvedShowActions && viewMode === 'display'"
+              name="secondary-actions"
+            />
           </template>
           <!-- Only register when filled — empty tray would paint a dangling ActionBar separator. -->
           <template v-if="resolvedShowActions && !!slots['user-actions']" #user-actions>
@@ -145,7 +150,7 @@ SPDX-License-Identifier: Apache-2.0
 
     <ChoyViewBusyHost
       :busy="overlayBusy"
-      class="min-h-0 flex-1 overflow-y-auto p-5"
+      class="min-h-0 flex-1 overflow-y-auto"
       data-anchor="choy.form-view"
     >
       <form ref="formRef" :inert="submitting || undefined" @submit.self.prevent="onNativeSubmit">
@@ -278,6 +283,11 @@ defineSlots<{
   breadcrumb(): any;
   /** Primary actions before the page title (default: New in display). */
   'system-actions'(): any;
+  /**
+   * Display-only CTAs after the title/⋮ cluster (and after Edit/Copy/Delete when shown).
+   * Same tray as List/Kanban `#secondary-actions` — no ActionBar separator.
+   */
+  'secondary-actions'(): any;
   'user-actions'(): any;
   statusbar(): any;
   'button-box'(): any;

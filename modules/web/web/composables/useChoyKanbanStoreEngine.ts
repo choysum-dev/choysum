@@ -19,10 +19,11 @@ import {
   createLaneSyncGate,
   defaultKanbanMapRowToCard,
   defaultKanbanMoveRecordId,
-  finishInitialKanbanLoad,
   shouldRecoverStaleKanbanSearch,
   shouldRestoreKanbanMove,
 } from '@/web/web/components/view/kanbanStoreHelpers';
+import { finishInitialSearchBoundLoad } from '@/web/web/components/view/viewFirstFrame';
+import type { SearchFirstFrameGate } from '@/web/web/components/view/search/searchFirstFrame';
 
 export type ChoyKanbanStoreEngineOptions = {
   store: WebModelStore<any>;
@@ -43,6 +44,13 @@ export type ChoyKanbanStoreEngineOptions = {
   beforeBootstrap?: () => Promise<void>;
   /** When false, host must call `bootstrap()` (default true). */
   autoBootstrap?: boolean;
+  /**
+   * When true, skip empty first apply and wait for Search first-frame
+   * query-update (legacy; prefer firstFrameGate).
+   */
+  deferFirstFrame?: MaybeRefOrGetter<boolean | undefined>;
+  /** Preferred: gate from useSearchFirstFrameHost. */
+  firstFrameGate?: SearchFirstFrameGate | null;
   onLoadError?: (error: unknown) => void;
   onSearchError?: (error: unknown) => void;
   onLoadMoreError?: (error: unknown) => void;
@@ -171,12 +179,18 @@ export function useChoyKanbanStoreEngine(opts: ChoyKanbanStoreEngineOptions) {
     });
   }
 
-  async function applySearch(query: ChoySearchQuery): Promise<void> {
+  /**
+   * Sequenced search apply. `rethrow` is for refresh callers that must surface
+   * failures; Search `query-update` handlers keep the default (no rethrow) so
+   * unhandled Vue emit rejections do not escape.
+   */
+  async function runSearch(query: ChoySearchQuery, rethrow: boolean): Promise<void> {
     lastSearchQuery = query;
     const seq = ++searchSeq;
     searchInFlight++;
     searchPending.value = true;
     const keywordFields = toValue(opts.keywordFields);
+    let applyError: unknown;
     try {
       await controller.apply({
         keyword: query.keyword,
@@ -185,6 +199,7 @@ export function useChoyKanbanStoreEngine(opts: ChoyKanbanStoreEngineOptions) {
         ...(keywordFields ? { keywordFields } : {}),
       });
     } catch (e) {
+      applyError = e;
       if (seq === searchSeq) opts.onSearchError?.(e);
     } finally {
       searchInFlight--;
@@ -209,7 +224,10 @@ export function useChoyKanbanStoreEngine(opts: ChoyKanbanStoreEngineOptions) {
         });
         if (recoverSeq === searchSeq) await syncLanesFromController();
       } catch (e) {
-        if (recoverSeq === searchSeq) opts.onSearchError?.(e);
+        if (recoverSeq === searchSeq) {
+          opts.onSearchError?.(e);
+          if (rethrow) throw e;
+        }
       } finally {
         searchInFlight--;
         if (searchInFlight === 0) searchPending.value = false;
@@ -221,13 +239,24 @@ export function useChoyKanbanStoreEngine(opts: ChoyKanbanStoreEngineOptions) {
       if (searchInFlight === 0) searchPending.value = false;
       return;
     }
+    if (applyError) {
+      searchPending.value = false;
+      if (rethrow) throw applyError;
+      return;
+    }
     try {
       await syncLanesFromController();
     } catch (e) {
+      // Lane sync failures are reported but not rethrown: a throwing map/preload
+      // can also surface via the lanes watcher as an unhandled rejection.
       if (seq === searchSeq) opts.onSearchError?.(e);
     } finally {
       if (seq === searchSeq) searchPending.value = false;
     }
+  }
+
+  async function applySearch(query: ChoySearchQuery): Promise<void> {
+    await runSearch(query, false);
   }
 
   async function onLaneLoadMore(payload: ChoyKanbanLoadMore): Promise<void> {
@@ -300,12 +329,13 @@ export function useChoyKanbanStoreEngine(opts: ChoyKanbanStoreEngineOptions) {
       if (keywordFields?.length) {
         await controller.setKeywordFields(keywordFields);
       }
-      await finishInitialKanbanLoad({
+      await finishInitialSearchBoundLoad({
         getLastSearchQuery: () => lastSearchQuery,
+        gate: opts.firstFrameGate,
+        deferToSearch: !!toValue(opts.deferFirstFrame),
         applyEmpty: () =>
           controller.apply(keywordFields?.length ? { keywordFields } : {}),
-        onSearch: applySearch,
-        syncLanes: syncLanesFromController,
+        afterEmpty: syncLanesFromController,
       });
     } catch (e) {
       // Failure must clear the latch so bootstrap()/host retry can run again.
@@ -313,6 +343,95 @@ export function useChoyKanbanStoreEngine(opts: ChoyKanbanStoreEngineOptions) {
       opts.onLoadError?.(e);
       throw e;
     }
+  }
+
+  /**
+   * Re-apply store queryState through searchSeq without latching lastSearchQuery
+   * (avoids caching a synthetic empty Search query over real store filters).
+   * Uses the same stale-recovery shape as runSearch so overlapping refresh/search
+   * cannot leave an older apply as the final board state.
+   */
+  async function refreshFromQueryState(rethrow: boolean): Promise<void> {
+    const seq = ++searchSeq;
+    searchInFlight++;
+    searchPending.value = true;
+    let applyError: unknown;
+    try {
+      await applyCurrentQuery();
+    } catch (e) {
+      applyError = e;
+      if (seq === searchSeq) opts.onSearchError?.(e);
+    } finally {
+      searchInFlight--;
+    }
+
+    if (
+      shouldRecoverStaleKanbanSearch({
+        completedSeq: seq,
+        latestSeq: searchSeq,
+        inFlight: searchInFlight,
+      })
+    ) {
+      const recoverSeq = searchSeq;
+      searchInFlight++;
+      try {
+        await applyCurrentQuery();
+        if (recoverSeq === searchSeq) await syncLanesFromController();
+      } catch (e) {
+        if (recoverSeq === searchSeq) {
+          opts.onSearchError?.(e);
+          if (rethrow) throw e;
+        }
+      } finally {
+        searchInFlight--;
+        if (searchInFlight === 0) searchPending.value = false;
+      }
+      return;
+    }
+
+    if (seq !== searchSeq) {
+      if (searchInFlight === 0) searchPending.value = false;
+      return;
+    }
+    if (applyError) {
+      searchPending.value = false;
+      // Only refresh() calls this path; always surface apply failures.
+      throw applyError;
+    }
+    try {
+      await syncLanesFromController();
+    } catch (e) {
+      // Match runSearch: report lane-sync failures, do not rethrow (watcher may
+      // also surface the same throw as an unhandled rejection).
+      if (seq === searchSeq) opts.onSearchError?.(e);
+    } finally {
+      if (seq === searchSeq) searchPending.value = false;
+    }
+  }
+
+  /**
+   * Re-apply the current search (or store queryState) through the sequenced
+   * applySearch path so concurrent first-frame searches cannot be overwritten.
+   */
+  async function refresh(): Promise<void> {
+    if (!bootstrapped) {
+      await bootstrap();
+      // Bootstrap already ran applyEmpty when not deferring; only re-run when a
+      // search query landed during bootstrap (so refresh can surface errors).
+      if (lastSearchQuery) {
+        await runSearch(lastSearchQuery, true);
+      }
+      return;
+    }
+    if (lastSearchQuery) {
+      await runSearch(lastSearchQuery, true);
+      return;
+    }
+    // No search yet: do not apply while Search still owns the first frame.
+    if (opts.firstFrameGate?.shouldDefer.value || !!toValue(opts.deferFirstFrame)) {
+      return;
+    }
+    await refreshFromQueryState(true);
   }
 
   watch(
@@ -347,5 +466,6 @@ export function useChoyKanbanStoreEngine(opts: ChoyKanbanStoreEngineOptions) {
     persistMove,
     syncLanesFromController,
     bootstrap,
+    refresh,
   };
 }

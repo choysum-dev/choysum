@@ -91,6 +91,13 @@ SPDX-License-Identifier: Apache-2.0
                 <slot name="overflow-actions" :selected-items="selectedItems" />
               </template>
             </ChoyPageTitleActions>
+
+            <!-- Same tray as title/⋮ (Form secondary parity) — no ActionBar separator. -->
+            <slot
+              v-if="showActions"
+              name="secondary-actions"
+              :selected-items="selectedItems"
+            />
           </template>
 
           <!-- Only register when filled — empty tray would paint a dangling ActionBar separator. -->
@@ -147,15 +154,7 @@ SPDX-License-Identifier: Apache-2.0
           </template>
 
           <template #header-right>
-            <!-- View-mode chrome, then a hairline, then pager at the trailing edge. -->
-            <div v-if="$slots['header-right']" class="flex items-center gap-1">
-              <slot name="header-right" />
-            </div>
-            <Separator
-              v-if="$slots['header-right'] && showPaginate && canMountPagination"
-              orientation="vertical"
-              class="mx-0 !h-4 w-px shrink-0 max-md:hidden"
-            />
+            <!-- Pager, then a hairline, then view-mode chrome at the trailing edge. -->
             <div v-if="showPaginate && canMountPagination">
               <ChoyPagination
                 class="gap-2"
@@ -163,6 +162,14 @@ SPDX-License-Identifier: Apache-2.0
                 v-model:page="listPageModel"
                 v-model:page-size="listPageSizeModel"
               />
+            </div>
+            <Separator
+              v-if="$slots['header-right'] && showPaginate && canMountPagination"
+              orientation="vertical"
+              class="mx-0 !h-4 w-px shrink-0 max-md:hidden"
+            />
+            <div v-if="$slots['header-right']" class="flex items-center gap-1">
+              <slot name="header-right" />
             </div>
           </template>
         </ChoyViewActionBar>
@@ -303,7 +310,8 @@ import { useListViewActions } from '@/web/web/composables/useListViewActions';
 import { useVirtualizationAdapter } from '@/web/web/composables/virtualizationAdapter';
 import { awaitFieldSelection } from '@/web/web/query/utils/registry/fieldReady';
 import ChoySearchView from '@/web/web/components/view/ChoySearchView.vue';
-import { shouldDeferViewFirstFrame } from '@/web/web/components/view/kanbanFirstFrame';
+import { shouldDeferToSearchFirstFrame } from '@/web/web/components/view/viewFirstFrame';
+import { useSearchFirstFrameHost } from '@/web/web/components/view/search/searchFirstFrame';
 import {
   canShowAction,
   canShowDeclaredAction,
@@ -463,6 +471,14 @@ const router = useRouter();
 const resolvedSearchView = computed(() => {
   const view = props.searchView;
   return view ? markRaw(toRaw(view as object)) : null;
+});
+const firstFrame = useSearchFirstFrameHost(store, {
+  expectFirstFrame: () =>
+    !!props.showHeader &&
+    shouldDeferToSearchFirstFrame({
+      searchView: resolvedSearchView.value,
+      canonicalSearchView: ChoySearchView,
+    }),
 });
 // Mutating slots are opt-in (empty action id → hidden). Refresh stays ungated by default.
 const canCreate = computed(() => canShowDeclaredAction(props.actionIds?.create, props.hasAction));
@@ -809,9 +825,9 @@ onMounted(async () => {
   // Initial height sync
   recomputeTableHeight();
 
-  // Only ChoySearchView guarantees a mount-time query-update with UserFilter defaults.
+  // ChoySearchView first-frame owns the initial apply (search first-frame protocol).
   // Custom SearchViewComponent implementations may never emit; keep the mount apply.
-  if (shouldDeferViewFirstFrame(resolvedSearchView.value, ChoySearchView)) {
+  if (shouldDeferToSearchFirstFrame({ gate: firstFrame })) {
     return;
   }
 

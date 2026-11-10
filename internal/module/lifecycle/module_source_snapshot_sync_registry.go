@@ -1,0 +1,393 @@
+// SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+// SPDX-License-Identifier: LGPL-3.0-or-later
+
+package lifecycle
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"net/http"
+	"strings"
+	"time"
+
+	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
+	"github.com/choysum-dev/choysum/internal/module/origin/contract"
+	"github.com/choysum-dev/choysum/pkg/config"
+	"github.com/choysum-dev/choysum/pkg/oerrors"
+	"github.com/choysum-dev/choysum/pkg/scope"
+	statepkg "github.com/choysum-dev/choysum/pkg/state"
+	"github.com/rs/xid"
+	"golang.org/x/mod/semver"
+	"gorm.io/gorm/clause"
+)
+
+// catalogIndexDocument mirrors the static index.json structure served by index.choysum.dev.
+type catalogIndexDocument struct {
+	Modules map[string]catalogIndexModule `json:"modules"`
+}
+
+type catalogIndexModule struct {
+	Name          string                       `json:"name,omitempty"`
+	Description   string                       `json:"description,omitempty"`
+	Package       string                       `json:"package,omitempty"`
+	LatestVersion string                       `json:"latestVersion,omitempty"`
+	Versions      map[string]catalogIndexEntry `json:"versions,omitempty"`
+}
+
+type catalogIndexEntry struct {
+	Registry  string `json:"registry,omitempty"`
+	Package   string `json:"package,omitempty"`
+	Tarball   string `json:"tarball,omitempty"`
+	Integrity string `json:"integrity,omitempty"`
+}
+
+var catalogIndexHTTPClient = &http.Client{Timeout: 15 * time.Second}
+
+type registryModuleJSONMarshalContextKey struct{}
+
+// withRegistryModuleJSONMarshal overrides JSON marshaling for ctx (tests only).
+func withRegistryModuleJSONMarshal(ctx context.Context, fn func(any) ([]byte, error)) context.Context {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	if fn == nil {
+		return ctx
+	}
+	return context.WithValue(ctx, registryModuleJSONMarshalContextKey{}, fn)
+}
+
+func marshalRegistryModule(ctx context.Context, v any) ([]byte, error) {
+	if ctx != nil {
+		if fn, ok := ctx.Value(registryModuleJSONMarshalContextKey{}).(func(any) ([]byte, error)); ok && fn != nil {
+			return fn(v)
+		}
+	}
+	return json.Marshal(v)
+}
+
+// SyncRegistryModuleSourceSnapshot fetches the static module catalog index from
+// index.choysum.dev and upserts discovered modules into meta_module_source_snapshot
+// with source_type=registry.
+func SyncRegistryModuleSourceSnapshot(ctx context.Context, runtimeScope scope.Scope, lockerFactory statepkg.LockerFactory) (ModuleSourceSnapshotSyncStats, error) {
+	stats := ModuleSourceSnapshotSyncStats{}
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	if lockerFactory == nil {
+		return stats, errors.New("locker factory is nil")
+	}
+
+	locker := lockerFactory(runtimeScope)
+	resource := "module_source_snapshot_sync_registry"
+	ownerID := xid.New().String()
+	ttl := moduleIndexLockTTL(ctx, runtimeScope)
+
+	if err := locker.Acquire(ctx, resource, ownerID, ttl); err != nil {
+		if errors.Is(err, statepkg.ErrLeaseBusy) {
+			retryAfterMs := int64(ttl / time.Millisecond)
+			return stats, oerrors.New("meta.lock", "LEASE_CONFLICT", "lease is busy").WithMetadata("retry_after_ms", fmt.Sprintf("%d", retryAfterMs))
+		}
+		return stats, err
+	}
+
+	heartbeatCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		ticker := time.NewTicker(ttl / 2)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-heartbeatCtx.Done():
+				return
+			case <-ticker.C:
+				if err := locker.Renew(heartbeatCtx, resource, ownerID, ttl); err != nil {
+					runtimeScope.Logger().Warn("module source snapshot lease renew failed", "resource", resource, "error", err)
+				}
+			}
+		}
+	}()
+
+	defer func() {
+		cancel()
+		<-done
+		releaseLeaseWithContextFallback(runtimeScope, locker, ctx, resource, ownerID, "registry module origin")
+	}()
+
+	indexURL := resolveRegistryIndexURL(runtimeScope)
+	index, err := fetchCatalogIndex(ctx, indexURL)
+	if err != nil {
+		return stats, err
+	}
+
+	if index == nil || len(index.Modules) == 0 {
+		return stats, nil
+	}
+
+	session, ok := scope.SessionForScope(ctx, runtimeScope)
+	if !ok || session == nil || session.DB == nil {
+		return stats, errors.New("module source snapshot session is unavailable")
+	}
+
+	seen := make(map[string]struct{})
+	now := time.Now().UTC()
+	hasError := false
+	records := make([]modmeta.ModuleSourceSnapshot, 0, len(index.Modules))
+
+	for moduleName, module := range index.Modules {
+		select {
+		case <-ctx.Done():
+			return stats, ctx.Err()
+		default:
+		}
+		name := strings.TrimSpace(module.Name)
+		if name == "" {
+			name = strings.TrimSpace(moduleName)
+		}
+		if name == "" {
+			continue
+		}
+		stats.Total++
+
+		originRef := strings.TrimSpace(module.Package)
+		if originRef == "" {
+			originRef = name
+		}
+		seen[registrySyncSeenKey(name, originRef)] = struct{}{}
+
+		manifestJSON, err := marshalRegistryModule(ctx, module)
+		if err != nil {
+			runtimeScope.Logger().Warn("module source snapshot marshal failed", "module", name, "error", err)
+			stats.Failed++
+			hasError = true
+			continue
+		}
+
+		records = append(records, modmeta.ModuleSourceSnapshot{
+			ModuleName:   name,
+			SourceType:   "registry",
+			SourceRef:    originRef,
+			Available:    true,
+			Version:      nullString(resolveCatalogIndexLatestVersion(module)),
+			LastSyncAt:   &now,
+			ManifestJson: manifestJSON,
+		})
+	}
+
+	if len(records) > 0 {
+		if err := withModuleIndexWriteRetry(ctx, runtimeScope, session, func(txSession *scope.Session) error {
+			return txSession.WithContext(ctx).
+				Model(&modmeta.ModuleSourceSnapshot{}).
+				Clauses(clause.OnConflict{
+					Columns:   []clause.Column{{Name: "module_name"}, {Name: "source_type"}, {Name: "source_ref"}},
+					DoUpdates: clause.AssignmentColumns([]string{"available", "version", "manifest_json", "last_sync_at"}),
+				}).
+				Create(&records).Error
+		}); err != nil {
+			runtimeScope.Logger().Warn("module source snapshot batch upsert failed", "count", len(records), "error", err)
+			if isSQLiteLockError(err) {
+				stats.Failed += len(records)
+				return stats, err
+			}
+			for _, record := range records {
+				entry := record
+				if rowErr := withModuleIndexWriteRetry(ctx, runtimeScope, session, func(txSession *scope.Session) error {
+					return txSession.WithContext(ctx).
+						Model(&modmeta.ModuleSourceSnapshot{}).
+						Clauses(clause.OnConflict{
+							Columns:   []clause.Column{{Name: "module_name"}, {Name: "source_type"}, {Name: "source_ref"}},
+							DoUpdates: clause.AssignmentColumns([]string{"available", "version", "manifest_json", "last_sync_at"}),
+						}).
+						Create(&entry).Error
+				}); rowErr != nil {
+					stats.Failed++
+					hasError = true
+					runtimeScope.Logger().Warn("module source snapshot upsert failed", "module", entry.ModuleName, "error", rowErr)
+					continue
+				}
+				stats.Success++
+			}
+		} else {
+			stats.Success += len(records)
+		}
+	}
+
+	// Mark registry entries absent from the current catalog snapshot as unavailable.
+	if len(seen) > 0 {
+		existing := make([]modmeta.ModuleSourceSnapshot, 0)
+		if err := withModuleIndexWriteRetry(ctx, runtimeScope, session, func(txSession *scope.Session) error {
+			return txSession.WithContext(ctx).
+				Model(&modmeta.ModuleSourceSnapshot{}).
+				Select("id", "module_name", "source_ref").
+				Where("source_type = ?", "registry").
+				Find(&existing).Error
+		}); err != nil {
+			hasError = true
+			runtimeScope.Logger().Warn("module source snapshot reconcile failed", "error", err)
+		} else {
+			orphanedIDs := make([]string, 0)
+			type moduleSourceSnapshotKey struct {
+				moduleName string
+				sourceRef  string
+			}
+			orphanedKeys := make([]moduleSourceSnapshotKey, 0)
+			for _, row := range existing {
+				if _, ok := seen[registrySyncSeenKey(row.ModuleName, row.SourceRef)]; ok {
+					continue
+				}
+				if row.Id.Valid && row.Id.String != "" {
+					orphanedIDs = append(orphanedIDs, row.Id.String)
+					continue
+				}
+				orphanedKeys = append(orphanedKeys, moduleSourceSnapshotKey{moduleName: row.ModuleName, sourceRef: row.SourceRef})
+			}
+
+			if len(orphanedIDs) > 0 {
+				if err := withModuleIndexWriteRetry(ctx, runtimeScope, session, func(txSession *scope.Session) error {
+					return txSession.WithContext(ctx).
+						Model(&modmeta.ModuleSourceSnapshot{}).
+						Where("id IN ?", orphanedIDs).
+						Updates(map[string]any{"available": false, "last_sync_at": now}).Error
+				}); err != nil {
+					hasError = true
+					runtimeScope.Logger().Warn("module source snapshot reconcile rows update failed", "count", len(orphanedIDs), "error", err)
+				}
+			}
+
+			for _, key := range orphanedKeys {
+				moduleName := key.moduleName
+				originRef := key.sourceRef
+				if err := withModuleIndexWriteRetry(ctx, runtimeScope, session, func(txSession *scope.Session) error {
+					return txSession.WithContext(ctx).
+						Model(&modmeta.ModuleSourceSnapshot{}).
+						Where("module_name = ? AND source_type = ? AND source_ref = ?", moduleName, "registry", originRef).
+						Updates(map[string]any{"available": false, "last_sync_at": now}).Error
+				}); err != nil {
+					hasError = true
+					runtimeScope.Logger().Warn("module source snapshot reconcile row update failed", "module", moduleName, "source_ref", originRef, "error", err)
+				}
+			}
+		}
+	}
+
+	if !hasError {
+		if err := withModuleIndexWriteRetry(ctx, runtimeScope, session, func(txSession *scope.Session) error {
+			return txSession.WithContext(ctx).
+				Model(&modmeta.ModuleSourceSnapshot{}).
+				Where("source_type = ?", "registry").
+				Updates(map[string]any{"last_batch_sync_at": now}).Error
+		}); err != nil {
+			if !isTableMissingInSession(session, "meta_module_source_snapshot") {
+				runtimeScope.Logger().Warn("module source snapshot sync timestamp update failed", "error", err)
+			}
+		}
+	}
+
+	return stats, nil
+}
+
+// resolveRegistryIndexURL returns the configured module catalog index URL
+// or the default value.
+func resolveRegistryIndexURL(runtimeScope scope.Scope) string {
+	opts := runtimeOptionsFromScope(runtimeScope)
+	if url := strings.TrimSpace(opts.moduleCatalogIndexURL); url != "" {
+		return url
+	}
+	return config.DefaultModuleCatalogIndexURL
+}
+
+// resolveCatalogIndexLatestVersion prefers latestVersion; when absent (common on
+// index.choysum.dev today), picks the newest semver key from versions.
+// Returned values use the internal v-prefixed form so registry snapshots match
+// local/installed Module.Version (contract.NormalizeVersion).
+func resolveCatalogIndexLatestVersion(module catalogIndexModule) string {
+	if v := strings.TrimSpace(module.LatestVersion); v != "" {
+		return normalizeCatalogIndexVersion(v)
+	}
+	bestNorm := ""
+	fallbackRaw := ""
+	for raw := range module.Versions {
+		raw = strings.TrimSpace(raw)
+		if raw == "" {
+			continue
+		}
+		if fallbackRaw == "" || raw > fallbackRaw {
+			fallbackRaw = raw
+		}
+		norm := normalizeCatalogIndexVersion(raw)
+		if !semver.IsValid(norm) {
+			continue
+		}
+		if bestNorm == "" || semver.Compare(norm, bestNorm) > 0 {
+			bestNorm = norm
+		}
+	}
+	if bestNorm != "" {
+		return bestNorm
+	}
+	return normalizeCatalogIndexVersion(fallbackRaw)
+}
+
+// normalizeCatalogIndexVersion maps npm/index versions (no leading v) onto the
+// internal v-prefixed SemVer used by local package.json parsing.
+func normalizeCatalogIndexVersion(version string) string {
+	version = strings.TrimSpace(version)
+	if version == "" {
+		return ""
+	}
+	if normalized, err := contract.NormalizeVersion(version); err == nil {
+		return normalized
+	}
+	if !strings.HasPrefix(version, "v") {
+		return "v" + version
+	}
+	return version
+}
+
+// fetchCatalogIndex performs an HTTP GET and decodes the static index.json payload.
+func fetchCatalogIndex(ctx context.Context, indexURL string) (*catalogIndexDocument, error) {
+	return fetchCatalogIndexWithClient(ctx, indexURL, catalogIndexHTTPClient)
+}
+
+func fetchCatalogIndexWithClient(ctx context.Context, indexURL string, client *http.Client) (*catalogIndexDocument, error) {
+	indexURL = strings.TrimSpace(indexURL)
+	if indexURL == "" {
+		indexURL = config.DefaultModuleCatalogIndexURL
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, indexURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("create registry index request: %w", err)
+	}
+	if client == nil {
+		client = http.DefaultClient
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("fetch registry index: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, fmt.Errorf("unexpected HTTP status %s for registry index", resp.Status)
+	}
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 10<<20)) // 10 MiB cap
+	if err != nil {
+		return nil, fmt.Errorf("read registry index body: %w", err)
+	}
+	index := &catalogIndexDocument{}
+	if err := json.Unmarshal(body, index); err != nil {
+		return nil, fmt.Errorf("decode registry index: %w", err)
+	}
+	if index.Modules == nil {
+		index.Modules = map[string]catalogIndexModule{}
+	}
+	return index, nil
+}
+
+func registrySyncSeenKey(moduleName, originRef string) string {
+	return strings.TrimSpace(moduleName) + "\x00" + strings.TrimSpace(originRef)
+}

@@ -112,6 +112,33 @@ func TestSchemaPlanItemsFromArgs(t *testing.T) {
 	}
 }
 
+func TestUpgradeModuleNameFromParsed(t *testing.T) {
+	if got := upgradeModuleNameFromParsed(internalorigin.ParsedInput{ModuleName: "auth"}, "fallback"); got != "auth" {
+		t.Fatalf("moduleName = %q", got)
+	}
+	if got := upgradeModuleNameFromParsed(internalorigin.ParsedInput{LocalName: "local-mod"}, "fallback"); got != "local-mod" {
+		t.Fatalf("localName = %q", got)
+	}
+	if got := upgradeModuleNameFromParsed(internalorigin.ParsedInput{}, " fallback "); got != "fallback" {
+		t.Fatalf("fallback = %q", got)
+	}
+}
+
+func TestResolveCLIUpgradeTarget(t *testing.T) {
+	name, origin := resolveCLIUpgradeTarget("auth")
+	if name != "auth" || origin != "local" {
+		t.Fatalf("local = %q %q", name, origin)
+	}
+	name, origin = resolveCLIUpgradeTarget("auth@1.2.3")
+	if name != "auth" || origin != "registry" {
+		t.Fatalf("registry = %q %q", name, origin)
+	}
+	name, origin = resolveCLIUpgradeTarget("bad/name")
+	if name != "bad/name" || origin != "local" {
+		t.Fatalf("parse fail fallback = %q %q", name, origin)
+	}
+}
+
 func TestRunUpgradeSchemaPlan(t *testing.T) {
 	if code := runUpgradeSchemaPlan(context.Background(), nil, []string{"auth"}); code != 1 {
 		t.Fatalf("nil env exit = %d", code)

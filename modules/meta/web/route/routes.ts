@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { RouteRecordRaw } from 'vue-router';
+import { RouteRecordRaw, type RouteLocationNormalized } from 'vue-router';
 import { defineRoute } from '@/core/web/resource';
 import { createTranslate } from '@/web/web/i18n';
 import {
@@ -13,50 +13,111 @@ import {
 
 const { _lt } = createTranslate('meta', { scope: 'web/route/routes' });
 
+/** Sibling paths for Module catalog kanban / list ViewSwitcher. */
+const moduleCatalogViewPaths = {
+  kanban: '/meta/modules',
+  list: '/meta/modules/list',
+} as const;
+
 /**
  * Route table for the meta module management surfaces.
+ * Catalog kanban + list + show + operation deep-link.
  */
 export const metaRoutes: RouteRecordRaw[] = [
-  defineRoute('meta.route.module_board', {
+  defineRoute('meta.route.module_catalog', {
     sequence: 10,
-    title: _lt('Module Management'),
+    title: _lt('Catalog'),
     path: 'meta/modules',
-    name: 'MetaModuleList',
-    component: () => import('../pages/ModuleList.vue'),
-    actions: ['meta.action.module_install', 'meta.action.module_upgrade', 'meta.action.module_uninstall', 'meta.action.module_sync_index'],
-    requires: [{ model: 'meta.MetaModuleIndex' }, { model: 'meta.MetaModule' }],
-    meta: { requiresAuth: true },
+    name: 'MetaModuleCatalog',
+    component: () => import('../pages/ModuleCatalogKanban.vue'),
+    actions: [
+      'meta.action.module_install',
+      'meta.action.module_upgrade',
+      'meta.action.module_uninstall',
+      'meta.action.module_sync',
+      'meta.action.module_load_demo',
+    ],
+    defaultRoles: ['sys.admin'],
+    // Browse/list catalog; Plan/Apply/RequestSync stay gated by action requires.
+    requires: [{ model: 'meta.MetaModuleCatalog' }],
+    meta: {
+      requiresAuth: true,
+      viewKind: 'kanban',
+      defaultGroups: [],
+      viewPaths: { ...moduleCatalogViewPaths },
+    },
   }),
-  defineRoute('meta.route.module_list', {
-    sequence: 20,
+  // Static /list before /:name so "list" is never captured as a module name.
+  defineRoute('meta.route.module_catalog_list', {
+    sequence: 11,
     title: _lt('Module List'),
     path: 'meta/modules/list',
-    name: 'MetaModuleListTable',
-    component: () => import('../pages/ModuleListTable.vue'),
-    actions: ['meta.action.module_sync_index', 'meta.action.module_index_delete'],
-    requires: [{ model: 'meta.MetaModuleIndex' }, { model: 'meta.MetaModule' }],
-    meta: { requiresAuth: true },
+    name: 'MetaModuleCatalogList',
+    component: () => import('../pages/ModuleCatalogList.vue'),
+    actions: [
+      'meta.action.module_install',
+      'meta.action.module_upgrade',
+      'meta.action.module_uninstall',
+      'meta.action.module_sync',
+      'meta.action.module_load_demo',
+    ],
+    defaultRoles: ['sys.admin'],
+    requires: [{ model: 'meta.MetaModuleCatalog' }],
+    meta: {
+      requiresAuth: true,
+      viewKind: 'list',
+      defaultGroups: [],
+      viewPaths: { ...moduleCatalogViewPaths },
+    },
   }),
-  defineRoute('meta.route.module_history', {
-    sequence: 30,
-    title: _lt('Operation History'),
-    path: 'meta/modules/history',
-    name: 'MetaModuleHistory',
-    component: () => import('../pages/ModuleHistory.vue'),
-    actions: ['meta.action.module_management_log_delete'],
-    requires: [{ model: 'meta.ModuleManagementLog' }, { model: 'meta.MetaModule' }, { model: 'meta.MetaModuleIndex' }],
-    meta: { requiresAuth: true },
+  // More specific path (operations/:id). Bare /meta/modules/operations still matches :name.
+  defineRoute('meta.route.module_operation', {
+    sequence: 12,
+    title: _lt('Module Operation'),
+    path: 'meta/modules/operations/:id',
+    name: 'MetaModuleOperationDeepLink',
+    component: () => import('../pages/ModuleCatalogKanban.vue'),
+    actions: [
+      'meta.action.module_install',
+      'meta.action.module_upgrade',
+      'meta.action.module_uninstall',
+      'meta.action.module_sync',
+      'meta.action.module_load_demo',
+    ],
+    defaultRoles: ['sys.admin'],
+    requires: [{ model: 'meta.MetaModuleCatalog' }, { model: 'meta.MetaModuleOperation' }],
+    meta: {
+      requiresAuth: true,
+      viewKind: 'kanban',
+      defaultGroups: [],
+      viewPaths: { ...moduleCatalogViewPaths },
+    },
   }),
-  defineRoute('meta.route.module_detail', {
-    sequence: 40,
-    title: _lt('Module Detail'),
-    path: 'meta/modules/:id',
-    name: 'MetaModuleDetail',
-    component: () => import('../pages/ModuleDetail.vue'),
-    actions: ['meta.action.module_index_edit', 'meta.action.module_index_delete', 'meta.action.module_index_copy'],
-    requires: [{ model: 'meta.MetaModuleIndex' }, { model: 'meta.MetaModule' }],
-    meta: { requiresAuth: true },
+  defineRoute('meta.route.module_show', {
+    sequence: 13,
+    title: _lt('Module'),
+    path: 'meta/modules/:name',
+    name: 'MetaModuleShow',
+    component: () => import('../pages/ModuleCatalog.vue'),
+    actions: [
+      'meta.action.module_install',
+      'meta.action.module_upgrade',
+      'meta.action.module_uninstall',
+      'meta.action.module_sync',
+      'meta.action.module_load_demo',
+    ],
+    defaultRoles: ['sys.admin'],
+    // Show is catalog browse; mutation actions stay gated by action requires.
+    requires: [{ model: 'meta.MetaModuleCatalog' }],
+    meta: {
+      requiresAuth: true,
+      // Dynamic name crumb; blank pageTitleText so static Module term does not win.
+      pageTitle: (route: RouteLocationNormalized) =>
+        String(route.params?.name || '').trim() || 'Module',
+      pageTitleText: '' as any,
+    },
   }),
+
   defineRoute('meta.route.terminology_list', {
     sequence: 40,
     title: _lt('Translations'),

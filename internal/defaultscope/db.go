@@ -20,7 +20,6 @@ import (
 	"github.com/choysum-dev/choysum/pkg/scope"
 	slogGorm "github.com/orandin/slog-gorm"
 	"gorm.io/driver/mysql"
-	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/schema"
@@ -71,7 +70,7 @@ func newDb(ctx context.Context, dbOpts scope.DatabaseRuntimeOptions, logger *slo
 	case "mysql":
 		gormDB, err = gorm.Open(mysql.Open(dsn), gormConfig)
 	case "postgres":
-		gormDB, err = gorm.Open(postgres.Open(dsn), gormConfig)
+		gormDB, err = gorm.Open(openPostgres(dsn), gormConfig)
 	case "sqlite":
 		if err := ensureSQLiteParentDir(dsn); err != nil {
 			panic(err)

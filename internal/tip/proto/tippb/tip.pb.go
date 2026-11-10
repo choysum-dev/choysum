@@ -207,8 +207,11 @@ func (*SubscribeNotificationsReq) Descriptor() ([]byte, []int) {
 }
 
 type SubscribeModuleOpReq struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	JobId         string                 `protobuf:"bytes,1,opt,name=job_id,json=jobId,proto3" json:"job_id,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Deprecated transitional locator (job tips). Prefer operation_id.
+	JobId string `protobuf:"bytes,1,opt,name=job_id,json=jobId,proto3" json:"job_id,omitempty"`
+	// Authoritative locator for meta.module_op.changed tips published by ops.Run.
+	OperationId   string `protobuf:"bytes,2,opt,name=operation_id,json=operationId,proto3" json:"operation_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -250,6 +253,13 @@ func (x *SubscribeModuleOpReq) GetJobId() string {
 	return ""
 }
 
+func (x *SubscribeModuleOpReq) GetOperationId() string {
+	if x != nil {
+		return x.OperationId
+	}
+	return ""
+}
+
 var File_tip_proto protoreflect.FileDescriptor
 
 const file_tip_proto_rawDesc = "" +
@@ -268,9 +278,10 @@ const file_tip_proto_rawDesc = "" +
 	"\x12SubscribeThreadReq\x12\x14\n" +
 	"\x05model\x18\x01 \x01(\tR\x05model\x12\x15\n" +
 	"\x06res_id\x18\x02 \x01(\tR\x05resId\"\x1b\n" +
-	"\x19SubscribeNotificationsReq\"-\n" +
+	"\x19SubscribeNotificationsReq\"P\n" +
 	"\x14SubscribeModuleOpReq\x12\x15\n" +
-	"\x06job_id\x18\x01 \x01(\tR\x05jobId2\xc2\x01\n" +
+	"\x06job_id\x18\x01 \x01(\tR\x05jobId\x12!\n" +
+	"\foperation_id\x18\x02 \x01(\tR\voperationId2\xc2\x01\n" +
 	"\x06TipHub\x126\n" +
 	"\x0fSubscribeThread\x12\x17.tip.SubscribeThreadReq\x1a\b.tip.Tip0\x01\x12D\n" +
 	"\x16SubscribeNotifications\x12\x1e.tip.SubscribeNotificationsReq\x1a\b.tip.Tip0\x01\x12:\n" +

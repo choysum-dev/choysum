@@ -84,6 +84,7 @@ func TestProvisionMinimalInstallsWebMinimalAndStaysSetupPending(t *testing.T) {
 	createMetaModuleTable(t, db)
 	createAuthAppSettingTable(t, db)
 	var sawReq lifecycle.InstallModuleRequest
+	var seedCalls int
 	result, err := ProvisionMinimal(context.Background(), runtimeScope, Options{
 		InstallTimeout: time.Minute,
 		LockerFactory:  func(scope.Scope) statepkg.Locker { return &okLocker{} },
@@ -95,6 +96,10 @@ func TestProvisionMinimalInstallsWebMinimalAndStaysSetupPending(t *testing.T) {
 			insertAuthModule(t, db, meta.Installed)
 			return nil
 		},
+		SeedCatalog: func(context.Context, scope.Scope, statepkg.LockerFactory) error {
+			seedCalls++
+			return errors.New("seed boom")
+		},
 	})
 	if err != nil {
 		t.Fatalf("ProvisionMinimal: %v", err)
@@ -104,6 +109,9 @@ func TestProvisionMinimalInstallsWebMinimalAndStaysSetupPending(t *testing.T) {
 	}
 	if sawReq.Input != "web" || sawReq.WithDemo || sawReq.WebShellProfile != plan.WebShellProfileMinimal {
 		t.Fatalf("InstallModule request=%+v", sawReq)
+	}
+	if seedCalls != 1 {
+		t.Fatalf("SeedCatalog calls=%d want 1", seedCalls)
 	}
 
 	var count int64
@@ -450,6 +458,8 @@ func TestProvisionMinimalNilWithContextFallsBack(t *testing.T) {
 	createMetaModuleTable(t, db)
 	createAuthAppSettingTable(t, db)
 	runtimeScope := &nilWithContextScope{setupStateTestScope: *base}
+	var seedScope scope.Scope
+	var seedCalls int
 	result, err := ProvisionMinimal(context.Background(), runtimeScope, Options{
 		LockerFactory: func(scope.Scope) statepkg.Locker { return &okLocker{} },
 		NewExecutor: func(scope.Scope) (jsexecutor.JsExecutor, error) {
@@ -459,12 +469,38 @@ func TestProvisionMinimalNilWithContextFallsBack(t *testing.T) {
 			insertAuthModule(t, db, meta.Installed)
 			return nil
 		},
+		SeedCatalog: func(_ context.Context, s scope.Scope, _ statepkg.LockerFactory) error {
+			seedCalls++
+			seedScope = s
+			return nil
+		},
 	})
 	if err != nil {
 		t.Fatalf("ProvisionMinimal: %v", err)
 	}
 	if result.Phase != PhaseSetupPending {
 		t.Fatalf("result=%+v", result)
+	}
+	if seedCalls != 1 {
+		t.Fatalf("SeedCatalog calls=%d want 1", seedCalls)
+	}
+	// WithContext returns nil on this scope; seed must fall back to runtimeScope.
+	if seedScope != runtimeScope {
+		t.Fatalf("seed scope=%T want runtimeScope fallback", seedScope)
+	}
+}
+
+func TestSeedCatalogAfterMinimalInstallDefaultLockerFactory(t *testing.T) {
+	runtimeScope, _ := newSetupStateScope(t)
+	var sawFactory statepkg.LockerFactory
+	seedCatalogAfterMinimalInstall(context.Background(), runtimeScope, Options{
+		SeedCatalog: func(_ context.Context, _ scope.Scope, lf statepkg.LockerFactory) error {
+			sawFactory = lf
+			return nil
+		},
+	}, nil)
+	if sawFactory == nil {
+		t.Fatal("LockerFactory is nil; want defaultLockerFactory")
 	}
 }
 

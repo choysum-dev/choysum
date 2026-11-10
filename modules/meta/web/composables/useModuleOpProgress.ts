@@ -3,12 +3,19 @@
 
 import { onTips, subscribeModuleOp } from '@/core/web/tip';
 
-/** Snapshot returned by MetaModule.GetOpStatus (authoritative). */
+/** Sentinel when status fetch fails without a message; matched by onHardError handlers. */
+export const MODULE_OP_STATUS_FETCH_FAILED = 'Failed to get status';
+
+/** Snapshot derived from MetaModuleOperation.Browse/Read (authoritative). */
 export type ModuleOpStatusSnapshot = {
   status: string;
+  /** Persisted meta_module_operation.phase (queued|executing|reloading|done). */
+  phase?: string;
   summary?: unknown;
   resultStatus?: 'SUCCEEDED' | 'FAILED';
   failureKind?: 'RETRYABLE' | 'NON_RETRYABLE' | 'NONE';
+  /** Sync finished with catalog refresh but some source origins failed. */
+  partialFailure?: boolean;
   ReloadTriggered?: boolean;
   ReloadFailed?: boolean;
   ReloadWeb?: boolean;
@@ -18,7 +25,7 @@ export type ModuleOpStatusSnapshot = {
 };
 
 export type ModuleOpProgressHooks = {
-  fetchStatus: (jobId: string) => Promise<ModuleOpStatusSnapshot>;
+  fetchStatus: (operationId: string) => Promise<ModuleOpStatusSnapshot>;
   /** False when the progress dialog/session is closed. */
   isActive: () => boolean;
   onStatus: (status: ModuleOpStatusSnapshot) => void;
@@ -58,7 +65,7 @@ function isTransientNetworkError(message: string): boolean {
   );
 }
 
-function clampRetryDelay(retryAfterMs: number | undefined, fallbackMs: number): number {
+export function clampRetryDelay(retryAfterMs: number | undefined, fallbackMs: number): number {
   if (retryAfterMs == null || !Number.isFinite(retryAfterMs)) {
     return fallbackMs;
   }
@@ -98,6 +105,7 @@ export function createModuleOpProgressSession(hooks: ModuleOpProgressHooks, deps
   let reachedTerminal = false;
   let transientNotified = false;
   let timedOut = false;
+  let pollSettle: (() => void) | null = null;
 
   function clearPoll(): void {
     if (pollTimer != null) {
@@ -113,12 +121,20 @@ export function createModuleOpProgressSession(hooks: ModuleOpProgressHooks, deps
     }
   }
 
+  function settlePollFallback(): void {
+    if (!pollSettle) return;
+    const done = pollSettle;
+    pollSettle = null;
+    done();
+  }
+
   function stop(): void {
     sessionGeneration += 1;
     tipController?.abort();
     tipController = null;
     clearPoll();
     clearDeadline();
+    settlePollFallback();
   }
 
   function notifyTransient(): void {
@@ -128,7 +144,7 @@ export function createModuleOpProgressSession(hooks: ModuleOpProgressHooks, deps
   }
 
   function notifyHardError(error: unknown): void {
-    hooks.onHardError?.(errorMessage(error) || 'Failed to get status');
+    hooks.onHardError?.(errorMessage(error) || MODULE_OP_STATUS_FETCH_FAILED);
   }
 
   function fireTimeout(generation: number): void {
@@ -140,16 +156,17 @@ export function createModuleOpProgressSession(hooks: ModuleOpProgressHooks, deps
     clearPoll();
     clearDeadline();
     hooks.onTimeout();
+    settlePollFallback();
   }
 
   async function applyFetched(
-    jobId: string,
+    operationId: string,
     generation: number
   ): Promise<ModuleOpStatusSnapshot | null> {
     if (generation !== sessionGeneration || !hooks.isActive() || timedOut) {
       return null;
     }
-    const status = await hooks.fetchStatus(jobId);
+    const status = await hooks.fetchStatus(operationId);
     if (generation !== sessionGeneration || !hooks.isActive() || timedOut) {
       return null;
     }
@@ -167,61 +184,70 @@ export function createModuleOpProgressSession(hooks: ModuleOpProgressHooks, deps
     return status;
   }
 
-  function startPollFallback(jobId: string, generation: number, startAt: number): void {
+  function startPollFallback(operationId: string, generation: number, startAt: number): Promise<void> {
     clearPoll();
+    settlePollFallback();
     let intervalMs = POLL_INITIAL_MS;
 
-    const tick = async () => {
-      if (generation !== sessionGeneration || !hooks.isActive() || reachedTerminal || timedOut) {
-        return;
-      }
-      let status: ModuleOpStatusSnapshot | null = null;
-      try {
-        status = await applyFetched(jobId, generation);
-        if (status && isTerminalStatus(status.status)) {
+    return new Promise<void>(resolve => {
+      pollSettle = resolve;
+
+      const tick = async () => {
+        if (generation !== sessionGeneration || !hooks.isActive() || reachedTerminal || timedOut) {
+          settlePollFallback();
           return;
         }
-      } catch (error) {
-        if (generation !== sessionGeneration || !hooks.isActive() || timedOut) {
-          return;
-        }
+        let status: ModuleOpStatusSnapshot | null = null;
         try {
-          const message = errorMessage(error);
-          if (isTransientNetworkError(message)) {
-            notifyTransient();
-          } else {
-            notifyHardError(error);
+          status = await applyFetched(operationId, generation);
+          if (status && isTerminalStatus(status.status)) {
+            settlePollFallback();
+            return;
           }
-        } catch {
-          // Progress hooks must not break fallback polling.
+        } catch (error) {
+          if (generation !== sessionGeneration || !hooks.isActive() || timedOut) {
+            settlePollFallback();
+            return;
+          }
+          try {
+            const message = errorMessage(error);
+            if (isTransientNetworkError(message)) {
+              notifyTransient();
+            } else {
+              notifyHardError(error);
+            }
+          } catch {
+            // Progress hooks must not break fallback polling.
+          }
         }
-      }
 
-      if (generation !== sessionGeneration || !hooks.isActive() || reachedTerminal || timedOut) {
-        return;
-      }
-      if (now() - startAt > MAX_DURATION_MS) {
-        fireTimeout(generation);
-        return;
-      }
+        if (generation !== sessionGeneration || !hooks.isActive() || reachedTerminal || timedOut) {
+          settlePollFallback();
+          return;
+        }
+        if (now() - startAt > MAX_DURATION_MS) {
+          fireTimeout(generation);
+          return;
+        }
 
-      const nextDelay = clampRetryDelay(status?.retryAfterMs, intervalMs);
-      intervalMs = Math.min(POLL_MAX_MS, intervalMs + POLL_STEP_MS);
-      pollTimer = schedule(() => {
-        void tick();
-      }, nextDelay);
-    };
+        const nextDelay = clampRetryDelay(status?.retryAfterMs, intervalMs);
+        intervalMs = Math.min(POLL_MAX_MS, intervalMs + POLL_STEP_MS);
+        pollTimer = schedule(() => {
+          void tick();
+        }, nextDelay);
+      };
 
-    void tick();
+      void tick();
+    });
   }
 
   /**
-   * Watches one job until terminal status, timeout, or stop().
+   * Watches one operation until terminal status, timeout, or stop().
    * Remains pending for the whole tip/fallback lifecycle (callers such as
-   * ModuleKanbanView.submitOperation intentionally await that full session).
+   * catalog / drawer submitOperation intentionally await that full session).
    */
-  async function watch(jobId: string): Promise<void> {
-    const id = String(jobId || '').trim();
+  async function watch(operationId: string): Promise<void> {
+    const id = String(operationId || '').trim();
     stop();
     if (!id) return;
 
@@ -296,32 +322,38 @@ export function createModuleOpProgressSession(hooks: ModuleOpProgressHooks, deps
       }, TIP_DEBOUNCE_MS);
     };
 
-    try {
-      await tipOn(
-        tipSubscribe(id, signal),
-        async () => {
-          scheduleTipRefresh();
-        },
-        signal
-      );
-    } catch {
-      // Stream error; fall through to short-backoff poll when still active.
-    } finally {
-      clearDeadline();
-      if (debounceTimer != null) {
-        clearSchedule(debounceTimer);
+    const tipAvailable = typeof tipSubscribe === 'function' && typeof tipOn === 'function';
+    if (tipAvailable) {
+      try {
+        await tipOn(
+          tipSubscribe({ operationId: id }, signal),
+          async () => {
+            scheduleTipRefresh();
+          },
+          signal,
+        );
+      } catch {
+        // Stream error; fall through to short-backoff poll when still active.
+      } finally {
+        clearDeadline();
+        if (debounceTimer != null) {
+          clearSchedule(debounceTimer);
+        }
+        await refreshChain;
       }
-      await refreshChain;
+    } else {
+      clearDeadline();
     }
 
+    // When tips are unavailable, still require an active session (stop() bumps generation).
     if (
       generation === sessionGeneration &&
       !timedOut &&
-      !signal.aborted &&
       hooks.isActive() &&
-      !reachedTerminal
+      !reachedTerminal &&
+      (tipAvailable ? !signal.aborted : true)
     ) {
-      startPollFallback(id, generation, startAt);
+      await startPollFallback(id, generation, startAt);
     }
   }
 

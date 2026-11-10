@@ -16,11 +16,11 @@ import (
 
 func TestSchemaPlan_ReadOnlyModuleLookup(t *testing.T) {
 	t.Parallel()
-	db := newModuleIndexSyncDB(t)
+	db := newModuleSourceSnapshotSyncDB(t)
 	if err := db.AutoMigrate(&meta.Module{}); err != nil {
 		t.Fatalf("auto migrate module: %v", err)
 	}
-	runtimeScope := newModuleIndexSyncScope(t.TempDir(), db)
+	runtimeScope := newModuleSourceSnapshotSyncScope(t.TempDir(), db)
 	manager := NewModuleManager(runtimeScope, nil)
 
 	if _, err := manager.SchemaPlan(context.Background(), ""); err == nil || !strings.Contains(err.Error(), "empty") {
@@ -134,11 +134,11 @@ func TestSchemaPlan_ReadOnlyModuleLookup(t *testing.T) {
 
 func TestService_SchemaPlanDelegates(t *testing.T) {
 	t.Parallel()
-	db := newModuleIndexSyncDB(t)
+	db := newModuleSourceSnapshotSyncDB(t)
 	if err := db.AutoMigrate(&meta.Module{}); err != nil {
 		t.Fatalf("auto migrate module: %v", err)
 	}
-	runtimeScope := newModuleIndexSyncScope(t.TempDir(), db)
+	runtimeScope := newModuleSourceSnapshotSyncScope(t.TempDir(), db)
 	svc := NewService(runtimeScope, nil)
 	if _, err := svc.SchemaPlan(context.Background(), "  "); err == nil || !strings.Contains(err.Error(), "empty") {
 		t.Fatalf("expected empty module error, got %v", err)

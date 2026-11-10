@@ -17,6 +17,7 @@ const TopicMessageNotificationUser = "message.notification.user"
 // history was appended for a business record (best-effort; Unary remains authoritative).
 const TopicAuditFieldChangeAppended = "audit.field_change.appended"
 
-// TopicMetaModuleOpChanged notifies that a Meta module install/uninstall/upgrade
-// job status changed. Tip is best-effort; Unary GetOpStatus remains authoritative.
+// TopicMetaModuleOpChanged notifies that a Meta module operation row changed.
+// Tip is best-effort and located by operationId (jobId may be attached for
+// diagnostics). Authoritative status is meta_module_operation, not tip payload.
 const TopicMetaModuleOpChanged = "meta.module_op.changed"

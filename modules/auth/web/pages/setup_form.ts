@@ -3,6 +3,7 @@
 
 import { ChoysumError } from '../error';
 import { createTranslate } from '@/web/web/i18n';
+import { createStoreByModel } from '@/web/web/stores/registry';
 import type { CompleteInitialSetupInput } from '../stores/auth';
 import {
   registerConfirmPasswordError,
@@ -212,6 +213,89 @@ export function setupServerErrorRule(getMessage: () => string): SetupClientRule 
 export function withSetupServerError(rules: SetupClientRule[], message: string | undefined): SetupClientRule[] {
   const text = String(message || '');
   return text ? [...rules, setupServerErrorRule(() => text)] : rules;
+}
+
+/** True when the review-step demo checkbox is checked. */
+export function setupWantsDemo(data: Record<string, unknown> | null | undefined): boolean {
+  return data?.WithDemo === true;
+}
+
+export type SetupLoadDemoResp = {
+  Ok?: boolean;
+  ErrorMessage?: string;
+};
+
+export type SetupLoadDemoRequester = () => Promise<SetupLoadDemoResp | null | undefined>;
+
+/** Test-only RequestLoadDemo override; cleared between mounts. */
+let testSetupLoadDemoRequester: SetupLoadDemoRequester | null = null;
+
+/** Override the post-setup RequestLoadDemo call for FE mounts without meta store. */
+export function setSetupLoadDemoRequesterForTests(fn: SetupLoadDemoRequester | null): void {
+  testSetupLoadDemoRequester = fn;
+}
+
+/** Resolve RequestLoadDemo: test override first, else factory. */
+export function resolveSetupLoadDemoRequester(fallback: SetupLoadDemoRequester): SetupLoadDemoRequester {
+  return testSetupLoadDemoRequester ?? fallback;
+}
+
+export type CreateStoreByModelFn = (modelName: string, options?: unknown) => unknown;
+
+type MetaModuleOpStore = {
+  RequestLoadDemo?: (req?: Record<string, never>) => Promise<SetupLoadDemoResp>;
+};
+
+/**
+ * Call meta.MetaModuleOperation/RequestLoadDemo. Soft-ok when meta is not installed
+ * or the store has no RequestLoadDemo (setup can run before meta is present).
+ */
+export async function requestMetaModuleLoadDemo(
+  createStore: CreateStoreByModelFn = createStoreByModel,
+): Promise<SetupLoadDemoResp> {
+  let opStore: MetaModuleOpStore | null = null;
+  try {
+    opStore = createStore('meta.MetaModuleOperation') as MetaModuleOpStore;
+  } catch {
+    return { Ok: true };
+  }
+  if (!opStore || typeof opStore.RequestLoadDemo !== 'function') {
+    return { Ok: true };
+  }
+  return opStore.RequestLoadDemo({});
+}
+
+/** Production RequestLoadDemo path used by Setup.vue (honours test override). */
+export function requestSetupLoadDemo(): Promise<SetupLoadDemoResp | null | undefined> {
+  return resolveSetupLoadDemoRequester(() => requestMetaModuleLoadDemo())();
+}
+
+/**
+ * Best-effort load-demo after setup login. Never throws; callers toast via onFailure.
+ * Soft-ok when the bridge reports no pending demo modules.
+ */
+export async function runSetupLoadDemo(opts: {
+  requestLoadDemo: SetupLoadDemoRequester;
+  failedMessage: string;
+  onFailure: (message: string) => void;
+}): Promise<boolean> {
+  try {
+    const resp = await opts.requestLoadDemo();
+    if (resp && resp.Ok === false) {
+      const message = String(resp.ErrorMessage || '').trim() || opts.failedMessage;
+      opts.onFailure(message);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error('Load demo after initial setup failed:', err);
+    const message =
+      err instanceof Error && String(err.message || '').trim()
+        ? String(err.message).trim()
+        : opts.failedMessage;
+    opts.onFailure(message);
+    return false;
+  }
 }
 
 /**

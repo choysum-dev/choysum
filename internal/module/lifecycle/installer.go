@@ -95,7 +95,9 @@ func (m *moduleInstaller) validate() error {
 }
 
 func (m *moduleInstaller) assertDependenciesInstalled() error {
-	deps, err := policy.ResolveInstalledDependencies(m.moduleManager.Load, m.module)
+	// loadInstalledModuleRecord skips ensureMetaTables / migrateBaseModule. Load of
+	// core remigrates base entities and can deadlock with live Postgres traffic.
+	deps, err := policy.ResolveInstalledDependencies(m.moduleManager.loadInstalledModuleRecord, m.module)
 	if err != nil {
 		return err
 	}

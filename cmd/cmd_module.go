@@ -347,8 +347,8 @@ func runModuleListLocal(cmd *cobra.Command, runtimeScope scope.Scope, runtimeOpt
 				w,
 				"%s\t%s\t%s\t%s\t%s\t%s\t%t\n",
 				view.ModuleName,
-				view.OriginType,
-				view.OriginRef,
+				view.SourceType,
+				view.SourceRef,
 				nullStringValue(view.Version),
 				nullStringValue(view.LocalPath),
 				nullStringValue(view.InstallStatus),
@@ -475,8 +475,8 @@ func contextFromCommand(cmd *cobra.Command) context.Context {
 
 type moduleIndexView struct {
 	ModuleName    string
-	OriginType    string
-	OriginRef     string
+	SourceType    string
+	SourceRef     string
 	Available     bool
 	Version       sql.NullString
 	LocalPath     sql.NullString
@@ -492,24 +492,24 @@ func queryModuleIndexViews(runtimeScope scope.Scope, moduleName string) ([]modul
 			return nil
 		}
 		db := txScope.Session().DB
-		if !db.Migrator().HasTable(&modmeta.ModuleIndex{}) {
+		if !db.Migrator().HasTable(&modmeta.ModuleSourceSnapshot{}) {
 			return nil
 		}
 		hasIndex = true
 
-		q := db.Table((modmeta.ModuleIndex{}).TableName() + " AS idx")
+		q := db.Table((modmeta.ModuleSourceSnapshot{}).TableName() + " AS idx")
 		if db.Migrator().HasTable(&meta.Module{}) {
 			q = q.
-				Select("idx.module_name, idx.origin_type, idx.origin_ref, idx.available, idx.version, idx.local_path, mod.status AS install_status").
+				Select("idx.module_name, idx.source_type, idx.source_ref, idx.available, idx.version, idx.local_path, mod.status AS install_status").
 				Joins("LEFT JOIN " + (&meta.Module{}).TableName() + " AS mod ON mod.name = idx.module_name")
 		} else {
-			q = q.Select("idx.module_name, idx.origin_type, idx.origin_ref, idx.available, idx.version, idx.local_path, '' AS install_status")
+			q = q.Select("idx.module_name, idx.source_type, idx.source_ref, idx.available, idx.version, idx.local_path, '' AS install_status")
 		}
 		if strings.TrimSpace(moduleName) != "" {
 			q = q.Where("idx.module_name = ?", strings.TrimSpace(moduleName))
 		}
 		if err := q.Order("idx.module_name ASC").Scan(&views).Error; err != nil {
-			return xfmt.Errorf("query module index failed: %w", err)
+			return xfmt.Errorf("query module source snapshot failed: %w", err)
 		}
 		return nil
 	})
@@ -522,8 +522,8 @@ func queryModuleIndexViews(runtimeScope scope.Scope, moduleName string) ([]modul
 func moduleIndexViewToPayload(view moduleIndexView) map[string]any {
 	return map[string]any{
 		"moduleName":    strings.TrimSpace(view.ModuleName),
-		"originType":    strings.TrimSpace(view.OriginType),
-		"originRef":     strings.TrimSpace(view.OriginRef),
+		"sourceType":    strings.TrimSpace(view.SourceType),
+		"sourceRef":     strings.TrimSpace(view.SourceRef),
 		"available":     view.Available,
 		"version":       nullStringValue(view.Version),
 		"localPath":     nullStringValue(view.LocalPath),

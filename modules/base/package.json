@@ -41,6 +41,18 @@
             "e2e/fixtures/language_format.json",
             "e2e/fixtures/company_child.json"
           ]
+        },
+        "result-failed": {
+          "extends": "default",
+          "fixtures": []
+        },
+        "reload-failed": {
+          "extends": "default",
+          "fixtures": []
+        },
+        "lock-conflict": {
+          "extends": "default",
+          "fixtures": []
         }
       }
     }

@@ -44,7 +44,7 @@ func newTestScope(t *testing.T) scope.Scope {
 	if err != nil {
 		t.Fatalf("open sqlite: %v", err)
 	}
-	if err := db.AutoMigrate(&modmeta.ModuleMigrationHistory{}); err != nil {
+	if err := db.AutoMigrate(&modmeta.ModuleMigration{}); err != nil {
 		t.Fatalf("migrate test schema: %v", err)
 	}
 	return &testScope{db: db}
@@ -126,6 +126,64 @@ func TestHistoryStore_PrepareResetsOnChecksumChange(t *testing.T) {
 	}
 }
 
+func TestHistoryStore_PrepareReadsRenamedLegacyMigrationHistory(t *testing.T) {
+	dsn := "file:migration_history_legacy_" + strings.ReplaceAll(t.Name(), "/", "_") + "?mode=memory&cache=shared"
+	db, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	sqlDB, err := db.DB()
+	if err != nil {
+		t.Fatalf("db.DB(): %v", err)
+	}
+	t.Cleanup(func() { _ = sqlDB.Close() })
+	if err := db.Exec(`CREATE TABLE meta_module_migration_history (
+		id TEXT PRIMARY KEY,
+		created_at DATETIME,
+		updated_at DATETIME,
+		module_name TEXT,
+		version TEXT,
+		phase TEXT,
+		script TEXT,
+		checksum TEXT,
+		status TEXT,
+		started_at DATETIME,
+		finished_at DATETIME,
+		error TEXT,
+		trace_id TEXT,
+		job_id TEXT
+	)`).Error; err != nil {
+		t.Fatalf("create legacy table: %v", err)
+	}
+	if err := db.Exec(`INSERT INTO meta_module_migration_history
+		(id, module_name, version, phase, script, checksum, status)
+		VALUES ('row1', 'meta', '0.1.0', 'pre', 'init', 'abc', 'success')`).Error; err != nil {
+		t.Fatalf("seed legacy row: %v", err)
+	}
+
+	runtimeScope := &testScope{db: db}
+	store := NewHistoryStore(runtimeScope)
+	ctx := context.Background()
+	script := Script{
+		ModuleName: "meta",
+		Version:    "0.1.0",
+		Phase:      PhasePre,
+		Name:       "init",
+		Checksum:   "abc",
+	}
+
+	entry, skip, err := store.Prepare(ctx, script)
+	if err != nil {
+		t.Fatalf("prepare: %v", err)
+	}
+	if !skip {
+		t.Fatalf("expected skip=true after renaming legacy success row")
+	}
+	if entry == nil || entry.Status != "success" || entry.Checksum != "abc" {
+		t.Fatalf("unexpected entry: %#v", entry)
+	}
+}
+
 func TestHistoryStore_MarkFailedPersistsError(t *testing.T) {
 	runtimeScope := newTestScope(t)
 	store := NewHistoryStore(runtimeScope)
@@ -146,7 +204,7 @@ func TestHistoryStore_MarkFailedPersistsError(t *testing.T) {
 		t.Fatalf("mark failed: %v", err)
 	}
 
-	var stored modmeta.ModuleMigrationHistory
+	var stored modmeta.ModuleMigration
 	if err := runtimeScope.Session().WithContext(ctx).Where("module_name = ? AND version = ? AND script = ?", "meta", "0.1.0", "init").Take(&stored).Error; err != nil {
 		t.Fatalf("reload stored history: %v", err)
 	}
@@ -169,7 +227,7 @@ func TestHistoryStore_PrefersContextScope(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open runtime sqlite: %v", err)
 	}
-	if err := runtimeDB.AutoMigrate(&modmeta.ModuleMigrationHistory{}); err != nil {
+	if err := runtimeDB.AutoMigrate(&modmeta.ModuleMigration{}); err != nil {
 		t.Fatalf("migrate runtime schema: %v", err)
 	}
 	runtimeSession := &scope.Session{DB: runtimeDB}
@@ -191,14 +249,14 @@ func TestHistoryStore_PrefersContextScope(t *testing.T) {
 	}
 
 	var baseCount int64
-	if err := runtimeScope.Session().WithContext(context.Background()).Model(&modmeta.ModuleMigrationHistory{}).Count(&baseCount).Error; err != nil {
+	if err := runtimeScope.Session().WithContext(context.Background()).Model(&modmeta.ModuleMigration{}).Count(&baseCount).Error; err != nil {
 		t.Fatalf("count base history rows: %v", err)
 	}
 	if baseCount != 0 {
 		t.Fatalf("base history row count = %d, want 0", baseCount)
 	}
 
-	var runtimeRow modmeta.ModuleMigrationHistory
+	var runtimeRow modmeta.ModuleMigration
 	if err := runtimeSession.WithContext(context.Background()).Where("module_name = ? AND version = ? AND script = ?", "meta", "0.1.0", "init").Take(&runtimeRow).Error; err != nil {
 		t.Fatalf("load runtime history row: %v", err)
 	}

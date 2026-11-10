@@ -1,0 +1,295 @@
+// SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+// SPDX-License-Identifier: LGPL-3.0-or-later
+
+package lifecycle
+
+import (
+	"context"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+
+	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
+	"github.com/choysum-dev/choysum/pkg/config"
+	"github.com/choysum-dev/choysum/pkg/scope"
+	statepkg "github.com/choysum-dev/choysum/pkg/state"
+)
+
+type catalogRoundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f catalogRoundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
+	return f(req)
+}
+
+func TestFetchCatalogIndexUsesDefaultURLWhenEmpty(t *testing.T) {
+	t.Parallel()
+	requestedURL := ""
+	testClient := &http.Client{
+		Transport: catalogRoundTripFunc(func(req *http.Request) (*http.Response, error) {
+			requestedURL = req.URL.String()
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Status:     "200 OK",
+				Header:     make(http.Header),
+				Body:       io.NopCloser(strings.NewReader(`{"modules":{"auth":{"name":"auth"}}}`)),
+			}, nil
+		}),
+	}
+
+	index, err := fetchCatalogIndexWithClient(context.Background(), "", testClient)
+	if err != nil {
+		t.Fatalf("fetchCatalogIndex() error = %v", err)
+	}
+	if requestedURL != config.DefaultModuleCatalogIndexURL {
+		t.Fatalf("request URL = %q, want %q", requestedURL, config.DefaultModuleCatalogIndexURL)
+	}
+	if _, ok := index.Modules["auth"]; !ok {
+		t.Fatalf("expected auth module in decoded index, got %#v", index.Modules)
+	}
+}
+
+func TestResolveCatalogIndexLatestVersion(t *testing.T) {
+	t.Parallel()
+	if got := resolveCatalogIndexLatestVersion(catalogIndexModule{LatestVersion: " 1.2.3 "}); got != "v1.2.3" {
+		t.Fatalf("explicit latestVersion = %q, want v1.2.3", got)
+	}
+	if got := resolveCatalogIndexLatestVersion(catalogIndexModule{
+		Versions: map[string]catalogIndexEntry{
+			"0.0.0-20260614200130": {},
+			"0.0.0-20260626031438": {},
+		},
+	}); got != "v0.0.0-20260626031438" {
+		t.Fatalf("versions fallback = %q, want newest prerelease key with v prefix", got)
+	}
+	if got := resolveCatalogIndexLatestVersion(catalogIndexModule{LatestVersion: "v2.0.0"}); got != "v2.0.0" {
+		t.Fatalf("already-prefixed latestVersion = %q, want v2.0.0", got)
+	}
+	if got := resolveCatalogIndexLatestVersion(catalogIndexModule{}); got != "" {
+		t.Fatalf("empty module = %q, want empty", got)
+	}
+}
+
+func TestSyncRegistryModuleSourceSnapshotFallsBackWhenLatestVersionMissing(t *testing.T) {
+	t.Parallel()
+	db := newModuleSourceSnapshotSyncDB(t)
+	runtimeScope := newModuleSourceSnapshotSyncScope(t.TempDir(), db)
+
+	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		// Mirrors index.choysum.dev: versions map present, latestVersion omitted.
+		_, _ = io.WriteString(w, `{
+  "modules": {
+    "meta": {
+      "package": "@choysum-dev/meta",
+      "versions": {
+        "0.0.0-20260614200130": {"tarball": "https://registry.example.dev/meta-old.tgz"},
+        "0.0.0-20260626031438": {"tarball": "https://registry.example.dev/meta-new.tgz"}
+      }
+    }
+  }
+}`)
+	}))
+	defer testServer.Close()
+	runtimeScope.cfg.ModuleCatalogIndexURL = testServer.URL + "/v1/index.json"
+
+	stats, err := SyncRegistryModuleSourceSnapshot(context.Background(), runtimeScope, func(scope.Scope) statepkg.Locker {
+		return &moduleIndexSyncTestLocker{}
+	})
+	if err != nil {
+		t.Fatalf("SyncRegistryModuleSourceSnapshot() error = %v", err)
+	}
+	if stats.Total != 1 || stats.Success != 1 || stats.Failed != 0 {
+		t.Fatalf("unexpected stats = %#v", stats)
+	}
+
+	var row modmeta.ModuleSourceSnapshot
+	if err := db.Where("module_name = ? AND source_type = ?", "meta", "registry").Take(&row).Error; err != nil {
+		t.Fatalf("load meta row: %v", err)
+	}
+	if !row.Version.Valid || row.Version.String != "v0.0.0-20260626031438" {
+		t.Fatalf("registry version = %#v, want v0.0.0-20260626031438 from versions map", row.Version)
+	}
+}
+
+func TestSyncRegistryModuleSourceSnapshotUpsertsVersionAndReconcilesByOriginRef(t *testing.T) {
+	t.Parallel()
+	db := newModuleSourceSnapshotSyncDB(t)
+	runtimeScope := newModuleSourceSnapshotSyncScope(t.TempDir(), db)
+
+	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		if req.URL.Path != "/v1/index.json" {
+			t.Fatalf("unexpected request path: %s", req.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, `{
+  "modules": {
+    "auth": {
+      "name": "auth",
+      "package": "@choysum-dev/auth",
+      "latestVersion": "2.0.0",
+      "versions": {
+        "2.0.0": {"tarball": "https://registry.example.dev/auth-2.0.0.tgz"}
+      }
+    }
+  }
+}`)
+	}))
+	defer testServer.Close()
+	runtimeScope.cfg.ModuleCatalogIndexURL = testServer.URL + "/v1/index.json"
+
+	if err := db.Create(&modmeta.ModuleSourceSnapshot{ModuleName: "auth", SourceType: "registry", SourceRef: "@legacy/choysum-auth", Available: true, Version: nullString("1.0.0")}).Error; err != nil {
+		t.Fatalf("seed legacy auth row: %v", err)
+	}
+	if err := db.Create(&modmeta.ModuleSourceSnapshot{ModuleName: "auth", SourceType: "registry", SourceRef: "@choysum-dev/auth", Available: false, Version: nullString("0.9.0")}).Error; err != nil {
+		t.Fatalf("seed current auth row: %v", err)
+	}
+	if err := db.Create(&modmeta.ModuleSourceSnapshot{ModuleName: "orphan", SourceType: "registry", SourceRef: "@legacy/orphan", Available: true, Version: nullString("0.1.0")}).Error; err != nil {
+		t.Fatalf("seed orphan row: %v", err)
+	}
+
+	stats, err := SyncRegistryModuleSourceSnapshot(context.Background(), runtimeScope, func(scope.Scope) statepkg.Locker {
+		return &moduleIndexSyncTestLocker{}
+	})
+	if err != nil {
+		t.Fatalf("SyncRegistryModuleSourceSnapshot() error = %v", err)
+	}
+	if stats.Total != 1 || stats.Success != 1 || stats.Failed != 0 {
+		t.Fatalf("unexpected stats = %#v", stats)
+	}
+
+	var current modmeta.ModuleSourceSnapshot
+	if err := db.Where("module_name = ? AND source_type = ? AND source_ref = ?", "auth", "registry", "@choysum-dev/auth").Take(&current).Error; err != nil {
+		t.Fatalf("load current auth row: %v", err)
+	}
+	if !current.Available {
+		t.Fatal("expected current auth row to be available")
+	}
+	if !current.Version.Valid || current.Version.String != "v2.0.0" {
+		t.Fatalf("current version = %#v, want v2.0.0", current.Version)
+	}
+
+	var legacy modmeta.ModuleSourceSnapshot
+	if err := db.Where("module_name = ? AND source_type = ? AND source_ref = ?", "auth", "registry", "@legacy/choysum-auth").Take(&legacy).Error; err != nil {
+		t.Fatalf("load legacy auth row: %v", err)
+	}
+	if legacy.Available {
+		t.Fatal("expected legacy auth row to be marked unavailable")
+	}
+
+	var orphan modmeta.ModuleSourceSnapshot
+	if err := db.Where("module_name = ? AND source_type = ? AND source_ref = ?", "orphan", "registry", "@legacy/orphan").Take(&orphan).Error; err != nil {
+		t.Fatalf("load orphan row: %v", err)
+	}
+	if orphan.Available {
+		t.Fatal("expected orphan row to be marked unavailable")
+	}
+}
+
+func TestSyncRegistryModuleSourceSnapshotFallsBackToRowUpsertsAfterBatchFailure(t *testing.T) {
+	t.Parallel()
+	db := newModuleSourceSnapshotSyncDB(t)
+	runtimeScope := newModuleSourceSnapshotSyncScope(t.TempDir(), db)
+
+	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, `{
+  "modules": {
+    "auth": {"name":"auth","package":"@choysum-dev/auth","latestVersion":"1.0.0"},
+    "task": {"name":"task","package":"@choysum-dev/task","latestVersion":"1.0.0"}
+  }
+}`)
+	}))
+	defer testServer.Close()
+	runtimeScope.cfg.ModuleCatalogIndexURL = testServer.URL + "/v1/index.json"
+
+	if err := db.Exec(`
+CREATE TRIGGER block_registry_batch_insert
+BEFORE INSERT ON meta_module_source_snapshot
+WHEN (SELECT COUNT(*) FROM meta_module_source_snapshot WHERE source_type = 'registry') >= 1
+BEGIN
+  SELECT RAISE(ABORT, 'batch blocked');
+END`).Error; err != nil {
+		t.Fatalf("create batch insert trigger: %v", err)
+	}
+
+	stats, err := SyncRegistryModuleSourceSnapshot(context.Background(), runtimeScope, func(scope.Scope) statepkg.Locker {
+		return &moduleIndexSyncTestLocker{}
+	})
+	if err != nil {
+		t.Fatalf("SyncRegistryModuleSourceSnapshot() error = %v", err)
+	}
+	if stats.Total != 2 || stats.Success < 1 || stats.Failed < 1 {
+		t.Fatalf("unexpected stats = %#v", stats)
+	}
+}
+
+func TestSyncRegistryModuleSourceSnapshotReconcilesOrphanWithoutID(t *testing.T) {
+	t.Parallel()
+	db := newModuleSourceSnapshotSyncDB(t)
+	runtimeScope := newModuleSourceSnapshotSyncScope(t.TempDir(), db)
+
+	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, `{"modules":{"auth":{"name":"auth","package":"@choysum-dev/auth","latestVersion":"1.0.0"}}}`)
+	}))
+	defer testServer.Close()
+	runtimeScope.cfg.ModuleCatalogIndexURL = testServer.URL + "/v1/index.json"
+
+	if err := db.Exec(`
+INSERT INTO meta_module_source_snapshot (module_name, source_type, source_ref, available, created_at, updated_at)
+VALUES ('orphan', 'registry', '@legacy/orphan', 1, datetime('now'), datetime('now'))`).Error; err != nil {
+		t.Fatalf("seed orphan without id: %v", err)
+	}
+
+	stats, err := SyncRegistryModuleSourceSnapshot(context.Background(), runtimeScope, func(scope.Scope) statepkg.Locker {
+		return &moduleIndexSyncTestLocker{}
+	})
+	if err != nil {
+		t.Fatalf("SyncRegistryModuleSourceSnapshot() error = %v", err)
+	}
+	if stats.Total != 1 || stats.Success != 1 {
+		t.Fatalf("unexpected stats = %#v", stats)
+	}
+
+	var orphan modmeta.ModuleSourceSnapshot
+	if err := db.Where("module_name = ? AND source_type = ? AND source_ref = ?", "orphan", "registry", "@legacy/orphan").Take(&orphan).Error; err != nil {
+		t.Fatalf("load orphan row: %v", err)
+	}
+	if orphan.Available {
+		t.Fatal("expected orphan without id to be marked unavailable")
+	}
+}
+
+func TestSyncRegistryModuleSourceSnapshotWarnsWhenBatchSyncTimestampUpdateFails(t *testing.T) {
+	t.Parallel()
+	db := newModuleSourceSnapshotSyncDB(t)
+	runtimeScope := newModuleSourceSnapshotSyncScope(t.TempDir(), db)
+
+	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, `{"modules":{"auth":{"name":"auth","package":"@choysum-dev/auth","latestVersion":"1.0.0"}}}`)
+	}))
+	defer testServer.Close()
+	runtimeScope.cfg.ModuleCatalogIndexURL = testServer.URL + "/v1/index.json"
+
+	if err := db.Exec(`
+CREATE TRIGGER block_registry_batch_sync_ts
+BEFORE UPDATE OF last_batch_sync_at ON meta_module_source_snapshot
+BEGIN
+  SELECT RAISE(ABORT, 'batch sync timestamp blocked');
+END`).Error; err != nil {
+		t.Fatalf("create batch sync timestamp trigger: %v", err)
+	}
+
+	stats, err := SyncRegistryModuleSourceSnapshot(context.Background(), runtimeScope, func(scope.Scope) statepkg.Locker {
+		return &moduleIndexSyncTestLocker{}
+	})
+	if err != nil {
+		t.Fatalf("SyncRegistryModuleSourceSnapshot() error = %v", err)
+	}
+	if stats.Total != 1 || stats.Success != 1 || stats.Failed != 0 {
+		t.Fatalf("unexpected stats = %#v", stats)
+	}
+}
