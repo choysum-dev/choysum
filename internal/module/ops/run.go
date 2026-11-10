@@ -262,7 +262,8 @@ func (o *Ops) succeedOperation(ctx context.Context, row *modmeta.ModuleOperation
 	switch row.Action {
 	case ActionInstall, ActionUpgrade, ActionUninstall:
 		// Data is committed. MetaModuleOperation.Execute calls moduleManagement.reload
-		// when ReloadTriggered && !ReloadFailed; the web client hard-refreshes (C1 ReloadWeb).
+		// after a successful run when ReloadTriggered && !ReloadFailed; the web client
+		// hard-refreshes (C1 ReloadWeb). Retries on an already-terminal row skip reload.
 		row.Phase = PhaseReloading
 		row.ReloadTriggered = true
 		row.ReloadFailed = false

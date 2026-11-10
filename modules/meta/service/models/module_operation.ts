@@ -397,15 +397,25 @@ export default class MetaModuleOperation extends BaseModel {
       throw runErr;
     }
     const reloadTriggered = !!row.ReloadTriggered;
-    const reloadFailed = !!row.ReloadFailed;
-    // Install/upgrade/uninstall mark ReloadTriggered so the process restarts and
-    // newly installed apps register services/protos/i18n. Call reload here (task
-    // worker) rather than relying on the browser hard-refresh alone.
-    if (reloadTriggered && !reloadFailed) {
+    let reloadFailed = !!row.ReloadFailed;
+    // Only reload after a successful run in this invocation. Retries against an
+    // already-terminal row leave runErr set (ops.Run rejects non-queued/draft)
+    // so they must not schedule another process restart.
+    if (!runErr && reloadTriggered && !reloadFailed) {
       try {
-        await bridge.reload();
+        const reloadResult = (await bridge.reload()) as { failed?: boolean } | null | undefined;
+        if (reloadResult && reloadResult.failed) {
+          await this.UpdateById(id, { ReloadFailed: true }, ['Id']);
+          reloadFailed = true;
+        }
       } catch {
-        // Restart is best-effort; catalog UI still hard-refreshes on ReloadWeb.
+        // Persist the failure so catalog ReloadWeb stays false and retries skip reload.
+        try {
+          await this.UpdateById(id, { ReloadFailed: true }, ['Id']);
+        } catch {
+          // Best-effort persist; still report failure in this response.
+        }
+        reloadFailed = true;
       }
     }
     return {
