@@ -30,12 +30,15 @@ function makeBinding(opts: { items?: any[]; isForm?: boolean } = {}) {
   return { binding, items };
 }
 
-function installStubs() {
+function installStubs(mode: 'display' | 'edit' = 'display') {
   stubSfc(ChoyFieldBase as any, {
     name: 'ChoyFieldBase',
     props: { binding: { type: Object, required: true } },
     setup(_: any, { slots }: any) {
-      return () => h('div', { class: 'field-base-stub' }, [slots.display?.({})]);
+      return () =>
+        h('div', { class: 'field-base-stub' }, [
+          mode === 'edit' ? slots.edit?.({}) : slots.display?.({}),
+        ]);
     },
   });
   stubSfc(ChoyViewScope as any, {
@@ -153,6 +156,31 @@ describe('ChoyManyToManyKanbanField mount', () => {
     await flushPromises();
     expect(clicks.length).toBe(1);
     expect(String((clicks[0] as any)?.item?.ModuleName || '')).toBe('auth');
+    m.unmount();
+  });
+
+  test('edit slot Enter click and Untitled fallback without title field', async () => {
+    installStubs('edit');
+    const clicks: any[] = [];
+    const m = mountApp(ChoyManyToManyKanbanField as any, {
+      props: {
+        binding: makeBinding({
+          items: [{ DisplayName: 'Anon Module' }],
+        }).binding,
+        readonly: false,
+        onCardClick: (payload: unknown) => clicks.push(payload),
+      },
+    });
+    await nextTick();
+    await flushPromises();
+    const card = m.q('[data-testid=choy-m2m-kanban-card]') as HTMLElement | null;
+    expect(card).not.toBeNull();
+    expect(String(card?.textContent || '')).toContain('Anon Module');
+    const enter = new Event('keydown', { bubbles: true, cancelable: true });
+    Object.defineProperty(enter, 'key', { value: 'Enter' });
+    card?.dispatchEvent(enter);
+    await flushPromises();
+    expect(clicks.length).toBe(1);
     m.unmount();
   });
 });

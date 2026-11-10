@@ -183,7 +183,9 @@ func (o *Ops) executeSync(ctx context.Context, row *modmeta.ModuleOperation) err
 		return matErr
 	}
 	// Soft-fail origin errors: stats.Failed / originErr surface via SyncResult in the UI.
-	_ = originErr
+	if originErr != nil && o.Scope != nil && o.Scope.Logger() != nil {
+		o.Scope.Logger().Warn("ops: catalog sync origin partially failed", "error", originErr)
+	}
 	return nil
 }
 

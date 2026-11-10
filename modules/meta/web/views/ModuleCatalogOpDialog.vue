@@ -410,20 +410,22 @@ const resultAlertBoxClass = computed(() => {
 
 function formatSummary(summary: unknown) {
   if (summary && typeof summary === 'object' && (summary as any).syncResult) {
-    const sync = (summary as any).syncResult as {
-      total: number;
-      success: number;
-      failed: number;
-      catalogRows: number;
+    const raw = (summary as any).syncResult as {
+      total?: number;
+      success?: number;
+      failed?: number;
+      catalogRows?: number;
     };
-    if (sync.failed > 0) {
+    const failed = Number(raw.failed) || 0;
+    const catalogRows = Number(raw.catalogRows) || 0;
+    if (failed > 0) {
       return _t(
         'Module catalog updated, %s modules (%s failed)',
-        String(sync.catalogRows),
-        String(sync.failed),
+        String(catalogRows),
+        String(failed),
       );
     }
-    return _t('Module catalog updated, %s modules', String(sync.catalogRows));
+    return _t('Module catalog updated, %s modules', String(catalogRows));
   }
   return formatModuleOpSummary(summary);
 }

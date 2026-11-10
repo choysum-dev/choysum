@@ -84,9 +84,16 @@ test('useModuleCatalogOpProgress: failed terminal still refreshes', async () => 
 
 test('useModuleCatalogOpProgress: empty id and missing store are no-ops', async () => {
   let refreshed = 0;
+  const warnings: string[] = [];
+  const origWarn = ChoyMessage.warning;
+  ChoyMessage.warning = ((m: string) => {
+    warnings.push(m);
+    return 0;
+  }) as typeof ChoyMessage.warning;
   const api = useModuleCatalogOpProgress(null, msgs, {
     refreshCatalog: async () => {
       refreshed += 1;
+      throw new Error('refresh failed');
     },
   });
   await api.startOpProgress('  ');
@@ -94,6 +101,34 @@ test('useModuleCatalogOpProgress: empty id and missing store are no-ops', async 
   await api.startOpProgress('op-nostore', { moduleName: 'x', action: 'install' });
   expect(api.progressBusy.value).toBe(false);
   expect(refreshed).toBe(1);
+  expect(warnings).toEqual([msgs.failedToGetStatus]);
+  ChoyMessage.warning = origWarn;
+});
+
+test('useModuleCatalogOpProgress: absorbs settle toast rejection and refreshes', async () => {
+  let refreshed = 0;
+  const origSuccess = ChoyMessage.success;
+  ChoyMessage.success = (() => {
+    throw new Error('toast boom');
+  }) as typeof ChoyMessage.success;
+  const store = {
+    Browse: async () => ({
+      Status: 'succeeded',
+      Phase: 'done',
+      ReloadTriggered: false,
+      ReloadFailed: false,
+    }),
+  } as any;
+  const api = useModuleCatalogOpProgress(store, msgs, {
+    refreshCatalog: async () => {
+      refreshed += 1;
+      if (refreshed === 1) throw new Error('first refresh failed');
+    },
+  });
+  await api.startOpProgress('op-toast-reject', { moduleName: 'partner', action: 'install' });
+  expect(api.progressBusy.value).toBe(false);
+  expect(refreshed).toBeGreaterThanOrEqual(1);
+  ChoyMessage.success = origSuccess;
 });
 
 test('useModuleCatalogOpProgress: titleFor falls back without module name', async () => {

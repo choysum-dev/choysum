@@ -679,7 +679,7 @@ func TestDecodeDependsNames_Edges(t *testing.T) {
 }
 
 func TestExecuteLoadDemo_MaterializeFailure(t *testing.T) {
-	t.Parallel()
+	// Not parallel: mutates package-level applyDemoFiles shared with other load-demo tests.
 	db := newOpsTestDB(t)
 	o := &Ops{Scope: newOpsTestScope(t, db), Events: &recordingBus{}}
 	if err := db.Create(&pkgmeta.Module{

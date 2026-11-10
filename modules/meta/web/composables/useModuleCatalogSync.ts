@@ -142,7 +142,10 @@ export function useModuleCatalogSync(
     } finally {
       enqueueLoading.value = false;
     }
-    if (!operationId) return;
+    if (!operationId) {
+      ChoyMessage.warning(msgs.jobStillRunning);
+      return;
+    }
 
     const opStore = resolveOperationStore();
     if (!opStore) {

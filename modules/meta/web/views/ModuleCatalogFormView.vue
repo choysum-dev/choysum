@@ -481,13 +481,8 @@ function onPrimaryClick() {
   drawerModuleName.value = String(rec.ModuleName || '');
   drawerRegistryNewer.value = !!rec.RegistryNewerThanLocal;
   if (action === 'progress') {
-    const activeId = String(rec.ActiveOperationId || '').trim();
-    if (!activeId) {
-      // Stale ActiveOperationId: refresh so the CTA can re-resolve.
-      void refreshDetailRow();
-      return;
-    }
-    void startOpProgress(activeId, {
+    // primaryAction is progress only when ActiveOperationId is non-empty after trim.
+    void startOpProgress(String(rec.ActiveOperationId || '').trim(), {
       moduleName: drawerModuleName.value,
       action: 'progress',
     });

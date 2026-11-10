@@ -151,6 +151,7 @@ export function useModuleCatalogOpProgress(
     const store = resolveOperationStore();
     if (!store) {
       watching.value = false;
+      ChoyMessage.warning(msgs.failedToGetStatus);
       try {
         await opts?.refreshCatalog?.();
       } catch {

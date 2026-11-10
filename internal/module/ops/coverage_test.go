@@ -781,7 +781,7 @@ func TestCoverage_SetWithDemoPropagatesOnRun(t *testing.T) {
 }
 
 func TestCoverage_MaterializeErrorAndFailSaveJoin(t *testing.T) {
-	t.Parallel()
+	// Not parallel: mutates package-level applyDemoFiles shared with other load-demo tests.
 	db := newOpsTestDB(t)
 	mod := &pkgmeta.Module{Name: "core", Version: "1.0.0", ApplicationStr: "core"}
 	if err := db.Create(&modmeta.ModuleSourceSnapshot{

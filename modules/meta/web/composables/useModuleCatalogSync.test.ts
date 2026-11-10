@@ -82,6 +82,12 @@ test('useModuleCatalogSync: enqueue failure surfaces failed toast path without w
 
 test('useModuleCatalogSync: empty operation id does not start watch', async () => {
   let browsed = 0;
+  const warnings: string[] = [];
+  const orig = ChoyMessage.warning;
+  ChoyMessage.warning = ((m: string) => {
+    warnings.push(m);
+    return 0;
+  }) as typeof ChoyMessage.warning;
   const catalogStore = {
     RequestSync: async () => ({ Id: '' }),
   } as any;
@@ -94,6 +100,8 @@ test('useModuleCatalogSync: empty operation id does not start watch', async () =
   const api = useModuleCatalogSync(catalogStore, operationStore, msgs);
   await api.onSync();
   expect(browsed).toBe(0);
+  expect(warnings).toEqual([msgs.jobStillRunning]);
+  ChoyMessage.warning = orig;
 });
 
 test('useModuleCatalogSync: missing operation store warns without refresh or Browse', async () => {
