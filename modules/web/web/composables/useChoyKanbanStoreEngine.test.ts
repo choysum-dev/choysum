@@ -344,8 +344,8 @@ test('refresh re-runs search that landed during first bootstrap', async () => {
   await engine!.refresh();
   await flushPromises();
   // beforeBootstrap applySearch + post-bootstrap refresh re-run.
-  expect(applies).toBeGreaterThanOrEqual(2);
-  expect(keywords.filter((k) => k === 'early').length).toBeGreaterThanOrEqual(2);
+  expect(applies).toBe(2);
+  expect(keywords).toEqual(['early', 'early']);
 
   mounted.unmount();
 });

@@ -348,22 +348,61 @@ export function useChoyKanbanStoreEngine(opts: ChoyKanbanStoreEngineOptions) {
   /**
    * Re-apply store queryState through searchSeq without latching lastSearchQuery
    * (avoids caching a synthetic empty Search query over real store filters).
+   * Uses the same stale-recovery shape as runSearch so overlapping refresh/search
+   * cannot leave an older apply as the final board state.
    */
   async function refreshFromQueryState(rethrow: boolean): Promise<void> {
     const seq = ++searchSeq;
     searchInFlight++;
     searchPending.value = true;
+    let applyError: unknown;
     try {
       await applyCurrentQuery();
-      if (seq !== searchSeq) return;
-      await syncLanesFromController();
     } catch (e) {
-      if (seq === searchSeq) {
-        opts.onSearchError?.(e);
-        if (rethrow) throw e;
-      }
+      applyError = e;
+      if (seq === searchSeq) opts.onSearchError?.(e);
     } finally {
       searchInFlight--;
+    }
+
+    if (
+      shouldRecoverStaleKanbanSearch({
+        completedSeq: seq,
+        latestSeq: searchSeq,
+        inFlight: searchInFlight,
+      })
+    ) {
+      const recoverSeq = searchSeq;
+      searchInFlight++;
+      try {
+        await applyCurrentQuery();
+        if (recoverSeq === searchSeq) await syncLanesFromController();
+      } catch (e) {
+        if (recoverSeq === searchSeq) {
+          opts.onSearchError?.(e);
+          if (rethrow) throw e;
+        }
+      } finally {
+        searchInFlight--;
+        if (searchInFlight === 0) searchPending.value = false;
+      }
+      return;
+    }
+
+    if (seq !== searchSeq) {
+      if (searchInFlight === 0) searchPending.value = false;
+      return;
+    }
+    if (applyError) {
+      searchPending.value = false;
+      if (rethrow) throw applyError;
+      return;
+    }
+    try {
+      await syncLanesFromController();
+    } catch (e) {
+      if (seq === searchSeq) opts.onSearchError?.(e);
+    } finally {
       if (seq === searchSeq) searchPending.value = false;
     }
   }

@@ -28,6 +28,8 @@ import {
  * - Reporter (ChoySearchView) calls useSearchFirstFrameReporter and markEmitted
  *   on the single mount-time query-update (or markNone when initialEmit is false).
  * - Bootstrap uses gate.shouldDefer instead of inventing per-view defer rules.
+ * - Multiple hosts share one gate; expectFirstFrame is vote-counted so a host
+ *   without Search cannot clear another host's pending first-frame wait.
  */
 
 export type SearchFirstFramePhase = 'none' | 'pending' | 'emitted';
@@ -50,6 +52,8 @@ type RegistryEntry = {
   gate: SearchFirstFrameGate;
   hosts: number;
   reporters: number;
+  /** Hosts currently voting expectFirstFrame=true. */
+  expectCount: number;
 };
 
 const registry = new Map<string, RegistryEntry>();
@@ -100,21 +104,55 @@ function acquire(
 ): SearchFirstFrameGate {
   let entry = registry.get(key);
   if (!entry) {
-    entry = { gate: createGate(expectFirstFrame), hosts: 0, reporters: 0 };
+    entry = {
+      gate: createGate(expectFirstFrame),
+      hosts: 0,
+      reporters: 0,
+      expectCount: role === 'host' && expectFirstFrame ? 1 : 0,
+    };
     registry.set(key, entry);
   } else if (role === 'host') {
-    entry.gate.setExpectFirstFrame(expectFirstFrame);
+    // Only raise the shared expectation. A non-expecting host must not clear
+    // pending while another host still needs Search's first frame.
+    if (expectFirstFrame) {
+      entry.expectCount += 1;
+      entry.gate.setExpectFirstFrame(true);
+    }
   }
   if (role === 'host') entry.hosts += 1;
   else entry.reporters += 1;
   return entry.gate;
 }
 
-function release(key: string, role: 'host' | 'reporter'): void {
+function updateHostExpectVote(key: string, from: boolean, to: boolean): void {
+  if (from === to) return;
   const entry = registry.get(key);
   if (!entry) return;
-  if (role === 'host') entry.hosts = Math.max(0, entry.hosts - 1);
-  else entry.reporters = Math.max(0, entry.reporters - 1);
+  if (to) {
+    entry.expectCount += 1;
+    entry.gate.setExpectFirstFrame(true);
+    return;
+  }
+  entry.expectCount = Math.max(0, entry.expectCount - 1);
+  if (entry.expectCount === 0) {
+    entry.gate.setExpectFirstFrame(false);
+  }
+}
+
+function release(key: string, role: 'host' | 'reporter', hostWasExpecting?: boolean): void {
+  const entry = registry.get(key);
+  if (!entry) return;
+  if (role === 'host') {
+    entry.hosts = Math.max(0, entry.hosts - 1);
+    if (hostWasExpecting) {
+      entry.expectCount = Math.max(0, entry.expectCount - 1);
+      if (entry.expectCount === 0 && entry.gate.phase.value === 'pending') {
+        entry.gate.setExpectFirstFrame(false);
+      }
+    }
+  } else {
+    entry.reporters = Math.max(0, entry.reporters - 1);
+  }
   if (entry.hosts === 0 && entry.reporters === 0) {
     registry.delete(key);
   }
@@ -131,16 +169,24 @@ export function useSearchFirstFrameHost(
   const expectNow = () => !!toValue(opts.expectFirstFrame);
   // Only join the registry when a scope can release the entry (avoids leaks).
   const hasScope = !!getCurrentScope();
-  const gate = key && hasScope ? acquire(key, 'host', expectNow()) : createGate(expectNow());
+  let expecting = expectNow();
+  const gate = key && hasScope ? acquire(key, 'host', expecting) : createGate(expecting);
 
   if (key && hasScope) {
-    onScopeDispose(() => release(key, 'host'));
+    onScopeDispose(() => release(key, 'host', expecting));
   }
 
   if (hasScope) {
     watch(
       () => !!toValue(opts.expectFirstFrame),
-      (v) => gate.setExpectFirstFrame(v),
+      (v) => {
+        if (key) {
+          updateHostExpectVote(key, expecting, v);
+        } else {
+          gate.setExpectFirstFrame(v);
+        }
+        expecting = v;
+      },
     );
   }
 

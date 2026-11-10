@@ -150,3 +150,32 @@ test('second host acquire updates expect on an existing registry entry', async (
   expect(secondGate!.shouldDefer.value).toBe(true);
   unmount();
 });
+
+test('non-expecting host does not clear another host pending first-frame', async () => {
+  const store = { storeId: 'demo.MultiHostExpect' };
+  let expectingGate: ReturnType<typeof useSearchFirstFrameHost> | null = null;
+
+  const Root = defineComponent({
+    setup() {
+      const HostExpect = defineComponent({
+        setup() {
+          expectingGate = useSearchFirstFrameHost(store, { expectFirstFrame: true });
+          return () => h('div');
+        },
+      });
+      const HostNoSearch = defineComponent({
+        setup() {
+          useSearchFirstFrameHost(store, { expectFirstFrame: false });
+          return () => h('div');
+        },
+      });
+      return () => h('div', [h(HostExpect), h(HostNoSearch)]);
+    },
+  });
+
+  const { unmount } = mountApp(Root);
+  await flushPromises();
+  expect(expectingGate!.phase.value).toBe('pending');
+  expect(expectingGate!.shouldDefer.value).toBe(true);
+  unmount();
+});
