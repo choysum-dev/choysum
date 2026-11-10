@@ -5,6 +5,7 @@ import {
   resolveChoyKanbanCardId,
   type ChoyKanbanCard,
 } from './kanbanViewHelpers';
+import { finishInitialSearchBoundLoad } from './viewFirstFrame';
 
 /**
  * Coalesce overlapping lane syncs: waiters resume after the in-flight pass (and any
@@ -71,10 +72,7 @@ export function shouldRecoverStaleKanbanSearch(args: {
 }
 
 /**
- * Initial kanban load.
- * When deferToSearch is true (ChoySearchView in the search slot), skip applyEmpty
- * and wait for the first-frame query-update → applySearch (same contract as List).
- * Without a search chrome, apply an empty query once and sync lanes.
+ * Kanban wrapper around finishInitialSearchBoundLoad (shared List/Kanban/Chart contract).
  */
 export async function finishInitialKanbanLoad(opts: {
   getLastSearchQuery: () => unknown;
@@ -83,10 +81,12 @@ export async function finishInitialKanbanLoad(opts: {
   /** When true, do not applyEmpty; first applySearch owns the first load. */
   deferToSearch?: boolean;
 }): Promise<void> {
-  if (opts.getLastSearchQuery()) return;
-  if (opts.deferToSearch) return;
-  await opts.applyEmpty();
-  await opts.syncLanes();
+  await finishInitialSearchBoundLoad({
+    getLastSearchQuery: opts.getLastSearchQuery,
+    applyEmpty: opts.applyEmpty,
+    afterEmpty: opts.syncLanes,
+    deferToSearch: opts.deferToSearch,
+  });
 }
 
 /** Unwrap controller RecordRow `{ payload }` or accept a raw model record. */

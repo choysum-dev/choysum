@@ -2,9 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /**
- * SearchView emits a mount-time query-update (including UserFilter defaults).
- * When that component is the searchView, List/Kanban should wait instead of applying on mount.
+ * @deprecated Import from `viewFirstFrame` instead. Kept for existing List imports.
  */
-export function shouldDeferViewFirstFrame(searchView: unknown, oSearchView: unknown): boolean {
-  return searchView === oSearchView;
-}
+export {
+  shouldDeferToSearchFirstFrame,
+  shouldDeferViewFirstFrame,
+  finishInitialSearchBoundLoad,
+  type DeferToSearchFirstFrameOpts,
+} from './viewFirstFrame';

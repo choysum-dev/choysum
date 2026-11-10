@@ -514,6 +514,7 @@ import TooltipTrigger from '../vendor/ui/tooltip/TooltipTrigger.vue';
 import { createChartController } from '@/web/web/controllers/chartController';
 import { resolvePageStore, useHostPageTitleInView } from '@/web/web/composables/usePageContext';
 import { awaitFieldSelection } from '@/web/web/query/utils/registry/fieldReady';
+import { shouldDeferToSearchFirstFrame } from '@/web/web/components/view/viewFirstFrame';
 import { exportMetrics } from '@/web/web/query/utils/registry/metric';
 import {
   availableChartTypes,
@@ -776,6 +777,10 @@ async function bootstrap(): Promise<void> {
   if (props.beforeBootstrap) await props.beforeBootstrap();
   await awaitFieldSelection(store, { requireNonEmpty: false });
   initMetricOptions();
+  // Search slot: ChoySearchView first-frame owns the initial apply (List/Kanban parity).
+  if (shouldDeferToSearchFirstFrame({ hasSearchSlot: !!slots.search })) {
+    return;
+  }
   try {
     await applyQuery();
   } catch (error) {

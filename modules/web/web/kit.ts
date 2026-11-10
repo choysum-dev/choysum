@@ -170,6 +170,12 @@ export {
   shouldRecoverStaleKanbanSearch,
   shouldRestoreKanbanMove,
 } from './components/view/kanbanStoreHelpers';
+export {
+  finishInitialSearchBoundLoad,
+  shouldDeferToSearchFirstFrame,
+  shouldDeferViewFirstFrame,
+  type DeferToSearchFirstFrameOpts,
+} from './components/view/viewFirstFrame';
 export { useChoyKanbanStoreEngine } from './composables/useChoyKanbanStoreEngine';
 export type { ChoyKanbanStoreEngineOptions } from './composables/useChoyKanbanStoreEngine';
 export {

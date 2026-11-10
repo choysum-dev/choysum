@@ -310,7 +310,7 @@ import { useListViewActions } from '@/web/web/composables/useListViewActions';
 import { useVirtualizationAdapter } from '@/web/web/composables/virtualizationAdapter';
 import { awaitFieldSelection } from '@/web/web/query/utils/registry/fieldReady';
 import ChoySearchView from '@/web/web/components/view/ChoySearchView.vue';
-import { shouldDeferViewFirstFrame } from '@/web/web/components/view/kanbanFirstFrame';
+import { shouldDeferToSearchFirstFrame } from '@/web/web/components/view/viewFirstFrame';
 import {
   canShowAction,
   canShowDeclaredAction,
@@ -818,7 +818,12 @@ onMounted(async () => {
 
   // Only ChoySearchView guarantees a mount-time query-update with UserFilter defaults.
   // Custom SearchViewComponent implementations may never emit; keep the mount apply.
-  if (shouldDeferViewFirstFrame(resolvedSearchView.value, ChoySearchView)) {
+  if (
+    shouldDeferToSearchFirstFrame({
+      searchView: resolvedSearchView.value,
+      canonicalSearchView: ChoySearchView,
+    })
+  ) {
     return;
   }
 

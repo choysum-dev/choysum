@@ -19,10 +19,13 @@ import {
   createLaneSyncGate,
   defaultKanbanMapRowToCard,
   defaultKanbanMoveRecordId,
-  finishInitialKanbanLoad,
   shouldRecoverStaleKanbanSearch,
   shouldRestoreKanbanMove,
 } from '@/web/web/components/view/kanbanStoreHelpers';
+import {
+  finishInitialSearchBoundLoad,
+  shouldDeferToSearchFirstFrame,
+} from '@/web/web/components/view/viewFirstFrame';
 
 export type ChoyKanbanStoreEngineOptions = {
   store: WebModelStore<any>;
@@ -305,12 +308,14 @@ export function useChoyKanbanStoreEngine(opts: ChoyKanbanStoreEngineOptions) {
       if (keywordFields?.length) {
         await controller.setKeywordFields(keywordFields);
       }
-      await finishInitialKanbanLoad({
+      await finishInitialSearchBoundLoad({
         getLastSearchQuery: () => lastSearchQuery,
-        deferToSearch: !!toValue(opts.deferFirstFrame),
+        deferToSearch: shouldDeferToSearchFirstFrame({
+          hasSearchSlot: !!toValue(opts.deferFirstFrame),
+        }),
         applyEmpty: () =>
           controller.apply(keywordFields?.length ? { keywordFields } : {}),
-        syncLanes: syncLanesFromController,
+        afterEmpty: syncLanesFromController,
       });
     } catch (e) {
       // Failure must clear the latch so bootstrap()/host retry can run again.
