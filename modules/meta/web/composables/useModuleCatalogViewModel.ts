@@ -1,10 +1,11 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { computed, ref, watch, type Ref } from 'vue';
+import { computed, inject, ref, watch, type Ref } from 'vue';
 import type { Router, RouteLocationNormalizedLoaded } from 'vue-router';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import { unwrapListRecord } from '@/web/web/composables/listRowEdit';
+import { PageContextKey } from '@/web/web/composables/usePageContext';
 import type { RowEventPayload } from '@/web';
 import { useModuleCatalogSync } from './useModuleCatalogSync';
 import { useModuleCatalogOpProgress } from './useModuleCatalogOpProgress';
@@ -72,6 +73,8 @@ export function useModuleCatalogViewModel(opts: {
   router: Router;
   initialOperationId?: Ref<string> | (() => string);
   msgs: ModuleCatalogViewMsgs;
+  /** Optional host refresh (e.g. ListView expose); preferred after page actionTarget. */
+  refreshCatalog?: () => void | Promise<void>;
 }) {
   const drawerOpen = ref(false);
   const drawerOperationId = ref('');
@@ -80,9 +83,21 @@ export function useModuleCatalogViewModel(opts: {
   const drawerRegistryNewerThanLocal = ref(false);
   // True when the open drawer was bound from the operation deep-link (or boot prop).
   const drawerBoundToRoute = ref(false);
+  // Captured during setup: List/Kanban register refresh on Page via actionTarget.
+  const pageCtx = inject(PageContextKey, null);
 
   async function refreshCatalog() {
     try {
+      const pageRefresh = pageCtx?.actionTarget.value?.refresh;
+      if (typeof pageRefresh === 'function') {
+        await pageRefresh();
+        return;
+      }
+      if (typeof opts.refreshCatalog === 'function') {
+        await opts.refreshCatalog();
+        return;
+      }
+      // Legacy test seam; model store has no state.list in production.
       const list = (opts.store as any)?.state?.list;
       if (list && typeof list.refresh === 'function') {
         await list.refresh();

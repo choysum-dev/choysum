@@ -274,6 +274,34 @@ describe('ChoyChartView coverage', () => {
     mounted.unmount();
   });
 
+  test('bootstrap with search slot defers empty apply to first-frame onSearch', async () => {
+    let applyCalls = 0;
+    const mounted = mountApp(ChoyChartView as any, {
+      props: {
+        store: makeStore(['TokenType']),
+        autoBootstrap: false,
+        metrics: [{ alias: 'count', label: 'Count' }],
+      },
+      slots: {
+        search: () => null,
+      },
+    });
+    await flushPromises();
+    const ex = mounted.root as ChartExpose & { applyQuery: (o?: unknown) => Promise<void> };
+    const originalApply = ex.controller.apply.bind(ex.controller);
+    ex.controller.apply = async (opts?: unknown) => {
+      applyCalls += 1;
+      return originalApply(opts);
+    };
+    await ex.bootstrap();
+    await flushPromises();
+    expect(applyCalls).toBe(0);
+    ex.onSearch({ keyword: '', appliedFilters: [], appliedGroups: [] });
+    await flushPromises();
+    expect(applyCalls).toBeGreaterThanOrEqual(1);
+    mounted.unmount();
+  });
+
   test('autoBootstrap ResizeObserver syncs plot height', async () => {
     const PrevRO = (globalThis as any).ResizeObserver;
     const resizeCallbacks: Array<() => void> = [];

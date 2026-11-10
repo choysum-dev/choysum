@@ -323,6 +323,7 @@ import {
   useRegisterPageActionTarget,
 } from '@/web/web/composables/usePageContext';
 import { useChoyKanbanStoreEngine } from '@/web/web/composables/useChoyKanbanStoreEngine';
+import { useSearchFirstFrameHost } from '@/web/web/components/view/search/searchFirstFrame';
 import { ChoyMessage } from '../../composables/useChoyMessage';
 import { createTranslate } from '@/web/web/i18n';
 import {
@@ -453,6 +454,11 @@ function handleMoveError(error: unknown): void {
   ChoyMessage.error(message);
 }
 
+const firstFrame = useSearchFirstFrameHost(boundStore, {
+  // Header (and search slot outlet) only mounts when showHeader is true.
+  expectFirstFrame: () => !!props.showHeader && !!slots.search,
+});
+
 const engine = useChoyKanbanStoreEngine({
   store: boundStore,
   keywordFields: () => props.keywordFields,
@@ -465,6 +471,7 @@ const engine = useChoyKanbanStoreEngine({
   resolveMoveRecordId: props.resolveMoveRecordId,
   beforeBootstrap: props.beforeBootstrap,
   autoBootstrap: props.autoBootstrap,
+  firstFrameGate: firstFrame,
   onLoadError: props.onLoadError,
   onSearchError: props.onSearchError,
   onLoadMoreError: props.onLoadMoreError,
@@ -479,7 +486,7 @@ useRegisterPageActionTarget({
       // Kanban has no row selection chrome; IO export uses an empty selection.
       return [] as Array<{ Id?: string }>;
     },
-    refresh: () => engine.bootstrap(),
+    refresh: () => engine.refresh(),
   },
 });
 
@@ -551,7 +558,7 @@ function onCreate(): void {
 }
 
 function onRefresh(): void {
-  void engine.bootstrap().catch(() => undefined);
+  void engine.refresh().catch(() => undefined);
 }
 
 function onLaneLoadMore(lane: ChoyKanbanLane): void {
@@ -640,6 +647,7 @@ function onLaneDrop(event: DragEvent, lane: ChoyKanbanLane): void {
 
 defineExpose({
   bootstrap: () => engine.bootstrap(),
+  refresh: () => engine.refresh(),
   applySearch: engine.applySearch,
   syncLanes: () => engine.syncLanesFromController(),
   boardBusy,

@@ -205,3 +205,580 @@ test('load-more patches the target lane without rematerializing siblings', async
 
   mounted.unmount();
 });
+
+test('deferFirstFrame bootstrap skips empty apply; refresh re-applies after latch', async () => {
+  let searchCalls = 0;
+  const s = store();
+  s.Search = async () => {
+    searchCalls += 1;
+    return [];
+  };
+  s.fieldsMetadata = { Title: { type: 'varchar' } };
+
+  const Harness = defineComponent({
+    name: 'KanbanEngineDeferHarness',
+    setup() {
+      return useChoyKanbanStoreEngine({
+        store: s,
+        autoBootstrap: false,
+        deferFirstFrame: true,
+      });
+    },
+    render() {
+      return h('div');
+    },
+  });
+
+  const mounted = mountApp(Harness as any);
+  await flushPromises();
+  const engine = mounted.root;
+
+  await engine.bootstrap();
+  await flushPromises();
+  expect(searchCalls).toBe(0);
+
+  // While Search still owns the first frame, refresh must not synthesize empty.
+  await engine.refresh();
+  await flushPromises();
+  expect(searchCalls).toBe(0);
+
+  await engine.applySearch({ keyword: '', appliedFilters: [], appliedGroups: [] });
+  await flushPromises();
+  expect(searchCalls).toBeGreaterThanOrEqual(1);
+  const afterFirst = searchCalls;
+
+  await engine.bootstrap();
+  await flushPromises();
+  expect(searchCalls).toBe(afterFirst);
+
+  await engine.refresh();
+  await flushPromises();
+  expect(searchCalls).toBeGreaterThan(afterFirst);
+
+  mounted.unmount();
+});
+
+test('refresh reapplies store queryState when not deferring and no search landed', async () => {
+  const s = store();
+  s.fieldsMetadata = { Title: { type: 'varchar' } };
+  s.state.queryState = { keyword: 'from-store', appliedFilters: [], appliedGroups: [] };
+
+  const Harness = defineComponent({
+    name: 'KanbanEngineRefreshQueryStateHarness',
+    setup() {
+      return useChoyKanbanStoreEngine({
+        store: s,
+        autoBootstrap: false,
+        deferFirstFrame: false,
+      });
+    },
+    render() {
+      return h('div');
+    },
+  });
+
+  const mounted = mountApp(Harness as any);
+  await flushPromises();
+  const engine = mounted.root;
+
+  let applies = 0;
+  let lastKeyword: string | undefined;
+  engine.controller.apply = (async (payload: any) => {
+    applies += 1;
+    lastKeyword = payload?.keyword;
+  }) as any;
+  engine.controller.setKeywordFields = async () => undefined;
+
+  // First refresh bootstraps (empty apply) and must not double-apply.
+  await engine.refresh();
+  await flushPromises();
+  expect(applies).toBe(1);
+
+  // Already bootstrapped with no lastSearchQuery: re-apply store queryState.
+  await engine.refresh();
+  await flushPromises();
+  expect(applies).toBe(2);
+  expect(lastKeyword).toBe('from-store');
+
+  mounted.unmount();
+});
+
+test('refresh re-runs search that landed during first bootstrap', async () => {
+  const s = store();
+  s.fieldsMetadata = { Title: { type: 'varchar' } };
+  let engine: ReturnType<typeof useChoyKanbanStoreEngine> | null = null;
+  let applies = 0;
+  const keywords: string[] = [];
+
+  const Harness = defineComponent({
+    name: 'KanbanEngineRefreshDuringBootstrapHarness',
+    setup() {
+      engine = useChoyKanbanStoreEngine({
+        store: s,
+        autoBootstrap: false,
+        deferFirstFrame: true,
+        beforeBootstrap: async () => {
+          await engine!.applySearch({
+            keyword: 'early',
+            filters: [],
+            appliedFilters: [],
+            appliedGroups: [],
+          });
+        },
+      });
+      return engine;
+    },
+    render() {
+      return h('div');
+    },
+  });
+
+  const mounted = mountApp(Harness as any);
+  await flushPromises();
+  engine!.controller.apply = (async (payload: any) => {
+    applies += 1;
+    keywords.push(String(payload?.keyword ?? ''));
+  }) as any;
+  engine!.controller.setKeywordFields = async () => undefined;
+
+  await engine!.refresh();
+  await flushPromises();
+  // beforeBootstrap applySearch + post-bootstrap refresh re-run.
+  expect(applies).toBe(2);
+  expect(keywords).toEqual(['early', 'early']);
+
+  mounted.unmount();
+});
+
+test('refreshFromQueryState rethrows apply failures', async () => {
+  const s = store();
+  s.fieldsMetadata = { Title: { type: 'varchar' } };
+  const errors: unknown[] = [];
+
+  const Harness = defineComponent({
+    name: 'KanbanEngineQueryStateErrHarness',
+    setup() {
+      return useChoyKanbanStoreEngine({
+        store: s,
+        autoBootstrap: false,
+        deferFirstFrame: false,
+        onSearchError: (e) => errors.push(e),
+      });
+    },
+    render() {
+      return h('div');
+    },
+  });
+
+  const mounted = mountApp(Harness as any);
+  await flushPromises();
+  const engine = mounted.root;
+
+  let applies = 0;
+  engine.controller.apply = (async () => {
+    applies += 1;
+    if (applies > 1) throw new Error('queryState boom');
+  }) as any;
+  engine.controller.setKeywordFields = async () => undefined;
+
+  await engine.bootstrap();
+  await flushPromises();
+
+  let threw: unknown = null;
+  await engine.refresh().then(
+    () => undefined,
+    (e: unknown) => {
+      threw = e;
+    },
+  );
+  expect(String(threw)).toContain('queryState boom');
+  expect(errors.some((e) => String(e).includes('queryState boom'))).toBe(true);
+
+  mounted.unmount();
+});
+
+test('refreshFromQueryState reports lane-sync failures via onSearchError', async () => {
+  const s = store();
+  s.fieldsMetadata = { Title: { type: 'varchar' } };
+  s.state.queryState = { pagination: { limit: 20, offset: 0 }, appliedGroups: [] };
+  const errors: unknown[] = [];
+  let explode = false;
+
+  const Harness = defineComponent({
+    name: 'KanbanEngineQueryStateSyncErrHarness',
+    setup() {
+      return useChoyKanbanStoreEngine({
+        store: s,
+        autoBootstrap: false,
+        deferFirstFrame: false,
+        flatLaneLabel: () => {
+          if (explode) throw new Error('queryState sync boom');
+          return 'All';
+        },
+        onSearchError: (e) => errors.push(e),
+      });
+    },
+    render() {
+      return h('div');
+    },
+  });
+
+  const mounted = mountApp(Harness as any);
+  await flushPromises();
+  const engine = mounted.root;
+  engine.controller.setKeywordFields = async () => undefined;
+  await engine.bootstrap();
+  await flushPromises();
+
+  // No-op apply so the lanes watcher does not race a second sync.
+  engine.controller.apply = async () => undefined;
+  explode = true;
+  await engine.refresh();
+  await flushPromises();
+  expect(errors.some((e) => String(e).includes('queryState sync boom'))).toBe(true);
+
+  mounted.unmount();
+});
+
+test('refreshFromQueryState recovers when a newer refresh finishes first', async () => {
+  const s = store();
+  s.fieldsMetadata = { Title: { type: 'varchar' } };
+
+  const Harness = defineComponent({
+    name: 'KanbanEngineQueryStateRecoverHarness',
+    setup() {
+      return useChoyKanbanStoreEngine({
+        store: s,
+        autoBootstrap: false,
+        deferFirstFrame: false,
+      });
+    },
+    render() {
+      return h('div');
+    },
+  });
+
+  const mounted = mountApp(Harness as any);
+  await flushPromises();
+  const engine = mounted.root;
+
+  let applies = 0;
+  engine.controller.apply = (async () => {
+    applies += 1;
+  }) as any;
+  engine.controller.setKeywordFields = async () => undefined;
+  await engine.bootstrap();
+  await flushPromises();
+  const afterBootstrap = applies;
+
+  engine.controller.apply = (async () => {
+    applies += 1;
+    if (applies === afterBootstrap + 1) {
+      await new Promise((r) => setTimeout(r, 30));
+    }
+  }) as any;
+
+  const first = engine.refresh();
+  await new Promise((r) => setTimeout(r, 5));
+  const second = engine.refresh();
+  await Promise.all([first, second]);
+  // first apply + second apply + stale recover apply
+  expect(applies).toBe(afterBootstrap + 3);
+
+  mounted.unmount();
+});
+
+test('refreshFromQueryState recover path rethrows failures', async () => {
+  const s = store();
+  s.fieldsMetadata = { Title: { type: 'varchar' } };
+  const errors: unknown[] = [];
+
+  const Harness = defineComponent({
+    name: 'KanbanEngineQueryStateRecoverErrHarness',
+    setup() {
+      return useChoyKanbanStoreEngine({
+        store: s,
+        autoBootstrap: false,
+        deferFirstFrame: false,
+        onSearchError: (e) => errors.push(e),
+      });
+    },
+    render() {
+      return h('div');
+    },
+  });
+
+  const mounted = mountApp(Harness as any);
+  await flushPromises();
+  const engine = mounted.root;
+
+  let applies = 0;
+  engine.controller.apply = (async () => {
+    applies += 1;
+  }) as any;
+  engine.controller.setKeywordFields = async () => undefined;
+  await engine.bootstrap();
+  await flushPromises();
+  const afterBootstrap = applies;
+
+  engine.controller.apply = (async () => {
+    applies += 1;
+    if (applies === afterBootstrap + 1) {
+      await new Promise((r) => setTimeout(r, 30));
+      return;
+    }
+    if (applies === afterBootstrap + 2) return;
+    throw new Error('recover qs boom');
+  }) as any;
+
+  const first = engine.refresh();
+  await new Promise((r) => setTimeout(r, 5));
+  const second = engine.refresh();
+
+  let threw: unknown = null;
+  await Promise.all([
+    first.then(
+      () => undefined,
+      (e: unknown) => {
+        threw = e;
+      },
+    ),
+    second,
+  ]);
+  expect(String(threw)).toContain('recover qs boom');
+  expect(errors.some((e) => String(e).includes('recover qs boom'))).toBe(true);
+
+  mounted.unmount();
+});
+
+test('refreshFromQueryState skips sync when superseded while still in flight', async () => {
+  const s = store();
+  s.fieldsMetadata = { Title: { type: 'varchar' } };
+
+  const Harness = defineComponent({
+    name: 'KanbanEngineQueryStateStaleHarness',
+    setup() {
+      return useChoyKanbanStoreEngine({
+        store: s,
+        autoBootstrap: false,
+        deferFirstFrame: false,
+      });
+    },
+    render() {
+      return h('div');
+    },
+  });
+
+  const mounted = mountApp(Harness as any);
+  await flushPromises();
+  const engine = mounted.root;
+
+  let applies = 0;
+  engine.controller.apply = (async () => {
+    applies += 1;
+  }) as any;
+  engine.controller.setKeywordFields = async () => undefined;
+  await engine.bootstrap();
+  await flushPromises();
+  const afterBootstrap = applies;
+
+  engine.controller.apply = (async () => {
+    applies += 1;
+    await new Promise((r) => setTimeout(r, 25));
+  }) as any;
+
+  const first = engine.refresh();
+  await new Promise((r) => setTimeout(r, 5));
+  const second = engine.refresh();
+  await Promise.all([first, second]);
+  // Both applies run; the first is superseded while the second is still in flight
+  // (no recover), so only two post-bootstrap applies.
+  expect(applies).toBe(afterBootstrap + 2);
+
+  mounted.unmount();
+});
+
+test('applySearch reports apply failures without rejecting (emit-safe)', async () => {
+  const s = store();
+  s.fieldsMetadata = { Title: { type: 'varchar' } };
+  const errors: unknown[] = [];
+
+  const Harness = defineComponent({
+    name: 'KanbanEngineSearchErrHarness',
+    setup() {
+      return useChoyKanbanStoreEngine({
+        store: s,
+        autoBootstrap: false,
+        deferFirstFrame: true,
+        onSearchError: (e) => errors.push(e),
+      });
+    },
+    render() {
+      return h('div');
+    },
+  });
+
+  const mounted = mountApp(Harness as any);
+  await flushPromises();
+  const engine = mounted.root;
+  await engine.bootstrap();
+  await flushPromises();
+
+  engine.controller.apply = async () => {
+    throw new Error('search boom');
+  };
+  await engine.applySearch({ keyword: 'x', filters: [], appliedFilters: [], appliedGroups: [] });
+  expect(errors.some((e) => String(e).includes('search boom'))).toBe(true);
+
+  mounted.unmount();
+});
+
+test('refresh rethrows apply failures after onSearchError', async () => {
+  const s = store();
+  s.fieldsMetadata = { Title: { type: 'varchar' } };
+  const errors: unknown[] = [];
+
+  const Harness = defineComponent({
+    name: 'KanbanEngineRefreshErrHarness',
+    setup() {
+      return useChoyKanbanStoreEngine({
+        store: s,
+        autoBootstrap: false,
+        deferFirstFrame: true,
+        onSearchError: (e) => errors.push(e),
+      });
+    },
+    render() {
+      return h('div');
+    },
+  });
+
+  const mounted = mountApp(Harness as any);
+  await flushPromises();
+  const engine = mounted.root;
+  await engine.bootstrap();
+  await flushPromises();
+
+  let applyCalls = 0;
+  engine.controller.apply = async () => {
+    applyCalls += 1;
+    if (applyCalls === 1) return;
+    throw new Error('refresh boom');
+  };
+  await engine.applySearch({ keyword: 'ok', filters: [], appliedFilters: [], appliedGroups: [] });
+  await flushPromises();
+
+  let threw: unknown = null;
+  await engine.refresh().then(
+    () => undefined,
+    (e: unknown) => {
+      threw = e;
+    },
+  );
+  expect(String(threw)).toContain('refresh boom');
+  expect(errors.some((e) => String(e).includes('refresh boom'))).toBe(true);
+
+  mounted.unmount();
+});
+
+test('stale applySearch recover reports failures without rejecting', async () => {
+  const s = store();
+  s.fieldsMetadata = { Title: { type: 'varchar' } };
+  const errors: unknown[] = [];
+
+  const Harness = defineComponent({
+    name: 'KanbanEngineRecoverErrHarness',
+    setup() {
+      return useChoyKanbanStoreEngine({
+        store: s,
+        autoBootstrap: false,
+        deferFirstFrame: true,
+        onSearchError: (e) => errors.push(e),
+      });
+    },
+    render() {
+      return h('div');
+    },
+  });
+
+  const mounted = mountApp(Harness as any);
+  await flushPromises();
+  const engine = mounted.root;
+  await engine.bootstrap();
+  await flushPromises();
+
+  let calls = 0;
+  engine.controller.apply = async () => {
+    calls += 1;
+    if (calls === 1) {
+      await new Promise((r) => setTimeout(r, 30));
+      return;
+    }
+    throw new Error('recover boom');
+  };
+
+  const first = engine.applySearch({ keyword: 'a', filters: [], appliedFilters: [], appliedGroups: [] });
+  await new Promise((r) => setTimeout(r, 5));
+  const second = engine.applySearch({ keyword: 'b', filters: [], appliedFilters: [], appliedGroups: [] });
+  await Promise.all([first, second]);
+  expect(errors.some((e) => String(e).includes('recover boom'))).toBe(true);
+
+  mounted.unmount();
+});
+
+test('refresh recover path rethrows when the recovered apply fails', async () => {
+  const s = store();
+  s.fieldsMetadata = { Title: { type: 'varchar' } };
+  const errors: unknown[] = [];
+
+  const Harness = defineComponent({
+    name: 'KanbanEngineRefreshRecoverHarness',
+    setup() {
+      return useChoyKanbanStoreEngine({
+        store: s,
+        autoBootstrap: false,
+        deferFirstFrame: true,
+        onSearchError: (e) => errors.push(e),
+      });
+    },
+    render() {
+      return h('div');
+    },
+  });
+
+  const mounted = mountApp(Harness as any);
+  await flushPromises();
+  const engine = mounted.root;
+  await engine.bootstrap();
+  await flushPromises();
+
+  engine.controller.apply = async () => undefined;
+  await engine.applySearch({ keyword: 'seed', filters: [], appliedFilters: [], appliedGroups: [] });
+  await flushPromises();
+
+  let calls = 0;
+  engine.controller.apply = async () => {
+    calls += 1;
+    if (calls === 1) {
+      await new Promise((r) => setTimeout(r, 30));
+      return;
+    }
+    throw new Error('recover refresh boom');
+  };
+
+  const refreshP = engine.refresh();
+  await new Promise((r) => setTimeout(r, 5));
+  await engine.applySearch({ keyword: 'late', filters: [], appliedFilters: [], appliedGroups: [] });
+
+  let threw: unknown = null;
+  await refreshP.then(
+    () => undefined,
+    (e: unknown) => {
+      threw = e;
+    },
+  );
+  expect(String(threw)).toContain('recover refresh boom');
+  expect(errors.some((e) => String(e).includes('recover refresh boom'))).toBe(true);
+
+  mounted.unmount();
+});

@@ -310,7 +310,8 @@ import { useListViewActions } from '@/web/web/composables/useListViewActions';
 import { useVirtualizationAdapter } from '@/web/web/composables/virtualizationAdapter';
 import { awaitFieldSelection } from '@/web/web/query/utils/registry/fieldReady';
 import ChoySearchView from '@/web/web/components/view/ChoySearchView.vue';
-import { shouldDeferViewFirstFrame } from '@/web/web/components/view/kanbanFirstFrame';
+import { shouldDeferToSearchFirstFrame } from '@/web/web/components/view/viewFirstFrame';
+import { useSearchFirstFrameHost } from '@/web/web/components/view/search/searchFirstFrame';
 import {
   canShowAction,
   canShowDeclaredAction,
@@ -470,6 +471,14 @@ const router = useRouter();
 const resolvedSearchView = computed(() => {
   const view = props.searchView;
   return view ? markRaw(toRaw(view as object)) : null;
+});
+const firstFrame = useSearchFirstFrameHost(store, {
+  expectFirstFrame: () =>
+    !!props.showHeader &&
+    shouldDeferToSearchFirstFrame({
+      searchView: resolvedSearchView.value,
+      canonicalSearchView: ChoySearchView,
+    }),
 });
 // Mutating slots are opt-in (empty action id → hidden). Refresh stays ungated by default.
 const canCreate = computed(() => canShowDeclaredAction(props.actionIds?.create, props.hasAction));
@@ -816,9 +825,9 @@ onMounted(async () => {
   // Initial height sync
   recomputeTableHeight();
 
-  // Only ChoySearchView guarantees a mount-time query-update with UserFilter defaults.
+  // ChoySearchView first-frame owns the initial apply (search first-frame protocol).
   // Custom SearchViewComponent implementations may never emit; keep the mount apply.
-  if (shouldDeferViewFirstFrame(resolvedSearchView.value, ChoySearchView)) {
+  if (shouldDeferToSearchFirstFrame({ gate: firstFrame })) {
     return;
   }
 
