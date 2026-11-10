@@ -116,3 +116,37 @@ test('null store uses a private gate; setExpectFirstFrame can clear pending', as
   expect(gate!.phase.value).toBe('pending');
   unmount();
 });
+
+test('second host acquire updates expect on an existing registry entry', async () => {
+  const store = { storeId: 'demo.SecondHost' };
+  let firstGate: ReturnType<typeof useSearchFirstFrameHost> | null = null;
+  let secondGate: ReturnType<typeof useSearchFirstFrameHost> | null = null;
+
+  // Reporter joins first so the registry entry exists before the second host.
+  const ReporterFirst = defineComponent({
+    setup() {
+      useSearchFirstFrameReporter(store, { initialEmit: false });
+      const HostA = defineComponent({
+        setup() {
+          firstGate = useSearchFirstFrameHost(store, { expectFirstFrame: false });
+          return () => h('div');
+        },
+      });
+      const HostB = defineComponent({
+        setup() {
+          secondGate = useSearchFirstFrameHost(store, { expectFirstFrame: true });
+          return () => h('div');
+        },
+      });
+      return () => h('div', [h(HostA), h(HostB)]);
+    },
+  });
+
+  const { unmount } = mountApp(ReporterFirst);
+  await flushPromises();
+  expect(firstGate).not.toBeNull();
+  expect(secondGate).toBe(firstGate);
+  expect(secondGate!.phase.value).toBe('pending');
+  expect(secondGate!.shouldDefer.value).toBe(true);
+  unmount();
+});

@@ -355,7 +355,12 @@ export function useChoyKanbanStoreEngine(opts: ChoyKanbanStoreEngineOptions) {
   async function refresh(): Promise<void> {
     if (!bootstrapped) {
       await bootstrap();
-      if (lastSearchQuery) return;
+      // Bootstrap already ran applyEmpty when not deferring; only re-run when a
+      // search query landed during bootstrap (so refresh can surface errors).
+      if (lastSearchQuery) {
+        await runSearch(lastSearchQuery, true);
+      }
+      return;
     }
     if (lastSearchQuery) {
       await runSearch(lastSearchQuery, true);

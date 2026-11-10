@@ -286,10 +286,15 @@ test('refresh synthesizes empty search when not deferring', async () => {
   };
   engine.controller.setKeywordFields = async () => undefined;
 
-  // refresh bootstraps when needed; empty bootstrap apply does not latch lastSearchQuery.
+  // First refresh bootstraps (empty apply) and must not double-apply.
   await engine.refresh();
   await flushPromises();
-  expect(applies).toBeGreaterThanOrEqual(2);
+  expect(applies).toBe(1);
+
+  // Already bootstrapped with no lastSearchQuery: synthesize empty via runSearch.
+  await engine.refresh();
+  await flushPromises();
+  expect(applies).toBe(2);
 
   mounted.unmount();
 });

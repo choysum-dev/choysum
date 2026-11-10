@@ -490,6 +490,20 @@ func TestProvisionMinimalNilWithContextFallsBack(t *testing.T) {
 	}
 }
 
+func TestSeedCatalogAfterMinimalInstallDefaultLockerFactory(t *testing.T) {
+	runtimeScope, _ := newSetupStateScope(t)
+	var sawFactory statepkg.LockerFactory
+	seedCatalogAfterMinimalInstall(context.Background(), runtimeScope, Options{
+		SeedCatalog: func(_ context.Context, _ scope.Scope, lf statepkg.LockerFactory) error {
+			sawFactory = lf
+			return nil
+		},
+	}, nil)
+	if sawFactory == nil {
+		t.Fatal("LockerFactory is nil; want defaultLockerFactory")
+	}
+}
+
 func TestProvisionMinimalLeaseLostBeforeInstall(t *testing.T) {
 	runtimeScope, db := newSetupStateScope(t)
 	createMetaModuleTable(t, db)
