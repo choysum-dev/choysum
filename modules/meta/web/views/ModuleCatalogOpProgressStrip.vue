@@ -7,7 +7,9 @@ SPDX-License-Identifier: Apache-2.0
   <Teleport to="body">
     <div
       v-if="busy"
-      class="module-op-progress-lock fixed inset-0 z-50 flex items-center justify-center bg-background/70 backdrop-blur-[1px]"
+      ref="lockRef"
+      tabindex="-1"
+      class="module-op-progress-lock fixed inset-0 z-50 flex items-center justify-center bg-background/70 backdrop-blur-[1px] outline-none"
       data-testid="module-op-progress-strip"
       role="alertdialog"
       aria-modal="true"
@@ -42,11 +44,12 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
+import { nextTick, ref, watch } from 'vue';
 import { ChoySpinner } from '@/web';
 
 defineOptions({ name: 'ModuleCatalogOpProgressStrip' });
 
-withDefaults(
+const props = withDefaults(
   defineProps<{
     busy?: boolean;
     title?: string;
@@ -59,6 +62,17 @@ withDefaults(
     title: '',
     headline: '',
     value: 0,
+  },
+);
+
+const lockRef = ref<HTMLElement | null>(null);
+
+watch(
+  () => props.busy,
+  async busy => {
+    if (!busy) return;
+    await nextTick();
+    lockRef.value?.focus?.({ preventScroll: true });
   },
 );
 </script>

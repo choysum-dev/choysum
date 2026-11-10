@@ -10,6 +10,7 @@ const msgs = {
   serviceRestarting: 'restarting',
   failedToGetStatus: 'no-status',
   settledOk: 'Operation Succeeded',
+  settledPartial: 'Module list updated with warnings',
   settledFailed: (message: string) => `Operation Failed: ${message}`,
   reloadingService: () => 'Almost done, refreshing…',
   executing: () => 'Working on it, please wait…',
@@ -80,6 +81,33 @@ test('useModuleCatalogOpProgress: failed terminal still refreshes', async () => 
   await api.startOpProgress('op-fail', { moduleName: 'core', action: 'upgrade' });
   expect(refreshed).toBe(1);
   expect(api.progressBusy.value).toBe(false);
+});
+
+test('useModuleCatalogOpProgress: partialFailure settles with warning toast', async () => {
+  const warnings: string[] = [];
+  const origWarn = ChoyMessage.warning;
+  ChoyMessage.warning = ((m: string) => {
+    warnings.push(m);
+    return 0;
+  }) as typeof ChoyMessage.warning;
+  const store = {
+    Browse: async () => ({
+      Action: 'sync',
+      Status: 'succeeded',
+      Phase: 'done',
+      PlanJson: JSON.stringify({
+        syncResult: { total: 2, success: 1, failed: 1, catalogRows: 1, origin: 'all' },
+      }),
+    }),
+  } as any;
+  try {
+    const api = useModuleCatalogOpProgress(store, msgs);
+    await api.startOpProgress('op-partial', { moduleName: '', action: 'sync' });
+    expect(api.progressBusy.value).toBe(false);
+    expect(warnings).toEqual([msgs.settledPartial]);
+  } finally {
+    ChoyMessage.warning = origWarn;
+  }
 });
 
 test('useModuleCatalogOpProgress: empty id and missing store are no-ops', async () => {

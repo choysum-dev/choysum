@@ -36,6 +36,7 @@ export type ModuleCatalogViewMsgs = {
   formatSyncSummaryPartial: (sync: CatalogSyncResultSummary) => string;
   /** Toast after install/upgrade/uninstall/load_demo reaches a terminal status. */
   opSettledOk: string;
+  opSettledPartial: string;
   opSettledFailed: (message: string) => string;
   opJobStillRunning: string;
   opServiceRestarting: string;
@@ -124,6 +125,7 @@ export function useModuleCatalogViewModel(opts: {
     serviceRestarting: opts.msgs.opServiceRestarting,
     failedToGetStatus: opts.msgs.opFailedToGetStatus,
     settledOk: opts.msgs.opSettledOk,
+    settledPartial: opts.msgs.opSettledPartial,
     settledFailed: opts.msgs.opSettledFailed,
     reloadingService: opts.msgs.opReloadingService,
     executing: opts.msgs.opExecuting,

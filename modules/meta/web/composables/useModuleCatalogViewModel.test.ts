@@ -29,6 +29,7 @@ const msgs = {
     catalogRows: number;
   }) => `synced ${sync.success}/${sync.total} (${sync.failed} failed) / catalog ${sync.catalogRows}`,
   opSettledOk: 'Operation Succeeded',
+  opSettledPartial: 'Module list updated with warnings',
   opSettledFailed: (msg: string) => `Operation Failed: ${msg}`,
   opJobStillRunning: 'still-running',
   opServiceRestarting: 'restarting',

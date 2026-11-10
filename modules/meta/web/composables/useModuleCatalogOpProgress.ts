@@ -21,6 +21,8 @@ export type ModuleCatalogOpProgressMsgs = {
   serviceRestarting: string;
   failedToGetStatus: string;
   settledOk: string;
+  /** Shown when a sync-like op succeeds with origin/partial warnings. */
+  settledPartial?: string;
   settledFailed: (message: string) => string;
   reloadingService: () => string;
   executing: () => string;
@@ -127,6 +129,10 @@ export function useModuleCatalogOpProgress(
         return;
       }
       if (status.resultStatus === 'SUCCEEDED') {
+        if (status.partialFailure) {
+          ChoyMessage.warning(msgs.settledPartial || msgs.settledOk);
+          return;
+        }
         ChoyMessage.success(msgs.settledOk);
       }
     } catch {

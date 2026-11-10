@@ -18,6 +18,7 @@ test('ModuleCatalogOpProgressStrip.vue renders locked overlay with spinner and t
   const lock = document.body.querySelector('[data-testid="module-op-progress-strip"]');
   expect(lock != null).toBe(true);
   expect(lock?.getAttribute('aria-modal')).toBe('true');
+  expect(lock?.getAttribute('tabindex')).toBe('-1');
   const spinner = document.body.querySelector('[data-testid="choy-spinner"]');
   expect(spinner != null).toBe(true);
   expect(String(spinner?.getAttribute('class') || '')).toContain('text-primary');

@@ -468,6 +468,7 @@ const {
   serviceRestarting: _t('Service is restarting; status will retry automatically'),
   failedToGetStatus: _t('Failed to get status'),
   settledOk: _t('Operation Succeeded'),
+  settledPartial: _t('Module list updated with warnings'),
   settledFailed: msg => _t('Operation Failed: %s', msg),
   reloadingService: () => _t('Almost done, refreshing…'),
   executing: () => _t('Working on it, please wait…'),

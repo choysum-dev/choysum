@@ -125,55 +125,55 @@ export function useModuleCatalogSync(
   async function onSync() {
     if (syncBusy.value) return;
     enqueueLoading.value = true;
-    let operationId = '';
     try {
-      const resp = (await (catalogStore as any).RequestSync({ Force: true })) as
-        | { Id?: string }
-        | string
-        | null;
-      operationId = typeof resp === 'string' ? resp : String(resp?.Id || '').trim();
-    } catch (error: any) {
-      enqueueLoading.value = false;
-      const detail =
-        typeof error === 'string'
-          ? error
-          : String(error?.message || error?.code || error || 'request failed');
-      ChoyMessage.warning(msgs.failed(detail));
-      return;
-    }
-    if (!operationId) {
-      enqueueLoading.value = false;
-      ChoyMessage.warning(msgs.jobStillRunning);
+      let operationId = '';
       try {
-        await opts?.refreshCatalog?.();
-      } catch {
-        // Refresh is best-effort.
+        const resp = (await (catalogStore as any).RequestSync({ Force: true })) as
+          | { Id?: string }
+          | string
+          | null;
+        operationId = typeof resp === 'string' ? resp : String(resp?.Id || '').trim();
+      } catch (error: any) {
+        const detail =
+          typeof error === 'string'
+            ? error
+            : String(error?.message || error?.code || error || 'request failed');
+        ChoyMessage.warning(msgs.failed(detail));
+        return;
       }
-      return;
-    }
-
-    const opStore = resolveOperationStore();
-    if (!opStore) {
-      enqueueLoading.value = false;
-      ChoyMessage.warning(msgs.jobStillRunning);
-      try {
-        await opts?.refreshCatalog?.();
-      } catch {
-        // Refresh is best-effort.
+      if (!operationId) {
+        ChoyMessage.warning(msgs.jobStillRunning);
+        try {
+          await opts?.refreshCatalog?.();
+        } catch {
+          // Refresh is best-effort.
+        }
+        return;
       }
-      return;
-    }
 
-    lastTerminal = null;
-    // Arm watching before clearing enqueue so syncBusy never dips between steps.
-    watching.value = true;
-    enqueueLoading.value = false;
-    try {
-      await progress.watch(operationId);
-      if (lastTerminal) await settleSync(lastTerminal);
-    } finally {
-      watching.value = false;
+      const opStore = resolveOperationStore();
+      if (!opStore) {
+        ChoyMessage.warning(msgs.jobStillRunning);
+        try {
+          await opts?.refreshCatalog?.();
+        } catch {
+          // Refresh is best-effort.
+        }
+        return;
+      }
+
       lastTerminal = null;
+      // Keep enqueueLoading until watch ends (outer finally) so syncBusy never dips.
+      watching.value = true;
+      try {
+        await progress.watch(operationId);
+        if (lastTerminal) await settleSync(lastTerminal);
+      } finally {
+        watching.value = false;
+        lastTerminal = null;
+      }
+    } finally {
+      enqueueLoading.value = false;
     }
   }
 

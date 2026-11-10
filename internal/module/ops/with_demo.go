@@ -36,7 +36,14 @@ func ensureMetaAppSettingTable(db *gorm.DB) error {
 	if m.HasTable(&metaAppSetting{}) {
 		return nil
 	}
-	return m.CreateTable(&metaAppSetting{})
+	if err := m.CreateTable(&metaAppSetting{}); err != nil {
+		// Lost a create race with a concurrent writer; table now exists.
+		if m.HasTable(&metaAppSetting{}) {
+			return nil
+		}
+		return err
+	}
+	return nil
 }
 
 // ResolveWithDemo reads meta_app_setting modules.with_demo; missing/invalid => false.

@@ -261,6 +261,7 @@ const {
         String(sync.failed),
       ),
     opSettledOk: _t('Operation Succeeded'),
+    opSettledPartial: _t('Module list updated with warnings'),
     opSettledFailed: msg => _t('Operation Failed: %s', msg),
     opJobStillRunning: _t('Job is still running in the background; refresh later'),
     opServiceRestarting: _t('Service is restarting; status will retry automatically'),
