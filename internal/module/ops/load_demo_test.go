@@ -461,6 +461,29 @@ func TestExecuteLoadDemo_MissingInstalledModule(t *testing.T) {
 	}
 }
 
+func TestPlanLoadDemo_ListPendingFindError(t *testing.T) {
+	db := newOpsTestDB(t)
+	o := &Ops{Scope: newOpsTestScope(t, db)}
+	// MaterializeCatalog Finds catalog without ORDER BY; listPendingDemoCatalog Orders by
+	// module_name — fail only the ordered Find so Plan reaches the list error path.
+	if err := db.Callback().Query().Before("gorm:query").Register("ops_fail_list_pending_demo", func(tx *gorm.DB) {
+		if tx.Statement == nil || tx.Statement.Table != "meta_module_catalog" {
+			return
+		}
+		if _, ok := tx.Statement.Clauses["ORDER BY"]; ok {
+			_ = tx.AddError(errors.New("forced list pending fail"))
+		}
+	}); err != nil {
+		t.Fatalf("callback: %v", err)
+	}
+	if _, err := o.planLoadDemo(context.Background(), ""); err == nil || !strings.Contains(err.Error(), "forced list pending fail") {
+		t.Fatalf("list pending via plan: %v", err)
+	}
+	if _, err := o.listPendingDemoCatalog(context.Background()); err == nil || !strings.Contains(err.Error(), "forced list pending fail") {
+		t.Fatalf("list pending direct: %v", err)
+	}
+}
+
 func TestPlanLoadDemo_MarshalAndSessionErrors(t *testing.T) {
 	db := newOpsTestDB(t)
 	o := &Ops{Scope: newOpsTestScope(t, db)}

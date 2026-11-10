@@ -755,13 +755,59 @@ func TestCoverage_ModuleManagementRemainingBranches(t *testing.T) {
 		t.Fatalf("expected fallback errorMessage, got %#v", emptyMsg)
 	}
 
-	plainRunDemo := newPendingEngine(t, func(error) error {
-		return errors.New("plain run fail")
-	})
+	plainRunDB := newBridgeTestDB(t)
+	seedPendingDemo(t, plainRunDB)
+	plainRunBase := &moduleIndexTestScope{
+		ctx:     context.Background(),
+		logger:  slog.New(slog.NewTextHandler(io.Discard, nil)),
+		cfg:     &config.Config{ModulesPath: t.TempDir()},
+		session: &scope.Session{DB: plainRunDB},
+	}
+	plainRunDemo := newTestQuickjsEngine(t, WithModuleManagementProvider(
+		jsengine.StaticScopeProvider(plainRunBase),
+		pendingHostOpt,
+		moduleManagementOptionFunc(func(cfg *moduleManagementConfig) {
+			cfg.loadDemoRunHook = func(error) error { return errors.New("plain run fail") }
+		}),
+	))
 	plainRun := awaitModuleManagementJSON(t, plainRunDemo, `$choysum.moduleManagement.loadDemo({})`)
 	if code, _ := plainRun["errorCode"].(string); code != "OP_FAILED" {
 		t.Fatalf("plain run = %#v", plainRun)
 	}
+	plainOpID, _ := plainRun["id"].(string)
+	if plainOpID == "" {
+		t.Fatalf("missing id: %#v", plainRun)
+	}
+	var plainOp modmeta.ModuleOperation
+	if err := plainRunDB.Where("id = ?", plainOpID).Take(&plainOp).Error; err != nil {
+		t.Fatalf("load plain op: %v", err)
+	}
+	if plainOp.Status != ops.StatusFailed {
+		t.Fatalf("hooked run failure left status = %q, want failed", plainOp.Status)
+	}
+
+	// loadDemoRunHook flips success→failure and ForceFailTerminal fails → joined throw.
+	hookMarkFailDB := newBridgeTestDB(t)
+	seedPendingDemo(t, hookMarkFailDB)
+	hookMarkFailBase := &moduleIndexTestScope{
+		ctx:     context.Background(),
+		logger:  slog.New(slog.NewTextHandler(io.Discard, nil)),
+		cfg:     &config.Config{ModulesPath: t.TempDir()},
+		session: &scope.Session{DB: hookMarkFailDB},
+	}
+	hookMarkFailDemo := newTestQuickjsEngine(t, WithModuleManagementProvider(
+		jsengine.StaticScopeProvider(hookMarkFailBase),
+		pendingHostOpt,
+		moduleManagementOptionFunc(func(cfg *moduleManagementConfig) {
+			cfg.loadDemoRunHook = func(error) error {
+				if err := hookMarkFailDB.Where("1 = 1").Delete(&modmeta.ModuleOperation{}).Error; err != nil {
+					t.Fatalf("delete ops: %v", err)
+				}
+				return errors.New("hook after delete")
+			}
+		}),
+	))
+	rejectContains(t, hookMarkFailDemo, `$choysum.moduleManagement.loadDemo({})`, "hook after delete")
 
 	// loadDemo Apply failure terminates the operation row (ForceFailTerminal).
 	applyFailDB := newBridgeTestDB(t)
@@ -797,6 +843,27 @@ func TestCoverage_ModuleManagementRemainingBranches(t *testing.T) {
 	if failedOp.Status != ops.StatusFailed {
 		t.Fatalf("status = %q, want failed", failedOp.Status)
 	}
+
+	// Apply fail + ForceFailTerminal miss joins mark error into the throw.
+	applyMarkFailDB := newBridgeTestDB(t)
+	seedPendingDemo(t, applyMarkFailDB)
+	applyMarkFailBase := &moduleIndexTestScope{
+		ctx:     context.Background(),
+		logger:  slog.New(slog.NewTextHandler(io.Discard, nil)),
+		cfg:     &config.Config{ModulesPath: t.TempDir()},
+		session: &scope.Session{DB: applyMarkFailDB},
+	}
+	applyMarkFailEngine := newTestQuickjsEngine(t, WithModuleManagementProvider(
+		jsengine.StaticScopeProvider(applyMarkFailBase),
+		pendingHostOpt,
+		WithModuleManagementApplyHook(func(error) error {
+			if err := applyMarkFailDB.Where("1 = 1").Delete(&modmeta.ModuleOperation{}).Error; err != nil {
+				t.Fatalf("delete ops: %v", err)
+			}
+			return oerrors.New("ops", "APPLY_BOOM", "apply failed")
+		}),
+	))
+	rejectContains(t, applyMarkFailEngine, `$choysum.moduleManagement.loadDemo({})`, "apply failed")
 
 	// Apply hook throw path (LEASE_CONFLICT).
 	applyThrowEngine := newTestQuickjsEngine(t, WithModuleManagementProvider(

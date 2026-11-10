@@ -856,7 +856,9 @@ func performModuleLoadDemo(ctx *quickjs.Context, jse *quickjsengine.QuickjsEngin
 		// Draft or queued: terminate so retries do not leave a lingering open plan.
 		// Apply may have already failed the row (stamp); ForceFailTerminal no-ops on failed.
 		// Detach ctx so cancel/deadline from Apply does not block the terminal write.
-		_ = started.host.ForceFailTerminal(context.WithoutCancel(started.execCtx), planRes.Id, domain, code, message)
+		if markErr := started.host.ForceFailTerminal(context.WithoutCancel(started.execCtx), planRes.Id, domain, code, message); markErr != nil {
+			return bridgeThrow(ctx, errors.Join(applyErr, markErr))
+		}
 		if shouldThrowBridgeError(applyErr) {
 			return bridgeThrow(ctx, applyErr)
 		}
@@ -875,7 +877,27 @@ func performModuleLoadDemo(ctx *quickjs.Context, jse *quickjsengine.QuickjsEngin
 	}
 	runErr := started.host.Run(started.execCtx, ops.RunRequest{Id: planRes.Id})
 	if cfg.loadDemoRunHook != nil {
-		runErr = cfg.loadDemoRunHook(runErr)
+		hooked := cfg.loadDemoRunHook(runErr)
+		// When Run already persisted success, flip the row to failed so C1 UI
+		// observes the forced failure (same contract as performModuleRun).
+		if runErr == nil && hooked != nil {
+			domain, code, message := "MODULE_MANAGEMENT", "OP_FAILED", hooked.Error()
+			if info := oerrors.GetErrorInfo(hooked); info != nil {
+				if info.Domain != "" {
+					domain = info.Domain
+				}
+				if info.Code != "" {
+					code = info.Code
+				}
+				if info.Message != "" {
+					message = info.Message
+				}
+			}
+			if markErr := started.host.ForceFailTerminal(context.WithoutCancel(started.execCtx), planRes.Id, domain, code, message); markErr != nil {
+				return bridgeThrow(ctx, errors.Join(hooked, markErr))
+			}
+		}
+		runErr = hooked
 	}
 	if runErr != nil && shouldThrowBridgeError(runErr) {
 		return bridgeThrow(ctx, runErr)
