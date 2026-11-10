@@ -86,10 +86,11 @@ func (o *Ops) SetWithDemo(ctx context.Context, enabled bool) error {
 	}).Error; err != nil {
 		// Lost a create race: another writer inserted the latch; update that row.
 		var existing metaAppSetting
-		if takeErr := db.Where(map[string]any{"key": withDemoSettingKey}).Take(&existing).Error; takeErr == nil {
+		takeErr := db.Where(map[string]any{"key": withDemoSettingKey}).Take(&existing).Error
+		if takeErr == nil {
 			return db.Model(&existing).Update("value", "true").Error
 		}
-		return err
+		return errors.Join(err, takeErr)
 	}
 	return nil
 }

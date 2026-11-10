@@ -46,7 +46,9 @@ new HISTORY entry describing what was re-copied vs re-patched.
   hiding via CSS still leaves a focusable control, and dismiss listeners never
   reached Reka without attr forwarding.
 - **Do not regress:** keep default close button for existing dialogs; do not move
-  product lock copy into this file.
+  product lock copy into this file. With `inheritAttrs: false`, hosts that rely on
+  `@escape-key-down` / pointer-outside dismiss must confirm `$attrs` is forwarded
+  to Reka `DialogContent`, otherwise those listeners are silently dropped.
 
 ### 2026-11-04 — Stepper props declared locally
 
