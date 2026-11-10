@@ -38,6 +38,7 @@ new HISTORY entry describing what was re-copied vs re-patched.
 
 ### 2026-11-09 — DialogContent showCloseButton + attr forward
 
+- **Files:** `dialog/DialogContent.vue` (re-patched).
 - **What:** `showCloseButton` (default true) gates the corner `DialogClose`;
   `inheritAttrs: false` + `v-bind="$attrs"` on Reka `DialogContent` so hosts can
   prevent Esc / pointer-outside dismiss (`@escape-key-down.prevent`, etc.).

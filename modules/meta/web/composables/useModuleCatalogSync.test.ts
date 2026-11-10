@@ -82,6 +82,7 @@ test('useModuleCatalogSync: enqueue failure surfaces failed toast path without w
 
 test('useModuleCatalogSync: empty operation id does not start watch', async () => {
   let browsed = 0;
+  let refreshed = 0;
   const warnings: string[] = [];
   const orig = ChoyMessage.warning;
   ChoyMessage.warning = ((m: string) => {
@@ -97,14 +98,19 @@ test('useModuleCatalogSync: empty operation id does not start watch', async () =
       return { Status: 'succeeded' };
     },
   } as any;
-  const api = useModuleCatalogSync(catalogStore, operationStore, msgs);
+  const api = useModuleCatalogSync(catalogStore, operationStore, msgs, {
+    refreshCatalog: async () => {
+      refreshed += 1;
+    },
+  });
   await api.onSync();
   expect(browsed).toBe(0);
+  expect(refreshed).toBe(1);
   expect(warnings).toEqual([msgs.jobStillRunning]);
   ChoyMessage.warning = orig;
 });
 
-test('useModuleCatalogSync: missing operation store warns without refresh or Browse', async () => {
+test('useModuleCatalogSync: missing operation store warns and best-effort refreshes', async () => {
   let refreshed = 0;
   const warnings: string[] = [];
   const orig = ChoyMessage.warning;
@@ -121,7 +127,7 @@ test('useModuleCatalogSync: missing operation store warns without refresh or Bro
     },
   });
   await api.onSync();
-  expect(refreshed).toBe(0);
+  expect(refreshed).toBe(1);
   expect(warnings).toEqual([msgs.jobStillRunning]);
   ChoyMessage.warning = orig;
 });

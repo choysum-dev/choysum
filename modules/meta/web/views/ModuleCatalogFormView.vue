@@ -556,8 +556,8 @@ function onOpApplied(operationId?: string) {
   void refreshDetailRow();
   if (!id) return;
   drawerOpen.value = false;
-  // Dialog progress/sync handoff is not a real lifecycle action for titleFor.
-  const action = drawerAction.value === 'progress' || drawerAction.value === 'sync' ? '' : drawerAction.value;
+  // Dialog progress handoff is not a real lifecycle action for titleFor.
+  const action = drawerAction.value === 'progress' ? '' : drawerAction.value;
   void startOpProgress(id, {
     moduleName: drawerModuleName.value,
     action,

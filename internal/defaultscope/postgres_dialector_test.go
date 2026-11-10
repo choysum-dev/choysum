@@ -93,7 +93,7 @@ func TestPostgresDialectorMigratorWrapsBPCharAware(t *testing.T) {
 	t.Parallel()
 
 	d := openPostgres("host=127.0.0.1 user=wangbuke dbname=choysum sslmode=disable")
-	db, err := gorm.Open(d, &gorm.Config{})
+	db, err := gorm.Open(d, &gorm.Config{DisableAutomaticPing: true})
 	if err != nil {
 		t.Fatalf("gorm.Open: %v", err)
 	}

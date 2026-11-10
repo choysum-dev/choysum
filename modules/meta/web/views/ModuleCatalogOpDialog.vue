@@ -484,8 +484,9 @@ watch(
     // Progress / sync monitors run on the page strip; confirm dialog only plans.
     if (action === 'progress' || action === 'sync') {
       const id = String(operationId || '').trim();
-      open.value = false;
+      // Emit before close so the host can start progress before this watcher re-enters on close.
       if (id) emit('applied', id);
+      open.value = false;
       return;
     }
     if (action === 'load_demo') {

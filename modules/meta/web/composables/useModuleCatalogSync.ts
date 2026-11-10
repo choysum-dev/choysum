@@ -133,28 +133,41 @@ export function useModuleCatalogSync(
         | null;
       operationId = typeof resp === 'string' ? resp : String(resp?.Id || '').trim();
     } catch (error: any) {
+      enqueueLoading.value = false;
       const detail =
         typeof error === 'string'
           ? error
           : String(error?.message || error?.code || error || 'request failed');
       ChoyMessage.warning(msgs.failed(detail));
       return;
-    } finally {
-      enqueueLoading.value = false;
     }
     if (!operationId) {
+      enqueueLoading.value = false;
       ChoyMessage.warning(msgs.jobStillRunning);
+      try {
+        await opts?.refreshCatalog?.();
+      } catch {
+        // Refresh is best-effort.
+      }
       return;
     }
 
     const opStore = resolveOperationStore();
     if (!opStore) {
+      enqueueLoading.value = false;
       ChoyMessage.warning(msgs.jobStillRunning);
+      try {
+        await opts?.refreshCatalog?.();
+      } catch {
+        // Refresh is best-effort.
+      }
       return;
     }
 
     lastTerminal = null;
+    // Arm watching before clearing enqueue so syncBusy never dips between steps.
     watching.value = true;
+    enqueueLoading.value = false;
     try {
       await progress.watch(operationId);
       if (lastTerminal) await settleSync(lastTerminal);
