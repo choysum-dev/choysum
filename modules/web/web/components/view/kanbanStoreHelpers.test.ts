@@ -86,40 +86,32 @@ describe('kanbanStoreHelpers', () => {
       applyEmpty: async () => {
         applied = true;
       },
-      onSearch: async () => undefined,
       syncLanes: async () => undefined,
     });
     expect(applied).toBe(false);
   });
 
-  test('finishInitialKanbanLoad: re-applies late first-frame search', async () => {
+  test('finishInitialKanbanLoad: deferToSearch skips empty apply until search emits', async () => {
     const calls: string[] = [];
-    let query: unknown = null;
     await finishInitialKanbanLoad({
-      getLastSearchQuery: () => query,
+      getLastSearchQuery: () => null,
+      deferToSearch: true,
       applyEmpty: async () => {
         calls.push('empty');
-        query = { keyword: 'late' };
-      },
-      onSearch: async (q) => {
-        calls.push(`search:${(q as { keyword: string }).keyword}`);
       },
       syncLanes: async () => {
         calls.push('sync');
       },
     });
-    expect(calls).toEqual(['empty', 'search:late']);
+    expect(calls).toEqual([]);
   });
 
-  test('finishInitialKanbanLoad: syncs when no search arrives', async () => {
+  test('finishInitialKanbanLoad: without defer applies empty then syncs', async () => {
     const calls: string[] = [];
     await finishInitialKanbanLoad({
       getLastSearchQuery: () => null,
       applyEmpty: async () => {
         calls.push('empty');
-      },
-      onSearch: async () => {
-        calls.push('search');
       },
       syncLanes: async () => {
         calls.push('sync');

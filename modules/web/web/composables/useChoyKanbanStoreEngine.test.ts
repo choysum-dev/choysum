@@ -205,3 +205,50 @@ test('load-more patches the target lane without rematerializing siblings', async
 
   mounted.unmount();
 });
+
+test('deferFirstFrame bootstrap skips empty apply; refresh re-applies after latch', async () => {
+  let searchCalls = 0;
+  const s = store();
+  s.Search = async () => {
+    searchCalls += 1;
+    return [];
+  };
+  s.fieldsMetadata = { Title: { type: 'varchar' } };
+
+  const Harness = defineComponent({
+    name: 'KanbanEngineDeferHarness',
+    setup() {
+      return useChoyKanbanStoreEngine({
+        store: s,
+        autoBootstrap: false,
+        deferFirstFrame: true,
+      });
+    },
+    render() {
+      return h('div');
+    },
+  });
+
+  const mounted = mountApp(Harness as any);
+  await flushPromises();
+  const engine = mounted.root;
+
+  await engine.bootstrap();
+  await flushPromises();
+  expect(searchCalls).toBe(0);
+
+  await engine.applySearch({ keyword: '', appliedFilters: [], appliedGroups: [] });
+  await flushPromises();
+  expect(searchCalls).toBeGreaterThanOrEqual(1);
+  const afterFirst = searchCalls;
+
+  await engine.bootstrap();
+  await flushPromises();
+  expect(searchCalls).toBe(afterFirst);
+
+  await engine.refresh();
+  await flushPromises();
+  expect(searchCalls).toBeGreaterThan(afterFirst);
+
+  mounted.unmount();
+});

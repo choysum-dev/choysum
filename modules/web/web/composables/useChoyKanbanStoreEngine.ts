@@ -43,6 +43,11 @@ export type ChoyKanbanStoreEngineOptions = {
   beforeBootstrap?: () => Promise<void>;
   /** When false, host must call `bootstrap()` (default true). */
   autoBootstrap?: boolean;
+  /**
+   * When true, skip empty first apply and wait for Search first-frame
+   * query-update (List parity when ChoySearchView fills the search slot).
+   */
+  deferFirstFrame?: MaybeRefOrGetter<boolean | undefined>;
   onLoadError?: (error: unknown) => void;
   onSearchError?: (error: unknown) => void;
   onLoadMoreError?: (error: unknown) => void;
@@ -302,9 +307,9 @@ export function useChoyKanbanStoreEngine(opts: ChoyKanbanStoreEngineOptions) {
       }
       await finishInitialKanbanLoad({
         getLastSearchQuery: () => lastSearchQuery,
+        deferToSearch: !!toValue(opts.deferFirstFrame),
         applyEmpty: () =>
           controller.apply(keywordFields?.length ? { keywordFields } : {}),
-        onSearch: applySearch,
         syncLanes: syncLanesFromController,
       });
     } catch (e) {
@@ -312,6 +317,20 @@ export function useChoyKanbanStoreEngine(opts: ChoyKanbanStoreEngineOptions) {
       bootstrapped = false;
       opts.onLoadError?.(e);
       throw e;
+    }
+  }
+
+  /** Re-apply the current search (or store queryState). Safe after bootstrap latch. */
+  async function refresh(): Promise<void> {
+    if (lastSearchQuery) {
+      await applySearch(lastSearchQuery);
+      return;
+    }
+    try {
+      await applyCurrentQuery();
+      await syncLanesFromController();
+    } catch (e) {
+      opts.onSearchError?.(e);
     }
   }
 
@@ -347,5 +366,6 @@ export function useChoyKanbanStoreEngine(opts: ChoyKanbanStoreEngineOptions) {
     persistMove,
     syncLanesFromController,
     bootstrap,
+    refresh,
   };
 }

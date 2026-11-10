@@ -465,6 +465,8 @@ const engine = useChoyKanbanStoreEngine({
   resolveMoveRecordId: props.resolveMoveRecordId,
   beforeBootstrap: props.beforeBootstrap,
   autoBootstrap: props.autoBootstrap,
+  // ChoySearchView first-frame owns the initial apply when the search slot is filled.
+  deferFirstFrame: () => !!slots.search,
   onLoadError: props.onLoadError,
   onSearchError: props.onSearchError,
   onLoadMoreError: props.onLoadMoreError,
@@ -479,7 +481,7 @@ useRegisterPageActionTarget({
       // Kanban has no row selection chrome; IO export uses an empty selection.
       return [] as Array<{ Id?: string }>;
     },
-    refresh: () => engine.bootstrap(),
+    refresh: () => engine.refresh(),
   },
 });
 
@@ -551,7 +553,7 @@ function onCreate(): void {
 }
 
 function onRefresh(): void {
-  void engine.bootstrap().catch(() => undefined);
+  void engine.refresh().catch(() => undefined);
 }
 
 function onLaneLoadMore(lane: ChoyKanbanLane): void {
@@ -640,6 +642,7 @@ function onLaneDrop(event: DragEvent, lane: ChoyKanbanLane): void {
 
 defineExpose({
   bootstrap: () => engine.bootstrap(),
+  refresh: () => engine.refresh(),
   applySearch: engine.applySearch,
   syncLanes: () => engine.syncLanesFromController(),
   boardBusy,

@@ -71,22 +71,21 @@ export function shouldRecoverStaleKanbanSearch(args: {
 }
 
 /**
- * Initial kanban load: prefer a first-frame search emit; otherwise apply an
- * empty query. If a search arrives mid-flight, re-apply it so last writer wins.
+ * Initial kanban load.
+ * When deferToSearch is true (ChoySearchView in the search slot), skip applyEmpty
+ * and wait for the first-frame query-update → applySearch (same contract as List).
+ * Without a search chrome, apply an empty query once and sync lanes.
  */
 export async function finishInitialKanbanLoad(opts: {
   getLastSearchQuery: () => unknown;
   applyEmpty: () => Promise<void>;
-  onSearch: (query: any) => Promise<void>;
   syncLanes: () => Promise<void>;
+  /** When true, do not applyEmpty; first applySearch owns the first load. */
+  deferToSearch?: boolean;
 }): Promise<void> {
   if (opts.getLastSearchQuery()) return;
+  if (opts.deferToSearch) return;
   await opts.applyEmpty();
-  const late = opts.getLastSearchQuery();
-  if (late) {
-    await opts.onSearch(late);
-    return;
-  }
   await opts.syncLanes();
 }
 
