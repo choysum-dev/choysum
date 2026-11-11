@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { expect, page } from '@choysum/e2e';
-import { pickAlternativeCompanyOptionValue } from '../../web/components/layout/switch_company_option_pick.ts';
 import { waitForGrpcWebUnaryOk } from './grpcweb.ts';
 
 /**
@@ -38,35 +37,11 @@ async function readActiveCompanyIdFromAuth(): Promise<string> {
 }
 
 /**
- * Pick a non-selected company option in the open active-company native select.
+ * Click another company's name in the open switcher list (immediate loginto).
  */
-async function pickOtherActiveCompanyOption(): Promise<void> {
-  const panelSelect = '[data-testid="company-switch-panel"] [data-testid="company-active-select"]';
-  await expect(page.locator(panelSelect)).toBeVisible({ timeout: 10_000 });
+async function clickOtherCompanyLoginto(): Promise<void> {
+  await expect(page.getByTestId('company-switch-panel')).toBeVisible({ timeout: 10_000 });
 
-  // Companies load async after the panel opens; wait until a non-current option exists.
-  await expect
-    .poll(
-      async () =>
-        page.evaluate((sel: string) => {
-          const select = document.querySelector(sel) as HTMLSelectElement | null;
-          if (!select) return 0;
-          return Array.from(select.options)
-            .filter(opt => !opt.disabled)
-            .map(opt => String(opt.value || '').trim())
-            .filter(Boolean).length;
-        }, panelSelect),
-      { timeout: 10_000 }
-    )
-    .toBeGreaterThanOrEqual(2);
-
-  // Read JWT active after options appear: an in-flight panel-open RefreshToken could
-  // otherwise leave the draft on the freshly-synced active company while `active` is stale.
-  // Outer retries are instant, so wait here through a transient token rotation.
-  // Use a bounded loop (not expect.poll) so the domain-specific error below can surface.
-  // Require two consecutive identical reads: a single read can return the pre-rotation
-  // JWT while the panel-open RefreshToken is still in flight, and a stale `active`
-  // would make us pick the real active company (Apply = no-op).
   let activeCompanyId = '';
   let lastReadErr: unknown;
   const deadline = Date.now() + 5_000;
@@ -82,85 +57,72 @@ async function pickOtherActiveCompanyOption(): Promise<void> {
         }
       }
     } catch (err) {
-      // Transient evaluate/navigation failures must not abort the retry budget,
-      // but keep the last one so a persistent failure is diagnosable below.
       lastReadErr = err;
     }
     await page.waitForTimeout(100);
   }
   if (!activeCompanyId) {
     throw new Error(
-      `company switch: active company id unavailable; refusing to pick an option blindly${
+      `company switch: active company id unavailable; refusing to pick a row blindly${
         lastReadErr ? ` (last token read failed: ${String(lastReadErr)})` : ''
-      }`
+      }`,
     );
   }
-  // One post-wait snapshot for both current and options — mixing pre/post-wait
-  // reads can pick a value that no longer exists and time out opaquely.
-  const selectSnapshot = await page.evaluate((sel: string) => {
-    const select = document.querySelector(sel) as HTMLSelectElement | null;
-    if (!select) return { current: '', values: [] as string[] };
-    return {
-      current: String(select.value || '').trim(),
-      // Skip disabled options: programmatic selection of them is a silent no-op.
-      values: Array.from(select.options)
-        .filter(opt => !opt.disabled)
-        .map(opt => String(opt.value || '').trim())
-        .filter(Boolean),
-    };
-  }, panelSelect);
-  const otherValue = pickAlternativeCompanyOptionValue(
-    selectSnapshot.values,
-    selectSnapshot.current,
-    activeCompanyId
-  );
-  expect(otherValue, 'company switch: no selectable alternative company option').not.toBe('');
 
-  // Re-apply inside the poll: a late panel-open RefreshToken can reset the draft.
+  // Wait for a non-active loginto control (name click stays enabled while hierarchy loads).
   await expect
     .poll(
       async () =>
-        page.evaluate(
-          async ({ sel, other }: { sel: string; other: string }) => {
-            const select = document.querySelector(sel) as HTMLSelectElement | null;
-            if (!select) return '';
-            if (String(select.value || '').trim() !== other) {
-              select.value = other;
-              select.dispatchEvent(new Event('input', { bubbles: true }));
-              select.dispatchEvent(new Event('change', { bubbles: true }));
-            }
-            // Let Vue flush: a late panel-open RefreshToken can reset the draft
-            // right after we assign it, which would otherwise pass this poll.
-            await new Promise(resolve => setTimeout(resolve, 0));
-            if (String(select.value || '').trim() !== other) return '';
-            // Confirm the draft settles across a later tick before Apply.
-            await new Promise(resolve => setTimeout(resolve, 50));
-            return String(select.value || '').trim();
-          },
-          { sel: panelSelect, other: otherValue }
-        ),
-      { timeout: 5_000 }
+        page.evaluate((active: string) => {
+          const items = Array.from(
+            document.querySelectorAll('[data-testid="company-switch-item"]'),
+          ) as HTMLElement[];
+          for (const el of items) {
+            const id = String(el.getAttribute('data-company-id') || '').trim();
+            if (!id || id === active) continue;
+            const btn = el.querySelector(
+              '[data-testid="company-switch-loginto"]',
+            ) as HTMLButtonElement | null;
+            if (btn && !btn.disabled) return true;
+          }
+          return false;
+        }, activeCompanyId),
+      { timeout: 15_000 },
     )
-    .toBe(otherValue);
-}
+    .toBe(true);
 
-async function clickApplyButton(): Promise<void> {
-  const clicked = await page.evaluate(() => {
-    const btn = document.querySelector(
-      '[data-testid="company-switch-apply"]'
-    ) as HTMLButtonElement | null;
-    if (!btn) return false;
-    if (btn.disabled || btn.getAttribute('aria-disabled') === 'true') return false;
-    btn.click();
-    return true;
-  });
-  expect(clicked).toBe(true);
+  // Retry the click: allowlist refresh can re-render between the readiness poll and evaluate.
+  let otherCompanyId = '';
+  await expect
+    .poll(
+      async () => {
+        otherCompanyId = await page.evaluate((active: string) => {
+          const items = Array.from(
+            document.querySelectorAll('[data-testid="company-switch-item"]'),
+          ) as HTMLElement[];
+          for (const el of items) {
+            const id = String(el.getAttribute('data-company-id') || '').trim();
+            if (!id || id === active) continue;
+            const btn = el.querySelector(
+              '[data-testid="company-switch-loginto"]',
+            ) as HTMLButtonElement | null;
+            if (!btn || btn.disabled) continue;
+            btn.click();
+            return id;
+          }
+          return '';
+        }, activeCompanyId);
+        return otherCompanyId;
+      },
+      { timeout: 10_000 },
+    )
+    .not.toBe('');
 }
 
 /**
- * Open the company switcher, select another company, and wait until activeCompanyId changes.
+ * Open the company switcher, enter another company, and wait until activeCompanyId changes.
  *
- * Retries the full open→select→apply path: panel-open refreshToken can race with a thin click path.
+ * Retries the full open→loginto path when the panel or company list is still settling.
  *
  * Success is JWT activeCompanyId change (tokens are persisted; identity is not).
  */
@@ -175,8 +137,6 @@ export async function switchCompanyViaUI(): Promise<void> {
       // Presence alone is not enough: the panel may stay mounted while hidden.
       const panel = page.getByTestId('company-switch-panel');
       const panelVisible = await panel.isVisible().catch(() => false);
-      // If already open, an in-flight panel-open RefreshTokens may still complete later and
-      // overwrite SwitchCompanyScope. Close + reopen so we can wait on a fresh refresh.
       if (panelVisible) {
         await trigger.click();
         await expect
@@ -184,23 +144,15 @@ export async function switchCompanyViaUI(): Promise<void> {
           .toBe(true);
       }
 
-      // Arm before open: panel watcher always force-refreshes tokens.
-      const refreshWait = waitForGrpcWebUnaryOk(page, '/auth.User/RefreshTokens', {
+      // Panel open Browses the user allowlist (no RefreshTokens); loginto calls SwitchCompanyScope.
+      const switchWait = waitForGrpcWebUnaryOk(page, '/auth.User/SwitchCompanyScope', {
         timeoutMs: 20_000,
       }).catch(() => undefined);
       await trigger.click();
       await expect(panel).toBeVisible({ timeout: 10_000 });
-      // Settle refresh before select/apply so an in-flight RefreshTokens cannot
-      // overwrite a later SwitchCompanyScope TokenPair.
-      await refreshWait;
 
-      await pickOtherActiveCompanyOption();
-
-      const applyButton = page.getByTestId('company-switch-apply');
-      await expect.poll(async () => await applyButton.isEnabled(), { timeout: 15_000 }).toBe(true);
-      await expect(page.getByTestId('company-switch-hint')).toHaveCount(0);
-
-      await clickApplyButton();
+      await clickOtherCompanyLoginto();
+      await switchWait;
 
       await expect
         .poll(
@@ -208,13 +160,13 @@ export async function switchCompanyViaUI(): Promise<void> {
             const after = await readActiveCompanyIdFromAuth();
             return Boolean(after && after !== beforeCompanyId);
           },
-          { timeout: 20_000 }
+          { timeout: 20_000 },
         )
         .toBe(true);
       return;
     } catch (err) {
       lastErr = err;
-      // If scope already changed (e.g. apply raced on a prior attempt), stop.
+      // If scope already changed (e.g. loginto raced on a prior attempt), stop.
       const afterCompanyId = await readActiveCompanyIdFromAuth();
       if (afterCompanyId && afterCompanyId !== beforeCompanyId) {
         return;
@@ -223,10 +175,10 @@ export async function switchCompanyViaUI(): Promise<void> {
       await page
         .evaluate(() => {
           const trigger = document.querySelector(
-            '[data-testid="company-switch-trigger"]'
+            '[data-testid="company-switch-trigger"]',
           ) as HTMLElement | null;
           const panel = document.querySelector(
-            '[data-testid="company-switch-panel"]'
+            '[data-testid="company-switch-panel"]',
           ) as HTMLElement | null;
           if (!trigger || !panel) return;
           const style = window.getComputedStyle(panel);

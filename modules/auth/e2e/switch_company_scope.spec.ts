@@ -34,8 +34,7 @@ test('auth: switch company → new TokenPair → refresh PermissionState → hea
   await expect(trigger).toBeVisible();
   const beforeLabel = ((await trigger.textContent()) || '').trim();
 
-  // Arm permission observation before SwitchCompanyScope; panel-open refreshToken
-  // also rotates access tokens, so token inequality alone is not proof of switch.
+  // Arm permission observation before SwitchCompanyScope (switch refreshes PermissionState).
   const permObserved = waitForGrpcWebUnary(page, '/auth.User/GetPermissionState', {
     // switchCompanyViaUI can spend ~20s per SwitchCompanyScope wait × 3 retries.
     timeoutMs: 90_000,

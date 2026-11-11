@@ -103,8 +103,46 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
    * Load or refresh the backend permission snapshot.
    */
   async function loadPermissionStateImpl(forceRefresh = false): Promise<boolean> {
+    // Capture user + company scope for this request. Routine RefreshTokens rotation
+    // must not discard a still-valid permission result; SwitchCompanyScope must.
+    const enabledScopeKey = (meta: Record<string, unknown>): string =>
+      Array.isArray(meta.enabledCompanyIds)
+        ? meta.enabledCompanyIds.map(x => String(x ?? '').trim()).filter(Boolean).slice().sort().join(',')
+        : '';
+    const requestUserId = String(state.identity.value?.userId || '').trim();
+    const requestMeta = ((state.identity.value as any)?.metadata ?? {}) as Record<string, unknown>;
+    const requestActiveCompanyId = String(requestMeta.activeCompanyId ?? '').trim();
+    const requestEnabledKey = enabledScopeKey(requestMeta);
+    const requestPermVersion =
+      typeof requestMeta.permStateVersion === 'number' ? requestMeta.permStateVersion : null;
+    // Snapshot present when this request started; failed/empty paths must not clear a newer install.
+    const requestSnapshot = state.permissionState.value;
+    const stillOwnsCompanyScope = () => {
+      if (!requestUserId || !requestActiveCompanyId) return false;
+      if (String(state.identity.value?.userId || '').trim() !== requestUserId) return false;
+      const meta = ((state.identity.value as any)?.metadata ?? {}) as Record<string, unknown>;
+      const active = String(meta.activeCompanyId ?? '').trim();
+      return active === requestActiveCompanyId && enabledScopeKey(meta) === requestEnabledKey;
+    };
+    /** True when this request still matches the identity permission epoch. */
+    const canApplyPermissionResult = () => {
+      if (!stillOwnsCompanyScope()) return false;
+      const meta = ((state.identity.value as any)?.metadata ?? {}) as Record<string, unknown>;
+      const identityPermV =
+        typeof meta.permStateVersion === 'number' ? meta.permStateVersion : null;
+      // Identity moved to a newer permission epoch (refresh/switch) while we were in flight.
+      if (
+        requestPermVersion !== null
+        && identityPermV !== null
+        && identityPermV !== requestPermVersion
+      ) {
+        return false;
+      }
+      return true;
+    };
+
     try {
-      if (!state.identity.value?.userId) return false;
+      if (!requestUserId) return false;
 
       const meta = (state.identity.value as any)?.metadata as any;
       const expectedV = typeof meta?.permStateVersion === 'number' ? meta.permStateVersion : null;
@@ -112,15 +150,24 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
       if (!forceRefresh && expectedV !== null && currentV === expectedV) return true;
 
       const resp = (await state.userStore.GetPermissionState()) as any as PermissionState;
+      if (!canApplyPermissionResult()) return true;
       if (!resp || typeof (resp as any).byCompany !== 'object') {
-        state.permissionState.value = { permStateVersion: 0, byCompany: {} };
+        if (state.permissionState.value === requestSnapshot) {
+          state.permissionState.value = { permStateVersion: 0, byCompany: {} };
+        }
         return true;
       }
+      // Prefer newer snapshots; never downgrade an already-installed higher version.
+      const respV = typeof (resp as any).permStateVersion === 'number' ? (resp as any).permStateVersion : null;
+      const snapshotV = state.permissionState.value?.permStateVersion ?? null;
+      if (snapshotV !== null && respV !== null && respV < snapshotV) return true;
       state.permissionState.value = resp;
       return true;
     } catch (error) {
-      // Keep fail-closed semantics when permission loading fails.
-      state.permissionState.value = null;
+      // Only fail-closed when this request still owns the epoch and nobody replaced the snapshot.
+      if (canApplyPermissionResult() && state.permissionState.value === requestSnapshot) {
+        state.permissionState.value = null;
+      }
       throw wrapAuthError(error, {
         code: AuthErrCode.USER_LOADING_FAILED,
         message: _t('Failed to load permission state'),
@@ -453,18 +500,38 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
 
     // Build a single refresh flow and share it across concurrent callers.
     refreshInFlight = (async (): Promise<RefreshResult> => {
+      const refreshTokenUsed = state.tokens.value!.refreshToken;
+      // Track the pair this refresh installs so our own write is not treated as
+      // a superseding writer when a later step (identity / permission load) fails.
+      let installedRefreshToken: string | null = null;
+      const isSupersededByOther = () => {
+        const current = state.tokens.value?.refreshToken;
+        if (!current) return false;
+        if (installedRefreshToken !== null) return current !== installedRefreshToken;
+        return current !== refreshTokenUsed;
+      };
       try {
         const prevIdentity = state.identity.value || null;
 
         const response = await state.userStore.RefreshTokens({
-          RefreshToken: state.tokens.value!.refreshToken,
+          RefreshToken: refreshTokenUsed,
         });
+
         if (!response || !response.accessToken) {
+          if (isSupersededByOther() && state.tokens.value) {
+            return state.tokens.value as RefreshResult;
+          }
           throw newAuthError({ code: AuthErrCode.REFRESH_FAILED, message: _t('RefreshTokens returned an invalid response') });
+        }
+
+        // Discard late refresh results after another writer replaced the session.
+        if (isSupersededByOther()) {
+          return state.tokens.value as RefreshResult;
         }
 
         // Persist the refreshed token pair and identity.
         state.tokens.value = response;
+        installedRefreshToken = String(response.refreshToken ?? '');
         helpers.updateTokenIdentity();
         state.refreshState.lastRefreshTime = Date.now();
 
@@ -488,7 +555,11 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
 
         return response;
       } catch (error) {
-        // Drop local auth state on unrecoverable refresh failures.
+        // Keep the current session only when another writer replaced our pair.
+        if (isSupersededByOther() && state.tokens.value) {
+          return state.tokens.value as RefreshResult;
+        }
+        // Drop local auth state on unrecoverable refresh failures that still own the session.
         clearAuth();
         throw wrapAuthError(error, {
           code: AuthErrCode.REFRESH_FAILED,

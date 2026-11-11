@@ -620,6 +620,487 @@ test('switchCompanyScope: sends the company scope envelope', async () => {
   });
 });
 
+test('refreshToken: discards a late RefreshTokens result after SwitchCompanyScope', async () => {
+  const mockState = buildMockState();
+  const mockHelpers = buildMockHelpers();
+  mockState.tokens.value = {
+    accessToken: 'access',
+    refreshToken: 'refresh-before',
+    expiresAt: Date.now() + 3600_000,
+  };
+  mockState.identity.value = { userId: 'usr_1', metadata: { activeCompanyId: 'cmp_a' } } as any;
+
+  let resolveRefresh: (value: unknown) => void = () => {};
+  const refreshDeferred = new Promise(resolve => {
+    resolveRefresh = resolve;
+  });
+  mockState._recorders.RefreshTokens.returnValue(refreshDeferred);
+
+  const actions = defineAuthActions(mockState as any, mockHelpers as any, { isClient: true });
+  const refreshPromise = actions.refreshToken(false);
+
+  // Company switch replaces the token pair while refresh is still in flight.
+  mockState.tokens.value = {
+    accessToken: 'switched-access',
+    refreshToken: 'switched-refresh',
+    expiresAt: Date.now() + 3600_000,
+  };
+  mockState.identity.value = { userId: 'usr_1', metadata: { activeCompanyId: 'cmp_b' } } as any;
+
+  resolveRefresh({
+    accessToken: 'stale-access',
+    refreshToken: 'stale-refresh',
+    expiresAt: Date.now() + 3600_000,
+  });
+
+  const result = await refreshPromise;
+  expect(result.refreshToken).toBe('switched-refresh');
+  expect(mockState.tokens.value?.refreshToken).toBe('switched-refresh');
+  expect(mockHelpers._recorders.updateTokenIdentity.calls.length).toBe(0);
+});
+
+test('refreshToken: superseded refresh failure keeps the switched session', async () => {
+  const mockState = buildMockState();
+  const mockHelpers = buildMockHelpers();
+  mockState.tokens.value = {
+    accessToken: 'access',
+    refreshToken: 'refresh-before',
+    expiresAt: Date.now() + 3600_000,
+  };
+
+  let rejectRefresh: (reason: unknown) => void = () => {};
+  const refreshDeferred = new Promise((_resolve, reject) => {
+    rejectRefresh = reject;
+  });
+  mockState._recorders.RefreshTokens.returnValue(refreshDeferred);
+
+  const actions = defineAuthActions(mockState as any, mockHelpers as any, {
+    isClient: true,
+    clearAuthStorage: () => {},
+  });
+  const refreshPromise = actions.refreshToken(false);
+
+  mockState.tokens.value = {
+    accessToken: 'switched-access',
+    refreshToken: 'switched-refresh',
+    expiresAt: Date.now() + 3600_000,
+  };
+
+  rejectRefresh(new Error('refresh aborted'));
+
+  const result = await refreshPromise;
+  expect(result.refreshToken).toBe('switched-refresh');
+  expect(mockState.tokens.value?.accessToken).toBe('switched-access');
+  expect(mockHelpers._recorders.resetAuthState.calls.length).toBe(0);
+});
+
+test('refreshToken: superseded invalid RefreshTokens response keeps the switched session', async () => {
+  const mockState = buildMockState();
+  const mockHelpers = buildMockHelpers();
+  mockState.tokens.value = {
+    accessToken: 'access',
+    refreshToken: 'refresh-before',
+    expiresAt: Date.now() + 3600_000,
+  };
+
+  let resolveRefresh: (value: unknown) => void = () => {};
+  const refreshDeferred = new Promise(resolve => {
+    resolveRefresh = resolve;
+  });
+  mockState._recorders.RefreshTokens.returnValue(refreshDeferred);
+
+  const actions = defineAuthActions(mockState as any, mockHelpers as any, {
+    isClient: true,
+    clearAuthStorage: () => {},
+  });
+  const refreshPromise = actions.refreshToken(false);
+
+  mockState.tokens.value = {
+    accessToken: 'switched-access',
+    refreshToken: 'switched-refresh',
+    expiresAt: Date.now() + 3600_000,
+  };
+
+  resolveRefresh({ accessToken: '', refreshToken: 'ignored', expiresAt: Date.now() + 3600_000 });
+
+  const result = await refreshPromise;
+  expect(result.refreshToken).toBe('switched-refresh');
+  expect(mockHelpers._recorders.resetAuthState.calls.length).toBe(0);
+});
+
+test('loadPermissionState: late failure after company switch keeps the newer snapshot', async () => {
+  const mockState = buildMockState();
+  const mockHelpers = buildMockHelpers();
+  mockState.tokens.value = {
+    accessToken: 'access',
+    refreshToken: 'refresh-before',
+    expiresAt: Date.now() + 3600_000,
+  };
+  mockState.identity.value = {
+    userId: 'usr_1',
+    metadata: {
+      permStateVersion: 1,
+      activeCompanyId: 'cmp_a',
+      enabledCompanyIds: ['cmp_a'],
+    },
+  } as any;
+  mockState.permissionState.value = {
+    permStateVersion: 1,
+    byCompany: { cmp_a: {} },
+  } as any;
+
+  let rejectPermission: (reason: unknown) => void = () => {};
+  const permissionDeferred = new Promise((_resolve, reject) => {
+    rejectPermission = reject;
+  });
+  mockState._recorders.GetPermissionState.returnValue(permissionDeferred);
+
+  const actions = defineAuthActions(mockState as any, mockHelpers as any, { isClient: true });
+  const loadPromise = actions.loadPermissionState(true);
+
+  // Company switch changes scope while the older permission load is in flight.
+  mockState.tokens.value = {
+    accessToken: 'switched-access',
+    refreshToken: 'switched-refresh',
+    expiresAt: Date.now() + 3600_000,
+  };
+  mockState.identity.value = {
+    userId: 'usr_1',
+    metadata: {
+      permStateVersion: 2,
+      activeCompanyId: 'cmp_b',
+      enabledCompanyIds: ['cmp_b'],
+    },
+  } as any;
+  mockState.permissionState.value = {
+    permStateVersion: 2,
+    byCompany: { cmp_b: {} },
+  } as any;
+
+  rejectPermission(new Error('stale permission load'));
+
+  let caught: unknown;
+  try {
+    await loadPromise;
+  } catch (err) {
+    caught = err;
+  }
+  expect(Boolean(caught)).toBe(true);
+  expect((mockState.permissionState.value as any)?.permStateVersion).toBe(2);
+});
+
+test('loadPermissionState: same-scope failure still clears the permission snapshot', async () => {
+  const mockState = buildMockState();
+  const mockHelpers = buildMockHelpers();
+  mockState.tokens.value = {
+    accessToken: 'access',
+    refreshToken: 'refresh',
+    expiresAt: Date.now() + 3600_000,
+  };
+  mockState.identity.value = {
+    userId: 'usr_1',
+    metadata: {
+      permStateVersion: 1,
+      activeCompanyId: 'cmp_a',
+      enabledCompanyIds: ['cmp_a'],
+    },
+  } as any;
+  mockState.permissionState.value = {
+    permStateVersion: 1,
+    byCompany: { cmp_a: {} },
+  } as any;
+  mockState._recorders.GetPermissionState.reject(new Error('permission down'));
+
+  const actions = defineAuthActions(mockState as any, mockHelpers as any, { isClient: true });
+  let caught: unknown;
+  try {
+    await actions.loadPermissionState(true);
+  } catch (err) {
+    caught = err;
+  }
+  expect(Boolean(caught)).toBe(true);
+  expect(mockState.permissionState.value).toBe(null);
+});
+
+test('loadPermissionState: older same-scope response does not clobber a newer permission version', async () => {
+  const mockState = buildMockState();
+  const mockHelpers = buildMockHelpers();
+  mockState.tokens.value = {
+    accessToken: 'access',
+    refreshToken: 'refresh',
+    expiresAt: Date.now() + 3600_000,
+  };
+  mockState.identity.value = {
+    userId: 'usr_1',
+    metadata: {
+      permStateVersion: 1,
+      activeCompanyId: 'cmp_a',
+      enabledCompanyIds: ['cmp_a'],
+    },
+  } as any;
+
+  let resolvePermission: (value: unknown) => void = () => {};
+  const permissionDeferred = new Promise(resolve => {
+    resolvePermission = resolve;
+  });
+  mockState._recorders.GetPermissionState.returnValue(permissionDeferred);
+
+  const actions = defineAuthActions(mockState as any, mockHelpers as any, { isClient: true });
+  const loadPromise = actions.loadPermissionState(true);
+
+  // Newer permission epoch lands for the same company scope while v1 is in flight.
+  mockState.identity.value = {
+    userId: 'usr_1',
+    metadata: {
+      permStateVersion: 2,
+      activeCompanyId: 'cmp_a',
+      enabledCompanyIds: ['cmp_a'],
+    },
+  } as any;
+  mockState.permissionState.value = {
+    permStateVersion: 2,
+    byCompany: { cmp_a: { canRead: true } },
+  } as any;
+
+  resolvePermission({
+    permStateVersion: 1,
+    byCompany: { cmp_a: { canRead: false } },
+  });
+
+  expect(await loadPromise).toBe(true);
+  expect((mockState.permissionState.value as any)?.permStateVersion).toBe(2);
+  expect((mockState.permissionState.value as any)?.byCompany?.cmp_a?.canRead).toBe(true);
+});
+
+test('loadPermissionState: successful response may advance snapshot past the token version', async () => {
+  const mockState = buildMockState();
+  const mockHelpers = buildMockHelpers();
+  mockState.tokens.value = {
+    accessToken: 'access',
+    refreshToken: 'refresh',
+    expiresAt: Date.now() + 3600_000,
+  };
+  mockState.identity.value = {
+    userId: 'usr_1',
+    metadata: {
+      permStateVersion: 1,
+      activeCompanyId: 'cmp_a',
+      enabledCompanyIds: ['cmp_a'],
+    },
+  } as any;
+  mockState.permissionState.value = {
+    permStateVersion: 2,
+    byCompany: { cmp_a: { canRead: false } },
+  } as any;
+  mockState._recorders.GetPermissionState.resolve({
+    permStateVersion: 3,
+    byCompany: { cmp_a: { canRead: true } },
+  });
+
+  const actions = defineAuthActions(mockState as any, mockHelpers as any, { isClient: true });
+  expect(await actions.loadPermissionState(true)).toBe(true);
+  expect((mockState.permissionState.value as any)?.permStateVersion).toBe(3);
+  expect((mockState.permissionState.value as any)?.byCompany?.cmp_a?.canRead).toBe(true);
+});
+
+test('loadPermissionState: invalid response resets the owned snapshot', async () => {
+  const mockState = buildMockState();
+  const mockHelpers = buildMockHelpers();
+  mockState.tokens.value = {
+    accessToken: 'access',
+    refreshToken: 'refresh',
+    expiresAt: Date.now() + 3600_000,
+  };
+  mockState.identity.value = {
+    userId: 'usr_1',
+    metadata: {
+      permStateVersion: 1,
+      activeCompanyId: 'cmp_a',
+      enabledCompanyIds: ['cmp_a'],
+    },
+  } as any;
+  mockState.permissionState.value = {
+    permStateVersion: 1,
+    byCompany: { cmp_a: { canRead: true } },
+  } as any;
+  mockState._recorders.GetPermissionState.resolve({ permStateVersion: 1 });
+
+  const actions = defineAuthActions(mockState as any, mockHelpers as any, { isClient: true });
+  expect(await actions.loadPermissionState(true)).toBe(true);
+  expect(mockState.permissionState.value).toEqual({ permStateVersion: 0, byCompany: {} });
+});
+
+test('loadPermissionState: invalid response leaves a replaced snapshot alone', async () => {
+  const mockState = buildMockState();
+  const mockHelpers = buildMockHelpers();
+  mockState.tokens.value = {
+    accessToken: 'access',
+    refreshToken: 'refresh',
+    expiresAt: Date.now() + 3600_000,
+  };
+  mockState.identity.value = {
+    userId: 'usr_1',
+    metadata: {
+      permStateVersion: 1,
+      activeCompanyId: 'cmp_a',
+      enabledCompanyIds: ['cmp_a'],
+    },
+  } as any;
+  mockState.permissionState.value = {
+    permStateVersion: 1,
+    byCompany: { cmp_a: {} },
+  } as any;
+
+  let resolvePermission: (value: unknown) => void = () => {};
+  const permissionDeferred = new Promise(resolve => {
+    resolvePermission = resolve;
+  });
+  mockState._recorders.GetPermissionState.returnValue(permissionDeferred);
+
+  const actions = defineAuthActions(mockState as any, mockHelpers as any, { isClient: true });
+  const loadPromise = actions.loadPermissionState(true);
+
+  mockState.permissionState.value = {
+    permStateVersion: 1,
+    byCompany: { cmp_a: { canRead: true } },
+  } as any;
+
+  resolvePermission(null);
+
+  expect(await loadPromise).toBe(true);
+  expect((mockState.permissionState.value as any)?.byCompany?.cmp_a?.canRead).toBe(true);
+});
+
+test('loadPermissionState: failure does not clear a snapshot replaced while in flight', async () => {
+  const mockState = buildMockState();
+  const mockHelpers = buildMockHelpers();
+  mockState.tokens.value = {
+    accessToken: 'access',
+    refreshToken: 'refresh',
+    expiresAt: Date.now() + 3600_000,
+  };
+  mockState.identity.value = {
+    userId: 'usr_1',
+    metadata: {
+      permStateVersion: 1,
+      activeCompanyId: 'cmp_a',
+      enabledCompanyIds: ['cmp_a'],
+    },
+  } as any;
+  const originalSnapshot = {
+    permStateVersion: 1,
+    byCompany: { cmp_a: {} },
+  };
+  mockState.permissionState.value = originalSnapshot as any;
+
+  let rejectPermission: (reason: unknown) => void = () => {};
+  const permissionDeferred = new Promise((_resolve, reject) => {
+    rejectPermission = reject;
+  });
+  mockState._recorders.GetPermissionState.returnValue(permissionDeferred);
+
+  const actions = defineAuthActions(mockState as any, mockHelpers as any, { isClient: true });
+  const loadPromise = actions.loadPermissionState(true);
+
+  mockState.permissionState.value = {
+    permStateVersion: 1,
+    byCompany: { cmp_a: { canRead: true } },
+  } as any;
+
+  rejectPermission(new Error('stale failure'));
+
+  let caught: unknown;
+  try {
+    await loadPromise;
+  } catch (err) {
+    caught = err;
+  }
+  expect(Boolean(caught)).toBe(true);
+  expect((mockState.permissionState.value as any)?.byCompany?.cmp_a?.canRead).toBe(true);
+});
+
+test('loadPermissionState: routine refresh-token rotation still applies the result', async () => {
+  const mockState = buildMockState();
+  const mockHelpers = buildMockHelpers();
+  mockState.tokens.value = {
+    accessToken: 'access',
+    refreshToken: 'refresh-before',
+    expiresAt: Date.now() + 3600_000,
+  };
+  mockState.identity.value = {
+    userId: 'usr_1',
+    metadata: {
+      permStateVersion: 1,
+      activeCompanyId: 'cmp_a',
+      enabledCompanyIds: ['cmp_a'],
+    },
+  } as any;
+
+  let resolvePermission: (value: unknown) => void = () => {};
+  const permissionDeferred = new Promise(resolve => {
+    resolvePermission = resolve;
+  });
+  mockState._recorders.GetPermissionState.returnValue(permissionDeferred);
+
+  const actions = defineAuthActions(mockState as any, mockHelpers as any, { isClient: true });
+  const loadPromise = actions.loadPermissionState(true);
+
+  // Token rotation without company-scope change must not discard the result.
+  mockState.tokens.value = {
+    accessToken: 'rotated-access',
+    refreshToken: 'rotated-refresh',
+    expiresAt: Date.now() + 3600_000,
+  };
+
+  resolvePermission({
+    permStateVersion: 1,
+    byCompany: { cmp_a: { canRead: true } },
+  });
+
+  expect(await loadPromise).toBe(true);
+  expect((mockState.permissionState.value as any)?.byCompany?.cmp_a?.canRead).toBe(true);
+});
+
+test('refreshToken: failure after this refresh installs tokens still clears auth', async () => {
+  const mockState = buildMockState();
+  const mockHelpers = buildMockHelpers();
+  mockState.tokens.value = {
+    accessToken: 'access',
+    refreshToken: 'refresh-before',
+    expiresAt: Date.now() + 3600_000,
+  };
+  mockState.identity.value = {
+    userId: 'usr_1',
+    metadata: { userVersion: 1, permStateVersion: 1 },
+  } as any;
+  mockState._recorders.RefreshTokens.resolve({
+    accessToken: 'refreshed-access',
+    refreshToken: 'refreshed-refresh',
+    expiresAt: Date.now() + 3600_000,
+  });
+  mockHelpers.updateTokenIdentity = () => {
+    mockState.identity.value = {
+      userId: 'usr_1',
+      metadata: { userVersion: 2, permStateVersion: 1 },
+    } as any;
+    throw new Error('identity boom');
+  };
+
+  const actions = defineAuthActions(mockState as any, mockHelpers as any, {
+    isClient: true,
+    clearAuthStorage: () => {},
+  });
+
+  let caught: unknown;
+  try {
+    await actions.refreshToken(false);
+  } catch (err) {
+    caught = err;
+  }
+  expect(Boolean(caught)).toBe(true);
+  expect(mockHelpers._recorders.resetAuthState.calls.length).toBeGreaterThan(0);
+});
+
 test('logout: sends the logout envelope', async () => {
   const mockState = buildMockState();
   const mockHelpers = buildMockHelpers();

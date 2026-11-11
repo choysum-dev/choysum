@@ -86,20 +86,23 @@ SPDX-License-Identifier: Apache-2.0
           >
             <slot>
               <router-view v-slot="{ Component, route: viewRoute }">
-                <KeepAlive>
+                <!-- Remount KeepAlive cache when company scope changes (A→B→A must not restore stale A). -->
+                <div :key="companyScopeKey" class="flex min-h-0 min-w-0 w-full flex-1 flex-col">
+                  <KeepAlive>
+                    <component
+                      :is="Component"
+                      v-if="Component && viewRoute.meta?.keepAlive"
+                      class="min-h-0 flex-1"
+                      :key="viewRoute.path"
+                    />
+                  </KeepAlive>
                   <component
                     :is="Component"
-                    v-if="Component && viewRoute.meta?.keepAlive"
+                    v-if="Component && !viewRoute.meta?.keepAlive"
                     class="min-h-0 flex-1"
-                    :key="viewRoute.path"
+                    :key="viewRoute.fullPath"
                   />
-                </KeepAlive>
-                <component
-                  :is="Component"
-                  v-if="Component && !viewRoute.meta?.keepAlive"
-                  class="min-h-0 flex-1"
-                  :key="viewRoute.fullPath"
-                />
+                </div>
               </router-view>
             </slot>
           </div>
@@ -135,6 +138,7 @@ import {
   SidebarRail,
 } from '../vendor/ui/sidebar/index'
 import { useLayoutStore } from '../../stores/layoutStore'
+import { useCompanyScopeViewKey } from '../../stores/companyScopeView'
 import { shellMenuTriggerLabel } from './choyWebShellChrome'
 
 /**
@@ -171,6 +175,9 @@ try {
 }
 
 const effectiveShowHeader = computed(() => props.showHeader)
+
+/** Remount open views when auth publishes a new active/enabled company scope. */
+const companyScopeKey = useCompanyScopeViewKey()
 
 const menuTriggerLabel = computed(() =>
   shellMenuTriggerLabel({

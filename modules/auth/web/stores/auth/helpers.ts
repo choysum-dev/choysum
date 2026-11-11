@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { isClient, useTimeoutFn } from '@vueuse/core';
+import { clearCompanyScopeView, publishCompanyScopeView } from '@/web/web/stores/companyScopeView';
 import { extractIdentity } from './utils';
 import { wrapAuthError, AuthErrCode, ChoysumError } from '../../error';
 import type { AuthState } from './state';
@@ -68,20 +69,31 @@ export function defineAuthHelpers(state: AuthState) {
   }
 
   /**
+   * Publish active/enabled company ids for web shell remounts (long-lived owner).
+   */
+  function publishIdentityCompanyScope(): void {
+    const meta = ((state.identity.value as any)?.metadata ?? {}) as Record<string, unknown>;
+    publishCompanyScopeView(meta.activeCompanyId, meta.enabledCompanyIds);
+  }
+
+  /**
    * Refresh the cached token identity from the current access token.
    */
   function updateTokenIdentity(): boolean {
     if (!state.tokens.value?.accessToken) {
       state.identity.value = null;
+      clearCompanyScopeView();
       return false;
     }
 
     try {
       state.identity.value = extractIdentity(state.tokens.value.accessToken);
-      return !!state.identity.value;
+      publishIdentityCompanyScope();
+      return true;
     } catch (error) {
       // Clear stale identity state before surfacing the wrapped error.
       state.identity.value = null;
+      clearCompanyScopeView();
 
       throw wrapAuthError(error, {
         code: AuthErrCode.IDENTITY_EXTRACTION_FAILED,
@@ -99,6 +111,7 @@ export function defineAuthHelpers(state: AuthState) {
     state.identity.value = null;
     state.currentUser.value = null;
     state.rememberMe.value = false;
+    clearCompanyScopeView();
 
     // Reset refresh bookkeeping.
     state.refreshState.lastRefreshTime = 0;
