@@ -601,6 +601,8 @@ const selectAllState = computed(() =>
  */
 async function commitScope(activeCompanyId: string, enabledCompanyIds: string[]): Promise<void> {
   const allowed = new Set(allowedCompanyIds.value);
+  // Transient empty allowlist must not wipe a pending draft / close the panel.
+  if (!allowed.size) return;
   const filteredEnabled = uniqCompanyIds(enabledCompanyIds).filter(id => allowed.has(id));
   // Prefer an allowed active; never let ensureActiveInEnabledScope re-insert a revoked id.
   let active = String(activeCompanyId ?? '').trim();
@@ -635,7 +637,11 @@ async function commitScope(activeCompanyId: string, enabledCompanyIds: string[])
 async function onLogIntoCompany(companyId: string): Promise<void> {
   if (submitting.value) return;
   if (!hierarchyReady.value) {
-    await ensureCompanies();
+    try {
+      await ensureCompanies();
+    } catch {
+      return;
+    }
   }
   if (submitting.value) return;
   const target = String(companyId ?? '').trim();

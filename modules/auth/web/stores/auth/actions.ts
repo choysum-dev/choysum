@@ -115,14 +115,16 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
     const requestEnabledKey = enabledScopeKey(requestMeta);
     const requestPermVersion =
       typeof requestMeta.permStateVersion === 'number' ? requestMeta.permStateVersion : null;
+    // Snapshot present when this request started; failed/empty paths must not clear a newer install.
+    const requestSnapshot = state.permissionState.value;
     const stillOwnsCompanyScope = () => {
-      if (!requestUserId) return false;
+      if (!requestUserId || !requestActiveCompanyId) return false;
       if (String(state.identity.value?.userId || '').trim() !== requestUserId) return false;
       const meta = ((state.identity.value as any)?.metadata ?? {}) as Record<string, unknown>;
       const active = String(meta.activeCompanyId ?? '').trim();
       return active === requestActiveCompanyId && enabledScopeKey(meta) === requestEnabledKey;
     };
-    /** True when this request may still write/clear permission state for the current session. */
+    /** True when this request still matches the identity permission epoch. */
     const canApplyPermissionResult = () => {
       if (!stillOwnsCompanyScope()) return false;
       const meta = ((state.identity.value as any)?.metadata ?? {}) as Record<string, unknown>;
@@ -133,15 +135,6 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
         requestPermVersion !== null
         && identityPermV !== null
         && identityPermV !== requestPermVersion
-      ) {
-        return false;
-      }
-      // A newer snapshot is already installed for this scope.
-      const snapshotV = state.permissionState.value?.permStateVersion ?? null;
-      if (
-        requestPermVersion !== null
-        && snapshotV !== null
-        && snapshotV > requestPermVersion
       ) {
         return false;
       }
@@ -159,17 +152,20 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
       const resp = (await state.userStore.GetPermissionState()) as any as PermissionState;
       if (!canApplyPermissionResult()) return true;
       if (!resp || typeof (resp as any).byCompany !== 'object') {
-        state.permissionState.value = { permStateVersion: 0, byCompany: {} };
+        if (state.permissionState.value === requestSnapshot) {
+          state.permissionState.value = { permStateVersion: 0, byCompany: {} };
+        }
         return true;
       }
+      // Prefer newer snapshots; never downgrade an already-installed higher version.
       const respV = typeof (resp as any).permStateVersion === 'number' ? (resp as any).permStateVersion : null;
       const snapshotV = state.permissionState.value?.permStateVersion ?? null;
       if (snapshotV !== null && respV !== null && respV < snapshotV) return true;
       state.permissionState.value = resp;
       return true;
     } catch (error) {
-      // Only fail-closed when this request still owns the current permission epoch.
-      if (canApplyPermissionResult()) {
+      // Only fail-closed when this request still owns the epoch and nobody replaced the snapshot.
+      if (canApplyPermissionResult() && state.permissionState.value === requestSnapshot) {
         state.permissionState.value = null;
       }
       throw wrapAuthError(error, {

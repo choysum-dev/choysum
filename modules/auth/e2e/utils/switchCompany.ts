@@ -91,23 +91,32 @@ async function clickOtherCompanyLoginto(): Promise<void> {
     )
     .toBe(true);
 
-  const otherCompanyId = await page.evaluate((active: string) => {
-    const items = Array.from(
-      document.querySelectorAll('[data-testid="company-switch-item"]'),
-    ) as HTMLElement[];
-    for (const el of items) {
-      const id = String(el.getAttribute('data-company-id') || '').trim();
-      if (!id || id === active) continue;
-      const btn = el.querySelector(
-        '[data-testid="company-switch-loginto"]',
-      ) as HTMLButtonElement | null;
-      if (!btn || btn.disabled) continue;
-      btn.click();
-      return id;
-    }
-    return '';
-  }, activeCompanyId);
-  expect(otherCompanyId, 'company switch: no selectable alternative company row').not.toBe('');
+  // Retry the click: allowlist refresh can re-render between the readiness poll and evaluate.
+  let otherCompanyId = '';
+  await expect
+    .poll(
+      async () => {
+        otherCompanyId = await page.evaluate((active: string) => {
+          const items = Array.from(
+            document.querySelectorAll('[data-testid="company-switch-item"]'),
+          ) as HTMLElement[];
+          for (const el of items) {
+            const id = String(el.getAttribute('data-company-id') || '').trim();
+            if (!id || id === active) continue;
+            const btn = el.querySelector(
+              '[data-testid="company-switch-loginto"]',
+            ) as HTMLButtonElement | null;
+            if (!btn || btn.disabled) continue;
+            btn.click();
+            return id;
+          }
+          return '';
+        }, activeCompanyId);
+        return otherCompanyId;
+      },
+      { timeout: 10_000 },
+    )
+    .not.toBe('');
 }
 
 /**
