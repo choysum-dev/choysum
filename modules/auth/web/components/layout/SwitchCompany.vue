@@ -79,7 +79,8 @@ SPDX-License-Identifier: Apache-2.0
           :entries="panelEntries"
           :active-company-id="draftActiveCompanyId"
           :dirty="isDirty"
-          :disabled="submitting || !labelsReady"
+          :disabled="submitting"
+          :branch-edits-disabled="!labelsReady"
           @toggle-select-all="onToggleSelectAll"
           @toggle-branch="onToggleCompanyBranch"
           @loginto="onLogIntoCompany"
@@ -166,7 +167,8 @@ SPDX-License-Identifier: Apache-2.0
         :entries="panelEntries"
         :active-company-id="draftActiveCompanyId"
         :dirty="isDirty"
-        :disabled="submitting || !labelsReady"
+        :disabled="submitting"
+        :branch-edits-disabled="!labelsReady"
         @toggle-select-all="onToggleSelectAll"
         @toggle-branch="onToggleCompanyBranch"
         @loginto="onLogIntoCompany"
@@ -592,7 +594,7 @@ const selectAllState = computed(() =>
  */
 async function commitScope(activeCompanyId: string, enabledCompanyIds: string[]): Promise<void> {
   const allowed = new Set(allowedCompanyIds.value);
-  const filteredEnabled = enabledCompanyIds.filter(id => allowed.has(id));
+  const filteredEnabled = uniqCompanyIds(enabledCompanyIds).filter(id => allowed.has(id));
   // Prefer an allowed active; never let ensureActiveInEnabledScope re-insert a revoked id.
   let active = String(activeCompanyId ?? '').trim();
   if (!active || !allowed.has(active)) {
@@ -625,21 +627,33 @@ async function commitScope(activeCompanyId: string, enabledCompanyIds: string[])
 async function onLogIntoCompany(companyId: string): Promise<void> {
   if (submitting.value) return;
   if (!labelsReady.value) {
-    await ensureCompanies();
+    try {
+      await ensureCompanies();
+    } catch {
+      // Fail soft: switch with allowlist-derived scope when hierarchy fails to load.
+    }
   }
-  // Do not require labelsReady: empty allowlist / cached sig can leave it false
-  // while the target is still a valid allowed id.
   if (submitting.value) return;
   const target = String(companyId ?? '').trim();
   if (!target || !allowedCompanyIds.value.includes(target)) return;
 
-  const next = logIntoCompany({
-    companyId: target,
-    draftActiveCompanyId: currentActiveCompanyId.value,
-    draftEnabledCompanyIds: effectiveCurrentEnabledCompanyIds.value,
-    children: childrenMap.value,
-  });
   const allowed = new Set(allowedCompanyIds.value);
+  // Without ParentId edges, branch expansion would shrink to the target alone.
+  // Keep the committed enabled set and only promote the clicked company.
+  const next = labelsReady.value
+    ? logIntoCompany({
+        companyId: target,
+        draftActiveCompanyId: currentActiveCompanyId.value,
+        draftEnabledCompanyIds: effectiveCurrentEnabledCompanyIds.value,
+        children: childrenMap.value,
+      })
+    : {
+        activeCompanyId: target,
+        enabledCompanyIds: uniqCompanyIds([
+          target,
+          ...effectiveCurrentEnabledCompanyIds.value,
+        ]),
+      };
   const scope = ensureActiveInEnabledScope(
     next.activeCompanyId,
     next.enabledCompanyIds.filter(id => allowed.has(id)),

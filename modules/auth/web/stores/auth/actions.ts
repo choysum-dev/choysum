@@ -114,6 +114,7 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
     const requestActiveCompanyId = String(requestMeta.activeCompanyId ?? '').trim();
     const requestEnabledKey = enabledScopeKey(requestMeta);
     const stillOwnsCompanyScope = () => {
+      if (!requestUserId) return false;
       if (String(state.identity.value?.userId || '').trim() !== requestUserId) return false;
       const meta = ((state.identity.value as any)?.metadata ?? {}) as Record<string, unknown>;
       const active = String(meta.activeCompanyId ?? '').trim();

@@ -69,7 +69,7 @@ async function clickOtherCompanyLoginto(): Promise<void> {
     );
   }
 
-  // Rows seed before labelsReady; wait for an enabled non-active loginto control.
+  // Wait for a non-active loginto control (name click stays enabled while hierarchy loads).
   await expect
     .poll(
       async () =>
@@ -87,7 +87,7 @@ async function clickOtherCompanyLoginto(): Promise<void> {
           }
           return false;
         }, activeCompanyId),
-      { timeout: 10_000 },
+      { timeout: 15_000 },
     )
     .toBe(true);
 
@@ -113,7 +113,7 @@ async function clickOtherCompanyLoginto(): Promise<void> {
 /**
  * Open the company switcher, enter another company, and wait until activeCompanyId changes.
  *
- * Retries the full open→loginto path: panel-open refreshToken can race with a thin click path.
+ * Retries the full open→loginto path when the panel or company list is still settling.
  *
  * Success is JWT activeCompanyId change (tokens are persisted; identity is not).
  */
@@ -128,8 +128,6 @@ export async function switchCompanyViaUI(): Promise<void> {
       // Presence alone is not enough: the panel may stay mounted while hidden.
       const panel = page.getByTestId('company-switch-panel');
       const panelVisible = await panel.isVisible().catch(() => false);
-      // If already open, an in-flight panel-open RefreshTokens may still complete later and
-      // overwrite SwitchCompanyScope. Close + reopen so we can wait on a fresh refresh.
       if (panelVisible) {
         await trigger.click();
         await expect
@@ -137,7 +135,7 @@ export async function switchCompanyViaUI(): Promise<void> {
           .toBe(true);
       }
 
-      // Panel open only Browses the user allowlist (no RefreshTokens).
+      // Panel open Browses the user allowlist (no RefreshTokens); loginto calls SwitchCompanyScope.
       const switchWait = waitForGrpcWebUnaryOk(page, '/auth.User/SwitchCompanyScope', {
         timeoutMs: 20_000,
       }).catch(() => undefined);

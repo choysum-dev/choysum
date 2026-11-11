@@ -15,7 +15,7 @@ SPDX-License-Identifier: Apache-2.0
       <ChoyCheckbox
         class="size-4 shrink-0"
         :model-value="selectAllState"
-        :disabled="disabled || allowedCount < 1"
+        :disabled="disabled || branchEditsDisabled || allowedCount < 1"
         :aria-label="_t('Select all')"
         data-testid="company-switch-select-all"
         @update:model-value="emit('toggle-select-all')"
@@ -51,7 +51,7 @@ SPDX-License-Identifier: Apache-2.0
         <ChoyCheckbox
           class="size-4 shrink-0"
           :model-value="entry.checked"
-          :disabled="disabled || entry.toggleDisabled"
+          :disabled="disabled || branchEditsDisabled || entry.toggleDisabled"
           :aria-label="`${_t('Toggle company')}: ${entry.name || entry.id}`"
           data-testid="company-switch-toggle"
           @click.stop
@@ -126,8 +126,10 @@ withDefaults(
     activeCompanyId: string;
     dirty: boolean;
     disabled?: boolean;
+    /** When false, branch checkboxes stay off until ParentId hierarchy is loaded. */
+    branchEditsDisabled?: boolean;
   }>(),
-  { disabled: false },
+  { disabled: false, branchEditsDisabled: false },
 );
 
 const emit = defineEmits<{

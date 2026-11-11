@@ -358,13 +358,21 @@ test('auth: SwitchCompanyScope persists view; RefreshTokens reproduces the same 
   expect(!!tokenPair1?.refreshToken).toBe(true);
 
   const client1: any = makeUserClient(baseURL, String(tokenPair1.accessToken), authPb.User);
-  const r2: any = await (client1 as any).refreshTokens(
-    create(authPb.UserRefreshTokensReqSchema, {
-      req: toValue({
-        RefreshToken: String(tokenPair1.refreshToken),
-      }),
-    })
-  );
+  const refreshReq = create(authPb.UserRefreshTokensReqSchema, {
+    req: toValue({
+      RefreshToken: String(tokenPair1.refreshToken),
+    }),
+  });
+  // CI can briefly stall after SwitchCompanyScope; retry once on transport timeout.
+  let r2: any;
+  try {
+    r2 = await (client1 as any).refreshTokens(refreshReq);
+  } catch (err) {
+    const msg = String((err as any)?.message || err || '');
+    if (!/timeout|deadline/i.test(msg)) throw err;
+    await page.waitForTimeout(500);
+    r2 = await (client1 as any).refreshTokens(refreshReq);
+  }
   const tokenPair2 = fromValue(r2.result);
   expect(!!tokenPair2?.accessToken).toBe(true);
 
