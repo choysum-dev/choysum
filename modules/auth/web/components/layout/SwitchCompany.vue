@@ -5,15 +5,15 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <!--
-    Sidebar: identity button + Popover (not SidebarMenu ul/li — header is not a
-    nav list). Collapsed tip hosts outside the as-child chain so TooltipRoot
-    cannot steal the panel position. Toolbar: Popover (no tip needed).
+    Sidebar: identity button + Popover when multiple companies are allowed.
+    Collapsed tip hosts outside the as-child chain so TooltipRoot cannot steal
+    the panel position. Toolbar: Popover (no tip needed).
   -->
   <ChoyCollapsedIdentityTipHost
     v-if="variant === 'sidebar'"
     :label="companyIdentityTooltip"
   >
-    <ChoyPopover v-model:open="visible">
+    <ChoyPopover v-if="canSwitchCompanies" v-model:open="visible">
       <ChoyPopoverTrigger as-child>
         <ChoySidebarMenuButton
           size="lg"
@@ -42,10 +42,18 @@ SPDX-License-Identifier: Apache-2.0
           >
             <span class="truncate font-medium">{{ currentCompanyLabel }}</span>
             <span
-              class="text-muted-foreground truncate text-xs"
+              class="text-muted-foreground flex min-w-0 items-center gap-1 truncate text-xs"
               data-testid="company-switch-meta"
             >
-              {{ currentCompanyMeta }}
+              <span class="truncate">{{ currentCompanyMeta }}</span>
+              <ChoyBadge
+                v-if="enabledCompanyCount > 1"
+                variant="outline"
+                class="border-sidebar-border bg-background text-sidebar-foreground h-4 shrink-0 px-1 text-[0.65rem] leading-none"
+                data-testid="company-switch-enabled-count"
+              >
+                {{ enabledCompanyCount }}
+              </ChoyBadge>
             </span>
           </span>
           <span
@@ -61,62 +69,64 @@ SPDX-License-Identifier: Apache-2.0
         side="right"
         align="start"
         :side-offset="4"
-        class="w-72 min-w-56 rounded-lg p-3"
+        class="w-72 min-w-56 rounded-lg p-0"
         data-testid="company-switch-panel"
       >
-        <div class="choy-switch-company__panel flex flex-col gap-3">
-          <ChoyField class="gap-1">
-            <ChoyFieldLabel class="flex flex-col gap-1 text-sm">
-              {{ _t('Current Company') }}
-              <select
-                v-model="draftActiveCompanyId"
-                class="choy-switch-company__select h-control rounded-md border border-border bg-background px-2 text-sm font-normal"
-                data-testid="company-active-select"
-              >
-                <option v-for="c in companies" :key="c.Id" :value="c.Id">
-                  {{ c.DisplayName || c.Id }}
-                </option>
-              </select>
-            </ChoyFieldLabel>
-          </ChoyField>
-
-          <ChoyField class="gap-1">
-            <ChoyFieldLabel class="text-sm font-medium">{{ _t('Available Companies') }}</ChoyFieldLabel>
-            <div
-              class="choy-switch-company__select flex max-h-56 min-h-[5.5rem] flex-col gap-1 overflow-y-auto rounded-md border border-border bg-background px-2 py-1.5 text-sm"
-              data-testid="company-enabled-select"
-            >
-              <label v-for="c in companies" :key="'enabled-' + c.Id" class="flex items-center gap-2">
-                <ChoyCheckbox
-                  class="size-control shrink-0"
-                  :model-value="draftEnabledCompanyIds.includes(c.Id)"
-                  :disabled="isActiveCompanyEnabledLocked(c.Id, draftActiveCompanyId)"
-                  @update:model-value="on => setCompanyEnabled(c.Id, on)"
-                />
-                <span>{{ c.DisplayName || c.Id }}</span>
-              </label>
-            </div>
-          </ChoyField>
-
-          <div
-            v-if="applyDisabledReason"
-            class="choy-switch-company__hint text-xs text-foreground/60"
-            data-testid="company-switch-hint"
-          >
-            {{ applyDisabledReason }}
-          </div>
-
-          <div class="choy-switch-company__actions flex justify-end">
-            <ChoyButton size="sm" :disabled="!canApply" data-testid="company-switch-apply" @click.stop="apply">
-              {{ _t('Apply') }}
-            </ChoyButton>
-          </div>
-        </div>
+        <SwitchCompanyPanel
+          v-model:search-filter="searchFilter"
+          :select-all-state="selectAllState"
+          :allowed-count="allowedCompanyIds.length"
+          :entries="panelEntries"
+          :active-company-id="draftActiveCompanyId"
+          :dirty="isDirty"
+          :disabled="submitting"
+          @toggle-select-all="onToggleSelectAll"
+          @toggle-branch="onToggleCompanyBranch"
+          @loginto="onLogIntoCompany"
+          @reset="onResetDraft"
+          @confirm="onConfirmDraft"
+        />
       </ChoyPopoverContent>
     </ChoyPopover>
+
+    <ChoySidebarMenuButton
+      v-else
+      size="lg"
+      type="button"
+      class="w-full min-w-0"
+      :aria-label="currentCompanyLabel"
+      data-testid="company-switch-trigger"
+      @click="onIdentityActivate"
+    >
+      <span
+        class="bg-background text-foreground ring-sidebar-border/60 flex aspect-square size-8 shrink-0 items-center justify-center overflow-hidden rounded-lg ring-1"
+        data-testid="company-switch-logo-wrap"
+      >
+        <img
+          :src="companyLogoUrl"
+          alt=""
+          class="size-8 object-contain p-0.5"
+          width="32"
+          height="32"
+          data-testid="company-switch-logo"
+        />
+      </span>
+      <span
+        class="grid min-w-0 flex-1 text-start text-sm leading-tight"
+        data-testid="company-switch-label"
+      >
+        <span class="truncate font-medium">{{ currentCompanyLabel }}</span>
+        <span
+          class="text-muted-foreground truncate text-xs"
+          data-testid="company-switch-meta"
+        >
+          {{ currentCompanyMeta }}
+        </span>
+      </span>
+    </ChoySidebarMenuButton>
   </ChoyCollapsedIdentityTipHost>
 
-  <ChoyPopover v-else v-model:open="visible">
+  <ChoyPopover v-else-if="canSwitchCompanies" v-model:open="visible">
     <ChoyPopoverTrigger as-child>
       <ChoyButton
         variant="ghost"
@@ -126,73 +136,68 @@ SPDX-License-Identifier: Apache-2.0
         :aria-label="_t('Switch company')"
         data-testid="company-switch-trigger"
       >
-        <span class="truncate text-sm font-medium" data-testid="company-switch-label">
-          {{ currentCompanyLabel }}
+        <span
+          class="inline-flex min-w-0 items-center gap-1 truncate text-sm font-medium"
+          data-testid="company-switch-label"
+        >
+          <span class="truncate">{{ currentCompanyLabel }}</span>
+          <ChoyBadge
+            v-if="enabledCompanyCount > 1"
+            variant="outline"
+            class="bg-background h-4 shrink-0 px-1 text-[0.65rem] leading-none"
+            data-testid="company-switch-enabled-count"
+          >
+            {{ enabledCompanyCount }}
+          </ChoyBadge>
         </span>
       </ChoyButton>
     </ChoyPopoverTrigger>
     <ChoyPopoverContent
-      class="w-72 min-w-56 rounded-lg p-3"
+      class="w-72 min-w-56 rounded-lg p-0"
       align="end"
       side="bottom"
       :side-offset="4"
       data-testid="company-switch-panel"
     >
-      <div class="choy-switch-company__panel flex flex-col gap-3">
-        <ChoyField class="gap-1">
-          <ChoyFieldLabel class="flex flex-col gap-1 text-sm">
-            {{ _t('Current Company') }}
-            <select
-              v-model="draftActiveCompanyId"
-              class="choy-switch-company__select h-control rounded-md border border-border bg-background px-2 text-sm font-normal"
-              data-testid="company-active-select"
-            >
-              <option v-for="c in companies" :key="c.Id" :value="c.Id">{{ c.DisplayName || c.Id }}</option>
-            </select>
-          </ChoyFieldLabel>
-        </ChoyField>
-
-        <ChoyField class="gap-1">
-          <ChoyFieldLabel class="text-sm font-medium">{{ _t('Available Companies') }}</ChoyFieldLabel>
-          <div
-            class="choy-switch-company__select flex max-h-56 min-h-[5.5rem] flex-col gap-1 overflow-y-auto rounded-md border border-border bg-background px-2 py-1.5 text-sm"
-            data-testid="company-enabled-select"
-          >
-            <label v-for="c in companies" :key="'enabled-' + c.Id" class="flex items-center gap-2">
-              <ChoyCheckbox
-                class="size-control shrink-0"
-                :model-value="draftEnabledCompanyIds.includes(c.Id)"
-                :disabled="isActiveCompanyEnabledLocked(c.Id, draftActiveCompanyId)"
-                @update:model-value="on => setCompanyEnabled(c.Id, on)"
-              />
-              <span>{{ c.DisplayName || c.Id }}</span>
-            </label>
-          </div>
-        </ChoyField>
-
-        <div v-if="applyDisabledReason" class="choy-switch-company__hint text-xs text-foreground/60" data-testid="company-switch-hint">
-          {{ applyDisabledReason }}
-        </div>
-
-        <div class="choy-switch-company__actions flex justify-end">
-          <ChoyButton size="sm" :disabled="!canApply" data-testid="company-switch-apply" @click.stop="apply">
-            {{ _t('Apply') }}
-          </ChoyButton>
-        </div>
-      </div>
+      <SwitchCompanyPanel
+        v-model:search-filter="searchFilter"
+        :select-all-state="selectAllState"
+        :allowed-count="allowedCompanyIds.length"
+        :entries="panelEntries"
+        :active-company-id="draftActiveCompanyId"
+        :dirty="isDirty"
+        :disabled="submitting"
+        @toggle-select-all="onToggleSelectAll"
+        @toggle-branch="onToggleCompanyBranch"
+        @loginto="onLogIntoCompany"
+        @reset="onResetDraft"
+        @confirm="onConfirmDraft"
+      />
     </ChoyPopoverContent>
   </ChoyPopover>
+
+  <ChoyButton
+    v-else
+    variant="ghost"
+    size="sm"
+    :class="triggerClass"
+    :aria-label="currentCompanyLabel"
+    data-testid="company-switch-trigger"
+    @click="onIdentityActivate"
+  >
+    <span class="truncate text-sm font-medium" data-testid="company-switch-label">
+      {{ currentCompanyLabel }}
+    </span>
+  </ChoyButton>
 </template>
 
 <script lang="ts" setup>
 import { computed, ref, watch } from 'vue';
 import { ChevronsUpDown } from 'lucide-vue-next';
 import {
+  ChoyBadge,
   ChoyButton,
-  ChoyCheckbox,
   ChoyCollapsedIdentityTipHost,
-  ChoyField,
-  ChoyFieldLabel,
   ChoyPopover,
   ChoyPopoverContent,
   ChoyPopoverTrigger,
@@ -204,15 +209,27 @@ import { createStoreByModel } from '@/web/web/stores/registry';
 import type Company from '@/base/service/models/company';
 import { createTranslate } from '@/web/web/i18n';
 import { collapsedIdentityTooltip } from './collapsed_identity_tooltip';
+import { syncCompanyDraftsFromJwt } from './o_switch_company_draft';
+import SwitchCompanyPanel from './SwitchCompanyPanel.vue';
 import {
-  isActiveCompanyEnabledLocked,
-  syncCompanyDraftsFromJwt,
-  toggleEnabledCompanyId,
-} from './o_switch_company_draft';
+  branchCheckState,
+  buildCompanyChildrenMap,
+  buildCompanyTreeEntries,
+  ensureActiveInEnabledScope,
+  filterCompanyTreeBySearch,
+  isCompanyBranchToggleDisabled,
+  logIntoCompany,
+  selectAllCheckState,
+  setEqCompanyIds,
+  toggleCompanyBranch,
+  toggleSelectAllCompanies,
+  uniqCompanyIds,
+  type SwitchCompanyRow,
+} from './o_switch_company_selection';
 
 defineOptions({ name: 'SwitchCompany' });
 
-const props = withDefaults(
+withDefaults(
   defineProps<{
     /** toolbar = inset header actions; sidebar = SidebarHeader workspace switcher */
     variant?: 'toolbar' | 'sidebar';
@@ -221,8 +238,6 @@ const props = withDefaults(
 );
 
 const { _t } = createTranslate('auth', { scope: 'web/components/layout/SwitchCompany' });
-
-type CompanyRow = { Id: string; DisplayName?: string; Code?: string; Logo?: unknown };
 
 const triggerClass = 'choy-header__action-item h-control max-w-[12rem] truncate px-2.5';
 
@@ -241,11 +256,15 @@ function getGlobalCompanyStore(): any {
 const visible = ref(false);
 /** Guards async open-sync so a late refresh cannot reset an in-progress selection. */
 let panelOpenGeneration = 0;
+const searchFilter = ref('');
+const submitting = ref(false);
 
 const meta = computed(() => ((authStore.identity as any)?.metadata ?? {}) as any);
 const currentActiveCompanyId = computed(() => String(meta.value?.activeCompanyId ?? '').trim());
 const currentEnabledCompanyIds = computed(() =>
-  Array.isArray(meta.value?.enabledCompanyIds) ? meta.value.enabledCompanyIds.map((x: any) => String(x ?? '').trim()).filter(Boolean) : ([] as string[])
+  Array.isArray(meta.value?.enabledCompanyIds)
+    ? meta.value.enabledCompanyIds.map((x: any) => String(x ?? '').trim()).filter(Boolean)
+    : ([] as string[]),
 );
 /** Latest allowlist from User.CompanyId/CompanyIds (may be newer than JWT metadata). */
 const liveAllowedCompanyIds = ref<string[]>([]);
@@ -253,31 +272,15 @@ const allowedCompanyIds = computed(() => {
   const xs = Array.isArray(meta.value?.allowedCompanyIds) ? meta.value.allowedCompanyIds : [];
   const ids = xs.map((x: any) => String(x ?? '').trim()).filter(Boolean);
   const merged = new Set<string>(
-    [...ids, ...liveAllowedCompanyIds.value, ...currentEnabledCompanyIds.value, currentActiveCompanyId.value].filter(Boolean)
+    [...ids, ...liveAllowedCompanyIds.value, ...currentEnabledCompanyIds.value, currentActiveCompanyId.value].filter(
+      Boolean,
+    ),
   );
   return Array.from(merged);
 });
 
 const draftActiveCompanyId = ref('');
 const draftEnabledCompanyIds = ref<string[]>([]);
-
-/**
- * Normalize a company id list into unique non-empty values.
- */
-function uniq(xs: string[]): string[] {
-  return Array.from(new Set(xs.map(x => String(x ?? '').trim()).filter(Boolean)));
-}
-
-/**
- * Compare two company id lists as sets.
- */
-function setEq(a: string[], b: string[]): boolean {
-  const sa = new Set(uniq(a));
-  const sb = new Set(uniq(b));
-  if (sa.size !== sb.size) return false;
-  for (const x of sa) if (!sb.has(x)) return false;
-  return true;
-}
 
 watch(
   [currentActiveCompanyId, currentEnabledCompanyIds],
@@ -287,67 +290,36 @@ watch(
       activeCompanyId: active,
       enabledCompanyIds: enabled,
       apply: (nextActive, nextEnabled) => {
-        draftActiveCompanyId.value = nextActive;
-        draftEnabledCompanyIds.value = uniq(nextEnabled);
-        ensureActiveInEnabled();
+        const next = ensureActiveInEnabledScope(nextActive, nextEnabled);
+        draftActiveCompanyId.value = next.activeCompanyId;
+        draftEnabledCompanyIds.value = next.enabledCompanyIds;
       },
     });
   },
-  { immediate: true }
-);
-
-/**
- * Ensure active ∈ enabled when syncing scope drafts (server rule).
- */
-function ensureActiveInEnabled(): void {
-  const active = draftActiveCompanyId.value;
-  if (!active) return;
-  if (!draftEnabledCompanyIds.value.includes(active)) {
-    draftEnabledCompanyIds.value = uniq([active, ...draftEnabledCompanyIds.value]);
-  }
-}
-
-/**
- * Toggle one company in the enabled draft. The active company stays locked in.
- */
-function setCompanyEnabled(id: string, on: boolean | 'indeterminate'): void {
-  draftEnabledCompanyIds.value = toggleEnabledCompanyId({
-    companyId: id,
-    on,
-    draftActiveCompanyId: draftActiveCompanyId.value,
-    draftEnabledCompanyIds: draftEnabledCompanyIds.value,
-  });
-}
-
-watch(
-  draftActiveCompanyId,
-  () => {
-    ensureActiveInEnabled();
-  },
-  { flush: 'sync' }
+  { immediate: true },
 );
 
 watch(
   allowedCompanyIds,
   allowed => {
     if (!allowed.length) return;
-    draftEnabledCompanyIds.value = uniq(draftEnabledCompanyIds.value.filter(id => allowed.includes(id)));
-    if (draftActiveCompanyId.value && !allowed.includes(draftActiveCompanyId.value)) {
-      draftActiveCompanyId.value = allowed[0];
-    }
-    ensureActiveInEnabled();
+    const filtered = uniqCompanyIds(draftEnabledCompanyIds.value.filter(id => allowed.includes(id)));
+    let active = draftActiveCompanyId.value;
+    if (active && !allowed.includes(active)) active = allowed[0];
+    const next = ensureActiveInEnabledScope(active, filtered);
+    draftActiveCompanyId.value = next.activeCompanyId;
+    draftEnabledCompanyIds.value = next.enabledCompanyIds;
   },
-  { flush: 'sync' }
+  { flush: 'sync' },
 );
 
-const companies = ref<CompanyRow[]>([]);
+const companies = ref<SwitchCompanyRow[]>([]);
 const fetchedSig = ref('');
 /** True after a company-label fetch finishes (success or fail-soft). */
 const labelsReady = ref(false);
 
 /**
- * Seed select options from allowed ids immediately so selects do not drop draft values
- * while DisplayName rows are still loading.
+ * Seed list rows from allowed ids while DisplayName rows are still loading.
  */
 function seedCompanyOptions(ids: string[]): void {
   const prev = new Map(companies.value.map(c => [c.Id, c] as const));
@@ -355,7 +327,7 @@ function seedCompanyOptions(ids: string[]): void {
 }
 
 /**
- * Load company labels for the currently allowed company set.
+ * Load company labels and ParentId edges for the currently allowed company set.
  */
 async function ensureCompanies(): Promise<void> {
   const ids = allowedCompanyIds.value;
@@ -372,17 +344,18 @@ async function ensureCompanies(): Promise<void> {
   try {
     const companyStore = getGlobalCompanyStore();
     const rows = (await companyStore.Search(['Id', 'in', ids] as any, {
-      fields: ['Id', 'DisplayName', 'Code', 'Logo'],
+      fields: ['Id', 'DisplayName', 'Code', 'Logo', 'ParentId'],
       limit: 1000,
     } as any)) as any[];
     if (fetchedSig.value !== sig) return;
 
-    const out: CompanyRow[] = (rows || [])
+    const out: SwitchCompanyRow[] = (rows || [])
       .map(r => ({
         Id: String((r as any)?.Id ?? '').trim(),
         DisplayName: String((r as any)?.DisplayName ?? '').trim(),
         Code: String((r as any)?.Code ?? '').trim(),
         Logo: (r as any)?.Logo,
+        ParentId: (r as any)?.ParentId,
       }))
       .filter(r => !!r.Id);
 
@@ -403,7 +376,7 @@ watch(
     seedCompanyOptions(ids);
     void ensureCompanies();
   },
-  { immediate: true }
+  { immediate: true },
 );
 
 /**
@@ -416,7 +389,7 @@ async function syncAllowedCompaniesFromUser(): Promise<void> {
   try {
     const userStore = createStoreByModel('auth.User');
     const user = (await userStore.Browse(userId, ['Id', 'CompanyId', 'CompanyIds'] as any)) as any;
-    liveAllowedCompanyIds.value = uniq([
+    liveAllowedCompanyIds.value = uniqCompanyIds([
       String(user?.CompanyId ?? '').trim(),
       ...(Array.isArray(user?.CompanyIds) ? user.CompanyIds.map((x: any) => String(x ?? '').trim()) : []),
     ]);
@@ -426,28 +399,60 @@ async function syncAllowedCompaniesFromUser(): Promise<void> {
 }
 
 /**
- * Re-sync drafts each time the panel opens, then refresh the allowlist in the background.
+ * Refresh allowlist from the user row so the trigger can unlock after CompanyIds
+ * change. Does not RefreshTokens: that forces loadUser and an unrelated i18n cascade.
+ * Only re-fetch company labels when the allowlist signature changes.
+ */
+async function refreshAllowlist(): Promise<void> {
+  const beforeSig = allowedCompanyIds.value.slice().sort().join(',');
+  await syncAllowedCompaniesFromUser();
+  const afterSig = allowedCompanyIds.value.slice().sort().join(',');
+  if (beforeSig !== afterSig) {
+    fetchedSig.value = '';
+  }
+  await ensureCompanies();
+}
+
+/**
+ * Identity-only trigger: re-read allowlist; open the switcher once ≥2 companies exist.
+ */
+async function onIdentityActivate(): Promise<void> {
+  if (submitting.value || visible.value) return;
+  await refreshAllowlist();
+  if (allowedCompanyIds.value.length >= 2) {
+    visible.value = true;
+  }
+}
+
+// JWT allowlist can lag behind User.CompanyIds after form edits; sync on login.
+watch(
+  () => String((authStore.identity as any)?.userId || '').trim(),
+  userId => {
+    if (!userId) {
+      liveAllowedCompanyIds.value = [];
+      return;
+    }
+    void refreshAllowlist();
+  },
+  { immediate: true },
+);
+
+/**
+ * Re-sync drafts each time the panel opens, then refresh CompanyIds from the user row.
  */
 watch(visible, async isOpen => {
-  if (!isOpen) return;
-  const openGen = ++panelOpenGeneration;
-  draftActiveCompanyId.value = currentActiveCompanyId.value;
-  draftEnabledCompanyIds.value = uniq(currentEnabledCompanyIds.value);
-  ensureActiveInEnabled();
-  void ensureCompanies();
-
-  try {
-    await authStore.refreshToken(true);
-  } catch {
-    // Fail soft: keep the existing token metadata when refresh is unavailable.
+  if (!isOpen) {
+    searchFilter.value = '';
+    return;
   }
-  if (openGen !== panelOpenGeneration || !visible.value) return;
+  const openGen = ++panelOpenGeneration;
+  const synced = ensureActiveInEnabledScope(currentActiveCompanyId.value, currentEnabledCompanyIds.value);
+  draftActiveCompanyId.value = synced.activeCompanyId;
+  draftEnabledCompanyIds.value = synced.enabledCompanyIds;
+  searchFilter.value = '';
 
-  await syncAllowedCompaniesFromUser();
+  await refreshAllowlist();
   if (openGen !== panelOpenGeneration || !visible.value) return;
-
-  fetchedSig.value = '';
-  await ensureCompanies();
 });
 
 const companyNameById = computed(() => {
@@ -489,46 +494,134 @@ const companyLogoUrl = computed(() => {
 
 /** Normalize enabled scope the same way drafts do (active is always included). */
 const effectiveCurrentEnabledCompanyIds = computed(() => {
-  const active = currentActiveCompanyId.value;
-  const enabled = uniq(currentEnabledCompanyIds.value);
-  if (active && !enabled.includes(active)) return uniq([active, ...enabled]);
-  return enabled;
+  return ensureActiveInEnabledScope(currentActiveCompanyId.value, currentEnabledCompanyIds.value)
+    .enabledCompanyIds;
 });
+
+const enabledCompanyCount = computed(() => effectiveCurrentEnabledCompanyIds.value.length);
+
+const canSwitchCompanies = computed(() => allowedCompanyIds.value.length >= 2);
+
+const childrenMap = computed(() => buildCompanyChildrenMap(companies.value));
+
+const treeEntries = computed(() => buildCompanyTreeEntries(companies.value));
+
+const visibleTreeEntries = computed(() =>
+  filterCompanyTreeBySearch(treeEntries.value, searchFilter.value),
+);
+
+const panelEntries = computed(() =>
+  visibleTreeEntries.value.map(entry => ({
+    id: entry.id,
+    level: entry.level,
+    name: entry.name,
+    checked: branchCheckState(entry.id, draftEnabledCompanyIds.value, childrenMap.value),
+    toggleDisabled: isCompanyBranchToggleDisabled(
+      entry.id,
+      draftEnabledCompanyIds.value,
+      childrenMap.value,
+    ),
+  })),
+);
 
 const isDirty = computed(() => {
   if (draftActiveCompanyId.value !== currentActiveCompanyId.value) return true;
-  if (!setEq(draftEnabledCompanyIds.value, effectiveCurrentEnabledCompanyIds.value)) return true;
+  if (!setEqCompanyIds(draftEnabledCompanyIds.value, effectiveCurrentEnabledCompanyIds.value)) return true;
   return false;
 });
 
-const canApply = computed(() => {
-  const active = draftActiveCompanyId.value;
-  if (!active) return false;
-  if (!draftEnabledCompanyIds.value.includes(active)) return false;
-  if (!isDirty.value) return false;
-  return true;
-});
-
-const applyDisabledReason = computed(() => {
-  if (canApply.value) return '';
-  const active = draftActiveCompanyId.value;
-  if (!active) return _t('Select a current company');
-  if (!draftEnabledCompanyIds.value.includes(active)) {
-    return _t('Available companies must include the current company');
-  }
-  if (companies.value.length < 2) {
-    return _t('Only one company is available; nothing to apply');
-  }
-  return _t('No changes to apply');
-});
+const selectAllState = computed(() =>
+  selectAllCheckState(draftEnabledCompanyIds.value, allowedCompanyIds.value),
+);
 
 /**
- * Persist the selected company scope back to the auth store.
+ * Persist a company scope. Close the panel first so it is not left open over the
+ * page loading mask while SwitchCompanyScope refreshes PermissionState / remounts views.
  */
-async function apply(): Promise<void> {
-  if (!canApply.value) return;
-  await authStore.switchCompanyScope(draftActiveCompanyId.value, uniq(draftEnabledCompanyIds.value));
+async function commitScope(activeCompanyId: string, enabledCompanyIds: string[]): Promise<void> {
+  const next = ensureActiveInEnabledScope(activeCompanyId, enabledCompanyIds);
+  if (!next.activeCompanyId || !next.enabledCompanyIds.length) return;
+  submitting.value = true;
   visible.value = false;
+  try {
+    await authStore.switchCompanyScope(next.activeCompanyId, next.enabledCompanyIds);
+  } finally {
+    submitting.value = false;
+  }
+}
+
+/**
+ * Click a company name: enter immediately and close.
+ * Mark submitting before mutating drafts so the confirm footer cannot flash.
+ */
+async function onLogIntoCompany(companyId: string): Promise<void> {
+  if (submitting.value) return;
+  submitting.value = true;
+  try {
+    const next = logIntoCompany({
+      companyId,
+      draftActiveCompanyId: draftActiveCompanyId.value,
+      draftEnabledCompanyIds: draftEnabledCompanyIds.value,
+      children: childrenMap.value,
+    });
+    draftActiveCompanyId.value = next.activeCompanyId;
+    draftEnabledCompanyIds.value = next.enabledCompanyIds;
+    const scope = ensureActiveInEnabledScope(next.activeCompanyId, next.enabledCompanyIds);
+    if (!scope.activeCompanyId || !scope.enabledCompanyIds.length) return;
+    // Close before the token update remounts the page under a loading mask.
+    visible.value = false;
+    await authStore.switchCompanyScope(scope.activeCompanyId, scope.enabledCompanyIds);
+  } finally {
+    submitting.value = false;
+  }
+}
+
+/**
+ * Toggle one company branch in the draft without closing.
+ */
+function onToggleCompanyBranch(companyId: string): void {
+  if (submitting.value) return;
+  if (isCompanyBranchToggleDisabled(companyId, draftEnabledCompanyIds.value, childrenMap.value)) {
+    return;
+  }
+  const next = toggleCompanyBranch({
+    companyId,
+    draftActiveCompanyId: draftActiveCompanyId.value,
+    draftEnabledCompanyIds: draftEnabledCompanyIds.value,
+    children: childrenMap.value,
+  });
+  draftActiveCompanyId.value = next.activeCompanyId;
+  draftEnabledCompanyIds.value = next.enabledCompanyIds;
+}
+
+/**
+ * Toggle the select-all control against the full allowlist.
+ */
+function onToggleSelectAll(): void {
+  if (submitting.value) return;
+  const next = toggleSelectAllCompanies({
+    draftActiveCompanyId: draftActiveCompanyId.value,
+    draftEnabledCompanyIds: draftEnabledCompanyIds.value,
+    allowedCompanyIds: allowedCompanyIds.value,
+  });
+  draftActiveCompanyId.value = next.activeCompanyId;
+  draftEnabledCompanyIds.value = next.enabledCompanyIds;
+}
+
+/**
+ * Discard draft changes back to the committed JWT scope.
+ */
+function onResetDraft(): void {
+  const synced = ensureActiveInEnabledScope(currentActiveCompanyId.value, currentEnabledCompanyIds.value);
+  draftActiveCompanyId.value = synced.activeCompanyId;
+  draftEnabledCompanyIds.value = synced.enabledCompanyIds;
+}
+
+/**
+ * Confirm draft enabled/active changes.
+ */
+async function onConfirmDraft(): Promise<void> {
+  if (!isDirty.value || submitting.value) return;
+  await commitScope(draftActiveCompanyId.value, draftEnabledCompanyIds.value);
 }
 </script>
-

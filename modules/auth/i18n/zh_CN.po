@@ -971,52 +971,42 @@ msgctxt "web/components/layout/ChoyGuestShell"
 msgid "Sign up"
 msgstr "注册"
 
-#: web/components/layout/SwitchCompany.vue:54 web/components/layout/SwitchCompany.vue:97
-msgctxt "web/components/layout/SwitchCompany"
-msgid "Apply"
-msgstr "应用"
-
-#: web/components/layout/SwitchCompany.vue:39 web/components/layout/SwitchCompany.vue:82
-msgctxt "web/components/layout/SwitchCompany"
-msgid "Available Companies"
-msgstr "可用公司"
-
-#: web/components/layout/SwitchCompany.vue:331
-msgctxt "web/components/layout/SwitchCompany"
-msgid "Available companies must include the current company"
-msgstr "可选公司必须包含当前公司"
-
-#: web/components/layout/SwitchCompany.vue:278 web/components/layout/SwitchCompany.vue:281
+#: web/components/layout/SwitchCompany.vue
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Company"
 msgstr "公司"
 
-#: web/components/layout/SwitchCompany.vue:29 web/components/layout/SwitchCompany.vue:74
+#: web/components/layout/SwitchCompanyPanel.vue
 msgctxt "web/components/layout/SwitchCompany"
-msgid "Current Company"
-msgstr "当前公司"
+msgid "Companies"
+msgstr "公司"
 
-#: web/components/layout/SwitchCompany.vue:336
+#: web/components/layout/SwitchCompanyPanel.vue
 msgctxt "web/components/layout/SwitchCompany"
-msgid "No changes to apply"
-msgstr "没有可应用的更改"
+msgid "Confirm"
+msgstr "确认"
 
-#: web/components/layout/SwitchCompany.vue:334
+#: web/components/layout/SwitchCompanyPanel.vue
 msgctxt "web/components/layout/SwitchCompany"
-msgid "Only one company is available; nothing to apply"
-msgstr "仅有一家可选公司，无需应用"
+msgid "Reset"
+msgstr "重置"
 
-#: web/components/layout/SwitchCompany.vue:329
+#: web/components/layout/SwitchCompanyPanel.vue
 msgctxt "web/components/layout/SwitchCompany"
-msgid "Select a current company"
-msgstr "请选择当前公司"
+msgid "Search companies"
+msgstr "搜索公司"
 
-#: web/components/layout/SwitchCompany.vue:10 web/components/layout/SwitchCompany.vue:64
+#: web/components/layout/SwitchCompanyPanel.vue
+msgctxt "web/components/layout/SwitchCompany"
+msgid "Select all"
+msgstr "全选"
+
+#: web/components/layout/SwitchCompany.vue
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Switch company"
 msgstr "切换公司"
 
-#: web/components/layout/SwitchCompany.vue:295
+#: web/components/layout/SwitchCompany.vue
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Workspace"
 msgstr "工作区"

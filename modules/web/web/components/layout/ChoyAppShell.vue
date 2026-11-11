@@ -91,14 +91,14 @@ SPDX-License-Identifier: Apache-2.0
                     :is="Component"
                     v-if="Component && viewRoute.meta?.keepAlive"
                     class="min-h-0 flex-1"
-                    :key="viewRoute.path"
+                    :key="`${viewRoute.path}::${companyScopeKey}`"
                   />
                 </KeepAlive>
                 <component
                   :is="Component"
                   v-if="Component && !viewRoute.meta?.keepAlive"
                   class="min-h-0 flex-1"
-                  :key="viewRoute.fullPath"
+                  :key="`${viewRoute.fullPath}::${companyScopeKey}`"
                 />
               </router-view>
             </slot>
@@ -135,7 +135,9 @@ import {
   SidebarRail,
 } from '../vendor/ui/sidebar/index'
 import { useLayoutStore } from '../../stores/layoutStore'
+import { useAuthStore } from '@/auth/web/stores/auth'
 import { shellMenuTriggerLabel } from './choyWebShellChrome'
+import { companyScopeViewKey } from './companyScopeViewKey'
 
 /**
  * App shell: full-height sidebar (company header / L1+L2 / user footer)
@@ -156,6 +158,8 @@ const props = withDefaults(
 
 let layoutStore: ReturnType<typeof useLayoutStore> | null = null
 let tLayout: (key: string, values?: Record<string, unknown>) => string = (key) => key
+let authStore: { identity?: { metadata?: { activeCompanyId?: unknown; enabledCompanyIds?: unknown } } } | null =
+  null
 
 try {
   layoutStore = useLayoutStore()
@@ -170,7 +174,20 @@ try {
   tLayout = (key) => key
 }
 
+try {
+  // Optional: guest/shell unit mounts may run without the auth store installed.
+  authStore = useAuthStore() as any
+} catch {
+  authStore = null
+}
+
 const effectiveShowHeader = computed(() => props.showHeader)
+
+/** Remount open views when active/enabled company scope changes (not on token refresh alone). */
+const companyScopeKey = computed(() => {
+  const meta = (authStore?.identity as any)?.metadata ?? {}
+  return companyScopeViewKey(meta?.activeCompanyId, meta?.enabledCompanyIds)
+})
 
 const menuTriggerLabel = computed(() =>
   shellMenuTriggerLabel({
