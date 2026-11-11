@@ -103,8 +103,16 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
    * Load or refresh the backend permission snapshot.
    */
   async function loadPermissionStateImpl(forceRefresh = false): Promise<boolean> {
+    // Capture the session this request belongs to so a late failure/result after
+    // SwitchCompanyScope cannot clear or overwrite the newer permission snapshot.
+    const requestUserId = String(state.identity.value?.userId || '').trim();
+    const requestRefreshToken = String(state.tokens.value?.refreshToken || '').trim();
+    const stillOwnsSession = () =>
+      String(state.identity.value?.userId || '').trim() === requestUserId
+      && String(state.tokens.value?.refreshToken || '').trim() === requestRefreshToken;
+
     try {
-      if (!state.identity.value?.userId) return false;
+      if (!requestUserId) return false;
 
       const meta = (state.identity.value as any)?.metadata as any;
       const expectedV = typeof meta?.permStateVersion === 'number' ? meta.permStateVersion : null;
@@ -112,6 +120,7 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
       if (!forceRefresh && expectedV !== null && currentV === expectedV) return true;
 
       const resp = (await state.userStore.GetPermissionState()) as any as PermissionState;
+      if (!stillOwnsSession()) return true;
       if (!resp || typeof (resp as any).byCompany !== 'object') {
         state.permissionState.value = { permStateVersion: 0, byCompany: {} };
         return true;
@@ -119,8 +128,10 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
       state.permissionState.value = resp;
       return true;
     } catch (error) {
-      // Keep fail-closed semantics when permission loading fails.
-      state.permissionState.value = null;
+      // Only fail-closed for the session that started this request.
+      if (stillOwnsSession()) {
+        state.permissionState.value = null;
+      }
       throw wrapAuthError(error, {
         code: AuthErrCode.USER_LOADING_FAILED,
         message: _t('Failed to load permission state'),

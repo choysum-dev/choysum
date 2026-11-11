@@ -728,6 +728,59 @@ test('refreshToken: superseded invalid RefreshTokens response keeps the switched
   expect(mockHelpers._recorders.resetAuthState.calls.length).toBe(0);
 });
 
+test('loadPermissionState: late failure after company switch keeps the newer snapshot', async () => {
+  const mockState = buildMockState();
+  const mockHelpers = buildMockHelpers();
+  mockState.tokens.value = {
+    accessToken: 'access',
+    refreshToken: 'refresh-before',
+    expiresAt: Date.now() + 3600_000,
+  };
+  mockState.identity.value = {
+    userId: 'usr_1',
+    metadata: { permStateVersion: 1 },
+  } as any;
+  mockState.permissionState.value = {
+    permStateVersion: 1,
+    byCompany: { cmp_a: {} },
+  } as any;
+
+  let rejectPermission: (reason: unknown) => void = () => {};
+  const permissionDeferred = new Promise((_resolve, reject) => {
+    rejectPermission = reject;
+  });
+  mockState._recorders.GetPermissionState.returnValue(permissionDeferred);
+
+  const actions = defineAuthActions(mockState as any, mockHelpers as any, { isClient: true });
+  const loadPromise = actions.loadPermissionState(true);
+
+  // Company switch installs a newer session while the older permission load is in flight.
+  mockState.tokens.value = {
+    accessToken: 'switched-access',
+    refreshToken: 'switched-refresh',
+    expiresAt: Date.now() + 3600_000,
+  };
+  mockState.identity.value = {
+    userId: 'usr_1',
+    metadata: { permStateVersion: 2 },
+  } as any;
+  mockState.permissionState.value = {
+    permStateVersion: 2,
+    byCompany: { cmp_b: {} },
+  } as any;
+
+  rejectPermission(new Error('stale permission load'));
+
+  let caught: unknown;
+  try {
+    await loadPromise;
+  } catch (err) {
+    caught = err;
+  }
+  expect(Boolean(caught)).toBe(true);
+  expect(mockState.permissionState.value?.permStateVersion).toBe(2);
+});
+
 test('refreshToken: failure after this refresh installs tokens still clears auth', async () => {
   const mockState = buildMockState();
   const mockHelpers = buildMockHelpers();

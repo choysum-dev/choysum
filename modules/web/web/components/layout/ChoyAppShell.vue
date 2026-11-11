@@ -87,7 +87,7 @@ SPDX-License-Identifier: Apache-2.0
             <slot>
               <router-view v-slot="{ Component, route: viewRoute }">
                 <!-- Remount KeepAlive cache when company scope changes (A→B→A must not restore stale A). -->
-                <div :key="companyScopeKey" class="flex min-h-0 min-w-0 flex-1 flex-col">
+                <div :key="companyScopeKey" class="flex min-h-0 min-w-0 w-full flex-1 flex-col">
                   <KeepAlive>
                     <component
                       :is="Component"

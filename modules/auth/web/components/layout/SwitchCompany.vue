@@ -454,7 +454,11 @@ async function refreshAllowlist(): Promise<void> {
  */
 async function onIdentityActivate(): Promise<void> {
   if (submitting.value || visible.value) return;
-  await refreshAllowlist();
+  try {
+    await refreshAllowlist();
+  } catch {
+    return;
+  }
   // Panel may have opened concurrently while allowlist was loading.
   if (visible.value) return;
   if (allowedCompanyIds.value.length >= 2) {
@@ -588,10 +592,13 @@ const selectAllState = computed(() =>
  */
 async function commitScope(activeCompanyId: string, enabledCompanyIds: string[]): Promise<void> {
   const allowed = new Set(allowedCompanyIds.value);
-  const next = ensureActiveInEnabledScope(
-    activeCompanyId,
-    enabledCompanyIds.filter(id => allowed.has(id)),
-  );
+  const filteredEnabled = enabledCompanyIds.filter(id => allowed.has(id));
+  // Prefer an allowed active; never let ensureActiveInEnabledScope re-insert a revoked id.
+  let active = String(activeCompanyId ?? '').trim();
+  if (!active || !allowed.has(active)) {
+    active = filteredEnabled[0] || '';
+  }
+  const next = ensureActiveInEnabledScope(active, filteredEnabled);
   if (!next.activeCompanyId || !next.enabledCompanyIds.length) return;
   submitting.value = true;
   visible.value = false;
@@ -615,7 +622,11 @@ async function commitScope(activeCompanyId: string, enabledCompanyIds: string[])
 async function onLogIntoCompany(companyId: string): Promise<void> {
   if (submitting.value) return;
   if (!labelsReady.value) {
-    await ensureCompanies();
+    try {
+      await ensureCompanies();
+    } catch {
+      return;
+    }
   }
   if (submitting.value) return;
   const target = String(companyId ?? '').trim();

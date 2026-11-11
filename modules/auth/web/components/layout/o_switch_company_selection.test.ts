@@ -11,6 +11,7 @@ import {
   isCompanyBranchToggleDisabled,
   isSingleCompanyMode,
   logIntoCompany,
+  normalizeCompanyParentId,
   selectAllCheckState,
   setEqCompanyIds,
   toggleCompanyBranch,
@@ -264,6 +265,21 @@ test('company rows: boolean ParentId and Id-only labels', () => {
   ]);
   expect(entries.map(e => e.id)).toEqual(['solo', 'kid']);
   expect(entries[0].name).toBe('solo');
+});
+
+test('normalizeCompanyParentId: reads ManyToOne object and string/number parents', () => {
+  expect(normalizeCompanyParentId({ Id: 'eu' })).toBe('eu');
+  expect(normalizeCompanyParentId({ Id: '  us  ' })).toBe('us');
+  expect(normalizeCompanyParentId(42)).toBe('42');
+  expect(normalizeCompanyParentId(null)).toBe('');
+});
+
+test('buildCompanyTreeEntries: ParentId object edges nest under the parent', () => {
+  const entries = buildCompanyTreeEntries([
+    { Id: 'root', DisplayName: 'Root' },
+    { Id: 'child', DisplayName: 'Child', ParentId: { Id: 'root' } },
+  ]);
+  expect(entries.map(e => `${e.level}:${e.id}`)).toEqual(['0:root', '1:child']);
 });
 
 test('company rows: Code is used when DisplayName is empty', () => {
