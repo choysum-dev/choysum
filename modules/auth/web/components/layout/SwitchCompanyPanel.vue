@@ -52,7 +52,7 @@ SPDX-License-Identifier: Apache-2.0
           class="size-4 shrink-0"
           :model-value="entry.checked"
           :disabled="disabled || entry.toggleDisabled"
-          :aria-label="_t('Toggle company')"
+          :aria-label="`${_t('Toggle company')}: ${entry.name || entry.id}`"
           data-testid="company-switch-toggle"
           @click.stop
           @update:model-value="emit('toggle-branch', entry.id)"

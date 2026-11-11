@@ -239,3 +239,8 @@ test('company rows: boolean ParentId and Id-only labels', () => {
   expect(entries.map(e => e.id)).toEqual(['solo', 'kid']);
   expect(entries[0].name).toBe('solo');
 });
+
+test('company rows: Code is used when DisplayName is empty', () => {
+  const entries = buildCompanyTreeEntries([{ Id: 'x', DisplayName: '', Code: 'CODE-X' }]);
+  expect(entries[0].name).toBe('CODE-X');
+});

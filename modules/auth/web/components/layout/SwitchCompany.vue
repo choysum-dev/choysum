@@ -206,7 +206,6 @@ import {
 } from '@/web';
 import { useAuthStore } from '@/auth/web/stores/auth';
 import { createStoreByModel } from '@/web/web/stores/registry';
-import { publishCompanyScopeView } from '@/web/web/stores/companyScopeView';
 import type Company from '@/base/service/models/company';
 import { createTranslate } from '@/web/web/i18n';
 import { collapsedIdentityTooltip } from './collapsed_identity_tooltip';
@@ -271,6 +270,8 @@ const currentEnabledCompanyIds = computed(() =>
 const liveAllowedCompanyIds = ref<string[]>([]);
 /** True after a successful user-row allowlist Browse; then live list is authoritative. */
 const liveAllowlistReady = ref(false);
+/** Monotonic generation so only the latest Browse success/failure updates live state. */
+let allowlistBrowseGeneration = 0;
 const allowedCompanyIds = computed(() => {
   if (liveAllowlistReady.value) {
     return uniqCompanyIds(liveAllowedCompanyIds.value);
@@ -283,14 +284,6 @@ const allowedCompanyIds = computed(() => {
     currentActiveCompanyId.value,
   ]);
 });
-
-watch(
-  [currentActiveCompanyId, currentEnabledCompanyIds],
-  ([active, enabled]) => {
-    publishCompanyScopeView(active, enabled);
-  },
-  { immediate: true },
-);
 
 const draftActiveCompanyId = ref('');
 const draftEnabledCompanyIds = ref<string[]>([]);
@@ -410,14 +403,17 @@ watch(
 async function syncAllowedCompaniesFromUser(): Promise<void> {
   const userId = String((authStore.identity as any)?.userId || '').trim();
   if (!userId) {
+    allowlistBrowseGeneration += 1;
     liveAllowlistReady.value = false;
     liveAllowedCompanyIds.value = [];
     return;
   }
+  const gen = ++allowlistBrowseGeneration;
   try {
     const userStore = createStoreByModel('auth.User');
     const user = (await userStore.Browse(userId, ['Id', 'CompanyId', 'CompanyIds'] as any)) as any;
-    // Discard late Browse results after logout / user switch.
+    // Discard superseded or post-logout Browse results.
+    if (gen !== allowlistBrowseGeneration) return;
     if (String((authStore.identity as any)?.userId || '').trim() !== userId) return;
     liveAllowedCompanyIds.value = uniqCompanyIds([
       String(user?.CompanyId ?? '').trim(),
@@ -425,6 +421,7 @@ async function syncAllowedCompaniesFromUser(): Promise<void> {
     ]);
     liveAllowlistReady.value = true;
   } catch {
+    if (gen !== allowlistBrowseGeneration) return;
     // Fail soft: keep metadata-derived allowlist.
     liveAllowlistReady.value = false;
   }
@@ -432,6 +429,8 @@ async function syncAllowedCompaniesFromUser(): Promise<void> {
 
 /** Skip one visible-open allowlist Browse when identity activate already refreshed. */
 let skipNextOpenAllowlistRefresh = false;
+/** Skip open-time draft reset after a failed switch so the user can retry Confirm. */
+let preserveDraftOnNextOpen = false;
 /** In-flight company label/hierarchy Search promise. */
 let companiesInFlight: Promise<void> | null = null;
 
@@ -456,6 +455,8 @@ async function refreshAllowlist(): Promise<void> {
 async function onIdentityActivate(): Promise<void> {
   if (submitting.value || visible.value) return;
   await refreshAllowlist();
+  // Panel may have opened concurrently while allowlist was loading.
+  if (visible.value) return;
   if (allowedCompanyIds.value.length >= 2) {
     skipNextOpenAllowlistRefresh = true;
     visible.value = true;
@@ -485,9 +486,13 @@ watch(visible, async isOpen => {
     return;
   }
   const openGen = ++panelOpenGeneration;
-  const synced = ensureActiveInEnabledScope(currentActiveCompanyId.value, currentEnabledCompanyIds.value);
-  draftActiveCompanyId.value = synced.activeCompanyId;
-  draftEnabledCompanyIds.value = synced.enabledCompanyIds;
+  if (preserveDraftOnNextOpen) {
+    preserveDraftOnNextOpen = false;
+  } else {
+    const synced = ensureActiveInEnabledScope(currentActiveCompanyId.value, currentEnabledCompanyIds.value);
+    draftActiveCompanyId.value = synced.activeCompanyId;
+    draftEnabledCompanyIds.value = synced.enabledCompanyIds;
+  }
   searchFilter.value = '';
 
   if (skipNextOpenAllowlistRefresh) {
@@ -591,6 +596,7 @@ async function commitScope(activeCompanyId: string, enabledCompanyIds: string[])
   } catch {
     draftActiveCompanyId.value = next.activeCompanyId;
     draftEnabledCompanyIds.value = next.enabledCompanyIds;
+    preserveDraftOnNextOpen = true;
     visible.value = true;
   } finally {
     submitting.value = false;
@@ -608,7 +614,7 @@ async function onLogIntoCompany(companyId: string): Promise<void> {
     await ensureCompanies();
   }
   const target = String(companyId ?? '').trim();
-  if (!target) return;
+  if (!target || !allowedCompanyIds.value.includes(target)) return;
 
   const next = logIntoCompany({
     companyId: target,
@@ -616,7 +622,11 @@ async function onLogIntoCompany(companyId: string): Promise<void> {
     draftEnabledCompanyIds: effectiveCurrentEnabledCompanyIds.value,
     children: childrenMap.value,
   });
-  const scope = ensureActiveInEnabledScope(next.activeCompanyId, next.enabledCompanyIds);
+  const allowed = new Set(allowedCompanyIds.value);
+  const scope = ensureActiveInEnabledScope(
+    next.activeCompanyId,
+    next.enabledCompanyIds.filter(id => allowed.has(id)),
+  );
   if (!scope.activeCompanyId || !scope.enabledCompanyIds.length) return;
 
   // Already on this active + enabled set: close without a no-op SwitchCompanyScope.
@@ -636,6 +646,7 @@ async function onLogIntoCompany(companyId: string): Promise<void> {
     visible.value = false;
     await authStore.switchCompanyScope(scope.activeCompanyId, scope.enabledCompanyIds);
   } catch {
+    preserveDraftOnNextOpen = true;
     visible.value = true;
   } finally {
     submitting.value = false;

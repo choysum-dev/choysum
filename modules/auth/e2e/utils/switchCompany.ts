@@ -42,22 +42,6 @@ async function readActiveCompanyIdFromAuth(): Promise<string> {
 async function clickOtherCompanyLoginto(): Promise<void> {
   await expect(page.getByTestId('company-switch-panel')).toBeVisible({ timeout: 10_000 });
 
-  // Companies load async after the panel opens; wait until a non-active row exists.
-  await expect
-    .poll(
-      async () =>
-        page.evaluate(() => {
-          const items = Array.from(
-            document.querySelectorAll('[data-testid="company-switch-item"]'),
-          ) as HTMLElement[];
-          return items
-            .map(el => String(el.getAttribute('data-company-id') || '').trim())
-            .filter(Boolean).length;
-        }),
-      { timeout: 10_000 },
-    )
-    .toBeGreaterThanOrEqual(2);
-
   let activeCompanyId = '';
   let lastReadErr: unknown;
   const deadline = Date.now() + 5_000;
@@ -84,6 +68,28 @@ async function clickOtherCompanyLoginto(): Promise<void> {
       }`,
     );
   }
+
+  // Rows seed before labelsReady; wait for an enabled non-active loginto control.
+  await expect
+    .poll(
+      async () =>
+        page.evaluate((active: string) => {
+          const items = Array.from(
+            document.querySelectorAll('[data-testid="company-switch-item"]'),
+          ) as HTMLElement[];
+          for (const el of items) {
+            const id = String(el.getAttribute('data-company-id') || '').trim();
+            if (!id || id === active) continue;
+            const btn = el.querySelector(
+              '[data-testid="company-switch-loginto"]',
+            ) as HTMLButtonElement | null;
+            if (btn && !btn.disabled) return true;
+          }
+          return false;
+        }, activeCompanyId),
+      { timeout: 10_000 },
+    )
+    .toBe(true);
 
   const otherCompanyId = await page.evaluate((active: string) => {
     const items = Array.from(

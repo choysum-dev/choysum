@@ -146,8 +146,7 @@ export function buildCompanyTreeEntries(
   const walk = (id: string, level: number) => {
     if (visited.has(id)) return;
     visited.add(id);
-    const row = byId.get(id);
-    if (!row) return;
+    const row = byId.get(id)!;
     const childIds = children.get(id) || [];
     out.push({
       id,
@@ -226,8 +225,8 @@ export function isSingleCompanyMode(
     else if (root !== cur) return false;
   }
 
-  if (!root) return true;
-  const queue = [...(children.get(root) || [])];
+  // enabled.length > 1 always assigns root on the first iteration.
+  const queue = [...(children.get(root as string) || [])];
   const queued = new Set<string>();
   while (queue.length) {
     const id = queue.pop()!;
@@ -258,7 +257,8 @@ export function logIntoCompany(opts: {
   const branch = collectCompanyBranchIds(companyId, opts.children);
 
   if (isSingleCompanyMode(enabled, opts.children)) {
-    enabled = branch.length ? branch : [companyId];
+    // collectCompanyBranchIds always includes companyId when non-empty.
+    enabled = branch;
   } else {
     for (const id of branch) {
       if (!enabled.includes(id)) enabled.push(id);
@@ -266,7 +266,6 @@ export function logIntoCompany(opts: {
     enabled = [companyId, ...enabled.filter(id => id !== companyId)];
   }
 
-  if (!enabled.includes(companyId)) enabled = [companyId, ...enabled];
   return { activeCompanyId: companyId, enabledCompanyIds: enabled };
 }
 

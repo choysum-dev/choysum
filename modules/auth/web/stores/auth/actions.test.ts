@@ -659,6 +659,41 @@ test('refreshToken: discards a late RefreshTokens result after SwitchCompanyScop
   expect(mockHelpers._recorders.updateTokenIdentity.calls.length).toBe(0);
 });
 
+test('refreshToken: superseded refresh failure keeps the switched session', async () => {
+  const mockState = buildMockState();
+  const mockHelpers = buildMockHelpers();
+  mockState.tokens.value = {
+    accessToken: 'access',
+    refreshToken: 'refresh-before',
+    expiresAt: Date.now() + 3600_000,
+  };
+
+  let rejectRefresh: (reason: unknown) => void = () => {};
+  const refreshDeferred = new Promise((_resolve, reject) => {
+    rejectRefresh = reject;
+  });
+  mockState._recorders.RefreshTokens.returnValue(refreshDeferred);
+
+  const actions = defineAuthActions(mockState as any, mockHelpers as any, {
+    isClient: true,
+    clearAuthStorage: () => {},
+  });
+  const refreshPromise = actions.refreshToken(false);
+
+  mockState.tokens.value = {
+    accessToken: 'switched-access',
+    refreshToken: 'switched-refresh',
+    expiresAt: Date.now() + 3600_000,
+  };
+
+  rejectRefresh(new Error('refresh aborted'));
+
+  const result = await refreshPromise;
+  expect(result.refreshToken).toBe('switched-refresh');
+  expect(mockState.tokens.value?.accessToken).toBe('switched-access');
+  expect(mockHelpers._recorders.resetAuthState.calls.length).toBe(0);
+});
+
 test('logout: sends the logout envelope', async () => {
   const mockState = buildMockState();
   const mockHelpers = buildMockHelpers();

@@ -453,20 +453,24 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
 
     // Build a single refresh flow and share it across concurrent callers.
     refreshInFlight = (async (): Promise<RefreshResult> => {
+      const refreshTokenUsed = state.tokens.value!.refreshToken;
+      const isSuperseded = () => state.tokens.value?.refreshToken !== refreshTokenUsed;
       try {
         const prevIdentity = state.identity.value || null;
-        const refreshTokenUsed = state.tokens.value!.refreshToken;
 
         const response = await state.userStore.RefreshTokens({
           RefreshToken: refreshTokenUsed,
         });
+
         if (!response || !response.accessToken) {
+          if (isSuperseded() && state.tokens.value) {
+            return state.tokens.value as RefreshResult;
+          }
           throw newAuthError({ code: AuthErrCode.REFRESH_FAILED, message: _t('RefreshTokens returned an invalid response') });
         }
 
-        // Discard late refresh results after SwitchCompanyScope (or another writer)
-        // replaced the token pair while this request was in flight.
-        if (state.tokens.value?.refreshToken !== refreshTokenUsed) {
+        // Discard late refresh results after the session token pair changed.
+        if (isSuperseded()) {
           return (state.tokens.value || response) as RefreshResult;
         }
 
@@ -495,7 +499,11 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
 
         return response;
       } catch (error) {
-        // Drop local auth state on unrecoverable refresh failures.
+        // Keep the current session when this refresh was superseded mid-flight.
+        if (isSuperseded() && state.tokens.value) {
+          return state.tokens.value as RefreshResult;
+        }
+        // Drop local auth state on unrecoverable refresh failures that still own the session.
         clearAuth();
         throw wrapAuthError(error, {
           code: AuthErrCode.REFRESH_FAILED,
