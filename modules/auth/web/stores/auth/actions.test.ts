@@ -822,6 +822,56 @@ test('loadPermissionState: same-scope failure still clears the permission snapsh
   expect(mockState.permissionState.value).toBe(null);
 });
 
+test('loadPermissionState: older same-scope response does not clobber a newer permission version', async () => {
+  const mockState = buildMockState();
+  const mockHelpers = buildMockHelpers();
+  mockState.tokens.value = {
+    accessToken: 'access',
+    refreshToken: 'refresh',
+    expiresAt: Date.now() + 3600_000,
+  };
+  mockState.identity.value = {
+    userId: 'usr_1',
+    metadata: {
+      permStateVersion: 1,
+      activeCompanyId: 'cmp_a',
+      enabledCompanyIds: ['cmp_a'],
+    },
+  } as any;
+
+  let resolvePermission: (value: unknown) => void = () => {};
+  const permissionDeferred = new Promise(resolve => {
+    resolvePermission = resolve;
+  });
+  mockState._recorders.GetPermissionState.returnValue(permissionDeferred);
+
+  const actions = defineAuthActions(mockState as any, mockHelpers as any, { isClient: true });
+  const loadPromise = actions.loadPermissionState(true);
+
+  // Newer permission epoch lands for the same company scope while v1 is in flight.
+  mockState.identity.value = {
+    userId: 'usr_1',
+    metadata: {
+      permStateVersion: 2,
+      activeCompanyId: 'cmp_a',
+      enabledCompanyIds: ['cmp_a'],
+    },
+  } as any;
+  mockState.permissionState.value = {
+    permStateVersion: 2,
+    byCompany: { cmp_a: { canRead: true } },
+  } as any;
+
+  resolvePermission({
+    permStateVersion: 1,
+    byCompany: { cmp_a: { canRead: false } },
+  });
+
+  expect(await loadPromise).toBe(true);
+  expect((mockState.permissionState.value as any)?.permStateVersion).toBe(2);
+  expect((mockState.permissionState.value as any)?.byCompany?.cmp_a?.canRead).toBe(true);
+});
+
 test('loadPermissionState: routine refresh-token rotation still applies the result', async () => {
   const mockState = buildMockState();
   const mockHelpers = buildMockHelpers();

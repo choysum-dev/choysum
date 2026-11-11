@@ -80,7 +80,7 @@ SPDX-License-Identifier: Apache-2.0
           :active-company-id="draftActiveCompanyId"
           :dirty="isDirty"
           :disabled="submitting"
-          :branch-edits-disabled="!labelsReady"
+          :branch-edits-disabled="!hierarchyReady"
           @toggle-select-all="onToggleSelectAll"
           @toggle-branch="onToggleCompanyBranch"
           @loginto="onLogIntoCompany"
@@ -168,7 +168,7 @@ SPDX-License-Identifier: Apache-2.0
         :active-company-id="draftActiveCompanyId"
         :dirty="isDirty"
         :disabled="submitting"
-        :branch-edits-disabled="!labelsReady"
+        :branch-edits-disabled="!hierarchyReady"
         @toggle-select-all="onToggleSelectAll"
         @toggle-branch="onToggleCompanyBranch"
         @loginto="onLogIntoCompany"
@@ -325,6 +325,8 @@ const companies = ref<SwitchCompanyRow[]>([]);
 const fetchedSig = ref('');
 /** True after a company-label fetch finishes (success or fail-soft). */
 const labelsReady = ref(false);
+/** True only after Search returned ParentId edges; false when hierarchy load failed. */
+const hierarchyReady = ref(false);
 
 /**
  * Seed list rows from allowed ids while DisplayName rows are still loading.
@@ -344,11 +346,13 @@ async function ensureCompanies(): Promise<void> {
     const sig = ids.slice().sort().join(',');
     if (!sig) {
       labelsReady.value = false;
+      hierarchyReady.value = false;
       return;
     }
     if (sig === fetchedSig.value) return;
     fetchedSig.value = sig;
     labelsReady.value = false;
+    hierarchyReady.value = false;
 
     try {
       const companyStore = getGlobalCompanyStore();
@@ -371,11 +375,14 @@ async function ensureCompanies(): Promise<void> {
       const map = new Map(out.map(r => [r.Id, r] as const));
       companies.value = allowedCompanyIds.value.map(id => map.get(id) ?? { Id: id, DisplayName: '' });
       labelsReady.value = true;
+      hierarchyReady.value = true;
     } catch {
       if (fetchedSig.value !== sig) return;
       fetchedSig.value = '';
       seedCompanyOptions(allowedCompanyIds.value);
+      // Labels may stay blank, but hierarchy is untrusted without ParentId edges.
       labelsReady.value = true;
+      hierarchyReady.value = false;
     }
   };
 
@@ -603,6 +610,7 @@ async function commitScope(activeCompanyId: string, enabledCompanyIds: string[])
   const next = ensureActiveInEnabledScope(active, filteredEnabled);
   if (!next.activeCompanyId || !next.enabledCompanyIds.length) {
     onResetDraft();
+    visible.value = false;
     return;
   }
   submitting.value = true;
@@ -626,12 +634,8 @@ async function commitScope(activeCompanyId: string, enabledCompanyIds: string[])
  */
 async function onLogIntoCompany(companyId: string): Promise<void> {
   if (submitting.value) return;
-  if (!labelsReady.value) {
-    try {
-      await ensureCompanies();
-    } catch {
-      // Fail soft: switch with allowlist-derived scope when hierarchy fails to load.
-    }
+  if (!hierarchyReady.value) {
+    await ensureCompanies();
   }
   if (submitting.value) return;
   const target = String(companyId ?? '').trim();
@@ -640,7 +644,7 @@ async function onLogIntoCompany(companyId: string): Promise<void> {
   const allowed = new Set(allowedCompanyIds.value);
   // Without ParentId edges, branch expansion would shrink to the target alone.
   // Keep the committed enabled set and only promote the clicked company.
-  const next = labelsReady.value
+  const next = hierarchyReady.value
     ? logIntoCompany({
         companyId: target,
         draftActiveCompanyId: currentActiveCompanyId.value,
