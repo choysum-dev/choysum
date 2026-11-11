@@ -202,6 +202,12 @@ export function isSingleCompanyMode(
   const enabledSet = new Set(enabled);
   /** Return id when it is in the enabled set; otherwise empty. */
   const getActive = (id: string) => (enabledSet.has(id) ? id : '');
+  const parentById = new Map<string, string>();
+  for (const [pid, kids] of children) {
+    for (const kid of kids) {
+      if (!parentById.has(kid)) parentById.set(kid, pid);
+    }
+  }
 
   let root: string | undefined;
   for (const companyId of enabled) {
@@ -211,13 +217,7 @@ export function isSingleCompanyMode(
     while (parentWalkGuard++ < 64) {
       if (seen.has(cur)) break;
       seen.add(cur);
-      let parentId = '';
-      for (const [pid, kids] of children) {
-        if (kids.includes(cur)) {
-          parentId = pid;
-          break;
-        }
-      }
+      const parentId = parentById.get(cur) || '';
       if (!parentId || !getActive(parentId)) break;
       cur = parentId;
     }

@@ -476,7 +476,7 @@ watch(
       liveAllowlistReady.value = false;
       return;
     }
-    void refreshAllowlist();
+    void refreshAllowlist().catch(() => undefined);
   },
   { immediate: true },
 );
@@ -599,7 +599,10 @@ async function commitScope(activeCompanyId: string, enabledCompanyIds: string[])
     active = filteredEnabled[0] || '';
   }
   const next = ensureActiveInEnabledScope(active, filteredEnabled);
-  if (!next.activeCompanyId || !next.enabledCompanyIds.length) return;
+  if (!next.activeCompanyId || !next.enabledCompanyIds.length) {
+    onResetDraft();
+    return;
+  }
   submitting.value = true;
   visible.value = false;
   try {
@@ -622,13 +625,9 @@ async function commitScope(activeCompanyId: string, enabledCompanyIds: string[])
 async function onLogIntoCompany(companyId: string): Promise<void> {
   if (submitting.value) return;
   if (!labelsReady.value) {
-    try {
-      await ensureCompanies();
-    } catch {
-      return;
-    }
+    await ensureCompanies();
   }
-  if (submitting.value) return;
+  if (submitting.value || !labelsReady.value) return;
   const target = String(companyId ?? '').trim();
   if (!target || !allowedCompanyIds.value.includes(target)) return;
 

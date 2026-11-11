@@ -738,7 +738,11 @@ test('loadPermissionState: late failure after company switch keeps the newer sna
   };
   mockState.identity.value = {
     userId: 'usr_1',
-    metadata: { permStateVersion: 1 },
+    metadata: {
+      permStateVersion: 1,
+      activeCompanyId: 'cmp_a',
+      enabledCompanyIds: ['cmp_a'],
+    },
   } as any;
   mockState.permissionState.value = {
     permStateVersion: 1,
@@ -754,7 +758,7 @@ test('loadPermissionState: late failure after company switch keeps the newer sna
   const actions = defineAuthActions(mockState as any, mockHelpers as any, { isClient: true });
   const loadPromise = actions.loadPermissionState(true);
 
-  // Company switch installs a newer session while the older permission load is in flight.
+  // Company switch changes scope while the older permission load is in flight.
   mockState.tokens.value = {
     accessToken: 'switched-access',
     refreshToken: 'switched-refresh',
@@ -762,7 +766,11 @@ test('loadPermissionState: late failure after company switch keeps the newer sna
   };
   mockState.identity.value = {
     userId: 'usr_1',
-    metadata: { permStateVersion: 2 },
+    metadata: {
+      permStateVersion: 2,
+      activeCompanyId: 'cmp_b',
+      enabledCompanyIds: ['cmp_b'],
+    },
   } as any;
   mockState.permissionState.value = {
     permStateVersion: 2,
@@ -778,7 +786,82 @@ test('loadPermissionState: late failure after company switch keeps the newer sna
     caught = err;
   }
   expect(Boolean(caught)).toBe(true);
-  expect(mockState.permissionState.value?.permStateVersion).toBe(2);
+  expect((mockState.permissionState.value as any)?.permStateVersion).toBe(2);
+});
+
+test('loadPermissionState: same-scope failure still clears the permission snapshot', async () => {
+  const mockState = buildMockState();
+  const mockHelpers = buildMockHelpers();
+  mockState.tokens.value = {
+    accessToken: 'access',
+    refreshToken: 'refresh',
+    expiresAt: Date.now() + 3600_000,
+  };
+  mockState.identity.value = {
+    userId: 'usr_1',
+    metadata: {
+      permStateVersion: 1,
+      activeCompanyId: 'cmp_a',
+      enabledCompanyIds: ['cmp_a'],
+    },
+  } as any;
+  mockState.permissionState.value = {
+    permStateVersion: 1,
+    byCompany: { cmp_a: {} },
+  } as any;
+  mockState._recorders.GetPermissionState.reject(new Error('permission down'));
+
+  const actions = defineAuthActions(mockState as any, mockHelpers as any, { isClient: true });
+  let caught: unknown;
+  try {
+    await actions.loadPermissionState(true);
+  } catch (err) {
+    caught = err;
+  }
+  expect(Boolean(caught)).toBe(true);
+  expect(mockState.permissionState.value).toBe(null);
+});
+
+test('loadPermissionState: routine refresh-token rotation still applies the result', async () => {
+  const mockState = buildMockState();
+  const mockHelpers = buildMockHelpers();
+  mockState.tokens.value = {
+    accessToken: 'access',
+    refreshToken: 'refresh-before',
+    expiresAt: Date.now() + 3600_000,
+  };
+  mockState.identity.value = {
+    userId: 'usr_1',
+    metadata: {
+      permStateVersion: 1,
+      activeCompanyId: 'cmp_a',
+      enabledCompanyIds: ['cmp_a'],
+    },
+  } as any;
+
+  let resolvePermission: (value: unknown) => void = () => {};
+  const permissionDeferred = new Promise(resolve => {
+    resolvePermission = resolve;
+  });
+  mockState._recorders.GetPermissionState.returnValue(permissionDeferred);
+
+  const actions = defineAuthActions(mockState as any, mockHelpers as any, { isClient: true });
+  const loadPromise = actions.loadPermissionState(true);
+
+  // Token rotation without company-scope change must not discard the result.
+  mockState.tokens.value = {
+    accessToken: 'rotated-access',
+    refreshToken: 'rotated-refresh',
+    expiresAt: Date.now() + 3600_000,
+  };
+
+  resolvePermission({
+    permStateVersion: 1,
+    byCompany: { cmp_a: { canRead: true } },
+  });
+
+  expect(await loadPromise).toBe(true);
+  expect((mockState.permissionState.value as any)?.byCompany?.cmp_a?.canRead).toBe(true);
 });
 
 test('refreshToken: failure after this refresh installs tokens still clears auth', async () => {
