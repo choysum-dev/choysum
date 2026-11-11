@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"strings"
 	"sync"
 	"time"
@@ -42,6 +43,10 @@ type moduleApplyParams struct {
 type moduleRunParams struct {
 	Id       string `json:"id"`
 	WithDemo bool   `json:"withDemo"`
+}
+
+type moduleReloadParams struct {
+	Id string `json:"id"`
 }
 
 type moduleOpResult struct {
@@ -475,7 +480,7 @@ func WithModuleManagementProvider(scopeProvider jsengine.ScopeProvider, opts ...
 		mmObj.Set("plan", jse.Ctx.NewFunction(moduleBridgeAsyncFactory(jse, scopeProvider, cfg, performModulePlan)))
 		mmObj.Set("apply", jse.Ctx.NewFunction(moduleBridgeAsyncFactory(jse, scopeProvider, cfg, performModuleApply)))
 		mmObj.Set("run", jse.Ctx.NewFunction(moduleBridgeAsyncFactory(jse, scopeProvider, cfg, performModuleRun)))
-		mmObj.Set("reload", jse.Ctx.NewFunction(moduleReloadAsyncFactory(jse)))
+		mmObj.Set("reload", jse.Ctx.NewFunction(moduleReloadAsyncFactory(jse, scopeProvider, cfg)))
 		mmObj.Set("syncCatalog", jse.Ctx.NewFunction(moduleBridgeAsyncFactory(jse, scopeProvider, cfg, performModuleCatalogSync)))
 		mmObj.Set("loadDemo", jse.Ctx.NewFunction(moduleBridgeAsyncFactory(jse, scopeProvider, cfg, performModuleLoadDemo)))
 
@@ -508,18 +513,59 @@ func moduleBridgeAsyncFactory(jse *quickjsengine.QuickjsEngine, scopeProvider js
 	}
 }
 
-func moduleReloadAsyncFactory(jse *quickjsengine.QuickjsEngine) func(ctx *quickjs.Context, this *quickjs.Value, args []*quickjs.Value) *quickjs.Value {
+func moduleReloadAsyncFactory(
+	jse *quickjsengine.QuickjsEngine,
+	scopeProvider jsengine.ScopeProvider,
+	cfg moduleManagementConfig,
+) func(ctx *quickjs.Context, this *quickjs.Value, args []*quickjs.Value) *quickjs.Value {
 	return func(ctx *quickjs.Context, this *quickjs.Value, args []*quickjs.Value) *quickjs.Value {
 		return ctx.NewPromise(func(resolve, reject func(*quickjs.Value)) {
-			result := map[string]any{"triggered": true, "failed": false}
+			params, err := parseJSONArgs[moduleReloadParams](args)
+			if err != nil {
+				errVal := bridgeThrow(ctx, err)
+				defer errVal.Free()
+				reject(errVal)
+				return
+			}
+			id := strings.TrimSpace(params.Id)
+			result := map[string]any{"triggered": false, "failed": false}
+			if id == "" || !reload.Registered() {
+				result["failed"] = true
+				val, marshalErr := quickjsMarshal(ctx, result)
+				if marshalErr != nil {
+					errVal := ctx.ThrowError(marshalErr)
+					defer errVal.Free()
+					reject(errVal)
+					return
+				}
+				defer val.Free()
+				resolve(val)
+				return
+			}
+
+			result["triggered"] = true
+			// Bind the ops host on the request Scope before returning so a later
+			// Trigger failure can still MarkReloadFailed after Execute completes
+			// and the engine ExecContext may have been reset.
+			markHost, markHostErr := startOpsHost(jse, scopeProvider, cfg, false)
 			go func() {
+				// Close is nil-safe on the zero host returned with startOpsHost errors.
+				defer func() { _ = markHost.Close() }()
 				time.Sleep(1 * time.Millisecond)
-				_ = reload.Trigger()
+				if triggerErr := reload.Trigger(); triggerErr != nil {
+					if markHostErr != nil || markHost.host == nil {
+						logModuleReloadMarkFailure(scopeProvider, markHost.host, id, triggerErr, markHostErr, nil)
+						return
+					}
+					if markErr := markHost.host.MarkReloadFailed(context.WithoutCancel(markHost.execCtx), id); markErr != nil {
+						logModuleReloadMarkFailure(scopeProvider, markHost.host, id, triggerErr, nil, markErr)
+					}
+				}
 			}()
 
-			val, err := quickjsMarshal(ctx, result)
-			if err != nil {
-				errVal := ctx.ThrowError(err)
+			val, marshalErr := quickjsMarshal(ctx, result)
+			if marshalErr != nil {
+				errVal := ctx.ThrowError(marshalErr)
 				defer errVal.Free()
 				reject(errVal)
 				return
@@ -541,6 +587,36 @@ func (h startedOpsHost) Close() error {
 		return nil
 	}
 	return h.executor.Stop()
+}
+
+// logModuleReloadMarkFailure reports Trigger plus bind/MarkReloadFailed errors when
+// ReloadFailed could not be persisted for the operation dialog.
+func logModuleReloadMarkFailure(
+	scopeProvider jsengine.ScopeProvider,
+	host *ops.Ops,
+	id string,
+	triggerErr, bindErr, markErr error,
+) {
+	var lg *slog.Logger
+	if host != nil && host.Scope != nil {
+		lg = host.Scope.Logger()
+	}
+	if lg == nil {
+		if runtimeScope := jsengine.ResolveScope(scopeProvider, context.Background()); runtimeScope != nil {
+			lg = runtimeScope.Logger()
+		}
+	}
+	if lg == nil {
+		return
+	}
+	attrs := []any{"operationId", id, "triggerError", triggerErr}
+	if bindErr != nil {
+		attrs = append(attrs, "bindError", bindErr)
+	}
+	if markErr != nil {
+		attrs = append(attrs, "markError", markErr)
+	}
+	lg.Warn("moduleManagement.reload: failed to record reload failure", attrs...)
 }
 
 // startOpsHost rebinds request Scope/context onto an ops host.

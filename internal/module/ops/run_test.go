@@ -103,6 +103,59 @@ func TestRun_InstallSuccessPublishesTipAndMaterializes(t *testing.T) {
 	}
 }
 
+func TestRun_AlreadySatisfiedInstallSkipsReload(t *testing.T) {
+	t.Parallel()
+	db := newOpsTestDB(t)
+	runtimeScope := newOpsTestScope(t, db)
+	mod := &pkgmeta.Module{Name: "core", Version: "1.0.0", ApplicationStr: "core", Status: pkgmeta.Installed}
+	life := &stubLifecycle{}
+	o := &Ops{
+		Scope: runtimeScope,
+		Resolver: &mapResolver{
+			peek: map[string]*pkgmeta.Module{"core": mod},
+			load: map[string]*pkgmeta.Module{"core": mod},
+		},
+		Lifecycle: life,
+		Events:    &recordingBus{},
+		LockerFactory: func(scope.Scope) statepkg.Locker {
+			return testLocker{}
+		},
+	}
+	if err := db.Create(mod).Error; err != nil {
+		t.Fatalf("seed module: %v", err)
+	}
+	if err := db.Create(&modmeta.ModuleSourceSnapshot{
+		ModuleName: "core",
+		SourceType: originLocal,
+		SourceRef:  "local",
+		Available:  true,
+		Version:    nullString("1.0.0"),
+	}).Error; err != nil {
+		t.Fatalf("seed snapshot: %v", err)
+	}
+
+	result, err := o.Plan(context.Background(), PlanRequest{ModuleName: "core", Action: ActionInstall})
+	if err != nil {
+		t.Fatalf("Plan: %v", err)
+	}
+	if len(result.ModuleOrder) == 0 || result.ModuleOrder[0].Effect != EffectAlreadySatisfied {
+		t.Fatalf("expected already_satisfied plan, got %#v", result.ModuleOrder)
+	}
+	if err := o.Apply(context.Background(), ApplyRequest{Id: result.Id}); err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+	if err := o.Run(context.Background(), RunRequest{Id: result.Id}); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	row, err := o.loadOperation(context.Background(), result.Id)
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if row.Status != StatusSucceeded || row.Phase != PhaseDone || row.ReloadTriggered || row.ReloadFailed {
+		t.Fatalf("no-op install status/phase/reload = %q/%q triggered=%v failed=%v", row.Status, row.Phase, row.ReloadTriggered, row.ReloadFailed)
+	}
+}
+
 func TestRun_InstallFailureWritesFailedStatus(t *testing.T) {
 	t.Parallel()
 	db := newOpsTestDB(t)

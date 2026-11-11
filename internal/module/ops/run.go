@@ -251,6 +251,46 @@ func (o *Ops) failOperation(ctx context.Context, row *modmeta.ModuleOperation, d
 	return nil
 }
 
+// operationRequiresProcessReload is true when the plan actually changes installed
+// modules (or decode fails and we fail safe). Already-satisfied install plans skip reload.
+func operationRequiresProcessReload(row *modmeta.ModuleOperation) bool {
+	if row == nil {
+		return false
+	}
+	switch row.Action {
+	case ActionUpgrade, ActionUninstall:
+		return true
+	case ActionInstall:
+		doc, err := unmarshalPlanDocument(row.PlanJson)
+		if err != nil || len(doc.ModuleOrder) == 0 {
+			return true
+		}
+		for _, e := range doc.ModuleOrder {
+			switch strings.TrimSpace(e.Effect) {
+			case EffectInstall, EffectUpgrade, EffectUninstall:
+				return true
+			case EffectAlreadySatisfied, "":
+				continue
+			default:
+				return true
+			}
+		}
+		for _, e := range doc.EnsureModules {
+			switch strings.TrimSpace(e.Effect) {
+			case EffectInstall, EffectUpgrade, EffectUninstall:
+				return true
+			case EffectAlreadySatisfied, "":
+				continue
+			default:
+				return true
+			}
+		}
+		return false
+	default:
+		return false
+	}
+}
+
 func (o *Ops) succeedOperation(ctx context.Context, row *modmeta.ModuleOperation) error {
 	expect := row.Status
 	now := time.Now().UTC()
@@ -261,10 +301,18 @@ func (o *Ops) succeedOperation(ctx context.Context, row *modmeta.ModuleOperation
 	row.ErrorMessage = ""
 	switch row.Action {
 	case ActionInstall, ActionUpgrade, ActionUninstall:
-		// Data is committed; web client should hard-refresh (C1 ReloadWeb).
-		row.Phase = PhaseReloading
-		row.ReloadTriggered = true
-		row.ReloadFailed = false
+		// Data is committed. When the plan mutates installed modules, leave
+		// Phase=reloading so MetaModuleOperation.Execute schedules one process
+		// reload (C1 ReloadWeb). No-op already_satisfied installs skip reload.
+		if operationRequiresProcessReload(row) {
+			row.Phase = PhaseReloading
+			row.ReloadTriggered = true
+			row.ReloadFailed = false
+		} else {
+			row.Phase = PhaseDone
+			row.ReloadTriggered = false
+			row.ReloadFailed = false
+		}
 	default:
 		row.Phase = PhaseDone
 	}

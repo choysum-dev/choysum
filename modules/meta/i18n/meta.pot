@@ -2137,6 +2137,26 @@ msgctxt "web/views/ModuleCatalogOpDrawer"
 msgid "Data written; page did not refresh"
 msgstr ""
 
+#: web/views/ModuleCatalogOpDialog.vue
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Reload:"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDialog.vue
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Retry page refresh"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDialog.vue
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Trigger Failed"
+msgstr ""
+
+#: web/views/ModuleCatalogOpDialog.vue
+msgctxt "web/views/ModuleCatalogOpDrawer"
+msgid "Triggered"
+msgstr ""
+
 #: web/views/ModuleCatalogOpDialog.vue:124
 msgctxt "web/views/ModuleCatalogOpDrawer"
 msgid "Done"

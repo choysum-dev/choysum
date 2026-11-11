@@ -492,6 +492,7 @@ jobs:
           CHOYSUM_BIN: ${{ github.workspace }}/.choysum/tmp/choysum
           MODULE: ${{ matrix.module }}
           E2E_MAX_ATTEMPTS: "2"
+          E2E_META_SCENARIO_MATRIX: "1"
         run: bash scripts/ci/run_e2e_with_retry.sh
 
   e2e-all:

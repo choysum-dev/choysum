@@ -261,11 +261,13 @@ test('meta.MetaModuleOperation Execute calls bridge.run and returns operation ro
     Action: 'install',
     ModuleName: 'core',
     Status: 'succeeded',
-    Phase: 'done',
+    Phase: 'reloading',
     ReloadTriggered: true,
     ReloadFailed: false,
   });
   let ran = false;
+  let reloaded = false;
+  let reloadId = '';
   const restore = installBridge({
     run: async (params: any) => {
       ran = true;
@@ -273,10 +275,17 @@ test('meta.MetaModuleOperation Execute calls bridge.run and returns operation ro
       expect(params.withDemo).toBe(false);
       return { ok: true };
     },
+    reload: async (params: any) => {
+      reloaded = true;
+      reloadId = String(params?.id || '');
+      return { triggered: true, failed: false };
+    },
   });
   try {
     const resp = await MetaModuleOperation.Execute({ Id: 'op-run' });
     expect(ran).toBe(true);
+    expect(reloaded).toBe(true);
+    expect(reloadId).toBe('op-run');
     expect(resp).toMatchObject({
       Id: 'op-run',
       Action: 'install',
@@ -286,6 +295,225 @@ test('meta.MetaModuleOperation Execute calls bridge.run and returns operation ro
       ReloadTriggered: true,
       ReloadFailed: false,
     });
+    expect(OP_STORE.get('op-run').Phase).toBe('done');
+  } finally {
+    restore();
+  }
+});
+
+test('meta.MetaModuleOperation Execute skips reload when ReloadFailed is set', async () => {
+  OP_STORE.set('op-reload-failed', {
+    Id: 'op-reload-failed',
+    Action: 'install',
+    ModuleName: 'core',
+    Status: 'succeeded',
+    Phase: 'reloading',
+    ReloadTriggered: true,
+    ReloadFailed: true,
+  });
+  let reloaded = false;
+  const restore = installBridge({
+    run: async () => ({ ok: true }),
+    reload: async () => {
+      reloaded = true;
+      return { triggered: true, failed: false };
+    },
+  });
+  try {
+    const resp = await MetaModuleOperation.Execute({ Id: 'op-reload-failed' });
+    expect(reloaded).toBe(false);
+    expect(resp.ReloadTriggered).toBe(true);
+    expect(resp.ReloadFailed).toBe(true);
+    expect(resp.Phase).toBe('done');
+    expect(OP_STORE.get('op-reload-failed').Phase).toBe('done');
+  } finally {
+    restore();
+  }
+});
+
+test('meta.MetaModuleOperation Execute skips reload when Phase is already done', async () => {
+  OP_STORE.set('op-phase-done', {
+    Id: 'op-phase-done',
+    Action: 'install',
+    ModuleName: 'core',
+    Status: 'succeeded',
+    Phase: 'done',
+    ReloadTriggered: true,
+    ReloadFailed: false,
+  });
+  let reloaded = false;
+  const restore = installBridge({
+    run: async () => ({ ok: true }),
+    reload: async () => {
+      reloaded = true;
+      return { triggered: true, failed: false };
+    },
+  });
+  try {
+    const resp = await MetaModuleOperation.Execute({ Id: 'op-phase-done' });
+    expect(reloaded).toBe(false);
+    expect(resp.Phase).toBe('done');
+    expect(resp.ReloadTriggered).toBe(true);
+  } finally {
+    restore();
+  }
+});
+
+test('meta.MetaModuleOperation Execute skips reload when run already terminal', async () => {
+  OP_STORE.set('op-retry', {
+    Id: 'op-retry',
+    Action: 'install',
+    ModuleName: 'core',
+    Status: 'succeeded',
+    Phase: 'reloading',
+    ReloadTriggered: true,
+    ReloadFailed: false,
+  });
+  let reloaded = false;
+  const restore = installBridge({
+    run: async () => {
+      throw new Error('ops: operation "op-retry" status is "succeeded", want queued or draft');
+    },
+    reload: async () => {
+      reloaded = true;
+      return { triggered: true, failed: false };
+    },
+  });
+  try {
+    const resp = await MetaModuleOperation.Execute({ Id: 'op-retry' });
+    expect(reloaded).toBe(false);
+    expect(resp).toMatchObject({
+      Id: 'op-retry',
+      Status: 'succeeded',
+      Phase: 'reloading',
+      ReloadTriggered: true,
+      ReloadFailed: false,
+    });
+  } finally {
+    restore();
+  }
+});
+
+test('meta.MetaModuleOperation Execute records ReloadFailed when reload throws', async () => {
+  OP_STORE.set('op-reload-err', {
+    Id: 'op-reload-err',
+    Action: 'upgrade',
+    ModuleName: 'core',
+    Status: 'succeeded',
+    Phase: 'reloading',
+    ReloadTriggered: true,
+    ReloadFailed: false,
+  });
+  let reloaded = false;
+  const restore = installBridge({
+    run: async () => ({ ok: true }),
+    reload: async () => {
+      reloaded = true;
+      throw new Error('reload boom');
+    },
+  });
+  try {
+    const resp = await MetaModuleOperation.Execute({ Id: 'op-reload-err' });
+    expect(reloaded).toBe(true);
+    expect(resp).toMatchObject({
+      Id: 'op-reload-err',
+      Phase: 'done',
+      ReloadTriggered: true,
+      ReloadFailed: true,
+    });
+    expect(OP_STORE.get('op-reload-err').ReloadFailed).toBe(true);
+    expect(OP_STORE.get('op-reload-err').Phase).toBe('done');
+  } finally {
+    restore();
+  }
+});
+
+test('meta.MetaModuleOperation Execute does not mark ReloadFailed when Phase persist throws after reload', async () => {
+  OP_STORE.set('op-phase-persist', {
+    Id: 'op-phase-persist',
+    Action: 'install',
+    ModuleName: 'core',
+    Status: 'succeeded',
+    Phase: 'reloading',
+    ReloadTriggered: true,
+    ReloadFailed: false,
+  });
+  const origUpdate = (MetaModuleOperation as any).UpdateById;
+  (MetaModuleOperation as any).UpdateById = async () => {
+    throw new Error('persist boom');
+  };
+  let reloaded = false;
+  const restore = installBridge({
+    run: async () => ({ ok: true }),
+    reload: async () => {
+      reloaded = true;
+      return { triggered: true, failed: false };
+    },
+  });
+  try {
+    const resp = await MetaModuleOperation.Execute({ Id: 'op-phase-persist' });
+    expect(reloaded).toBe(true);
+    expect(resp.ReloadFailed).toBe(false);
+    expect(resp.ReloadTriggered).toBe(true);
+  } finally {
+    (MetaModuleOperation as any).UpdateById = origUpdate;
+    restore();
+  }
+});
+
+test('meta.MetaModuleOperation Execute records ReloadFailed when reload reports failed', async () => {
+  OP_STORE.set('op-reload-flag', {
+    Id: 'op-reload-flag',
+    Action: 'install',
+    ModuleName: 'core',
+    Status: 'succeeded',
+    Phase: 'reloading',
+    ReloadTriggered: true,
+    ReloadFailed: false,
+  });
+  let reloaded = false;
+  const restore = installBridge({
+    run: async () => ({ ok: true }),
+    reload: async (params: any) => {
+      reloaded = true;
+      expect(params.id).toBe('op-reload-flag');
+      return { triggered: false, failed: true };
+    },
+  });
+  try {
+    const resp = await MetaModuleOperation.Execute({ Id: 'op-reload-flag' });
+    expect(reloaded).toBe(true);
+    expect(resp.ReloadFailed).toBe(true);
+    expect(resp.Phase).toBe('done');
+    expect(OP_STORE.get('op-reload-flag').ReloadFailed).toBe(true);
+  } finally {
+    restore();
+  }
+});
+
+test('meta.MetaModuleOperation Execute records ReloadFailed when reload returns null', async () => {
+  OP_STORE.set('op-reload-null', {
+    Id: 'op-reload-null',
+    Action: 'install',
+    ModuleName: 'core',
+    Status: 'succeeded',
+    Phase: 'reloading',
+    ReloadTriggered: true,
+    ReloadFailed: false,
+  });
+  let reloaded = false;
+  const restore = installBridge({
+    run: async () => ({ ok: true }),
+    reload: async () => {
+      reloaded = true;
+      return null;
+    },
+  });
+  try {
+    const resp = await MetaModuleOperation.Execute({ Id: 'op-reload-null' });
+    expect(reloaded).toBe(true);
+    expect(resp.ReloadFailed).toBe(true);
+    expect(resp.Phase).toBe('done');
   } finally {
     restore();
   }

@@ -396,17 +396,63 @@ export default class MetaModuleOperation extends BaseModel {
     if (runErr && !TERMINAL_OP_STATUSES.has(status)) {
       throw runErr;
     }
+    const phase = String(row.Phase || '').toLowerCase();
+    let outPhase = String(row.Phase || '');
+    const reloadTriggered = !!row.ReloadTriggered;
+    let reloadFailed = !!row.ReloadFailed;
+    // Gate on Phase=reloading so each successful op schedules at most one reload.
+    // Retries (runErr set / Phase already done) must not restart the process again.
+    if (!runErr && phase === 'reloading' && reloadTriggered && !reloadFailed) {
+      let reloadResult: { triggered?: boolean; failed?: boolean } | null | undefined;
+      let reloadThrew = false;
+      try {
+        reloadResult = (await bridge.reload({ id })) as
+          | { triggered?: boolean; failed?: boolean }
+          | null
+          | undefined;
+      } catch {
+        reloadThrew = true;
+      }
+      // Only mark ReloadFailed when reload itself failed; Phase persist is separate
+      // so a post-success UpdateById error does not misreport Trigger Failed.
+      // Missing result or explicit non-trigger both mean no process reload was scheduled.
+      const reloadDidNotTrigger = !reloadResult || reloadResult.triggered === false;
+      if (reloadThrew || (reloadResult && reloadResult.failed) || reloadDidNotTrigger) {
+        try {
+          await this.UpdateById(id, { ReloadFailed: true, Phase: 'done' }, ['Id']);
+        } catch {
+          // Best-effort persist; still report failure in this response.
+        }
+        reloadFailed = true;
+        outPhase = 'done';
+      } else {
+        try {
+          await this.UpdateById(id, { Phase: 'done' }, ['Id']);
+          outPhase = 'done';
+        } catch {
+          // Best-effort; reload was already scheduled.
+        }
+      }
+    } else if (!runErr && phase === 'reloading' && reloadTriggered && reloadFailed) {
+      // e2e FORCE_RELOAD_FAILED (or prior mark): advance phase without calling reload.
+      try {
+        await this.UpdateById(id, { Phase: 'done' }, ['Id']);
+        outPhase = 'done';
+      } catch {
+        // Best-effort; response still reflects ReloadFailed.
+      }
+    }
     return {
       Id: String(row.Id || id),
       Action: String(row.Action || ''),
       ModuleName: String(row.ModuleName || ''),
       Status: String(row.Status || ''),
-      Phase: String(row.Phase || ''),
+      Phase: outPhase,
       ErrorDomain: row.ErrorDomain != null ? String(row.ErrorDomain) : undefined,
       ErrorCode: row.ErrorCode != null ? String(row.ErrorCode) : undefined,
       ErrorMessage: row.ErrorMessage != null ? String(row.ErrorMessage) : undefined,
-      ReloadTriggered: !!row.ReloadTriggered,
-      ReloadFailed: !!row.ReloadFailed,
+      ReloadTriggered: reloadTriggered,
+      ReloadFailed: reloadFailed,
     };
   }
 }

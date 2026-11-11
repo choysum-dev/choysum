@@ -642,6 +642,8 @@ jobs:
           CHOYSUM_BIN: ${{ github.workspace }}/.choysum/tmp/choysum
           MODULE: ${{ matrix.module }}
           E2E_MAX_ATTEMPTS: "2"
+          # meta: keep default happy-path plus reload-failed injection (not full nightly matrix).
+          E2E_EXTRA_ARGS: ${{ matrix.module == 'meta' && '--scenario default --scenario reload-failed' || '' }}
         run: bash scripts/ci/run_e2e_with_retry.sh
 
   e2e-all:

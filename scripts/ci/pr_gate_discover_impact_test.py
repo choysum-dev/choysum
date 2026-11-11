@@ -26,6 +26,67 @@ def load_mod():
 
 
 class DiscoverImpactE2ERoutingTest(unittest.TestCase):
+    def test_meta_reload_path_forces_direct_meta_e2e(self):
+        mod = load_mod()
+        self.assertTrue(mod.is_meta_reload_e2e_path("modules/meta/service/models/module_operation.ts"))
+        self.assertTrue(mod.is_meta_reload_e2e_path("internal/server/reload/hook.go"))
+        self.assertFalse(mod.is_meta_reload_e2e_path("modules/meta/web/views/Other.vue"))
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp)
+            modules = root / "modules"
+            (modules / "meta" / "e2e").mkdir(parents=True)
+            (modules / "meta" / "e2e" / "smoke.spec.ts").write_text("// smoke\n", encoding="utf-8")
+            (modules / "meta" / "service" / "models").mkdir(parents=True)
+            (modules / "auth" / "e2e").mkdir(parents=True)
+            (modules / "auth" / "e2e" / "smoke.spec.ts").write_text("// smoke\n", encoding="utf-8")
+
+            changed = ["modules/meta/service/models/module_operation.ts"]
+            with patch.object(mod, "MODULES_ROOT", modules), patch.object(
+                mod.subprocess, "run"
+            ) as run_mock:
+                run_mock.return_value = Mock(
+                    stdout="\n".join(changed) + "\n",
+                    returncode=0,
+                )
+                with patch.dict(
+                    mod.os.environ,
+                    {"PR_BASE_SHA": "base", "PR_HEAD_SHA": "head"},
+                    clear=False,
+                ):
+                    out = mod.pull_request_outputs(["auth", "meta"])
+
+            self.assertEqual(out["impacted_direct_e2e_modules_json"], '["meta"]')
+            self.assertNotIn("meta", out["impacted_smoke_e2e_modules_json"])
+
+    def test_meta_reload_doc_only_path_stays_docs_only(self):
+        mod = load_mod()
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp)
+            modules = root / "modules"
+            (modules / "meta" / "e2e").mkdir(parents=True)
+            (modules / "meta" / "e2e" / "smoke.spec.ts").write_text("// smoke\n", encoding="utf-8")
+            (modules / "meta" / "e2e" / "README.md").write_text("# e2e\n", encoding="utf-8")
+
+            changed = ["modules/meta/e2e/README.md"]
+            with patch.object(mod, "MODULES_ROOT", modules), patch.object(
+                mod.subprocess, "run"
+            ) as run_mock:
+                run_mock.return_value = Mock(
+                    stdout="\n".join(changed) + "\n",
+                    returncode=0,
+                )
+                with patch.dict(
+                    mod.os.environ,
+                    {"PR_BASE_SHA": "base", "PR_HEAD_SHA": "head"},
+                    clear=False,
+                ):
+                    out = mod.pull_request_outputs(["meta"])
+
+            self.assertEqual(out["docs_only"], "true")
+            self.assertEqual(out["impacted_direct_e2e_modules_json"], "[]")
+            self.assertEqual(out["run_pr_smoke_e2e"], "false")
+
     def test_direct_e2e_edit_on_smoke_module_gets_full_suite(self):
         mod = load_mod()
         with tempfile.TemporaryDirectory() as tmp:

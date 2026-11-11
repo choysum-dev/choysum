@@ -92,6 +92,7 @@ jobs:
           E2E_MAX_ATTEMPTS: "3"
           # 3×25m leaves margin for checkout/CLI/Chromium inside job timeout 120.
           E2E_ATTEMPT_TIMEOUT: "25m"
+          E2E_META_SCENARIO_MATRIX: "1"
         run: bash scripts/ci/run_e2e_with_retry.sh
 
   e2e-all:

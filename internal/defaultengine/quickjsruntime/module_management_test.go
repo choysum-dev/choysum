@@ -23,6 +23,7 @@ import (
 	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	"github.com/choysum-dev/choysum/internal/module/ops"
 	"github.com/choysum-dev/choysum/internal/module/plan"
+	"github.com/choysum-dev/choysum/internal/server/reload"
 	"github.com/choysum-dev/choysum/internal/testing/scopetest"
 	"github.com/choysum-dev/choysum/pkg/bus"
 	"github.com/choysum-dev/choysum/pkg/config"
@@ -563,6 +564,109 @@ func TestModuleManagementApplyRunHooksForceFailureSeams(t *testing.T) {
 		}
 		if !row.ReloadTriggered || !row.ReloadFailed {
 			t.Fatalf("reload flags = triggered=%v failed=%v", row.ReloadTriggered, row.ReloadFailed)
+		}
+	})
+
+	t.Run("reload requires id and registered hook; Trigger error marks ReloadFailed", func(t *testing.T) {
+		engine := newTestQuickjsEngine(t, WithModuleManagementProvider(
+			jsengine.StaticScopeProvider(baseScope),
+			moduleManagementOptionFunc(func(cfg *moduleManagementConfig) {
+				cfg.moduleLifecycleFactory = func(scope.Scope, jsexecutor.JsExecutor, statepkg.LockerFactory) lifecycle.Service {
+					return life
+				}
+				cfg.opsHostFactory = func(runtimeScope scope.Scope, _ jsexecutor.JsExecutor, lockerFactory statepkg.LockerFactory, ev bus.EventBus) *ops.Ops {
+					return &ops.Ops{
+						Scope:         runtimeScope,
+						Lifecycle:     life,
+						Resolver:      &mapResolver{peek: map[string]*pkgmeta.Module{"core": mod}},
+						LockerFactory: lockerFactory,
+						Events:        ev,
+					}
+				}
+			}),
+		))
+		missing := awaitModuleManagementJSON(t, engine, `$choysum.moduleManagement.reload({})`)
+		if triggered, _ := missing["triggered"].(bool); triggered {
+			t.Fatalf("missing id should not trigger, got %#v", missing)
+		}
+		if failed, _ := missing["failed"].(bool); !failed {
+			t.Fatalf("missing id should fail, got %#v", missing)
+		}
+
+		reload.Register(nil)
+		t.Cleanup(func() { reload.Register(nil) })
+		noHook := awaitModuleManagementJSON(t, engine, `$choysum.moduleManagement.reload({id: "no-hook"})`)
+		if failed, _ := noHook["failed"].(bool); !failed {
+			t.Fatalf("no hook should fail, got %#v", noHook)
+		}
+
+		planJSON := awaitModuleManagementJSON(t, engine, `$choysum.moduleManagement.plan({ moduleName: 'core', action: 'install', origin: 'local' })`)
+		planID, _ := planJSON["id"].(string)
+		_ = awaitModuleManagementJSON(t, engine, `$choysum.moduleManagement.apply({ id: `+jsString(planID)+` })`)
+		runJSON := awaitModuleManagementJSON(t, engine, `$choysum.moduleManagement.run({ id: `+jsString(planID)+` })`)
+		if ok, _ := runJSON["ok"].(bool); !ok {
+			t.Fatalf("run = %#v", runJSON)
+		}
+
+		reload.Register(func() error { return errors.New("restart boom") })
+		reloadJSON := awaitModuleManagementJSON(t, engine, `$choysum.moduleManagement.reload({id: `+jsString(planID)+` })`)
+		if triggered, _ := reloadJSON["triggered"].(bool); !triggered {
+			t.Fatalf("reload schedule = %#v", reloadJSON)
+		}
+		deadline := time.Now().Add(2 * time.Second)
+		for {
+			var row modmeta.ModuleOperation
+			if err := db.Where("id = ?", planID).Take(&row).Error; err != nil {
+				t.Fatalf("load after reload: %v", err)
+			}
+			if row.ReloadFailed {
+				break
+			}
+			if time.Now().After(deadline) {
+				t.Fatalf("ReloadFailed not set after Trigger error; row=%#v", row)
+			}
+			time.Sleep(20 * time.Millisecond)
+		}
+	})
+
+	t.Run("reload rejects bad args and skips MarkReloadFailed when host bind fails", func(t *testing.T) {
+		engine := newTestQuickjsEngine(t, WithModuleManagementProvider(
+			jsengine.StaticScopeProvider(baseScope),
+			moduleManagementOptionFunc(func(cfg *moduleManagementConfig) {
+				cfg.moduleLifecycleFactory = func(scope.Scope, jsexecutor.JsExecutor, statepkg.LockerFactory) lifecycle.Service {
+					return life
+				}
+				cfg.opsHostFactory = func(runtimeScope scope.Scope, _ jsexecutor.JsExecutor, lockerFactory statepkg.LockerFactory, ev bus.EventBus) *ops.Ops {
+					return &ops.Ops{
+						Scope:         runtimeScope,
+						Lifecycle:     life,
+						Resolver:      &mapResolver{peek: map[string]*pkgmeta.Module{"core": mod}},
+						LockerFactory: lockerFactory,
+						Events:        ev,
+					}
+				}
+			}),
+		))
+		rejectContains(t, engine, `$choysum.moduleManagement.reload("not-json")`, "")
+
+		triggered := make(chan struct{}, 1)
+		reload.Register(func() error {
+			triggered <- struct{}{}
+			return errors.New("restart boom")
+		})
+		t.Cleanup(func() { reload.Register(nil) })
+
+		nilScopeEngine := newTestQuickjsEngine(t, WithModuleManagementProvider(
+			func(context.Context) scope.Scope { return nil },
+		))
+		reloadJSON := awaitModuleManagementJSON(t, nilScopeEngine, `$choysum.moduleManagement.reload({id: "host-bind-miss"})`)
+		if okTriggered, _ := reloadJSON["triggered"].(bool); !okTriggered {
+			t.Fatalf("reload should still schedule when host bind fails, got %#v", reloadJSON)
+		}
+		select {
+		case <-triggered:
+		case <-time.After(2 * time.Second):
+			t.Fatal("expected Trigger to run even when startOpsHost fails")
 		}
 	})
 
