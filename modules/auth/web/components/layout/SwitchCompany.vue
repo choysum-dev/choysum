@@ -637,11 +637,7 @@ async function commitScope(activeCompanyId: string, enabledCompanyIds: string[])
 async function onLogIntoCompany(companyId: string): Promise<void> {
   if (submitting.value) return;
   if (!hierarchyReady.value) {
-    try {
-      await ensureCompanies();
-    } catch {
-      return;
-    }
+    await ensureCompanies();
   }
   if (submitting.value) return;
   const target = String(companyId ?? '').trim();
