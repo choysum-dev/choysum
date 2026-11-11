@@ -73,6 +73,32 @@ test('buildCompanyChildrenMap: ignores parents outside the allowed set', () => {
   expect(children.has('missing-parent')).toBe(false);
 });
 
+test('buildCompanyChildrenMap: duplicate ParentId edges are de-duplicated', () => {
+  const children = buildCompanyChildrenMap([
+    { Id: 'p', DisplayName: 'Parent' },
+    { Id: 'c', DisplayName: 'Child', ParentId: 'p' },
+    { Id: 'c', DisplayName: 'Child again', ParentId: 'p' },
+  ]);
+  expect(children.get('p')).toEqual(['c']);
+});
+
+test('isSingleCompanyMode: ParentId cycles stop parent walks and queue revisits', () => {
+  // Mutual parents: distinct climb roots → not single-company mode (covers seen.has).
+  const mutual = new Map<string, string[]>([
+    ['a', ['b']],
+    ['b', ['a']],
+  ]);
+  expect(isSingleCompanyMode(['a', 'b'], mutual)).toBe(false);
+
+  // Shared root with a cyclic sibling edge covers queued.has during the BFS check.
+  const withRoot = new Map<string, string[]>([
+    ['root', ['a', 'b']],
+    ['a', ['b']],
+    ['b', ['a']],
+  ]);
+  expect(isSingleCompanyMode(['root', 'a', 'b'], withRoot)).toBe(true);
+});
+
 test('collectCompanyBranchIds: includes self and descendants', () => {
   const children = buildCompanyChildrenMap(rows);
   expect(collectCompanyBranchIds('eu', children)).toEqual(['eu', 'be']);

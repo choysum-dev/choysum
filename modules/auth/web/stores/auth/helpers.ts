@@ -88,12 +88,8 @@ export function defineAuthHelpers(state: AuthState) {
 
     try {
       state.identity.value = extractIdentity(state.tokens.value.accessToken);
-      if (state.identity.value) {
-        publishIdentityCompanyScope();
-      } else {
-        clearCompanyScopeView();
-      }
-      return !!state.identity.value;
+      publishIdentityCompanyScope();
+      return true;
     } catch (error) {
       // Clear stale identity state before surfacing the wrapped error.
       state.identity.value = null;

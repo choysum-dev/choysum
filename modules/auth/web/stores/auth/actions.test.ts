@@ -694,6 +694,80 @@ test('refreshToken: superseded refresh failure keeps the switched session', asyn
   expect(mockHelpers._recorders.resetAuthState.calls.length).toBe(0);
 });
 
+test('refreshToken: superseded invalid RefreshTokens response keeps the switched session', async () => {
+  const mockState = buildMockState();
+  const mockHelpers = buildMockHelpers();
+  mockState.tokens.value = {
+    accessToken: 'access',
+    refreshToken: 'refresh-before',
+    expiresAt: Date.now() + 3600_000,
+  };
+
+  let resolveRefresh: (value: unknown) => void = () => {};
+  const refreshDeferred = new Promise(resolve => {
+    resolveRefresh = resolve;
+  });
+  mockState._recorders.RefreshTokens.returnValue(refreshDeferred);
+
+  const actions = defineAuthActions(mockState as any, mockHelpers as any, {
+    isClient: true,
+    clearAuthStorage: () => {},
+  });
+  const refreshPromise = actions.refreshToken(false);
+
+  mockState.tokens.value = {
+    accessToken: 'switched-access',
+    refreshToken: 'switched-refresh',
+    expiresAt: Date.now() + 3600_000,
+  };
+
+  resolveRefresh({ accessToken: '', refreshToken: 'ignored', expiresAt: Date.now() + 3600_000 });
+
+  const result = await refreshPromise;
+  expect(result.refreshToken).toBe('switched-refresh');
+  expect(mockHelpers._recorders.resetAuthState.calls.length).toBe(0);
+});
+
+test('refreshToken: failure after this refresh installs tokens still clears auth', async () => {
+  const mockState = buildMockState();
+  const mockHelpers = buildMockHelpers();
+  mockState.tokens.value = {
+    accessToken: 'access',
+    refreshToken: 'refresh-before',
+    expiresAt: Date.now() + 3600_000,
+  };
+  mockState.identity.value = {
+    userId: 'usr_1',
+    metadata: { userVersion: 1, permStateVersion: 1 },
+  } as any;
+  mockState._recorders.RefreshTokens.resolve({
+    accessToken: 'refreshed-access',
+    refreshToken: 'refreshed-refresh',
+    expiresAt: Date.now() + 3600_000,
+  });
+  mockHelpers.updateTokenIdentity = () => {
+    mockState.identity.value = {
+      userId: 'usr_1',
+      metadata: { userVersion: 2, permStateVersion: 1 },
+    } as any;
+    throw new Error('identity boom');
+  };
+
+  const actions = defineAuthActions(mockState as any, mockHelpers as any, {
+    isClient: true,
+    clearAuthStorage: () => {},
+  });
+
+  let caught: unknown;
+  try {
+    await actions.refreshToken(false);
+  } catch (err) {
+    caught = err;
+  }
+  expect(Boolean(caught)).toBe(true);
+  expect(mockHelpers._recorders.resetAuthState.calls.length).toBeGreaterThan(0);
+});
+
 test('logout: sends the logout envelope', async () => {
   const mockState = buildMockState();
   const mockHelpers = buildMockHelpers();

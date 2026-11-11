@@ -587,7 +587,11 @@ const selectAllState = computed(() =>
  * On failure, reopen with the pending draft so the user can retry.
  */
 async function commitScope(activeCompanyId: string, enabledCompanyIds: string[]): Promise<void> {
-  const next = ensureActiveInEnabledScope(activeCompanyId, enabledCompanyIds);
+  const allowed = new Set(allowedCompanyIds.value);
+  const next = ensureActiveInEnabledScope(
+    activeCompanyId,
+    enabledCompanyIds.filter(id => allowed.has(id)),
+  );
   if (!next.activeCompanyId || !next.enabledCompanyIds.length) return;
   submitting.value = true;
   visible.value = false;
@@ -613,6 +617,7 @@ async function onLogIntoCompany(companyId: string): Promise<void> {
   if (!labelsReady.value) {
     await ensureCompanies();
   }
+  if (submitting.value) return;
   const target = String(companyId ?? '').trim();
   if (!target || !allowedCompanyIds.value.includes(target)) return;
 

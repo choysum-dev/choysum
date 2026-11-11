@@ -454,7 +454,15 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
     // Build a single refresh flow and share it across concurrent callers.
     refreshInFlight = (async (): Promise<RefreshResult> => {
       const refreshTokenUsed = state.tokens.value!.refreshToken;
-      const isSuperseded = () => state.tokens.value?.refreshToken !== refreshTokenUsed;
+      // Track the pair this refresh installs so our own write is not treated as
+      // a superseding writer when a later step (identity / permission load) fails.
+      let installedRefreshToken: string | null = null;
+      const isSupersededByOther = () => {
+        const current = state.tokens.value?.refreshToken;
+        if (!current) return false;
+        if (installedRefreshToken !== null) return current !== installedRefreshToken;
+        return current !== refreshTokenUsed;
+      };
       try {
         const prevIdentity = state.identity.value || null;
 
@@ -463,19 +471,20 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
         });
 
         if (!response || !response.accessToken) {
-          if (isSuperseded() && state.tokens.value) {
+          if (isSupersededByOther() && state.tokens.value) {
             return state.tokens.value as RefreshResult;
           }
           throw newAuthError({ code: AuthErrCode.REFRESH_FAILED, message: _t('RefreshTokens returned an invalid response') });
         }
 
-        // Discard late refresh results after the session token pair changed.
-        if (isSuperseded()) {
-          return (state.tokens.value || response) as RefreshResult;
+        // Discard late refresh results after another writer replaced the session.
+        if (isSupersededByOther()) {
+          return state.tokens.value as RefreshResult;
         }
 
         // Persist the refreshed token pair and identity.
         state.tokens.value = response;
+        installedRefreshToken = String(response.refreshToken ?? '');
         helpers.updateTokenIdentity();
         state.refreshState.lastRefreshTime = Date.now();
 
@@ -499,8 +508,8 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
 
         return response;
       } catch (error) {
-        // Keep the current session when this refresh was superseded mid-flight.
-        if (isSuperseded() && state.tokens.value) {
+        // Keep the current session only when another writer replaced our pair.
+        if (isSupersededByOther() && state.tokens.value) {
           return state.tokens.value as RefreshResult;
         }
         // Drop local auth state on unrecoverable refresh failures that still own the session.
