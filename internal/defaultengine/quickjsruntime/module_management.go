@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"strings"
 	"sync"
 	"time"
@@ -553,9 +554,12 @@ func moduleReloadAsyncFactory(
 				time.Sleep(1 * time.Millisecond)
 				if triggerErr := reload.Trigger(); triggerErr != nil {
 					if markHostErr != nil || markHost.host == nil {
+						logModuleReloadMarkFailure(scopeProvider, markHost.host, id, triggerErr, markHostErr, nil)
 						return
 					}
-					_ = markHost.host.MarkReloadFailed(context.WithoutCancel(markHost.execCtx), id)
+					if markErr := markHost.host.MarkReloadFailed(context.WithoutCancel(markHost.execCtx), id); markErr != nil {
+						logModuleReloadMarkFailure(scopeProvider, markHost.host, id, triggerErr, nil, markErr)
+					}
 				}
 			}()
 
@@ -583,6 +587,36 @@ func (h startedOpsHost) Close() error {
 		return nil
 	}
 	return h.executor.Stop()
+}
+
+// logModuleReloadMarkFailure reports Trigger plus bind/MarkReloadFailed errors when
+// ReloadFailed could not be persisted for the operation dialog.
+func logModuleReloadMarkFailure(
+	scopeProvider jsengine.ScopeProvider,
+	host *ops.Ops,
+	id string,
+	triggerErr, bindErr, markErr error,
+) {
+	var lg *slog.Logger
+	if host != nil && host.Scope != nil {
+		lg = host.Scope.Logger()
+	}
+	if lg == nil {
+		if runtimeScope := jsengine.ResolveScope(scopeProvider, context.Background()); runtimeScope != nil {
+			lg = runtimeScope.Logger()
+		}
+	}
+	if lg == nil {
+		return
+	}
+	attrs := []any{"operationId", id, "triggerError", triggerErr}
+	if bindErr != nil {
+		attrs = append(attrs, "bindError", bindErr)
+	}
+	if markErr != nil {
+		attrs = append(attrs, "markError", markErr)
+	}
+	lg.Warn("moduleManagement.reload: failed to record reload failure", attrs...)
 }
 
 // startOpsHost rebinds request Scope/context onto an ops host.

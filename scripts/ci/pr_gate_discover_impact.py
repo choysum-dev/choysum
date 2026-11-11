@@ -356,8 +356,10 @@ def pull_request_outputs(modules):
         direct_e2e_full_modules.add("meta")
         if docs_only:
             docs_only = False
-            run_full = False
+            # Only clear run_full when this was a genuine docs-only decision; do
+            # not downgrade an existing full-matrix run (e.g. fallback_full).
             if reason == "docs-only":
+                run_full = False
                 reason = "meta-reload-e2e"
     # Smoke is the cheap fan-out path; skip modules already scheduled for full e2e.
     smoke_modules = {
