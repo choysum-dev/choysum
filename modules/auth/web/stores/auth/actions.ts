@@ -105,20 +105,19 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
   async function loadPermissionStateImpl(forceRefresh = false): Promise<boolean> {
     // Capture user + company scope for this request. Routine RefreshTokens rotation
     // must not discard a still-valid permission result; SwitchCompanyScope must.
+    const enabledScopeKey = (meta: Record<string, unknown>): string =>
+      Array.isArray(meta.enabledCompanyIds)
+        ? meta.enabledCompanyIds.map(x => String(x ?? '').trim()).filter(Boolean).slice().sort().join(',')
+        : '';
     const requestUserId = String(state.identity.value?.userId || '').trim();
     const requestMeta = ((state.identity.value as any)?.metadata ?? {}) as Record<string, unknown>;
     const requestActiveCompanyId = String(requestMeta.activeCompanyId ?? '').trim();
-    const requestEnabledKey = Array.isArray(requestMeta.enabledCompanyIds)
-      ? requestMeta.enabledCompanyIds.map(x => String(x ?? '').trim()).filter(Boolean).slice().sort().join(',')
-      : '';
+    const requestEnabledKey = enabledScopeKey(requestMeta);
     const stillOwnsCompanyScope = () => {
       if (String(state.identity.value?.userId || '').trim() !== requestUserId) return false;
       const meta = ((state.identity.value as any)?.metadata ?? {}) as Record<string, unknown>;
       const active = String(meta.activeCompanyId ?? '').trim();
-      const enabledKey = Array.isArray(meta.enabledCompanyIds)
-        ? meta.enabledCompanyIds.map(x => String(x ?? '').trim()).filter(Boolean).slice().sort().join(',')
-        : '';
-      return active === requestActiveCompanyId && enabledKey === requestEnabledKey;
+      return active === requestActiveCompanyId && enabledScopeKey(meta) === requestEnabledKey;
     };
 
     try {

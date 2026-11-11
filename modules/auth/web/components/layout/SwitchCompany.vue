@@ -627,7 +627,9 @@ async function onLogIntoCompany(companyId: string): Promise<void> {
   if (!labelsReady.value) {
     await ensureCompanies();
   }
-  if (submitting.value || !labelsReady.value) return;
+  // Do not require labelsReady: empty allowlist / cached sig can leave it false
+  // while the target is still a valid allowed id.
+  if (submitting.value) return;
   const target = String(companyId ?? '').trim();
   if (!target || !allowedCompanyIds.value.includes(target)) return;
 

@@ -364,7 +364,8 @@ export function toggleSelectAllCompanies(opts: {
   }
   return {
     activeCompanyId: active,
-    enabledCompanyIds: allowed.includes(active) ? uniqCompanyIds([active, ...allowed]) : allowed,
+    // active is already forced into allowed above when allowed is non-empty.
+    enabledCompanyIds: uniqCompanyIds([active, ...allowed]),
   };
 }
 
