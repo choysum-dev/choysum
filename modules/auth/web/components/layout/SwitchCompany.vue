@@ -79,7 +79,7 @@ SPDX-License-Identifier: Apache-2.0
           :entries="panelEntries"
           :active-company-id="draftActiveCompanyId"
           :dirty="isDirty"
-          :disabled="submitting"
+          :disabled="submitting || !labelsReady"
           @toggle-select-all="onToggleSelectAll"
           @toggle-branch="onToggleCompanyBranch"
           @loginto="onLogIntoCompany"
@@ -166,7 +166,7 @@ SPDX-License-Identifier: Apache-2.0
         :entries="panelEntries"
         :active-company-id="draftActiveCompanyId"
         :dirty="isDirty"
-        :disabled="submitting"
+        :disabled="submitting || !labelsReady"
         @toggle-select-all="onToggleSelectAll"
         @toggle-branch="onToggleCompanyBranch"
         @loginto="onLogIntoCompany"
@@ -206,6 +206,7 @@ import {
 } from '@/web';
 import { useAuthStore } from '@/auth/web/stores/auth';
 import { createStoreByModel } from '@/web/web/stores/registry';
+import { publishCompanyScopeView } from '@/web/web/stores/companyScopeView';
 import type Company from '@/base/service/models/company';
 import { createTranslate } from '@/web/web/i18n';
 import { collapsedIdentityTooltip } from './collapsed_identity_tooltip';
@@ -266,18 +267,30 @@ const currentEnabledCompanyIds = computed(() =>
     ? meta.value.enabledCompanyIds.map((x: any) => String(x ?? '').trim()).filter(Boolean)
     : ([] as string[]),
 );
-/** Latest allowlist from User.CompanyId/CompanyIds (may be newer than JWT metadata). */
+/** Latest allowlist from User.CompanyId/CompanyIds after a successful Browse. */
 const liveAllowedCompanyIds = ref<string[]>([]);
+/** True after a successful user-row allowlist Browse; then live list is authoritative. */
+const liveAllowlistReady = ref(false);
 const allowedCompanyIds = computed(() => {
+  if (liveAllowlistReady.value) {
+    return uniqCompanyIds(liveAllowedCompanyIds.value);
+  }
   const xs = Array.isArray(meta.value?.allowedCompanyIds) ? meta.value.allowedCompanyIds : [];
   const ids = xs.map((x: any) => String(x ?? '').trim()).filter(Boolean);
-  const merged = new Set<string>(
-    [...ids, ...liveAllowedCompanyIds.value, ...currentEnabledCompanyIds.value, currentActiveCompanyId.value].filter(
-      Boolean,
-    ),
-  );
-  return Array.from(merged);
+  return uniqCompanyIds([
+    ...ids,
+    ...currentEnabledCompanyIds.value,
+    currentActiveCompanyId.value,
+  ]);
 });
+
+watch(
+  [currentActiveCompanyId, currentEnabledCompanyIds],
+  ([active, enabled]) => {
+    publishCompanyScopeView(active, enabled);
+  },
+  { immediate: true },
+);
 
 const draftActiveCompanyId = ref('');
 const draftEnabledCompanyIds = ref<string[]>([]);
@@ -330,44 +343,55 @@ function seedCompanyOptions(ids: string[]): void {
  * Load company labels and ParentId edges for the currently allowed company set.
  */
 async function ensureCompanies(): Promise<void> {
-  const ids = allowedCompanyIds.value;
-  seedCompanyOptions(ids);
-  const sig = ids.slice().sort().join(',');
-  if (!sig) {
+  const run = async () => {
+    const ids = allowedCompanyIds.value;
+    seedCompanyOptions(ids);
+    const sig = ids.slice().sort().join(',');
+    if (!sig) {
+      labelsReady.value = false;
+      return;
+    }
+    if (sig === fetchedSig.value) return;
+    fetchedSig.value = sig;
     labelsReady.value = false;
-    return;
+
+    try {
+      const companyStore = getGlobalCompanyStore();
+      const rows = (await companyStore.Search(['Id', 'in', ids] as any, {
+        fields: ['Id', 'DisplayName', 'Code', 'Logo', 'ParentId'],
+        limit: 1000,
+      } as any)) as any[];
+      if (fetchedSig.value !== sig) return;
+
+      const out: SwitchCompanyRow[] = (rows || [])
+        .map(r => ({
+          Id: String((r as any)?.Id ?? '').trim(),
+          DisplayName: String((r as any)?.DisplayName ?? '').trim(),
+          Code: String((r as any)?.Code ?? '').trim(),
+          Logo: (r as any)?.Logo,
+          ParentId: (r as any)?.ParentId,
+        }))
+        .filter(r => !!r.Id);
+
+      const map = new Map(out.map(r => [r.Id, r] as const));
+      companies.value = allowedCompanyIds.value.map(id => map.get(id) ?? { Id: id, DisplayName: '' });
+      labelsReady.value = true;
+    } catch {
+      if (fetchedSig.value !== sig) return;
+      fetchedSig.value = '';
+      seedCompanyOptions(allowedCompanyIds.value);
+      labelsReady.value = true;
+    }
+  };
+
+  if (companiesInFlight) {
+    await companiesInFlight;
+    if (fetchedSig.value === allowedCompanyIds.value.slice().sort().join(',')) return;
   }
-  if (sig === fetchedSig.value) return;
-  fetchedSig.value = sig;
-  labelsReady.value = false;
-
-  try {
-    const companyStore = getGlobalCompanyStore();
-    const rows = (await companyStore.Search(['Id', 'in', ids] as any, {
-      fields: ['Id', 'DisplayName', 'Code', 'Logo', 'ParentId'],
-      limit: 1000,
-    } as any)) as any[];
-    if (fetchedSig.value !== sig) return;
-
-    const out: SwitchCompanyRow[] = (rows || [])
-      .map(r => ({
-        Id: String((r as any)?.Id ?? '').trim(),
-        DisplayName: String((r as any)?.DisplayName ?? '').trim(),
-        Code: String((r as any)?.Code ?? '').trim(),
-        Logo: (r as any)?.Logo,
-        ParentId: (r as any)?.ParentId,
-      }))
-      .filter(r => !!r.Id);
-
-    const map = new Map(out.map(r => [r.Id, r] as const));
-    companies.value = allowedCompanyIds.value.map(id => map.get(id) ?? { Id: id, DisplayName: '' });
-    labelsReady.value = true;
-  } catch {
-    if (fetchedSig.value !== sig) return;
-    fetchedSig.value = '';
-    seedCompanyOptions(allowedCompanyIds.value);
-    labelsReady.value = true;
-  }
+  companiesInFlight = run().finally(() => {
+    companiesInFlight = null;
+  });
+  await companiesInFlight;
 }
 
 watch(
@@ -385,18 +409,31 @@ watch(
  */
 async function syncAllowedCompaniesFromUser(): Promise<void> {
   const userId = String((authStore.identity as any)?.userId || '').trim();
-  if (!userId) return;
+  if (!userId) {
+    liveAllowlistReady.value = false;
+    liveAllowedCompanyIds.value = [];
+    return;
+  }
   try {
     const userStore = createStoreByModel('auth.User');
     const user = (await userStore.Browse(userId, ['Id', 'CompanyId', 'CompanyIds'] as any)) as any;
+    // Discard late Browse results after logout / user switch.
+    if (String((authStore.identity as any)?.userId || '').trim() !== userId) return;
     liveAllowedCompanyIds.value = uniqCompanyIds([
       String(user?.CompanyId ?? '').trim(),
       ...(Array.isArray(user?.CompanyIds) ? user.CompanyIds.map((x: any) => String(x ?? '').trim()) : []),
     ]);
+    liveAllowlistReady.value = true;
   } catch {
     // Fail soft: keep metadata-derived allowlist.
+    liveAllowlistReady.value = false;
   }
 }
+
+/** Skip one visible-open allowlist Browse when identity activate already refreshed. */
+let skipNextOpenAllowlistRefresh = false;
+/** In-flight company label/hierarchy Search promise. */
+let companiesInFlight: Promise<void> | null = null;
 
 /**
  * Refresh allowlist from the user row so the trigger can unlock after CompanyIds
@@ -420,6 +457,7 @@ async function onIdentityActivate(): Promise<void> {
   if (submitting.value || visible.value) return;
   await refreshAllowlist();
   if (allowedCompanyIds.value.length >= 2) {
+    skipNextOpenAllowlistRefresh = true;
     visible.value = true;
   }
 }
@@ -430,6 +468,7 @@ watch(
   userId => {
     if (!userId) {
       liveAllowedCompanyIds.value = [];
+      liveAllowlistReady.value = false;
       return;
     }
     void refreshAllowlist();
@@ -451,10 +490,13 @@ watch(visible, async isOpen => {
   draftEnabledCompanyIds.value = synced.enabledCompanyIds;
   searchFilter.value = '';
 
+  if (skipNextOpenAllowlistRefresh) {
+    skipNextOpenAllowlistRefresh = false;
+    return;
+  }
   await refreshAllowlist();
   if (openGen !== panelOpenGeneration || !visible.value) return;
 });
-
 const companyNameById = computed(() => {
   const m = new Map<string, string>();
   for (const c of companies.value) {
@@ -537,6 +579,7 @@ const selectAllState = computed(() =>
 /**
  * Persist a company scope. Close the panel first so it is not left open over the
  * page loading mask while SwitchCompanyScope refreshes PermissionState / remounts views.
+ * On failure, reopen with the pending draft so the user can retry.
  */
 async function commitScope(activeCompanyId: string, enabledCompanyIds: string[]): Promise<void> {
   const next = ensureActiveInEnabledScope(activeCompanyId, enabledCompanyIds);
@@ -545,6 +588,10 @@ async function commitScope(activeCompanyId: string, enabledCompanyIds: string[])
   visible.value = false;
   try {
     await authStore.switchCompanyScope(next.activeCompanyId, next.enabledCompanyIds);
+  } catch {
+    draftActiveCompanyId.value = next.activeCompanyId;
+    draftEnabledCompanyIds.value = next.enabledCompanyIds;
+    visible.value = true;
   } finally {
     submitting.value = false;
   }
@@ -552,25 +599,44 @@ async function commitScope(activeCompanyId: string, enabledCompanyIds: string[])
 
 /**
  * Click a company name: enter immediately and close.
- * Mark submitting before mutating drafts so the confirm footer cannot flash.
+ * Uses the committed enabled scope (not pending checkbox drafts). Mark submitting
+ * before mutating drafts so the confirm footer cannot flash.
  */
 async function onLogIntoCompany(companyId: string): Promise<void> {
   if (submitting.value) return;
+  if (!labelsReady.value) {
+    await ensureCompanies();
+  }
+  const target = String(companyId ?? '').trim();
+  if (!target) return;
+
+  const next = logIntoCompany({
+    companyId: target,
+    draftActiveCompanyId: currentActiveCompanyId.value,
+    draftEnabledCompanyIds: effectiveCurrentEnabledCompanyIds.value,
+    children: childrenMap.value,
+  });
+  const scope = ensureActiveInEnabledScope(next.activeCompanyId, next.enabledCompanyIds);
+  if (!scope.activeCompanyId || !scope.enabledCompanyIds.length) return;
+
+  // Already on this active + enabled set: close without a no-op SwitchCompanyScope.
+  if (
+    scope.activeCompanyId === currentActiveCompanyId.value
+    && setEqCompanyIds(scope.enabledCompanyIds, effectiveCurrentEnabledCompanyIds.value)
+  ) {
+    visible.value = false;
+    return;
+  }
+
   submitting.value = true;
+  draftActiveCompanyId.value = scope.activeCompanyId;
+  draftEnabledCompanyIds.value = scope.enabledCompanyIds;
   try {
-    const next = logIntoCompany({
-      companyId,
-      draftActiveCompanyId: draftActiveCompanyId.value,
-      draftEnabledCompanyIds: draftEnabledCompanyIds.value,
-      children: childrenMap.value,
-    });
-    draftActiveCompanyId.value = next.activeCompanyId;
-    draftEnabledCompanyIds.value = next.enabledCompanyIds;
-    const scope = ensureActiveInEnabledScope(next.activeCompanyId, next.enabledCompanyIds);
-    if (!scope.activeCompanyId || !scope.enabledCompanyIds.length) return;
     // Close before the token update remounts the page under a loading mask.
     visible.value = false;
     await authStore.switchCompanyScope(scope.activeCompanyId, scope.enabledCompanyIds);
+  } catch {
+    visible.value = true;
   } finally {
     submitting.value = false;
   }

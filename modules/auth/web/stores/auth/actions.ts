@@ -455,12 +455,19 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
     refreshInFlight = (async (): Promise<RefreshResult> => {
       try {
         const prevIdentity = state.identity.value || null;
+        const refreshTokenUsed = state.tokens.value!.refreshToken;
 
         const response = await state.userStore.RefreshTokens({
-          RefreshToken: state.tokens.value!.refreshToken,
+          RefreshToken: refreshTokenUsed,
         });
         if (!response || !response.accessToken) {
           throw newAuthError({ code: AuthErrCode.REFRESH_FAILED, message: _t('RefreshTokens returned an invalid response') });
+        }
+
+        // Discard late refresh results after SwitchCompanyScope (or another writer)
+        // replaced the token pair while this request was in flight.
+        if (state.tokens.value?.refreshToken !== refreshTokenUsed) {
+          return (state.tokens.value || response) as RefreshResult;
         }
 
         // Persist the refreshed token pair and identity.

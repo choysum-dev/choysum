@@ -4,7 +4,8 @@
 import { companyScopeViewKey } from './companyScopeViewKey';
 
 test('companyScopeViewKey: sorts enabled ids and ignores order', () => {
-  expect(companyScopeViewKey('a', ['b', 'a'])).toBe(companyScopeViewKey('a', ['a', 'b']));
+  expect(companyScopeViewKey('a', ['b', 'a'])).toBe('a|a,b');
+  expect(companyScopeViewKey('a', ['a', 'b'])).toBe('a|a,b');
 });
 
 test('companyScopeViewKey: includes active when missing from enabled', () => {

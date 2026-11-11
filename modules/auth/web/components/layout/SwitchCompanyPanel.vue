@@ -33,7 +33,6 @@ SPDX-License-Identifier: Apache-2.0
     <div
       class="choy-switch-company__list flex max-h-64 flex-col overflow-y-auto"
       data-testid="company-enabled-select"
-      role="listbox"
       :aria-label="_t('Companies')"
     >
       <div
@@ -48,13 +47,12 @@ SPDX-License-Identifier: Apache-2.0
         :style="{ paddingInlineStart: `${0.5 + entry.level * 0.75}rem` }"
         data-testid="company-switch-item"
         :data-company-id="entry.id"
-        role="option"
-        :aria-selected="entry.id === activeCompanyId"
       >
         <ChoyCheckbox
           class="size-4 shrink-0"
           :model-value="entry.checked"
           :disabled="disabled || entry.toggleDisabled"
+          :aria-label="_t('Toggle company')"
           data-testid="company-switch-toggle"
           @click.stop
           @update:model-value="emit('toggle-branch', entry.id)"
@@ -64,6 +62,7 @@ SPDX-License-Identifier: Apache-2.0
           class="flex min-w-0 flex-1 items-center gap-2 rounded-sm text-start outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
           data-testid="company-switch-loginto"
           :disabled="disabled"
+          :aria-current="entry.id === activeCompanyId ? 'true' : undefined"
           @click.stop.prevent="emit('loginto', entry.id)"
         >
           <span class="min-w-0 flex-1 truncate">{{ entry.name || entry.id }}</span>

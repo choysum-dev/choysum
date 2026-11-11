@@ -131,18 +131,12 @@ export async function switchCompanyViaUI(): Promise<void> {
           .toBe(true);
       }
 
-      // Arm before open: panel watcher always force-refreshes tokens.
-      const refreshWait = waitForGrpcWebUnaryOk(page, '/auth.User/RefreshTokens', {
-        timeoutMs: 20_000,
-      }).catch(() => undefined);
+      // Panel open only Browses the user allowlist (no RefreshTokens).
       const switchWait = waitForGrpcWebUnaryOk(page, '/auth.User/SwitchCompanyScope', {
         timeoutMs: 20_000,
       }).catch(() => undefined);
       await trigger.click();
       await expect(panel).toBeVisible({ timeout: 10_000 });
-      // Settle refresh before loginto so an in-flight RefreshTokens cannot
-      // overwrite a later SwitchCompanyScope TokenPair.
-      await refreshWait;
 
       await clickOtherCompanyLoginto();
       await switchWait;

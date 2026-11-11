@@ -993,57 +993,49 @@ msgctxt "web/components/layout/ChoyGuestShell"
 msgid "Sign up"
 msgstr ""
 
-#: web/components/layout/SwitchCompany.vue:54
-#: web/components/layout/SwitchCompany.vue:97
+#: web/components/layout/SwitchCompanyPanel.vue:10
 msgctxt "web/components/layout/SwitchCompany"
-msgid "Apply"
+msgid "Companies"
 msgstr ""
 
-#: web/components/layout/SwitchCompany.vue:39
-#: web/components/layout/SwitchCompany.vue:82
-msgctxt "web/components/layout/SwitchCompany"
-msgid "Available Companies"
-msgstr ""
-
-#: web/components/layout/SwitchCompany.vue:331
-msgctxt "web/components/layout/SwitchCompany"
-msgid "Available companies must include the current company"
-msgstr ""
-
-#: web/components/layout/SwitchCompany.vue:278
-#: web/components/layout/SwitchCompany.vue:281
+#: web/components/layout/SwitchCompany.vue:318
+#: web/components/layout/SwitchCompany.vue:321
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Company"
 msgstr ""
 
-#: web/components/layout/SwitchCompany.vue:29
-#: web/components/layout/SwitchCompany.vue:74
+#: web/components/layout/SwitchCompanyPanel.vue:31
 msgctxt "web/components/layout/SwitchCompany"
-msgid "Current Company"
+msgid "Confirm"
 msgstr ""
 
-#: web/components/layout/SwitchCompany.vue:336
+#: web/components/layout/SwitchCompanyPanel.vue:28
 msgctxt "web/components/layout/SwitchCompany"
-msgid "No changes to apply"
+msgid "Reset"
 msgstr ""
 
-#: web/components/layout/SwitchCompany.vue:334
+#: web/components/layout/SwitchCompanyPanel.vue:5
 msgctxt "web/components/layout/SwitchCompany"
-msgid "Only one company is available; nothing to apply"
+msgid "Search companies"
 msgstr ""
 
-#: web/components/layout/SwitchCompany.vue:329
+#: web/components/layout/SwitchCompanyPanel.vue:4
 msgctxt "web/components/layout/SwitchCompany"
-msgid "Select a current company"
+msgid "Select all"
 msgstr ""
 
 #: web/components/layout/SwitchCompany.vue:10
-#: web/components/layout/SwitchCompany.vue:64
+#: web/components/layout/SwitchCompany.vue:48
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Switch company"
 msgstr ""
 
-#: web/components/layout/SwitchCompany.vue:295
+#: web/components/layout/SwitchCompanyPanel.vue:16
+msgctxt "web/components/layout/SwitchCompany"
+msgid "Toggle company"
+msgstr ""
+
+#: web/components/layout/SwitchCompany.vue:335
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Workspace"
 msgstr ""
@@ -1492,7 +1484,7 @@ msgctxt "web/pages/SessionList"
 msgid "Session List"
 msgstr ""
 
-#: web/pages/Setup.vue:67
+#: web/pages/Setup.vue:75
 msgctxt "web/pages/Setup"
 msgid "Administrator Info"
 msgstr ""
@@ -1502,7 +1494,7 @@ msgctxt "web/pages/Setup"
 msgid "Back"
 msgstr ""
 
-#: web/pages/Setup.vue:10
+#: web/pages/Setup.vue:9
 msgctxt "web/pages/Setup"
 msgid "Close"
 msgstr ""
@@ -1512,53 +1504,54 @@ msgctxt "web/pages/Setup"
 msgid "Complete Setup"
 msgstr ""
 
-#: web/pages/Setup.vue
-msgctxt "web/pages/Setup"
-msgid "Failed to load demo data. You can retry from Modules later."
-msgstr ""
-
-#: web/pages/Setup.vue:74
+#: web/pages/Setup.vue:82
 msgctxt "web/pages/Setup"
 msgid "Create the administrator account"
 msgstr ""
 
-#: web/pages/setup_form.ts:27
+#: web/pages/setup_form.ts:28
 msgctxt "web/pages/Setup"
 msgid "Email is too long"
 msgstr ""
 
-#: web/pages/setup_form.ts:26
+#: web/pages/setup_form.ts:27
 msgctxt "web/pages/Setup"
 msgid "Enter a valid email address"
 msgstr ""
 
-#: web/pages/setup_form.ts:28
+#: web/pages/setup_form.ts:29
 msgctxt "web/pages/Setup"
 msgid "Enter organization name"
 msgstr ""
 
-#: web/pages/setup_form.ts:22
+#: web/pages/setup_form.ts:23
 msgctxt "web/pages/Setup"
 msgid "Enter password"
 msgstr ""
 
-#: web/pages/setup_form.ts:19
+#: web/pages/setup_form.ts:20
 msgctxt "web/pages/Setup"
 msgid "Enter username"
 msgstr ""
 
-#: web/pages/Setup.vue:149
+#: web/pages/Setup.vue:265
+#: web/pages/Setup.vue:48
+msgctxt "web/pages/Setup"
+msgid "Failed to load demo data. You can retry from Modules later."
+msgstr ""
+
+#: web/pages/Setup.vue:152
 msgctxt "web/pages/Setup"
 msgid "Failed to load setup options. Please try again."
 msgstr ""
 
-#: web/pages/Setup.vue:7
+#: web/pages/Setup.vue:6
 msgctxt "web/pages/Setup"
 msgid "Initial Setup"
 msgstr ""
 
-#: web/pages/Setup.vue:239
-#: web/pages/Setup.vue:254
+#: web/pages/Setup.vue:243
+#: web/pages/Setup.vue:276
 msgctxt "web/pages/Setup"
 msgid "Initial setup failed. Please try again later."
 msgstr ""
@@ -1573,27 +1566,27 @@ msgctxt "web/pages/Setup"
 msgid "Next"
 msgstr ""
 
-#: web/pages/Setup.vue:68
+#: web/pages/Setup.vue:76
 msgctxt "web/pages/Setup"
 msgid "Organization Info"
 msgstr ""
 
-#: web/pages/setup_form.ts:29
+#: web/pages/setup_form.ts:30
 msgctxt "web/pages/Setup"
 msgid "Organization name must be at most 100 characters"
 msgstr ""
 
-#: web/pages/setup_form.ts:23
+#: web/pages/setup_form.ts:24
 msgctxt "web/pages/Setup"
 msgid "Password must be at least 6 characters"
 msgstr ""
 
-#: web/pages/setup_form.ts:25
+#: web/pages/setup_form.ts:26
 msgctxt "web/pages/Setup"
 msgid "Passwords do not match"
 msgstr ""
 
-#: web/pages/setup_form.ts:24
+#: web/pages/setup_form.ts:25
 msgctxt "web/pages/Setup"
 msgid "Re-enter password"
 msgstr ""
@@ -1603,37 +1596,37 @@ msgctxt "web/pages/Setup"
 msgid "Retry"
 msgstr ""
 
-#: web/pages/Setup.vue:69
+#: web/pages/Setup.vue:77
 msgctxt "web/pages/Setup"
 msgid "Review"
 msgstr ""
 
-#: web/pages/Setup.vue:73
+#: web/pages/Setup.vue:81
 msgctxt "web/pages/Setup"
 msgid "Review the settings and finish setup"
 msgstr ""
 
-#: web/pages/setup_form.ts:30
+#: web/pages/setup_form.ts:31
 msgctxt "web/pages/Setup"
 msgid "Select a base currency"
 msgstr ""
 
-#: web/pages/setup_form.ts:31
+#: web/pages/setup_form.ts:32
 msgctxt "web/pages/Setup"
 msgid "Select a business timezone"
 msgstr ""
 
-#: web/pages/Setup.vue:72
+#: web/pages/Setup.vue:80
 msgctxt "web/pages/Setup"
 msgid "Set up your organization basics"
 msgstr ""
 
-#: web/pages/setup_form.ts:21
+#: web/pages/setup_form.ts:22
 msgctxt "web/pages/Setup"
 msgid "Username can only contain letters, numbers, underscores, hyphens, and dots"
 msgstr ""
 
-#: web/pages/setup_form.ts:20
+#: web/pages/setup_form.ts:21
 msgctxt "web/pages/Setup"
 msgid "Username must be at least 3 characters"
 msgstr ""
@@ -1753,24 +1746,29 @@ msgctxt "web/pages/setup/SetupReviewStep"
 msgid "Administrator"
 msgstr ""
 
-#: web/pages/setup/SetupReviewStep.vue:32
+#: web/pages/setup/SetupReviewStep.vue:34
 msgctxt "web/pages/setup/SetupReviewStep"
 msgid "Base Currency"
 msgstr ""
 
-#: web/pages/setup/SetupReviewStep.vue:33
+#: web/pages/setup/SetupReviewStep.vue:35
 msgctxt "web/pages/setup/SetupReviewStep"
 msgid "Business Timezone"
 msgstr ""
 
-#: web/pages/setup/SetupReviewStep.vue:31
+#: web/pages/setup/SetupReviewStep.vue:33
 msgctxt "web/pages/setup/SetupReviewStep"
 msgid "Country / Region"
 msgstr ""
 
-#: web/pages/setup/SetupReviewStep.vue:26
+#: web/pages/setup/SetupReviewStep.vue:28
 msgctxt "web/pages/setup/SetupReviewStep"
 msgid "Email"
+msgstr ""
+
+#: web/pages/setup/SetupReviewStep.vue:23
+msgctxt "web/pages/setup/SetupReviewStep"
+msgid "Load demo data"
 msgstr ""
 
 #: web/pages/setup/SetupReviewStep.vue:17
@@ -1779,27 +1777,22 @@ msgctxt "web/pages/setup/SetupReviewStep"
 msgid "Not provided"
 msgstr ""
 
+#: web/pages/setup/SetupReviewStep.vue:22
+msgctxt "web/pages/setup/SetupReviewStep"
+msgid "Optional"
+msgstr ""
+
 #: web/pages/setup/SetupReviewStep.vue:13
 msgctxt "web/pages/setup/SetupReviewStep"
 msgid "Organization"
 msgstr ""
 
-#: web/pages/setup/SetupReviewStep.vue:30
+#: web/pages/setup/SetupReviewStep.vue:32
 msgctxt "web/pages/setup/SetupReviewStep"
 msgid "Organization Name"
 msgstr ""
 
-#: web/pages/setup/SetupReviewStep.vue
-msgctxt "web/pages/setup/SetupReviewStep"
-msgid "Load demo data"
-msgstr ""
-
-#: web/pages/setup/SetupReviewStep.vue
-msgctxt "web/pages/setup/SetupReviewStep"
-msgid "Optional"
-msgstr ""
-
-#: web/pages/setup/SetupReviewStep.vue:25
+#: web/pages/setup/SetupReviewStep.vue:27
 msgctxt "web/pages/setup/SetupReviewStep"
 msgid "Username"
 msgstr ""
@@ -1979,7 +1972,7 @@ msgctxt "web/route/routes"
 msgid "User List"
 msgstr ""
 
-#: web/stores/auth/actions.ts:515
+#: web/stores/auth/actions.ts:522
 msgctxt "web/stores/auth/actions"
 msgid "Cannot load user details: missing userId"
 msgstr ""
@@ -1989,7 +1982,7 @@ msgctxt "web/stores/auth/actions"
 msgid "CompleteInitialSetup returned an invalid response"
 msgstr ""
 
-#: web/stores/auth/actions.ts:620
+#: web/stores/auth/actions.ts:627
 msgctxt "web/stores/auth/actions"
 msgid "Failed to initialize auth"
 msgstr ""
@@ -2009,12 +2002,12 @@ msgctxt "web/stores/auth/actions"
 msgid "Failed to load permission state"
 msgstr ""
 
-#: web/stores/auth/actions.ts:554
+#: web/stores/auth/actions.ts:561
 msgctxt "web/stores/auth/actions"
 msgid "Failed to load user details"
 msgstr ""
 
-#: web/stores/auth/actions.ts:495
+#: web/stores/auth/actions.ts:502
 msgctxt "web/stores/auth/actions"
 msgid "Failed to refresh token"
 msgstr ""
@@ -2059,7 +2052,7 @@ msgctxt "web/stores/auth/actions"
 msgid "Not authenticated; cannot switch company scope"
 msgstr ""
 
-#: web/stores/auth/actions.ts:463
+#: web/stores/auth/actions.ts:464
 msgctxt "web/stores/auth/actions"
 msgid "RefreshTokens returned an invalid response"
 msgstr ""

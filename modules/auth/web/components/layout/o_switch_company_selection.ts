@@ -68,6 +68,7 @@ export function normalizeCompanyParentId(parent: unknown): string {
     const id = (parent as { Id?: unknown }).Id;
     return String(id ?? '').trim();
   }
+  // Non-id values (boolean, symbol, …) are treated as missing parents.
   return '';
 }
 
@@ -120,6 +121,7 @@ export function buildCompanyTreeEntries(
   }
   const children = buildCompanyChildrenMap(rows);
 
+  /** Sort company ids by display label. */
   const sortIds = (ids: string[]): string[] =>
     ids.slice().sort((a, b) => {
       const la = companyDisplayLabel(byId.get(a) || { Id: a });
@@ -139,7 +141,11 @@ export function buildCompanyTreeEntries(
   );
 
   const out: SwitchCompanyTreeEntry[] = [];
+  const visited = new Set<string>();
+  /** Depth-first emit one company and its allowed children, skipping cycles. */
   const walk = (id: string, level: number) => {
+    if (visited.has(id)) return;
+    visited.add(id);
     const row = byId.get(id);
     if (!row) return;
     const childIds = children.get(id) || [];
@@ -154,6 +160,10 @@ export function buildCompanyTreeEntries(
     for (const childId of childIds) walk(childId, level + 1);
   };
   for (const rootId of roots) walk(rootId, 0);
+  // Emit cycle-only nodes that never appear under a root so they stay selectable.
+  for (const id of sortIds(Array.from(byId.keys()))) {
+    if (!visited.has(id)) walk(id, 0);
+  }
   return out;
 }
 
@@ -167,7 +177,11 @@ export function collectCompanyBranchIds(
   const root = String(companyId ?? '').trim();
   if (!root) return [];
   const out: string[] = [];
+  const visited = new Set<string>();
+  /** Collect self and descendants once; stop if ParentId forms a cycle. */
   const walk = (id: string) => {
+    if (visited.has(id)) return;
+    visited.add(id);
     out.push(id);
     for (const childId of children.get(id) || []) walk(childId);
   };
@@ -187,13 +201,17 @@ export function isSingleCompanyMode(
   if (enabled.length <= 1) return true;
 
   const enabledSet = new Set(enabled);
+  /** Return id when it is in the enabled set; otherwise empty. */
   const getActive = (id: string) => (enabledSet.has(id) ? id : '');
 
   let root: string | undefined;
   for (const companyId of enabled) {
     let cur = companyId;
     let parentWalkGuard = 0;
+    const seen = new Set<string>();
     while (parentWalkGuard++ < 64) {
+      if (seen.has(cur)) break;
+      seen.add(cur);
       let parentId = '';
       for (const [pid, kids] of children) {
         if (kids.includes(cur)) {
@@ -210,10 +228,13 @@ export function isSingleCompanyMode(
 
   if (!root) return true;
   const queue = [...(children.get(root) || [])];
+  const queued = new Set<string>();
   while (queue.length) {
     const id = queue.pop()!;
+    if (queued.has(id)) continue;
+    queued.add(id);
     if (!enabledSet.has(id)) return false;
-    queue.push(...(children.get(id) || []));
+    for (const childId of children.get(id) || []) queue.push(childId);
   }
   return true;
 }
@@ -228,11 +249,16 @@ export function logIntoCompany(opts: {
   children: Map<string, string[]>;
 }): SwitchCompanyScopeDraft {
   const companyId = String(opts.companyId ?? '').trim();
-  const branch = collectCompanyBranchIds(companyId, opts.children);
+  const draftActive = String(opts.draftActiveCompanyId ?? '').trim();
   let enabled = uniqCompanyIds(opts.draftEnabledCompanyIds);
+  if (!companyId) {
+    return { activeCompanyId: draftActive, enabledCompanyIds: enabled };
+  }
+
+  const branch = collectCompanyBranchIds(companyId, opts.children);
 
   if (isSingleCompanyMode(enabled, opts.children)) {
-    enabled = branch;
+    enabled = branch.length ? branch : [companyId];
   } else {
     for (const id of branch) {
       if (!enabled.includes(id)) enabled.push(id);
@@ -371,7 +397,6 @@ export function filterCompanyTreeBySearch(
     .replace(/\s/g, '');
   if (!filter) return entries.slice();
 
-  const byId = new Map(entries.map(e => [e.id, e] as const));
   const parentById = new Map<string, string>();
   for (const entry of entries) {
     for (const childId of entry.childIds) parentById.set(childId, entry.id);
@@ -409,8 +434,5 @@ export function ensureActiveInEnabledScope(
     enabled.unshift(active);
   }
   if (!active) active = enabled[0] || '';
-  if (active && !enabled.includes(active)) {
-    return { activeCompanyId: active, enabledCompanyIds: uniqCompanyIds([active, ...enabled]) };
-  }
   return { activeCompanyId: active, enabledCompanyIds: uniqCompanyIds(enabled) };
 }

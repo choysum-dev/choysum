@@ -620,6 +620,45 @@ test('switchCompanyScope: sends the company scope envelope', async () => {
   });
 });
 
+test('refreshToken: discards a late RefreshTokens result after SwitchCompanyScope', async () => {
+  const mockState = buildMockState();
+  const mockHelpers = buildMockHelpers();
+  mockState.tokens.value = {
+    accessToken: 'access',
+    refreshToken: 'refresh-before',
+    expiresAt: Date.now() + 3600_000,
+  };
+  mockState.identity.value = { userId: 'usr_1', metadata: { activeCompanyId: 'cmp_a' } } as any;
+
+  let resolveRefresh: (value: unknown) => void = () => {};
+  const refreshDeferred = new Promise(resolve => {
+    resolveRefresh = resolve;
+  });
+  mockState._recorders.RefreshTokens.returnValue(refreshDeferred);
+
+  const actions = defineAuthActions(mockState as any, mockHelpers as any, { isClient: true });
+  const refreshPromise = actions.refreshToken(false);
+
+  // Company switch replaces the token pair while refresh is still in flight.
+  mockState.tokens.value = {
+    accessToken: 'switched-access',
+    refreshToken: 'switched-refresh',
+    expiresAt: Date.now() + 3600_000,
+  };
+  mockState.identity.value = { userId: 'usr_1', metadata: { activeCompanyId: 'cmp_b' } } as any;
+
+  resolveRefresh({
+    accessToken: 'stale-access',
+    refreshToken: 'stale-refresh',
+    expiresAt: Date.now() + 3600_000,
+  });
+
+  const result = await refreshPromise;
+  expect(result.refreshToken).toBe('switched-refresh');
+  expect(mockState.tokens.value?.refreshToken).toBe('switched-refresh');
+  expect(mockHelpers._recorders.updateTokenIdentity.calls.length).toBe(0);
+});
+
 test('logout: sends the logout envelope', async () => {
   const mockState = buildMockState();
   const mockHelpers = buildMockHelpers();

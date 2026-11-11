@@ -971,42 +971,47 @@ msgctxt "web/components/layout/ChoyGuestShell"
 msgid "Sign up"
 msgstr "注册"
 
-#: web/components/layout/SwitchCompany.vue
-msgctxt "web/components/layout/SwitchCompany"
-msgid "Company"
-msgstr "公司"
-
-#: web/components/layout/SwitchCompanyPanel.vue
+#: web/components/layout/SwitchCompanyPanel.vue:10
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Companies"
 msgstr "公司"
 
-#: web/components/layout/SwitchCompanyPanel.vue
+#: web/components/layout/SwitchCompany.vue:318 web/components/layout/SwitchCompany.vue:321
+msgctxt "web/components/layout/SwitchCompany"
+msgid "Company"
+msgstr "公司"
+
+#: web/components/layout/SwitchCompanyPanel.vue:31
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Confirm"
 msgstr "确认"
 
-#: web/components/layout/SwitchCompanyPanel.vue
+#: web/components/layout/SwitchCompanyPanel.vue:28
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Reset"
 msgstr "重置"
 
-#: web/components/layout/SwitchCompanyPanel.vue
+#: web/components/layout/SwitchCompanyPanel.vue:5
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Search companies"
 msgstr "搜索公司"
 
-#: web/components/layout/SwitchCompanyPanel.vue
+#: web/components/layout/SwitchCompanyPanel.vue:4
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Select all"
 msgstr "全选"
 
-#: web/components/layout/SwitchCompany.vue
+#: web/components/layout/SwitchCompany.vue:10 web/components/layout/SwitchCompany.vue:48
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Switch company"
 msgstr "切换公司"
 
-#: web/components/layout/SwitchCompany.vue
+#: web/components/layout/SwitchCompanyPanel.vue:16
+msgctxt "web/components/layout/SwitchCompany"
+msgid "Toggle company"
+msgstr "切换公司"
+
+#: web/components/layout/SwitchCompany.vue:335
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Workspace"
 msgstr "工作区"
@@ -1446,7 +1451,7 @@ msgctxt "web/pages/SessionList"
 msgid "Session List"
 msgstr "会话列表"
 
-#: web/pages/Setup.vue:67
+#: web/pages/Setup.vue:75
 msgctxt "web/pages/Setup"
 msgid "Administrator Info"
 msgstr "管理员信息"
@@ -1456,7 +1461,7 @@ msgctxt "web/pages/Setup"
 msgid "Back"
 msgstr "上一步"
 
-#: web/pages/Setup.vue:10
+#: web/pages/Setup.vue:9
 msgctxt "web/pages/Setup"
 msgid "Close"
 msgstr "关闭"
@@ -1466,52 +1471,52 @@ msgctxt "web/pages/Setup"
 msgid "Complete Setup"
 msgstr "完成设置"
 
-#: web/pages/Setup.vue
-msgctxt "web/pages/Setup"
-msgid "Failed to load demo data. You can retry from Modules later."
-msgstr "演示数据加载失败，可稍后在「模块」中重试。"
-
-#: web/pages/Setup.vue:74
+#: web/pages/Setup.vue:82
 msgctxt "web/pages/Setup"
 msgid "Create the administrator account"
 msgstr "创建管理员账号"
 
-#: web/pages/setup_form.ts:27
+#: web/pages/setup_form.ts:28
 msgctxt "web/pages/Setup"
 msgid "Email is too long"
 msgstr "邮箱过长"
 
-#: web/pages/setup_form.ts:26
+#: web/pages/setup_form.ts:27
 msgctxt "web/pages/Setup"
 msgid "Enter a valid email address"
 msgstr "请输入有效的邮箱地址"
 
-#: web/pages/setup_form.ts:28
+#: web/pages/setup_form.ts:29
 msgctxt "web/pages/Setup"
 msgid "Enter organization name"
 msgstr "请输入组织名称"
 
-#: web/pages/setup_form.ts:22
+#: web/pages/setup_form.ts:23
 msgctxt "web/pages/Setup"
 msgid "Enter password"
 msgstr "请输入密码"
 
-#: web/pages/setup_form.ts:19
+#: web/pages/setup_form.ts:20
 msgctxt "web/pages/Setup"
 msgid "Enter username"
 msgstr "请输入用户名"
 
-#: web/pages/Setup.vue:149
+#: web/pages/Setup.vue:265 web/pages/Setup.vue:48
+msgctxt "web/pages/Setup"
+msgid "Failed to load demo data. You can retry from Modules later."
+msgstr "演示数据加载失败，可稍后在「模块」中重试。"
+
+#: web/pages/Setup.vue:152
 msgctxt "web/pages/Setup"
 msgid "Failed to load setup options. Please try again."
 msgstr "加载设置选项失败，请重试。"
 
-#: web/pages/Setup.vue:7
+#: web/pages/Setup.vue:6
 msgctxt "web/pages/Setup"
 msgid "Initial Setup"
 msgstr "初始设置"
 
-#: web/pages/Setup.vue:239 web/pages/Setup.vue:254
+#: web/pages/Setup.vue:243 web/pages/Setup.vue:276
 msgctxt "web/pages/Setup"
 msgid "Initial setup failed. Please try again later."
 msgstr "初始设置失败，请稍后重试。"
@@ -1526,27 +1531,27 @@ msgctxt "web/pages/Setup"
 msgid "Next"
 msgstr "下一步"
 
-#: web/pages/Setup.vue:68
+#: web/pages/Setup.vue:76
 msgctxt "web/pages/Setup"
 msgid "Organization Info"
 msgstr "组织信息"
 
-#: web/pages/setup_form.ts:29
+#: web/pages/setup_form.ts:30
 msgctxt "web/pages/Setup"
 msgid "Organization name must be at most 100 characters"
 msgstr "组织名称不能超过 100 个字符"
 
-#: web/pages/setup_form.ts:23
+#: web/pages/setup_form.ts:24
 msgctxt "web/pages/Setup"
 msgid "Password must be at least 6 characters"
 msgstr "密码至少 6 个字符"
 
-#: web/pages/setup_form.ts:25
+#: web/pages/setup_form.ts:26
 msgctxt "web/pages/Setup"
 msgid "Passwords do not match"
 msgstr "两次输入的密码不一致"
 
-#: web/pages/setup_form.ts:24
+#: web/pages/setup_form.ts:25
 msgctxt "web/pages/Setup"
 msgid "Re-enter password"
 msgstr "请再次输入密码"
@@ -1556,37 +1561,37 @@ msgctxt "web/pages/Setup"
 msgid "Retry"
 msgstr "重试"
 
-#: web/pages/Setup.vue:69
+#: web/pages/Setup.vue:77
 msgctxt "web/pages/Setup"
 msgid "Review"
 msgstr "确认"
 
-#: web/pages/Setup.vue:73
+#: web/pages/Setup.vue:81
 msgctxt "web/pages/Setup"
 msgid "Review the settings and finish setup"
 msgstr "确认设置并完成初始化"
 
-#: web/pages/setup_form.ts:30
+#: web/pages/setup_form.ts:31
 msgctxt "web/pages/Setup"
 msgid "Select a base currency"
 msgstr "请选择本位币"
 
-#: web/pages/setup_form.ts:31
+#: web/pages/setup_form.ts:32
 msgctxt "web/pages/Setup"
 msgid "Select a business timezone"
 msgstr "请选择业务时区"
 
-#: web/pages/Setup.vue:72
+#: web/pages/Setup.vue:80
 msgctxt "web/pages/Setup"
 msgid "Set up your organization basics"
 msgstr "设置组织基本信息"
 
-#: web/pages/setup_form.ts:21
+#: web/pages/setup_form.ts:22
 msgctxt "web/pages/Setup"
 msgid "Username can only contain letters, numbers, underscores, hyphens, and dots"
 msgstr "用户名只能包含字母、数字、下划线、连字符和点"
 
-#: web/pages/setup_form.ts:20
+#: web/pages/setup_form.ts:21
 msgctxt "web/pages/Setup"
 msgid "Username must be at least 3 characters"
 msgstr "用户名至少 3 个字符"
@@ -1706,61 +1711,52 @@ msgctxt "web/pages/setup/SetupReviewStep"
 msgid "Administrator"
 msgstr "管理员"
 
-#: web/pages/setup/SetupReviewStep.vue:32
+#: web/pages/setup/SetupReviewStep.vue:34
 msgctxt "web/pages/setup/SetupReviewStep"
 msgid "Base Currency"
 msgstr "本位币"
 
-#: web/pages/setup/SetupReviewStep.vue:33
+#: web/pages/setup/SetupReviewStep.vue:35
 msgctxt "web/pages/setup/SetupReviewStep"
 msgid "Business Timezone"
 msgstr "业务时区"
 
-#: web/pages/setup/SetupReviewStep.vue:31
+#: web/pages/setup/SetupReviewStep.vue:33
 msgctxt "web/pages/setup/SetupReviewStep"
 msgid "Country / Region"
 msgstr "国家/地区"
 
-#: web/pages/setup/SetupReviewStep.vue:26
+#: web/pages/setup/SetupReviewStep.vue:28
 msgctxt "web/pages/setup/SetupReviewStep"
 msgid "Email"
 msgstr "邮箱"
+
+#: web/pages/setup/SetupReviewStep.vue:23
+msgctxt "web/pages/setup/SetupReviewStep"
+msgid "Load demo data"
+msgstr "加载演示数据"
 
 #: web/pages/setup/SetupReviewStep.vue:17 web/pages/setup/SetupReviewStep.vue:8
 msgctxt "web/pages/setup/SetupReviewStep"
 msgid "Not provided"
 msgstr "未填写"
 
+#: web/pages/setup/SetupReviewStep.vue:22
+msgctxt "web/pages/setup/SetupReviewStep"
+msgid "Optional"
+msgstr "可选"
+
 #: web/pages/setup/SetupReviewStep.vue:13
 msgctxt "web/pages/setup/SetupReviewStep"
 msgid "Organization"
 msgstr "组织"
 
-#: web/pages/setup/SetupReviewStep.vue:30
+#: web/pages/setup/SetupReviewStep.vue:32
 msgctxt "web/pages/setup/SetupReviewStep"
 msgid "Organization Name"
 msgstr "组织名称"
 
-#: web/pages/setup/SetupReviewStep.vue
-msgctxt "web/pages/setup/SetupReviewStep"
-msgid "Load demo data"
-msgstr "加载演示数据"
-
-#~ msgid "The base currency is used for accounting and cannot be changed once transactions exist."
-#~ msgstr "本位币用于记账，产生业务数据后不可更改。"
-
-#: web/pages/setup/SetupReviewStep.vue
-msgctxt "web/pages/setup/SetupReviewStep"
-msgid "Optional"
-msgstr "可选"
-
-#~ msgid "Writes sample records for evaluation. You can also load them later from Modules."
-#~ msgstr "写入试用样例，也可稍后在模块页加载。"
-
-#~ msgid "Sample records for evaluation. You can also load them later from Modules."
-#~ msgstr "试用样例记录；也可稍后在「模块」中加载。"
-
-#: web/pages/setup/SetupReviewStep.vue:25
+#: web/pages/setup/SetupReviewStep.vue:27
 msgctxt "web/pages/setup/SetupReviewStep"
 msgid "Username"
 msgstr "用户名"
@@ -1940,7 +1936,7 @@ msgctxt "web/route/routes"
 msgid "User List"
 msgstr "用户列表"
 
-#: web/stores/auth/actions.ts:515
+#: web/stores/auth/actions.ts:522
 msgctxt "web/stores/auth/actions"
 msgid "Cannot load user details: missing userId"
 msgstr "无法加载用户详情：缺少 userId"
@@ -1950,7 +1946,7 @@ msgctxt "web/stores/auth/actions"
 msgid "CompleteInitialSetup returned an invalid response"
 msgstr "CompleteInitialSetup 返回了无效响应"
 
-#: web/stores/auth/actions.ts:620
+#: web/stores/auth/actions.ts:627
 msgctxt "web/stores/auth/actions"
 msgid "Failed to initialize auth"
 msgstr "初始化认证失败"
@@ -1970,12 +1966,12 @@ msgctxt "web/stores/auth/actions"
 msgid "Failed to load permission state"
 msgstr "加载权限状态失败"
 
-#: web/stores/auth/actions.ts:554
+#: web/stores/auth/actions.ts:561
 msgctxt "web/stores/auth/actions"
 msgid "Failed to load user details"
 msgstr "加载用户详情失败"
 
-#: web/stores/auth/actions.ts:495
+#: web/stores/auth/actions.ts:502
 msgctxt "web/stores/auth/actions"
 msgid "Failed to refresh token"
 msgstr "刷新令牌失败"
@@ -2020,7 +2016,7 @@ msgctxt "web/stores/auth/actions"
 msgid "Not authenticated; cannot switch company scope"
 msgstr "未登录，无法切换公司范围"
 
-#: web/stores/auth/actions.ts:463
+#: web/stores/auth/actions.ts:464
 msgctxt "web/stores/auth/actions"
 msgid "RefreshTokens returned an invalid response"
 msgstr "刷新令牌返回了无效响应"
@@ -2899,6 +2895,15 @@ msgstr "用户"
 msgctxt "web/views/UserSearchView"
 msgid "Active"
 msgstr "启用"
+
+#~ msgid "Sample records for evaluation. You can also load them later from Modules."
+#~ msgstr "试用样例记录；也可稍后在「模块」中加载。"
+
+#~ msgid "The base currency is used for accounting and cannot be changed once transactions exist."
+#~ msgstr "本位币用于记账，产生业务数据后不可更改。"
+
+#~ msgid "Writes sample records for evaluation. You can also load them later from Modules."
+#~ msgstr "写入试用样例，也可稍后在模块页加载。"
 
 #~ msgctxt "service/models/user/_lifecycle_complete_initial_setup"
 #~ msgid "Database handle is not available"

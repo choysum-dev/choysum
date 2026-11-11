@@ -36,7 +36,15 @@ test('setEqCompanyIds: compares as sets', () => {
 });
 
 test('buildCompanyTreeEntries: roots missing parents and sorts siblings by name', () => {
-  const entries = buildCompanyTreeEntries(rows);
+  // Input order is US then EU; tree must still emit EU before US by DisplayName.
+  const unsorted = [
+    { Id: 'root', DisplayName: 'Root Co', Code: 'ROOT' },
+    { Id: 'us', DisplayName: 'US', Code: 'US', ParentId: 'root' },
+    { Id: 'eu', DisplayName: 'EU', Code: 'EU', ParentId: 'root' },
+    { Id: 'be', DisplayName: 'Belgium', Code: 'BE', ParentId: 'eu' },
+    { Id: 'orphan', DisplayName: 'Orphan', Code: 'OR', ParentId: 'missing-parent' },
+  ];
+  const entries = buildCompanyTreeEntries(unsorted);
   expect(entries.map(e => `${e.level}:${e.id}`)).toEqual([
     '0:orphan',
     '0:root',
@@ -44,17 +52,31 @@ test('buildCompanyTreeEntries: roots missing parents and sorts siblings by name'
     '2:be',
     '1:us',
   ]);
+  expect(entries.find(e => e.id === 'eu')?.childIds).toEqual(['be']);
+});
+
+test('buildCompanyTreeEntries: ParentId cycles stay selectable without looping', () => {
+  const cyclic = [
+    { Id: 'a', DisplayName: 'A', ParentId: 'b' },
+    { Id: 'b', DisplayName: 'B', ParentId: 'a' },
+  ];
+  const entries = buildCompanyTreeEntries(cyclic);
+  expect(entries.map(e => e.id).sort()).toEqual(['a', 'b']);
+  const children = buildCompanyChildrenMap(cyclic);
+  expect(collectCompanyBranchIds('a', children)).toEqual(['a', 'b']);
 });
 
 test('buildCompanyChildrenMap: ignores parents outside the allowed set', () => {
   const children = buildCompanyChildrenMap(rows);
   expect(children.get('orphan')).toEqual([]);
   expect(children.get('eu')).toEqual(['be']);
+  expect(children.has('missing-parent')).toBe(false);
 });
 
 test('collectCompanyBranchIds: includes self and descendants', () => {
   const children = buildCompanyChildrenMap(rows);
   expect(collectCompanyBranchIds('eu', children)).toEqual(['eu', 'be']);
+  expect(collectCompanyBranchIds('', children)).toEqual([]);
 });
 
 test('isSingleCompanyMode: one id or a fully selected subtree', () => {
@@ -63,6 +85,7 @@ test('isSingleCompanyMode: one id or a fully selected subtree', () => {
   expect(isSingleCompanyMode(['eu', 'be'], children)).toBe(true);
   expect(isSingleCompanyMode(['eu', 'us'], children)).toBe(false);
   expect(isSingleCompanyMode(['root', 'eu', 'be', 'us'], children)).toBe(true);
+  expect(isSingleCompanyMode([], children)).toBe(true);
 });
 
 test('logIntoCompany: single mode replaces enabled with the branch', () => {
@@ -88,6 +111,18 @@ test('logIntoCompany: multi mode promotes the target and keeps others', () => {
       children,
     }),
   ).toEqual({ activeCompanyId: 'orphan', enabledCompanyIds: ['orphan', 'eu', 'us'] });
+});
+
+test('logIntoCompany: empty company id is a no-op draft', () => {
+  const children = buildCompanyChildrenMap(rows);
+  expect(
+    logIntoCompany({
+      companyId: '  ',
+      draftActiveCompanyId: 'us',
+      draftEnabledCompanyIds: ['us'],
+      children,
+    }),
+  ).toEqual({ activeCompanyId: 'us', enabledCompanyIds: ['us'] });
 });
 
 test('branchCheckState: reports full, empty, and indeterminate', () => {
@@ -178,6 +213,7 @@ test('filterCompanyTreeBySearch: keeps matches and their ancestors', () => {
   const entries = buildCompanyTreeEntries(rows);
   const filtered = filterCompanyTreeBySearch(entries, 'bel');
   expect(filtered.map(e => e.id)).toEqual(['root', 'eu', 'be']);
+  expect(filterCompanyTreeBySearch(entries, '   ').map(e => e.id)).toEqual(entries.map(e => e.id));
 });
 
 test('ensureActiveInEnabledScope: inserts active when missing from enabled', () => {
@@ -185,4 +221,21 @@ test('ensureActiveInEnabledScope: inserts active when missing from enabled', () 
     activeCompanyId: 'us',
     enabledCompanyIds: ['us', 'eu'],
   });
+  expect(ensureActiveInEnabledScope('', ['eu', 'us'])).toEqual({
+    activeCompanyId: 'eu',
+    enabledCompanyIds: ['eu', 'us'],
+  });
+  expect(ensureActiveInEnabledScope('', [])).toEqual({
+    activeCompanyId: '',
+    enabledCompanyIds: [],
+  });
+});
+
+test('company rows: boolean ParentId and Id-only labels', () => {
+  const entries = buildCompanyTreeEntries([
+    { Id: 'solo', ParentId: true as any },
+    { Id: 'kid', DisplayName: '', Code: '', ParentId: 'solo' },
+  ]);
+  expect(entries.map(e => e.id)).toEqual(['solo', 'kid']);
+  expect(entries[0].name).toBe('solo');
 });
