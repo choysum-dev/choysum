@@ -11,6 +11,7 @@ import (
 	"log/slog"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/buke/quickjs-go"
 	"github.com/choysum-dev/choysum/internal/module/lifecycle"
@@ -1337,4 +1338,79 @@ func TestCoverage_AssembleAndProcessCompilerErrors(t *testing.T) {
 		}
 		_ = host
 	}
+}
+
+func TestCoverage_LogModuleReloadMarkFailure(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	scoped := &moduleIndexTestScope{
+		ctx:    context.Background(),
+		logger: logger,
+		cfg:    &config.Config{},
+	}
+	triggerErr := errors.New("restart boom")
+
+	// host.Scope.Logger path with bindError / markError attrs.
+	logModuleReloadMarkFailure(nil, &ops.Ops{Scope: scoped}, "op-host", triggerErr, errors.New("bind"), nil)
+	logModuleReloadMarkFailure(nil, &ops.Ops{Scope: scoped}, "op-host-mark", triggerErr, nil, errors.New("mark"))
+	// ResolveScope fallback when host has no Scope.
+	logModuleReloadMarkFailure(jsengine.StaticScopeProvider(scoped), &ops.Ops{}, "op-resolve", triggerErr, errors.New("bind"), errors.New("mark"))
+	// No logger available → silent return.
+	logModuleReloadMarkFailure(nil, nil, "op-silent", triggerErr, nil, nil)
+}
+
+func TestCoverage_ReloadAsyncMarkReloadFailedErrorLogs(t *testing.T) {
+	db := newBridgeTestDB(t)
+	mod := &pkgmeta.Module{Name: "core", Version: "1.0.0", ApplicationStr: "core"}
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	baseScope := &moduleIndexTestScope{
+		ctx:     context.Background(),
+		logger:  logger,
+		cfg:     &config.Config{ModulesPath: t.TempDir()},
+		session: &scope.Session{DB: db},
+	}
+	life := moduleManagementTestManager{install: func(context.Context, string) error { return nil }}
+	engine := newTestQuickjsEngine(t, WithModuleManagementProvider(
+		jsengine.StaticScopeProvider(baseScope),
+		moduleManagementOptionFunc(func(cfg *moduleManagementConfig) {
+			cfg.moduleLifecycleFactory = func(scope.Scope, jsexecutor.JsExecutor, statepkg.LockerFactory) lifecycle.Service {
+				return life
+			}
+			cfg.opsHostFactory = func(runtimeScope scope.Scope, _ jsexecutor.JsExecutor, lockerFactory statepkg.LockerFactory, ev bus.EventBus) *ops.Ops {
+				return &ops.Ops{
+					Scope:         runtimeScope,
+					Lifecycle:     life,
+					Resolver:      &mapResolver{peek: map[string]*pkgmeta.Module{"core": mod}},
+					LockerFactory: lockerFactory,
+					Events:        ev,
+				}
+			}
+		}),
+	))
+
+	planJSON := awaitModuleManagementJSON(t, engine, `$choysum.moduleManagement.plan({ moduleName: 'core', action: 'install', origin: 'local' })`)
+	planID, _ := planJSON["id"].(string)
+	_ = awaitModuleManagementJSON(t, engine, `$choysum.moduleManagement.apply({ id: `+jsString(planID)+` })`)
+	_ = awaitModuleManagementJSON(t, engine, `$choysum.moduleManagement.run({ id: `+jsString(planID)+` })`)
+
+	done := make(chan struct{})
+	reload.Register(func() error {
+		defer close(done)
+		if err := db.Where("1 = 1").Delete(&modmeta.ModuleOperation{}).Error; err != nil {
+			t.Errorf("delete ops before MarkReloadFailed: %v", err)
+		}
+		return errors.New("restart boom")
+	})
+	t.Cleanup(func() { reload.Register(nil) })
+
+	reloadJSON := awaitModuleManagementJSON(t, engine, `$choysum.moduleManagement.reload({id: `+jsString(planID)+` })`)
+	if triggered, _ := reloadJSON["triggered"].(bool); !triggered {
+		t.Fatalf("reload schedule = %#v", reloadJSON)
+	}
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("expected Trigger to run and delete the operation row")
+	}
+	// MarkReloadFailed + log run after Trigger returns; brief settle for the goroutine.
+	time.Sleep(50 * time.Millisecond)
 }
