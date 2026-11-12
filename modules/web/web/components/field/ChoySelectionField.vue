@@ -118,9 +118,12 @@ SPDX-License-Identifier: Apache-2.0
 import { computed, inject, onMounted, ref, type Ref } from 'vue';
 import type { RuleItem } from 'async-validator';
 import type { BaseModel, FieldPath, FieldPathType } from '@/core/rpc';
+import type { TermReference } from '@/core/service/i18n';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type { WritableComputedRef } from 'vue';
 import { ChevronsUpDown, Search, X } from 'lucide-vue-next';
+import { getGlobalComposer } from '@/web/web/i18n/translate';
+import { resolveSelectionOptionLabel } from '@/web/web/composables/resolveSelectionOptionLabel';
 import ChoyFieldBase, { type FieldStateExpr, type FormItemProps } from './ChoyFieldBase.vue';
 import Combobox from '../vendor/ui/combobox/Combobox.vue';
 import ComboboxAnchor from '../vendor/ui/combobox/ComboboxAnchor.vue';
@@ -253,9 +256,20 @@ const parentChain = computed(() => pathSegs.value.slice(0, pathSegs.value.length
 
 const modelStore = computed(() => (binding.store || props.store) as WebModelStore<T> | undefined);
 
+/** Field stringText supplies module/scope when re-translating selection msgid echoes. */
+const fieldStringText = computed(() => {
+  const leaf = leafKey.value;
+  const store = modelStore.value;
+  const meta = (leaf && store?.getFieldMeta?.(leaf)) || binding.meta;
+  const ref = (meta as { stringText?: TermReference } | undefined)?.stringText;
+  return ref && typeof ref.module === 'string' ? ref : undefined;
+});
+
 /**
  * Effective selection dictionary: FieldsGet overlay over static msgid labels.
- * Option labels are plain strings only — D5/D15 hard cut (no selection term refs on FE).
+ * Wire labels are plain strings (D5/D15 — no labelText on FE). When BE echoes
+ * English msgids, re-translate via field stringText module/scope + FE composer
+ * (same msgid-echo fallback as resolveFieldLabel).
  */
 const metaOptions = computed<MetaOption[]>(() => {
   const leaf = leafKey.value;
@@ -263,10 +277,19 @@ const metaOptions = computed<MetaOption[]>(() => {
   const meta = (leaf && store?.getFieldMeta?.(leaf)) || binding.meta;
   const sel = meta?.selection;
   if (!Array.isArray(sel) || sel.length === 0) return [];
-  return sel.map(item => ({
-    value: String(item.value),
-    label: String(item.label ?? item.value),
-  }));
+  const composer = getGlobalComposer();
+  const stringText = fieldStringText.value;
+  return sel.map(item => {
+    const raw = String(item.label ?? item.value);
+    return {
+      value: String(item.value),
+      label: resolveSelectionOptionLabel({
+        label: raw,
+        fieldStringText: stringText,
+        composer,
+      }),
+    };
+  });
 });
 
 const propOptions = computed<MetaOption[]>(() => {
