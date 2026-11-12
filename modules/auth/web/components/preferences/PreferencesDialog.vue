@@ -4,35 +4,27 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <Teleport to="body">
-    <div
-      v-if="visible"
-      class="choy-preferences-dialog fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-      role="presentation"
-      @click.self="visible = false"
+  <ChoyDialog v-model:open="visible">
+    <ChoyDialogContent
+      class="choy-preferences-dialog flex max-h-[90vh] w-full max-w-lg flex-col gap-0 overflow-hidden p-5"
+      :show-close-button="false"
+      :dismissible="!saving"
+      data-testid="preferences-dialog"
     >
-      <div
-        ref="dialogRef"
-        tabindex="-1"
-        class="w-full max-w-lg rounded-lg border border-border bg-background p-6 shadow-lg outline-none"
-        role="dialog"
-        aria-modal="true"
-        :aria-labelledby="titleId"
-        @click.stop
-        @keydown="onDialogKeydown"
-      >
-        <h2 :id="titleId" class="text-lg font-semibold">{{ _t('Preferences') }}</h2>
+      <ChoyDialogHeader class="shrink-0 space-y-0 text-start">
+        <ChoyDialogTitle>{{ _t('Preferences') }}</ChoyDialogTitle>
+      </ChoyDialogHeader>
 
-        <form v-if="!userId" class="choy-preferences-dialog__form mt-4 flex flex-col gap-4" @submit.prevent="onMissingUserSubmit">
-          <div class="flex justify-end gap-2 pt-2">
+        <form v-if="!userId" class="mt-4 flex flex-col gap-4" @submit.prevent="onMissingUserSubmit">
+          <ChoyDialogFooter>
             <ChoyButton type="button" variant="outline" @click="visible = false">{{ _t('Cancel') }}</ChoyButton>
-            <ChoyButton type="submit">{{ _t('Update preferences') }}</ChoyButton>
-          </div>
+            <ChoyButton type="submit">{{ _t('Save') }}</ChoyButton>
+          </ChoyDialogFooter>
         </form>
 
         <ChoyFormView
           v-else
-          class="mt-4"
+          class="mt-3 flex min-h-0 flex-1 flex-col overflow-hidden"
           :store="userStore"
           :record-id="userId"
           view-mode="edit"
@@ -50,81 +42,229 @@ SPDX-License-Identifier: Apache-2.0
               :timezone="seedTimezone"
               :theme="seedTheme"
             />
-            <span class="hidden">{{ trackThemeDraft(formData) }}</span>
-            <ChoyFieldGroup class="choy-preferences-dialog__form gap-4">
-              <div class="choy-preferences-dialog__appearance space-y-2">
-                <div class="text-sm font-medium text-foreground">{{ _t('Appearance') }}</div>
-                <ChoySelectionField
+            <PreferenceBagBinder :store="userStore as any" :active="bagHydrated && !loading" :bag-draft="bagDraft" />
+            <BagHydrator :ready="!loading" :preferences="formData?.Preferences" @hydrate="onBagHydrate" />
+
+            <!-- Compact identity chrome above tabs: fixed First | Last order. -->
+            <div class="choy-preferences-dialog__profile flex shrink-0 items-start gap-3">
+              <div
+                v-if="isUserAvatarFieldVisible(collaborationCaps)"
+                class="choy-preferences-dialog__avatar w-[72px] shrink-0"
+              >
+                <ChoyImageField
                   :store="userStore"
-                  prop="Theme"
-                  :clearable="false"
-                  :select-props="{ 'data-testid': 'preferences-theme' }"
+                  prop="Avatar"
+                  :width="72"
+                  :height="72"
+                  fit="cover"
+                  radius="xl"
+                  :drag="false"
+                  hide-label
+                  hide-help
+                  data-testid="preferences-avatar"
                 />
               </div>
-              <div class="text-sm font-medium text-foreground">{{ _t('Locale') }}</div>
-              <div class="choy-preferences-dialog__language">
-                <ChoyManyToOneRefField
-                  :store="userStore"
-                  prop="LanguageId"
-                  data-testid="preferences-language"
-                  show-inline-error
-                />
-                <div v-if="showLanguageSessionHint(formData)" class="choy-preferences-dialog__hint text-xs text-foreground/60">
-                  {{ _t('Using current session language') }}
+              <div class="min-w-0 flex-1 space-y-1">
+                <div class="choy-preferences-dialog__names grid grid-cols-2 gap-2">
+                  <ChoyVarcharField
+                    :store="userStore"
+                    prop="FirstName"
+                    :label="_t('First name')"
+                    hide-help
+                    :show-word-limit="false"
+                    orientation="vertical"
+                    data-testid="preferences-first-name"
+                  />
+                  <ChoyVarcharField
+                    :store="userStore"
+                    prop="LastName"
+                    :label="_t('Last name')"
+                    hide-help
+                    :show-word-limit="false"
+                    orientation="vertical"
+                    data-testid="preferences-last-name"
+                  />
+                </div>
+                <div
+                  v-if="profileIdentityMeta(formData)"
+                  class="truncate text-sm text-foreground/60"
+                  data-testid="preferences-identity-meta"
+                >
+                  {{ profileIdentityMeta(formData) }}
                 </div>
               </div>
-              <div class="choy-preferences-dialog__timezone">
-                <ChoySelectionField
-                  :store="userStore"
-                  prop="Timezone"
-                  :placeholder="_t('Select timezone')"
-                  :select-props="{ 'data-testid': 'preferences-timezone' }"
-                  show-inline-error
-                />
-                <div v-if="showTimezoneBrowserHint(formData)" class="choy-preferences-dialog__hint text-xs text-foreground/60">
-                  {{ _t('Suggested from your browser') }}
+            </div>
+
+            <ChoyTabs
+              v-model="activeTab"
+              equal-pane-height
+              class="choy-preferences-dialog__tabs mt-2 min-h-0 flex-1 overflow-hidden"
+              @mousedown.capture="armTabSwitch"
+            >
+              <ChoyTab :label="_t('General')" value="general" force-mount>
+                <div class="choy-preferences-dialog__panel overflow-y-auto">
+                  <div class="flex flex-col gap-3">
+                    <div class="space-y-1.5">
+                      <div class="text-sm font-medium text-foreground">{{ _t('Appearance') }}</div>
+                      <div class="choy-preferences-dialog__setting">
+                        <ChoySelectionField
+                          :store="userStore"
+                          prop="Theme"
+                          :label="_t('Theme')"
+                          :help="themeFieldHelp"
+                          :clearable="false"
+                          orientation="horizontal"
+                          :select-props="{ 'data-testid': 'preferences-theme' }"
+                        />
+                      </div>
+                      <div class="choy-preferences-dialog__setting">
+                        <PreferenceDensityHost :store="densityStore" :bag-draft="bagDraft">
+                          <ChoySelectionField
+                            :store="densityStore"
+                            prop="Density"
+                            :label="_t('Density')"
+                            :help="_t('Spacing density for lists and the app shell.')"
+                            :clearable="false"
+                            orientation="horizontal"
+                            :select-props="{ 'data-testid': 'preferences-density' }"
+                          />
+                        </PreferenceDensityHost>
+                      </div>
+                    </div>
+
+                    <div class="space-y-1.5">
+                      <div class="text-sm font-medium text-foreground">{{ _t('Locale') }}</div>
+                      <div class="choy-preferences-dialog__setting">
+                        <ChoyManyToOneRefField
+                          :store="userStore"
+                          prop="LanguageId"
+                          :label="_t('Language')"
+                          :help="_t('Language for the UI and terminology.')"
+                          :clearable="false"
+                          orientation="horizontal"
+                          data-testid="preferences-language"
+                        />
+                        <div
+                          v-if="showLanguageSessionHint(formData)"
+                          class="choy-preferences-dialog__hint text-xs text-foreground/60"
+                        >
+                          {{ _t('Using current session language') }}
+                        </div>
+                      </div>
+                      <div class="choy-preferences-dialog__setting">
+                        <ChoySelectionField
+                          :store="userStore"
+                          prop="Timezone"
+                          :label="_t('Timezone')"
+                          :help="timezoneFieldHelp"
+                          :clearable="false"
+                          orientation="horizontal"
+                          :placeholder="_t('Select timezone')"
+                          :select-props="{ 'data-testid': 'preferences-timezone' }"
+                        />
+                        <div
+                          v-if="showTimezoneBrowserHint(formData)"
+                          class="choy-preferences-dialog__hint text-xs text-foreground/60"
+                        >
+                          {{ _t('Suggested from your browser') }}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </div>
-              <div class="flex justify-end gap-2 pt-2">
-                <ChoyButton type="button" variant="outline" @click="visible = false">{{ _t('Cancel') }}</ChoyButton>
-                <ChoyButton type="submit" :disabled="saving || loading">{{ _t('Update preferences') }}</ChoyButton>
-              </div>
-            </ChoyFieldGroup>
+              </ChoyTab>
+
+              <ChoyTab :label="_t('Security')" value="security" force-mount>
+                <div class="choy-preferences-dialog__panel overflow-y-auto">
+                  <div class="choy-preferences-dialog__setting">
+                    <ChoySlotField
+                      :label="_t('Password')"
+                      :help="_t('Update if compromised or rotating credentials.')"
+                      prop="PasswordAction"
+                      orientation="horizontal"
+                    >
+                      <ChoyButton
+                        type="button"
+                        variant="outline"
+                        class="box-border h-control min-h-control shrink-0 px-3 py-0"
+                        data-testid="preferences-open-change-password"
+                        @click="onOpenChangePassword"
+                      >
+                        {{ _t('Change password') }}
+                      </ChoyButton>
+                    </ChoySlotField>
+                  </div>
+                </div>
+              </ChoyTab>
+            </ChoyTabs>
+
+            <ChoyDialogFooter class="mt-2 shrink-0 border-t border-border pt-2">
+              <ChoyButton type="button" variant="outline" @click="visible = false">{{ _t('Cancel') }}</ChoyButton>
+              <ChoyButton type="submit" :disabled="saving || loading">{{ _t('Save') }}</ChoyButton>
+            </ChoyDialogFooter>
           </template>
         </ChoyFormView>
-      </div>
-    </div>
-  </Teleport>
+    </ChoyDialogContent>
+  </ChoyDialog>
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, useId, watch } from 'vue';
+import {
+  computed,
+  defineComponent,
+  nextTick,
+  onMounted,
+  provide,
+  reactive,
+  ref,
+  watch,
+  type PropType,
+} from 'vue';
 import {
   ChoyButton,
-  ChoyFieldGroup,
+  ChoyDialog,
+  ChoyDialogContent,
+  ChoyDialogFooter,
+  ChoyDialogHeader,
+  ChoyDialogTitle,
   ChoyFormView,
+  ChoyImageField,
   ChoyManyToOneRefField,
   ChoyMessage,
   ChoySelectionField,
+  ChoySlotField,
+  ChoyTab,
+  ChoyTabs,
+  ChoyVarcharField,
+  createLocalFormStore,
+  openDialog,
+  type LocalFormStore,
 } from '@/web';
 import { createTranslate } from '@/web/web/i18n';
 import { useAuthStore } from '@/auth/web/stores/auth';
 import { useI18nStore, langToUiKey, afterLocaleChange, softLocaleRemount } from '@/web/web/stores/i18nStore';
 import { createStoreByModel } from '@/web/web/stores/registry';
 import { applyUserLanguagePreference } from '@/auth/web/stores/auth/language_preference';
-import {
-  detectBrowserTimezone,
-  resolvePreferenceLanguage,
-  resolvePreferenceTimezone,
-} from './preferences_defaults';
-import { restoreDialogFocus } from './dialog_focus_restore';
-import { trapDialogTabKey } from './dialog_focus_trap';
+import { useReactiveCollaborationCaps } from '@/web/web/platform/collaborationCaps';
+import { isUserAvatarFieldVisible } from '@/auth/web/views/user_avatar_visibility';
+import { resolveUserMenuMeta } from '@/auth/web/components/layout/user_menu_display_name';
 import { PreferenceDraftSeeder } from './PreferenceDraftSeeder';
+import { PreferenceBagBinder } from './PreferenceBagBinder';
+import ChangePasswordDialog from '@/auth/web/components/change-password/ChangePasswordDialog.vue';
+import {
+  needsUserLoadOnPreferencesOpen,
+  resolvePreferencesSeedLanguageId,
+  resolvePreferencesSeedTimezone,
+} from './preferences_open';
+import {
+  normalizePreferencesDensity,
+  readPreferencesBag,
+  type PreferencesBagDraft,
+} from './preferences_bag';
 import { runPreferencesSubmit } from './preferences_submit';
 import {
-  applyPreferencesThemeMode,
+  applyPreferencesAppearance,
   readPreferencesThemeMode,
-  resolvePreferencesThemeMode,
   resolveUserThemeMode,
 } from './preferences_theme';
 
@@ -136,13 +276,9 @@ const emit = defineEmits<{ 'update:modelValue': [boolean]; closed: [] }>();
 const { _t } = createTranslate('auth', { scope: 'web/components/preferences/PreferencesDialog' });
 const authStore = useAuthStore();
 const i18nStore = useI18nStore();
+const collaborationCaps = useReactiveCollaborationCaps();
 const userStore = createStoreByModel('auth.User');
 const languageStore = createStoreByModel('base.Language');
-const titleId = useId();
-const dialogRef = ref<HTMLElement | null>(null);
-let lastFocused: HTMLElement | null = null;
-/** Last Theme value applied to the shell from this dialog (avoids re-apply loops). */
-let lastAppliedTheme = '';
 
 const visible = computed({
   get: () => props.modelValue,
@@ -152,14 +288,16 @@ const visible = computed({
   },
 });
 
-/** Escape dismisses; Tab stays inside the dialog until it closes. */
-function onDialogKeydown(event: KeyboardEvent): void {
-  if (event.key === 'Escape') {
-    visible.value = false;
-    return;
-  }
-  const root = dialogRef.value as HTMLElement | null;
-  if (root) trapDialogTabKey(event, root);
+let suppressFormSubmitUntil = 0;
+function armTabSwitch(event: MouseEvent): void {
+  const el = event.target as HTMLElement | null;
+  if (!el?.closest?.('[data-slot="tabs-trigger"]')) return;
+  suppressFormSubmitUntil = Date.now() + 300;
+}
+
+function onOpenChangePassword(): void {
+  // replace: dialog service unmounts preferences (silent draft discard).
+  openDialog({ component: ChangePasswordDialog, mode: 'replace' });
 }
 
 const currentUser = computed(() => authStore.currentUser as any);
@@ -170,6 +308,130 @@ const seedTheme = ref('');
 const languageFromSession = ref(false);
 const timezoneFromBrowser = ref(false);
 const saving = ref(false);
+const activeTab = ref('general');
+const bagHydrated = ref(false);
+const bagDraft = reactive<PreferencesBagDraft>(readPreferencesBag(null));
+
+function densitySelectionOptions() {
+  return [
+    { value: 'comfortable', label: _t('Comfortable') },
+    { value: 'compact', label: _t('Compact') },
+  ];
+}
+
+const densityStore = createLocalFormStore({
+  storeId: 'auth.preferences.density',
+  fields: [
+    {
+      name: 'Density',
+      label: 'Density',
+      type: 'selection',
+      selection: densitySelectionOptions(),
+    },
+  ],
+  initialValues: { Density: bagDraft.density },
+});
+
+watch(
+  () => i18nStore.localeCode,
+  () => {
+    densityStore.setFieldSelection('Density', densitySelectionOptions());
+  },
+);
+
+/** Binds bag density to ChoySelectionField without a nested <form>. */
+const PreferenceDensityHost = defineComponent({
+  name: 'PreferenceDensityHost',
+  props: {
+    store: { type: Object as PropType<LocalFormStore>, required: true },
+    bagDraft: { type: Object as PropType<PreferencesBagDraft>, required: true },
+  },
+  setup(props, { slots }) {
+    provide('form-root', {
+      get draft() {
+        return { Density: props.bagDraft.density };
+      },
+      getField(path: string) {
+        if (String(path) === 'Density') return props.bagDraft.density;
+        return props.store.getField(path);
+      },
+      setField(path: string, value: unknown) {
+        if (String(path) === 'Density') {
+          const next = normalizePreferencesDensity(value);
+          props.bagDraft.density = next;
+          props.store.setField('Density', next);
+          return;
+        }
+        props.store.setField(path, value);
+      },
+    });
+    watch(
+      () => props.bagDraft.density,
+      density => {
+        if (props.store.getField('Density') !== density) {
+          props.store.setField('Density', density);
+        }
+      },
+    );
+    return () => slots.default?.();
+  },
+});
+
+const BagHydrator = defineComponent({
+  name: 'BagHydrator',
+  props: {
+    ready: { type: Boolean, default: false },
+    preferences: { type: null as unknown as any, default: undefined },
+  },
+  emits: ['hydrate'],
+  setup(props, { emit }) {
+    let done = false;
+    watch(
+      () => [props.ready, props.preferences] as const,
+      async () => {
+        if (!props.ready || done) return;
+        if (props.preferences === undefined) {
+          await nextTick();
+          if (!props.ready || done) return;
+        }
+        done = true;
+        emit('hydrate', props.preferences ?? null);
+      },
+      { immediate: true },
+    );
+    return () => null;
+  },
+});
+
+function onBagHydrate(preferences: unknown): void {
+  const next = readPreferencesBag(preferences ?? currentUser.value?.Preferences);
+  bagDraft.density = next.density;
+  bagDraft.notifications.email = next.notifications.email;
+  bagDraft.notifications.inApp = next.notifications.inApp;
+  bagDraft.notifications.push = next.notifications.push;
+  // Keep display overrides in the bag silently so Save does not wipe them.
+  bagDraft.display.dateFormat = next.display.dateFormat;
+  bagDraft.display.timeFormat = next.display.timeFormat;
+  bagDraft.display.currency = next.display.currency;
+  bagHydrated.value = true;
+}
+
+/** Readonly identity under name fields: username · email (whichever is set). */
+function profileIdentityMeta(formData: Record<string, unknown> | null | undefined): string {
+  const user = currentUser.value || {};
+  return resolveUserMenuMeta({
+    email: formData?.Email ?? user.Email,
+    username: formData?.Username ?? user.Username,
+  });
+}
+
+// Prefer PreferencesDialog _t (zh_CN.po) over raw User field meta, which may still be msgid English.
+const themeFieldHelp = computed(() =>
+  _t('UI color theme (light, dark, or follow the system).'),
+);
+const timezoneFieldHelp = computed(() =>
+  _t('Display timezone; empty uses browser timezone on first login.'),
+);
 
 function languageRefId(value: unknown): string {
   if (value == null || Array.isArray(value)) return '';
@@ -194,98 +456,61 @@ function showTimezoneBrowserHint(formData: Record<string, unknown>): boolean {
   return timezoneText(formData?.Timezone) === seed;
 }
 
-/** Live-apply Theme from the User form draft to the shell (still persisted on submit). */
-function trackThemeDraft(formData: Record<string, unknown>): string {
-  const mode = resolvePreferencesThemeMode(formData?.Theme);
-  if (mode !== lastAppliedTheme) {
-    lastAppliedTheme = mode;
-    applyPreferencesThemeMode(mode);
-  }
-  return mode;
-}
-
 async function resolveSeedLanguageId(): Promise<void> {
-  const savedId = languageRefId(currentUser.value?.LanguageId);
-  if (savedId) {
-    seedLanguageId.value = savedId;
-    languageFromSession.value = false;
-    return;
-  }
-  const session = resolvePreferenceLanguage(null, i18nStore.terminologyLang);
-  languageFromSession.value = session.fromSession;
-  const code = String(session.code || '').trim();
-  if (!code) {
-    seedLanguageId.value = '';
-    return;
-  }
-  try {
-    const rows = (await (languageStore as any).Search(
-      { And: [['Code', '=', code], ['IsActive', '=', true]] } as any,
-      { fields: ['Id'], limit: 1 } as any,
-    )) as Array<{ Id?: string }>;
-    seedLanguageId.value = String(rows?.[0]?.Id || '').trim();
-  } catch {
-    seedLanguageId.value = '';
-  }
+  const resolved = await resolvePreferencesSeedLanguageId({
+    languageId: currentUser.value?.LanguageId,
+    sessionTerminologyLang: i18nStore.terminologyLang,
+    searchLanguageByCode: async code => {
+      const rows = (await (languageStore as any).Search(
+        { And: [['Code', '=', code], ['IsActive', '=', true]] } as any,
+        { fields: ['Id'], limit: 1 } as any,
+      )) as Array<{ Id?: string }>;
+      return String(rows?.[0]?.Id || '').trim();
+    },
+  });
+  seedLanguageId.value = resolved.seedLanguageId;
+  languageFromSession.value = resolved.languageFromSession;
 }
 
-async function resolveSeedTimezone(): Promise<void> {
-  let allowed: string[] = [];
-  try {
-    const fields = await (userStore as any).FieldsGet?.(['Timezone']);
-    const selection = fields?.Timezone?.selection || fields?.fields?.Timezone?.selection;
-    if (Array.isArray(selection)) {
-      allowed = selection
-        .map((item: any) => String(item.value ?? item.Value ?? ''))
-        .filter((value: string) => !!value);
-    }
-  } catch {
-    allowed = [];
-  }
-  const resolved = resolvePreferenceTimezone(currentUser.value?.Timezone, detectBrowserTimezone(), allowed);
-  seedTimezone.value = resolved.timezone ?? '';
-  timezoneFromBrowser.value = resolved.fromBrowser;
+function resolveSeedTimezone(): void {
+  const resolved = resolvePreferencesSeedTimezone(currentUser.value?.Timezone);
+  seedTimezone.value = resolved.seedTimezone;
+  timezoneFromBrowser.value = resolved.timezoneFromBrowser;
 }
 
 function resolveSeedTheme(): void {
   seedTheme.value = resolveUserThemeMode(currentUser.value, readPreferencesThemeMode());
 }
 
+function resetDialogLocalState(): void {
+  activeTab.value = 'general';
+  bagHydrated.value = false;
+  Object.assign(bagDraft, readPreferencesBag(currentUser.value?.Preferences));
+}
+
 async function openAndLoad() {
-  if (authStore.isAuthenticated) {
+  resetDialogLocalState();
+  if (authStore.isAuthenticated && needsUserLoadOnPreferencesOpen(currentUser.value)) {
     try {
-      await authStore.loadUser(true);
+      await authStore.loadUser(false);
     } catch {
       // Fall back to whatever is already in auth state / identity.
     }
   }
   resolveSeedTheme();
-  lastAppliedTheme = seedTheme.value || readPreferencesThemeMode();
-  await Promise.all([resolveSeedLanguageId(), resolveSeedTimezone()]);
+  resolveSeedTimezone();
+  await resolveSeedLanguageId();
 }
 
 watch(
   () => props.modelValue,
   async open => {
-    if (open) {
-      lastFocused = document.activeElement as HTMLElement | null;
-      // Focus the dialog before network work so keyboard users are not stuck
-      // on the trigger behind the backdrop while preferences load.
-      await nextTick();
-      dialogRef.value?.focus();
-      await openAndLoad();
-      return;
-    }
-    restoreDialogFocus(lastFocused);
-    lastFocused = null;
+    if (open) await openAndLoad();
   },
 );
 
 onMounted(async () => {
   if (!props.modelValue) return;
-  lastFocused = document.activeElement as HTMLElement | null;
-  await nextTick();
-  dialogRef.value?.focus();
   await openAndLoad();
 });
 
@@ -297,6 +522,9 @@ async function onPreferencesSubmit(ctx: {
   formData: Record<string, unknown>;
   defaultSubmit: () => Promise<Record<string, unknown> | null>;
 }) {
+  if (Date.now() < suppressFormSubmitUntil) {
+    return { handled: true, skipSuccessMessage: true };
+  }
   saving.value = true;
   try {
     await runPreferencesSubmit({
@@ -314,6 +542,12 @@ async function onPreferencesSubmit(ctx: {
         if (preferences && typeof preferences === 'object') {
           (authStore.currentUser as any).Preferences = preferences;
         }
+        const firstName = ctx.formData?.FirstName;
+        const lastName = ctx.formData?.LastName;
+        const avatar = ctx.formData?.Avatar;
+        if (firstName != null) (authStore.currentUser as any).FirstName = firstName;
+        if (lastName != null) (authStore.currentUser as any).LastName = lastName;
+        if (avatar != null) (authStore.currentUser as any).Avatar = avatar;
       },
       applyLanguage: languageId =>
         applyUserLanguagePreference({
@@ -323,9 +557,21 @@ async function onPreferencesSubmit(ctx: {
           setUiKey: k => i18nStore.setUiKey(k),
           setDisplayOverrides: o => i18nStore.setDisplayOverrides(o as never),
           langToUiKey,
+          getCurrentUiKey: () => i18nStore.localeCode,
         }),
-      applyTheme: theme => {
-        applyPreferencesThemeMode(resolvePreferencesThemeMode(theme));
+      applyTheme: (theme, preferences) => {
+        const density =
+          preferences && typeof preferences === 'object'
+            ? (preferences as { density?: unknown }).density
+            : bagDraft.density;
+        applyPreferencesAppearance(theme, density);
+      },
+      applyDisplay: preferences => {
+        const display =
+          preferences && typeof preferences === 'object'
+            ? (preferences as { display?: unknown }).display
+            : null;
+        i18nStore.setDisplayOverrides((display as never) ?? null);
       },
       refreshToken: () => authStore.refreshToken(true),
       afterLocaleChange: () => afterLocaleChange({ remount: softLocaleRemount }),
@@ -342,5 +588,55 @@ async function onPreferencesSubmit(ctx: {
     saving.value = false;
   }
   return { handled: true, skipSuccessMessage: true };
-};
+}
 </script>
+
+<style scoped>
+/* Circular 72px avatar chrome; labels/help are hidden via field props. */
+.choy-preferences-dialog__avatar :deep(.choy-field-base),
+.choy-preferences-dialog__avatar :deep([data-slot='form-item']) {
+  gap: 0;
+}
+.choy-preferences-dialog__avatar :deep(.choy-image-field),
+.choy-preferences-dialog__avatar :deep(.choy-image-avatar),
+.choy-preferences-dialog__avatar :deep(.choy-image-avatar__media) {
+  width: 72px;
+  height: 72px;
+  border-radius: 9999px;
+}
+
+/* Compact name labels above inputs. */
+.choy-preferences-dialog__names :deep(.choy-field-base) {
+  gap: 0.25rem;
+}
+.choy-preferences-dialog__names :deep(.choy-field-base__label-row) {
+  min-height: 0;
+}
+
+/*
+ * Beat ChoyTabs line rule (.choy-tabs[data-variant=line] … padding-top: 1rem)
+ * which outranks a single-class :deep selector.
+ */
+.choy-preferences-dialog__tabs.choy-tabs[data-variant='line'] :deep([data-slot='tabs-content']) {
+  padding-top: 0.5rem;
+}
+
+/* Settings rows: Field chrome owns label|control; keep label column compact. */
+.choy-preferences-dialog__setting :deep([data-anchor='choy.field-base'][data-orientation='horizontal']) {
+  gap: 0.75rem;
+}
+.choy-preferences-dialog__setting :deep(.choy-field-base__label-row) {
+  width: 4.5rem;
+  flex-shrink: 0;
+  padding-top: 0.5rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+.choy-preferences-dialog__setting :deep(.choy-field-base__content) {
+  min-width: 0;
+}
+.choy-preferences-dialog__hint {
+  margin-top: 0.25rem;
+  margin-inline-start: calc(4.5rem + 0.75rem);
+}
+</style>

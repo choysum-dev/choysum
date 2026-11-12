@@ -34,7 +34,8 @@ export function resolvePreferenceLanguage(
 
 /**
  * When User.Timezone is empty, suggest the browser IANA zone if it appears in
- * the allowed selection. Otherwise leave empty (caller shows placeholder).
+ * the allowed selection (empty allowed list accepts any browser zone).
+ * Otherwise leave empty (caller shows placeholder).
  */
 export function resolvePreferenceTimezone(
   userTimezone: string | null | undefined,

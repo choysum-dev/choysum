@@ -23,6 +23,11 @@ SPDX-License-Identifier: Apache-2.0
             data-testid="auth-user-menu-trigger"
           >
             <ChoyAvatar class="size-8 shrink-0 rounded-full" data-testid="auth-user-menu-avatar">
+              <ChoyAvatarImage
+                v-if="userAvatarSrc"
+                :src="userAvatarSrc"
+                :alt="userMenuLabel"
+              />
               <ChoyAvatarFallback
                 class="rounded-full border border-sidebar-border bg-background text-xs font-medium text-sidebar-foreground"
               >
@@ -68,18 +73,18 @@ SPDX-License-Identifier: Apache-2.0
         </ChoyDropdownMenuContent>
       </ChoyDropdownMenu>
     </ChoyCollapsedIdentityTipHost>
-    <PreferencesDialog v-model="preferencesVisible" />
   </Xpath>
 </template>
 
 <script lang="ts" _name="ChoyAppShell">
-import { computed, defineComponent, ref } from 'vue';
+import { computed, defineComponent, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { ChevronsUpDown, LogOut, Settings } from 'lucide-vue-next';
 import { Xpath } from '@/core/web';
 import {
   ChoyAvatar,
   ChoyAvatarFallback,
+  ChoyAvatarImage,
   ChoyDropdownMenu,
   ChoyDropdownMenuContent,
   ChoyDropdownMenuItem,
@@ -88,16 +93,22 @@ import {
   ChoyCollapsedIdentityTipHost,
   ChoyNotificationBell,
   ChoySidebarMenuButton,
+  closeAllDialogs,
+  onDialogInterrupt,
+  openDialog,
 } from '@/web';
 import { firstGrapheme } from '@/web/web/components/layout/appRailGlyph';
 import ChoyAppShell from '@/web/web/components/layout/ChoyAppShell.vue';
 import { createTranslate } from '@/web/web/i18n';
 import { useAuthStore } from '@/auth/web/stores/auth';
+import { useI18nStore } from '@/web/web/stores/i18nStore';
 import { useReactiveCollaborationCaps } from '@/web/web/platform/collaborationCaps';
+import PreferencesDialog from '@/auth/web/components/preferences/PreferencesDialog.vue';
 import { collapsedIdentityTooltip } from './collapsed_identity_tooltip';
 import { reuseParentSetupState } from './reuse_parent_setup_state';
+import { resolveUserMenuAvatarDisplaySrc } from './user_menu_avatar';
+import { resolveUserMenuDisplayName, resolveUserMenuMeta } from './user_menu_display_name';
 import SwitchCompany from './SwitchCompany.vue';
-import PreferencesDialog from '../preferences/PreferencesDialog.vue';
 
 /**
  * Extends the app shell so session chrome merges into shell anchors at build time:
@@ -113,10 +124,10 @@ export default defineComponent({
     Settings,
     ChoyNotificationBell,
     SwitchCompany,
-    PreferencesDialog,
     ChoyCollapsedIdentityTipHost,
     ChoyAvatar,
     ChoyAvatarFallback,
+    ChoyAvatarImage,
     ChoyDropdownMenu,
     ChoyDropdownMenuContent,
     ChoyDropdownMenuItem,
@@ -134,14 +145,32 @@ export default defineComponent({
     const collaborationCaps = useReactiveCollaborationCaps();
     const router = useRouter();
     const authStore = useAuthStore();
-    const preferencesVisible = ref(false);
+    const i18nStore = useI18nStore();
     const userMenuOpen = ref(false);
+    let stopInterrupt: (() => void) | undefined;
+
+    onMounted(() => {
+      stopInterrupt = onDialogInterrupt(() => {
+        userMenuOpen.value = false;
+      });
+    });
+    onBeforeUnmount(() => {
+      stopInterrupt?.();
+      stopInterrupt = undefined;
+    });
+
 
     const userMenuLabel = computed(() => {
       const user = (authStore.currentUser as any) || {};
-      const fromProfile = String(
-        user.FullName || user.DisplayName || user.Username || user.Email || '',
-      ).trim();
+      const fromProfile = resolveUserMenuDisplayName({
+        firstName: user.FirstName,
+        lastName: user.LastName,
+        fullName: user.FullName,
+        displayName: user.DisplayName,
+        username: user.Username,
+        email: user.Email,
+        personNameFormat: i18nStore.getPersonNameFormat?.(),
+      });
       if (fromProfile) return fromProfile;
       const identity = (authStore.identity as any) || {};
       const fromToken = String(identity.displayName || identity.username || '').trim();
@@ -153,13 +182,15 @@ export default defineComponent({
       collapsedIdentityTooltip(userMenuOpen.value, userMenuLabel.value),
     );
 
-    /** Secondary line: email only. Avoid repeating the display name or a generic “Account”. */
+    /** Secondary line: username · email; drop segments that duplicate the primary label. */
     const userMenuMeta = computed(() => {
       const user = (authStore.currentUser as any) || {};
-      const email = String(user.Email || '').trim();
-      if (email) return email;
       const identity = (authStore.identity as any) || {};
-      return String(identity.email || '').trim();
+      return resolveUserMenuMeta({
+        email: user.Email || identity.email,
+        username: user.Username || identity.username,
+        primaryLabel: userMenuLabel.value,
+      });
     });
 
     const userInitials = computed(() => {
@@ -173,18 +204,28 @@ export default defineComponent({
       return firstGrapheme(label);
     });
 
+    const userAvatarSrc = ref('');
+    let avatarResolveGen = 0;
+    watch(
+      () => (authStore.currentUser as any)?.Avatar,
+      avatar => {
+        const gen = ++avatarResolveGen;
+        userAvatarSrc.value = '';
+        void resolveUserMenuAvatarDisplaySrc(avatar).then(src => {
+          if (gen !== avatarResolveGen) return;
+          userAvatarSrc.value = src || '';
+        });
+      },
+      { immediate: true, deep: true },
+    );
+
     function closeUserMenu() {
       userMenuOpen.value = false;
     }
 
     function resetHeaderPopups() {
       closeUserMenu();
-      preferencesVisible.value = false;
-    }
-
-    function openPreferences() {
-      preferencesVisible.value = true;
-      closeUserMenu();
+      closeAllDialogs();
     }
 
     function handleLogout() {
@@ -193,7 +234,8 @@ export default defineComponent({
     }
 
     function onMenuPreferences() {
-      openPreferences();
+      closeUserMenu();
+      openDialog({ component: PreferencesDialog, mode: 'replace' });
     }
 
     function onMenuLogout() {
@@ -204,12 +246,12 @@ export default defineComponent({
       ...baseSetup,
       _t,
       collaborationCaps,
-      preferencesVisible,
       userMenuOpen,
       userMenuLabel,
       userIdentityTooltip,
       userMenuMeta,
       userInitials,
+      userAvatarSrc,
       onMenuPreferences,
       onMenuLogout,
     };

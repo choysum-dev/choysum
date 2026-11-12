@@ -41,7 +41,10 @@ export async function runPreferencesSubmit(opts: {
     preferences: unknown,
   ) => void;
   applyLanguage: (languageId: unknown) => Promise<void>;
-  applyTheme?: (theme: unknown) => void;
+  /** Apply shell theme (and optional density from Preferences). */
+  applyTheme?: (theme: unknown, preferences: unknown) => void;
+  /** Apply Preferences.display overrides to i18n formatting. */
+  applyDisplay?: (preferences: unknown) => void;
   refreshToken: () => Promise<unknown>;
   afterLocaleChange: () => Promise<unknown>;
   onSuccess: () => void;
@@ -74,9 +77,15 @@ export async function runPreferencesSubmit(opts: {
   opts.patchCurrentUser(languageId, timezone, theme, preferences);
 
   try {
-    opts.applyTheme?.(theme);
+    opts.applyTheme?.(theme, preferences);
   } catch {
-    // Best-effort shell theme apply.
+    // Best-effort shell theme/density apply.
+  }
+
+  try {
+    opts.applyDisplay?.(preferences);
+  } catch {
+    // Best-effort display overrides.
   }
 
   // Match loadUser: i18n wiring must not undo a successful preference Write.

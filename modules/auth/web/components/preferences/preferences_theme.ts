@@ -5,8 +5,10 @@ import {
   applyChoyThemePreference,
   readChoyThemePreference,
   type ApplyChoyThemePreferenceOptions,
+  type ChoyDensityPreference,
   type ChoyThemeMode,
 } from '@/web/web/composables/applyChoyThemePreference';
+import { normalizePreferencesDensity, type PreferencesDensityUi } from './preferences_bag';
 
 /** Theme modes offered on auth.User.Theme / Preferences.theme. */
 export const PREFERENCES_THEME_MODES: readonly ChoyThemeMode[] = ['light', 'dark', 'auto'];
@@ -14,6 +16,11 @@ export const PREFERENCES_THEME_MODES: readonly ChoyThemeMode[] = ['light', 'dark
 /** Normalize stored preference to a concrete Theme selection value. */
 export function resolvePreferencesThemeMode(theme: unknown): ChoyThemeMode {
   return theme === 'dark' || theme === 'auto' || theme === 'light' ? theme : 'light';
+}
+
+/** Density offered in the Preferences dialog UI. */
+export function resolvePreferencesDensity(density: unknown): PreferencesDensityUi {
+  return normalizePreferencesDensity(density);
 }
 
 /**
@@ -50,4 +57,19 @@ export function applyPreferencesThemeMode(
   const next = resolvePreferencesThemeMode(mode);
   applyChoyThemePreference({ theme: next }, opts);
   return next;
+}
+
+/** Apply theme + density to the shell (and optionally persist locally). */
+export function applyPreferencesAppearance(
+  theme: unknown,
+  density: unknown,
+  opts?: ApplyChoyThemePreferenceOptions,
+): { theme: ChoyThemeMode; density: PreferencesDensityUi } {
+  const nextTheme = resolvePreferencesThemeMode(theme);
+  const nextDensity = resolvePreferencesDensity(density);
+  applyChoyThemePreference(
+    { theme: nextTheme, density: nextDensity as ChoyDensityPreference },
+    opts,
+  );
+  return { theme: nextTheme, density: nextDensity };
 }

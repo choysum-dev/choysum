@@ -13,14 +13,30 @@ function deps(overrides?: Partial<Parameters<typeof runPreferencesSubmit>[0]>) {
       missingUserMessage: 'missing id',
       defaultSubmit: async () => {
         calls.push('defaultSubmit');
-        return { LanguageId: 'lang-1', Timezone: 'Asia/Shanghai', Theme: 'dark' };
+        return {
+          LanguageId: 'lang-1',
+          Timezone: 'Asia/Shanghai',
+          Theme: 'dark',
+          Preferences: { density: 'compact', display: { dateFormat: 'YYYY-MM-DD' } },
+        };
       },
       formData: { LanguageId: 'lang-draft', Timezone: 'UTC', Theme: 'light' } as Record<string, unknown>,
       patchCurrentUser: (languageId: unknown, timezone: unknown, theme: unknown) => {
         calls.push(`patch:${String(languageId)}:${String(timezone)}:${String(theme)}`);
       },
-      applyTheme: (theme: unknown) => {
-        calls.push(`theme:${String(theme)}`);
+      applyTheme: (theme: unknown, preferences: unknown) => {
+        const density =
+          preferences && typeof preferences === 'object'
+            ? String((preferences as { density?: unknown }).density ?? '')
+            : '';
+        calls.push(`theme:${String(theme)}:${density}`);
+      },
+      applyDisplay: (preferences: unknown) => {
+        const display =
+          preferences && typeof preferences === 'object'
+            ? (preferences as { display?: unknown }).display
+            : null;
+        calls.push(`display:${JSON.stringify(display ?? null)}`);
       },
       applyLanguage: async (languageId: unknown) => {
         calls.push(`apply:${String(languageId)}`);
@@ -65,7 +81,8 @@ test('runPreferencesSubmit: defaultSubmit then language/token side effects', asy
   expect(calls).toEqual([
     'defaultSubmit',
     'patch:lang-1:Asia/Shanghai:dark',
-    'theme:dark',
+    'theme:dark:compact',
+    'display:{"dateFormat":"YYYY-MM-DD"}',
     'apply:lang-1',
     'refreshToken',
     'afterLocaleChange',
@@ -85,7 +102,8 @@ test('runPreferencesSubmit: normalizes ManyToOne LanguageId before side effects'
   expect(calls).toEqual([
     'defaultSubmit',
     'patch:lang-obj:UTC:light',
-    'theme:light',
+    'theme:light:',
+    'display:null',
     'apply:lang-obj',
     'refreshToken',
     'afterLocaleChange',
@@ -130,7 +148,8 @@ test('runPreferencesSubmit: applyLanguage failure still refreshes and succeeds',
   expect(calls).toEqual([
     'defaultSubmit',
     'patch:lang-1:Asia/Shanghai:dark',
-    'theme:dark',
+    'theme:dark:compact',
+    'display:{"dateFormat":"YYYY-MM-DD"}',
     'apply:lang-1',
     'refreshToken',
     'afterLocaleChange',
@@ -150,7 +169,8 @@ test('runPreferencesSubmit: refreshToken failure after Write still succeeds', as
   expect(calls).toEqual([
     'defaultSubmit',
     'patch:lang-1:Asia/Shanghai:dark',
-    'theme:dark',
+    'theme:dark:compact',
+    'display:{"dateFormat":"YYYY-MM-DD"}',
     'apply:lang-1',
     'refreshToken',
     'success',

@@ -2,9 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import {
+  applyPreferencesAppearance,
   applyPreferencesThemeMode,
   PREFERENCES_THEME_MODES,
   readPreferencesThemeMode,
+  resolvePreferencesDensity,
   resolvePreferencesThemeMode,
   resolveUserThemeMode,
 } from './preferences_theme';
@@ -17,6 +19,24 @@ test('resolvePreferencesThemeMode: known modes pass through; others become light
   expect(resolvePreferencesThemeMode('')).toBe('light');
   expect(resolvePreferencesThemeMode(undefined)).toBe('light');
   expect(resolvePreferencesThemeMode('nope')).toBe('light');
+});
+
+
+test('resolvePreferencesDensity: compact vs comfortable', () => {
+  expect(resolvePreferencesDensity('compact')).toBe('compact');
+  expect(resolvePreferencesDensity('standard')).toBe('comfortable');
+});
+
+test('applyPreferencesAppearance: returns normalized theme and density', () => {
+  const root = {
+    classList: { toggle: () => undefined },
+    setAttribute: () => undefined,
+    removeAttribute: () => undefined,
+  } as any;
+  const storage = { getItem: () => null, setItem: () => undefined };
+  expect(
+    applyPreferencesAppearance('dark', 'compact', { root, storage, persist: false }),
+  ).toEqual({ theme: 'dark', density: 'compact' });
 });
 
 test('resolveUserThemeMode: Theme wins, then Preferences.theme, then fallback', () => {
