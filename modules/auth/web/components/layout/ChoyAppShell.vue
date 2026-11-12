@@ -56,7 +56,12 @@ SPDX-License-Identifier: Apache-2.0
             </span>
           </ChoySidebarMenuButton>
         </ChoyDropdownMenuTrigger>
-        <ChoyDropdownMenuContent side="right" align="end" class="min-w-56 rounded-lg">
+        <ChoyDropdownMenuContent
+          side="right"
+          align="end"
+          class="min-w-56 rounded-lg"
+          @close-auto-focus="onUserMenuCloseAutoFocus"
+        >
           <!-- No identity heading: trigger already shows avatar / name / email. -->
           <ChoyDropdownMenuItem
             data-testid="auth-user-menu-preferences"
@@ -233,8 +238,26 @@ export default defineComponent({
       void router?.push?.({ name: 'logout' });
     }
 
-    function onMenuPreferences() {
+    /** When set, close-auto-focus must not restore trigger focus before Dialog opens. */
+    let openPreferencesOnMenuClose = false;
+
+    /**
+     * Open Preferences from the user menu without setTimeout.
+     * Reka restores focus to the trigger on close; Dialog then aria-hides the shell
+     * while that node is focused. preventDefault on select + close-auto-focus so we
+     * open the dialog only after the menu closes, without returning focus to the trigger
+     * (same pattern as Search `@close-auto-focus.prevent`).
+     */
+    function onMenuPreferences(event?: Event) {
+      event?.preventDefault?.();
+      openPreferencesOnMenuClose = true;
       closeUserMenu();
+    }
+
+    function onUserMenuCloseAutoFocus(event: Event) {
+      if (!openPreferencesOnMenuClose) return;
+      openPreferencesOnMenuClose = false;
+      event.preventDefault();
       openDialog({ component: PreferencesDialog, mode: 'replace' });
     }
 
@@ -253,6 +276,7 @@ export default defineComponent({
       userInitials,
       userAvatarSrc,
       onMenuPreferences,
+      onUserMenuCloseAutoFocus,
       onMenuLogout,
     };
   },
