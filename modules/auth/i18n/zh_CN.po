@@ -1011,60 +1011,225 @@ msgctxt "web/components/layout/SwitchCompany"
 msgid "Workspace"
 msgstr "工作区"
 
-#: web/components/preferences/PreferencesDialog.vue:20
+#: web/components/preferences/PreferencesDialog.vue
 msgctxt "web/components/preferences/PreferencesDialog"
 msgid "Appearance"
 msgstr "外观"
 
-#: web/components/preferences/PreferencesDialog.vue:37 web/components/preferences/PreferencesDialog.vue:9
+#: web/components/preferences/PreferencesDialog.vue
 msgctxt "web/components/preferences/PreferencesDialog"
 msgid "Cancel"
 msgstr "取消"
 
-#: web/components/preferences/PreferencesDialog.vue:194 web/components/preferences/PreferencesDialog.vue:207
+#: web/components/preferences/PreferencesDialog.vue
 msgctxt "web/components/preferences/PreferencesDialog"
 msgid "Cannot update preferences: missing user id"
 msgstr "无法更新偏好设置：缺少用户 ID"
 
-#: web/components/preferences/PreferencesDialog.vue:240
+#: web/components/preferences/PreferencesDialog.vue
+msgctxt "web/components/preferences/PreferencesDialog"
+msgid "Change password"
+msgstr "更改密码"
+
+#: web/components/preferences/PreferencesDialog.vue
+msgctxt "web/components/preferences/PreferencesDialog"
+msgid "Comfortable"
+msgstr "舒适"
+
+#: web/components/preferences/PreferencesDialog.vue
+msgctxt "web/components/preferences/PreferencesDialog"
+msgid "Compact"
+msgstr "紧凑"
+
+#: web/components/preferences/PreferencesDialog.vue
+msgctxt "web/components/preferences/PreferencesDialog"
+msgid "Density"
+msgstr "密度"
+
+#: web/components/preferences/PreferencesDialog.vue
+msgctxt "web/components/preferences/PreferencesDialog"
+msgid "Display timezone; empty uses browser timezone on first login."
+msgstr "显示时区；为空时首次登录会使用浏览器时区。"
+
+#: web/components/preferences/PreferencesDialog.vue
 msgctxt "web/components/preferences/PreferencesDialog"
 msgid "Failed to update preferences"
 msgstr "更新偏好设置失败"
 
-#: web/components/preferences/PreferencesDialog.vue:23
+#: web/components/preferences/PreferencesDialog.vue
+msgctxt "web/components/preferences/PreferencesDialog"
+msgid "First name"
+msgstr "名"
+
+#: web/components/preferences/PreferencesDialog.vue
+msgctxt "web/components/preferences/PreferencesDialog"
+msgid "General"
+msgstr "常规"
+
+#: web/components/preferences/PreferencesDialog.vue
+msgctxt "web/components/preferences/PreferencesDialog"
+msgid "Language"
+msgstr "语言"
+
+#: web/components/preferences/PreferencesDialog.vue
+msgctxt "web/components/preferences/PreferencesDialog"
+msgid "Language for the UI and terminology."
+msgstr "界面与术语使用的语言。"
+
+#: web/components/preferences/PreferencesDialog.vue
+msgctxt "web/components/preferences/PreferencesDialog"
+msgid "Last name"
+msgstr "姓"
+
+#: web/components/preferences/PreferencesDialog.vue
 msgctxt "web/components/preferences/PreferencesDialog"
 msgid "Locale"
 msgstr "区域"
 
-#: web/components/preferences/PreferencesDialog.vue:5
+#: web/components/preferences/PreferencesDialog.vue
+msgctxt "web/components/preferences/PreferencesDialog"
+msgid "Save"
+msgstr "保存"
+
+#: web/components/preferences/PreferencesDialog.vue
+msgctxt "web/components/preferences/PreferencesDialog"
+msgid "Password"
+msgstr "密码"
+
+#: web/components/preferences/PreferencesDialog.vue
 msgctxt "web/components/preferences/PreferencesDialog"
 msgid "Preferences"
 msgstr "偏好设置"
 
-#: web/components/preferences/PreferencesDialog.vue:234
+#: web/components/preferences/PreferencesDialog.vue
 msgctxt "web/components/preferences/PreferencesDialog"
 msgid "Preferences updated"
 msgstr "偏好设置已更新"
 
-#: web/components/preferences/PreferencesDialog.vue:31
+#: web/components/preferences/PreferencesDialog.vue
+msgctxt "web/components/preferences/PreferencesDialog"
+msgid "Security"
+msgstr "安全"
+
+#: web/components/preferences/PreferencesDialog.vue
 msgctxt "web/components/preferences/PreferencesDialog"
 msgid "Select timezone"
 msgstr "选择时区"
 
-#: web/components/preferences/PreferencesDialog.vue:33
+#: web/components/preferences/PreferencesDialog.vue
+msgctxt "web/components/preferences/PreferencesDialog"
+msgid "Spacing density for lists and the app shell."
+msgstr "列表与应用壳的间距密度。"
+
+#: web/components/preferences/PreferencesDialog.vue
 msgctxt "web/components/preferences/PreferencesDialog"
 msgid "Suggested from your browser"
 msgstr "根据浏览器建议"
 
-#: web/components/preferences/PreferencesDialog.vue:10 web/components/preferences/PreferencesDialog.vue:38
+#: web/components/preferences/PreferencesDialog.vue
+msgctxt "web/components/preferences/PreferencesDialog"
+msgid "Theme"
+msgstr "主题"
+
+#: web/components/preferences/PreferencesDialog.vue
+msgctxt "web/components/preferences/PreferencesDialog"
+msgid "Timezone"
+msgstr "时区"
+
+#: web/components/preferences/PreferencesDialog.vue
+msgctxt "web/components/preferences/PreferencesDialog"
+msgid "UI color theme (light, dark, or follow the system)."
+msgstr "界面配色主题（浅色、深色或跟随系统）。"
+
+#: web/components/preferences/PreferencesDialog.vue
+msgctxt "web/components/preferences/PreferencesDialog"
+msgid "Update if compromised or rotating credentials."
+msgstr "若凭证泄露或需要轮换，请更新密码。"
+
+#: web/components/preferences/PreferencesDialog.vue
 msgctxt "web/components/preferences/PreferencesDialog"
 msgid "Update preferences"
 msgstr "更新偏好设置"
 
-#: web/components/preferences/PreferencesDialog.vue:27
+#: web/components/preferences/PreferencesDialog.vue
 msgctxt "web/components/preferences/PreferencesDialog"
 msgid "Using current session language"
 msgstr "当前使用会话语言"
+
+#: web/components/change-password/ChangePasswordDialog.vue
+msgctxt "web/components/change-password/ChangePasswordDialog"
+msgid "Cancel"
+msgstr "取消"
+
+#: web/components/change-password/ChangePasswordDialog.vue
+msgctxt "web/components/change-password/ChangePasswordDialog"
+msgid "Cannot change password: missing username"
+msgstr "无法更改密码：缺少用户名"
+
+#: web/components/change-password/ChangePasswordDialog.vue
+msgctxt "web/components/change-password/ChangePasswordDialog"
+msgid "Change password"
+msgstr "更改密码"
+
+#: web/components/change-password/ChangePasswordDialog.vue
+msgctxt "web/components/change-password/ChangePasswordDialog"
+msgid "Confirm new password"
+msgstr "确认新密码"
+
+#: web/components/change-password/ChangePasswordDialog.vue
+msgctxt "web/components/change-password/ChangePasswordDialog"
+msgid "Confirm new password is required"
+msgstr "请确认新密码"
+
+#: web/components/change-password/ChangePasswordDialog.vue
+msgctxt "web/components/change-password/ChangePasswordDialog"
+msgid "Current password"
+msgstr "当前密码"
+
+#: web/components/change-password/ChangePasswordDialog.vue
+msgctxt "web/components/change-password/ChangePasswordDialog"
+msgid "Current password is required"
+msgstr "请输入当前密码"
+
+#: web/components/change-password/ChangePasswordDialog.vue
+msgctxt "web/components/change-password/ChangePasswordDialog"
+msgid "Failed to change password"
+msgstr "更改密码失败"
+
+#: web/components/change-password/ChangePasswordDialog.vue
+msgctxt "web/components/change-password/ChangePasswordDialog"
+msgid "New password"
+msgstr "新密码"
+
+#: web/components/change-password/ChangePasswordDialog.vue
+msgctxt "web/components/change-password/ChangePasswordDialog"
+msgid "New password is required"
+msgstr "请输入新密码"
+
+#: web/components/change-password/ChangePasswordDialog.vue
+msgctxt "web/components/change-password/ChangePasswordDialog"
+msgid "New password must differ from the current password"
+msgstr "新密码不能与当前密码相同"
+
+#: web/components/change-password/ChangePasswordDialog.vue
+msgctxt "web/components/change-password/ChangePasswordDialog"
+msgid "Password changed"
+msgstr "密码已更改"
+
+#: web/components/change-password/ChangePasswordDialog.vue
+msgctxt "web/components/change-password/ChangePasswordDialog"
+msgid "Password must be at least 6 characters"
+msgstr "密码至少需要 6 个字符"
+
+#: web/components/change-password/ChangePasswordDialog.vue
+msgctxt "web/components/change-password/ChangePasswordDialog"
+msgid "Passwords do not match"
+msgstr "两次输入的密码不一致"
+
+#: web/components/change-password/ChangePasswordDialog.vue
+msgctxt "web/components/change-password/ChangePasswordDialog"
+msgid "Update if compromised or rotating credentials."
+msgstr "若凭证泄露或需要轮换，请更新密码。"
 
 #: web/menu/menus.ts:58
 msgctxt "web/menu/menus"

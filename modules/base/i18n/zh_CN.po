@@ -336,6 +336,16 @@ msgctxt "base.model.Language.fields"
 msgid "Date Format"
 msgstr "日期格式"
 
+#: service/models/language.ts
+msgctxt "base.model.Language.fields"
+msgid "Person Name Format"
+msgstr "姓名格式"
+
+#: service/models/language.ts
+msgctxt "base.model.Language.fields"
+msgid "Template using {FirstName} and {LastName}; e.g. {LastName}{FirstName} or {FirstName} {LastName}."
+msgstr "使用 {FirstName} 与 {LastName} 的模板，例如 {LastName}{FirstName} 或 {FirstName} {LastName}。"
+
 #: service/models/language.ts:91
 msgctxt "base.model.Language.fields"
 msgid "Decimal Separator"

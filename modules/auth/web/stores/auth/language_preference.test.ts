@@ -102,3 +102,52 @@ test('applyUserLanguagePreference: skips setUiKey when LanguageId has no Code', 
   });
   expect(setUiKeyCalls).toEqual([]);
 });
+
+test('applyUserLanguagePreference: skips setUiKey when uiKey already matches', async () => {
+  const setUiKeyCalls: string[] = [];
+  let overrides: unknown = null;
+  await applyUserLanguagePreference({
+    languageId: 'lang_zh',
+    displayOverrides: { dateFormat: 'YYYY-MM-DD' },
+    browseLanguage: async () => ({ Code: 'zh_CN' }),
+    setUiKey: async key => {
+      setUiKeyCalls.push(key);
+    },
+    setDisplayOverrides: value => {
+      overrides = value;
+    },
+    langToUiKey: lang => (lang === 'zh_CN' ? 'zh-CN' : 'en'),
+    getCurrentUiKey: () => 'zh-CN',
+  });
+  expect(overrides).toEqual({ dateFormat: 'YYYY-MM-DD' });
+  expect(setUiKeyCalls).toEqual([]);
+});
+
+test('applyUserLanguagePreference: calls setUiKey when uiKey differs', async () => {
+  const setUiKeyCalls: string[] = [];
+  await applyUserLanguagePreference({
+    languageId: 'lang_zh',
+    browseLanguage: async () => ({ Code: 'zh_CN' }),
+    setUiKey: async key => {
+      setUiKeyCalls.push(key);
+    },
+    setDisplayOverrides: () => undefined,
+    langToUiKey: lang => (lang === 'zh_CN' ? 'zh-CN' : 'en'),
+    getCurrentUiKey: () => 'en',
+  });
+  expect(setUiKeyCalls).toEqual(['zh-CN']);
+});
+
+test('applyUserLanguagePreference: calls setUiKey when getCurrentUiKey omitted', async () => {
+  const setUiKeyCalls: string[] = [];
+  await applyUserLanguagePreference({
+    languageId: 'lang_zh',
+    browseLanguage: async () => ({ Code: 'zh_CN' }),
+    setUiKey: async key => {
+      setUiKeyCalls.push(key);
+    },
+    setDisplayOverrides: () => undefined,
+    langToUiKey: lang => lang,
+  });
+  expect(setUiKeyCalls).toEqual(['zh_CN']);
+});

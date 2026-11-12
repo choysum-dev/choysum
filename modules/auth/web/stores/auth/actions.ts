@@ -32,6 +32,7 @@ export type AuthActionDeps = {
     useI18nStore: () => {
       setUiKey: (uiKey: string) => Promise<unknown> | unknown;
       setDisplayOverrides: (overrides: unknown) => void;
+      localeCode?: string | null;
     };
     langToUiKey: (terminologyLang: string) => string;
   }>;
@@ -594,6 +595,10 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
         'Id',
         'Username',
         'Email',
+        'FirstName',
+        'LastName',
+        'FullName',
+        'Avatar',
         'LanguageId',
         'Timezone',
         'Theme',
@@ -636,6 +641,7 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
           setUiKey: key => i18nStore.setUiKey(key),
           setDisplayOverrides: overrides => i18nStore.setDisplayOverrides(overrides as any),
           langToUiKey,
+          getCurrentUiKey: () => i18nStore.localeCode ?? null,
         });
       } catch {
         // Best-effort; auth must not fail because of i18n wiring.

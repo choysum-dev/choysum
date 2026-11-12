@@ -18,7 +18,8 @@
         "TimeFormat": "HH:mm:ss",
         "FirstDayOfWeek": 1,
         "CurrencySymbolPosition": "before",
-        "CurrencySymbolSpacing": false
+        "CurrencySymbolSpacing": false,
+        "PersonNameFormat": "{LastName}{FirstName}"
       }
     },
     {
@@ -39,7 +40,8 @@
         "TimeFormat": "HH:mm:ss",
         "FirstDayOfWeek": 0,
         "CurrencySymbolPosition": "before",
-        "CurrencySymbolSpacing": false
+        "CurrencySymbolSpacing": false,
+        "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
     {

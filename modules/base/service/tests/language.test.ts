@@ -163,6 +163,38 @@ test('base.language: Create with format fields succeeds', async () => {
   expect(Number((created as any).FirstDayOfWeek)).toBe(1);
 });
 
+test('base.language: PersonNameFormat normalizes invalid templates on create', async () => {
+  const code = `p_${companyCode8()}`.slice(0, 16);
+  const created = await Language.Create(
+    {
+      Name: uid('LangPersonName'),
+      Code: code,
+      Direction: 'ltr' as any,
+      IsActive: true,
+      PersonNameFormat: 'no-tokens-here',
+    } as any,
+    ['Id', 'PersonNameFormat'] as any
+  );
+  expect(String((created as any).PersonNameFormat)).toBe('{FirstName} {LastName}');
+});
+
+test('base.language: GetActiveLanguages projects PersonNameFormat', async () => {
+  const code = `n_${companyCode8()}`.slice(0, 16);
+  await Language.Create(
+    {
+      Name: uid('LangNameFmt'),
+      Code: code,
+      Direction: 'ltr' as any,
+      IsActive: true,
+      PersonNameFormat: '{LastName}{FirstName}',
+    } as any,
+    ['Id'] as any
+  );
+  const rows = await Language.GetActiveLanguages();
+  const hit = rows.find(r => r.Code === code);
+  expect(hit?.PersonNameFormat).toBe('{LastName}{FirstName}');
+});
+
 test('base.language: GetActiveLanguages returns only active rows', async () => {
   const suffix = companyCode8();
   await Language.Create(

@@ -144,6 +144,19 @@ export type LogoutReq = {
   DeviceInfo?: string;
 };
 
+/**
+ * Self-service password change. Identity comes from the session; passwords are
+ * client-hashed the same way as Login (`$CH$…` accepted by hashPassword/verifyPassword).
+ */
+export type ChangePasswordReq = {
+  CurrentPassword: string;
+  NewPassword: string;
+};
+
+export type ChangePasswordResp = {
+  Ok: boolean;
+};
+
 /** Keep only anonymous-callable Register string fields (runtime over-posting guard). */
 export function pickRegisterUserInput(raw: Record<string, unknown>): RegisterUserInput {
   const out: Record<string, unknown> = {};

@@ -19,6 +19,7 @@ import { isIanaTimezone, listIanaTimezoneSelection } from '@/core/service/utils/
 import { Constraint } from '@/core/service/api/constraint';
 import type LanguageModel from '@/base/service/models/language';
 import type Company from '@/base/service/models/company';
+import { formatPersonName } from '@/core/service/utils/person_name';
 import { createServiceByModel } from '@/core/service/rpc';
 import { buildAuthzContextCacheKey, buildMethodAccessCacheKey } from '../_request_cache_invalidation';
 import { withPermissionGraphBypass, sortStrings, getCompanyScopeFromRequestContext } from './_authz_shared';
@@ -52,6 +53,8 @@ import {
 import {
   pickCompleteInitialSetupReq,
   pickRegisterUserInput,
+  type ChangePasswordReq,
+  type ChangePasswordResp,
   type CompleteInitialSetupReq,
   type CompleteInitialSetupResp,
   type GetInitialSetupStateReq,
@@ -63,6 +66,7 @@ import {
   type RegisterResp,
   type SwitchCompanyScopeReq,
 } from './_session_envelopes';
+import { buildChangedPasswordHash, normalizeChangePasswordInput } from './_change_password';
 import { buildAclAggregation } from './_permission_state_acl';
 import { buildUiPermissionProjection } from './_permission_state_ui';
 import { evaluateFieldRules } from './_field_rule_eval';
@@ -70,6 +74,8 @@ import { evaluateRecordRuleCondition } from './_record_rule_eval';
 import { buildAuthzContext, computePermStateVersion } from './_authz_context';
 
 export type {
+  ChangePasswordReq,
+  ChangePasswordResp,
   CompleteInitialSetupAdmin,
   CompleteInitialSetupOrganization,
   CompleteInitialSetupReq,
@@ -187,10 +193,26 @@ export default class User extends AttachmentOwnerMixin {
   FullName: string;
 
   @Compute<User>('FullName', {
-    deps: ['FirstName', 'LastName'],
+    deps: ['FirstName', 'LastName', 'LanguageId'],
   })
-  computeFullName() {
-    return this.FirstName + ' ' + this.LastName;
+  async computeFullName() {
+    const first = String(this.FirstName ?? '').trim();
+    const last = String(this.LastName ?? '').trim();
+    let template: string | undefined;
+    const languageId = normalizeRefId(this.LanguageId);
+    if (languageId) {
+      try {
+        const rows = await Language.Search(['Id', '=', languageId], {
+          fields: ['PersonNameFormat'],
+          limit: 1,
+        });
+        const raw = rows?.[0]?.PersonNameFormat;
+        if (raw != null) template = String(raw);
+      } catch {
+        // Best-effort; fall back to default template in formatPersonName.
+      }
+    }
+    return formatPersonName({ FirstName: first, LastName: last }, template);
   }
 
   /**
@@ -868,6 +890,56 @@ export default class User extends AttachmentOwnerMixin {
       throw wrapAuthError(error, {
         code: AuthErrCode.UNKNOWN,
         message: _t('Switch company scope failed', { scope: 'service/models/user' }),
+      });
+    }
+  }
+
+  /**
+   * Change the signed-in user's password after verifying the current password.
+   * Writes PasswordHash under authz bypass (field rules deny direct client writes).
+   */
+  static async ChangePassword(req: ChangePasswordReq): Promise<ChangePasswordResp> {
+    requireSessionEnvelope(req, 'ChangePassword');
+    const userId = String(this.userId || '').trim();
+    if (!userId) {
+      throw newAuthError({
+        code: AuthErrCode.VALIDATION_FAILED,
+        message: _t('User is not logged in', { scope: 'service/models/user' }),
+      }).withGrpcCode(GrpcCode.Unauthenticated);
+    }
+    const { currentPassword, newPassword } = normalizeChangePasswordInput(req);
+
+    try {
+      const nextHash = await withPermissionGraphBypass(async () => {
+        const user = await this.Browse(userId, ['Id', 'Username', 'PasswordHash', 'IsActive'] as any);
+        if (!user) {
+          throw newAuthError({
+            code: AuthErrCode.USER_NOT_FOUND,
+            message: _t('User not found', { scope: 'service/models/user' }),
+          }).withGrpcCode(GrpcCode.NotFound);
+        }
+        if (!(user as any).IsActive) {
+          throw newAuthError({
+            code: AuthErrCode.ACCOUNT_DISABLED,
+            message: _t('Account is disabled', { scope: 'service/models/user' }),
+          }).withGrpcCode(GrpcCode.PermissionDenied);
+        }
+        const passwordHash = String((user as any).PasswordHash || '');
+        const hashed = buildChangedPasswordHash({
+          currentPassword,
+          newPassword,
+          passwordHash,
+        });
+        await this.UpdateById(userId, { PasswordHash: hashed } as any, ['Id'] as any);
+        return hashed;
+      });
+      void nextHash;
+      return { Ok: true };
+    } catch (error) {
+      if (error instanceof ChoysumError) throw error;
+      throw wrapAuthError(error, {
+        code: AuthErrCode.VALIDATION_FAILED,
+        message: _t('Failed to change password', { scope: 'service/models/user' }),
       });
     }
   }

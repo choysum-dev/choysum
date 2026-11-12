@@ -14,6 +14,8 @@ export type LanguageFormatOverlay = {
   FirstDayOfWeek?: number;
   CurrencySymbolPosition?: 'before' | 'after';
   CurrencySymbolSpacing?: boolean;
+  /** Language.PersonNameFormat template ({FirstName}/{LastName}). */
+  PersonNameFormat?: string;
 };
 
 export type DisplayFormatOverrides = {
