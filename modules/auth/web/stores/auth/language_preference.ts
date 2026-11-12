@@ -1,6 +1,18 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
+/** Normalize ManyToOne `{ Id }` / scalar LanguageId to a trimmed id or null. */
+export function normalizeLanguageId(value: unknown): string | null {
+  if (value == null || Array.isArray(value)) return null;
+  if (typeof value === 'object') {
+    if (!('Id' in value)) return null;
+    const id = String((value as { Id?: unknown }).Id ?? '').trim();
+    return id || null;
+  }
+  const id = String(value).trim();
+  return id || null;
+}
+
 /**
  * Resolve a terminology POSIX code from a base.Language id via Browse.
  * Accepts a raw id or a ManyToOne `{ Id }` reference.
@@ -10,18 +22,11 @@ export async function terminologyCodeFromLanguageId(
   languageId: unknown,
   browseLanguage: (id: string, fields: string[]) => Promise<{ Code?: string; IsActive?: boolean } | null | undefined>
 ): Promise<string> {
-  const id = languageRefId(languageId);
+  const id = normalizeLanguageId(languageId);
   if (!id) return '';
   const row = await browseLanguage(id, ['Code', 'IsActive']);
   if (row?.IsActive === false) return '';
   return String(row?.Code || '').trim();
-}
-
-function languageRefId(value: unknown): string {
-  if (value == null || Array.isArray(value)) return '';
-  if (typeof value !== 'object') return String(value).trim();
-  if (!('Id' in value)) return '';
-  return String((value as { Id?: unknown }).Id ?? '').trim();
 }
 
 /**

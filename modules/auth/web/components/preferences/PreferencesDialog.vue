@@ -36,7 +36,7 @@ SPDX-License-Identifier: Apache-2.0
           :submit-handler="onPreferencesSubmit"
         >
           <template #default="{ formData, loading }">
-            <PreferenceDraftSeeder
+            <SelfProfileDraftSeeder
               :ready="!loading"
               :language-id="seedLanguageId"
               :timezone="seedTimezone"
@@ -110,7 +110,7 @@ SPDX-License-Identifier: Apache-2.0
                           :store="userStore"
                           prop="Theme"
                           :label="_t('Theme')"
-                          :help="themeFieldHelp"
+                          :help="_t('UI color theme (light, dark, or follow the system).')"
                           :clearable="false"
                           orientation="horizontal"
                           :select-props="{ 'data-testid': 'preferences-theme' }"
@@ -153,7 +153,7 @@ SPDX-License-Identifier: Apache-2.0
                           :store="userStore"
                           prop="Timezone"
                           :label="_t('Timezone')"
-                          :help="timezoneFieldHelp"
+                          :help="_t('Display timezone; empty uses browser timezone on first login.')"
                           :clearable="false"
                           orientation="horizontal"
                           :placeholder="_t('Select timezone')"
@@ -229,25 +229,27 @@ import { createTranslate } from '@/web/web/i18n';
 import { useAuthStore } from '@/auth/web/stores/auth';
 import { useI18nStore, langToUiKey, afterLocaleChange, softLocaleRemount } from '@/web/web/stores/i18nStore';
 import { createStoreByModel } from '@/web/web/stores/registry';
-import { applyUserLanguagePreference } from '@/auth/web/stores/auth/language_preference';
+import {
+  applyUserLanguagePreference,
+  normalizeLanguageId,
+} from '@/auth/web/stores/auth/language_preference';
 import { useReactiveCollaborationCaps } from '@/web/web/platform/collaborationCaps';
 import { isUserAvatarFieldVisible } from '@/auth/web/views/user_avatar_visibility';
 import { resolveUserMenuMeta } from '@/auth/web/components/layout/user_menu_display_name';
-import { PreferenceDraftSeeder } from './PreferenceDraftSeeder';
+import { SelfProfileDraftSeeder } from './SelfProfileDraftSeeder';
 import ChangePasswordDialog from '@/auth/web/components/change-password/ChangePasswordDialog.vue';
 import {
-  needsUserLoadOnPreferencesOpen,
-  resolvePreferencesSeedLanguageId,
-  resolvePreferencesSeedTimezone,
-} from './preferences_open';
-import { runPreferencesSubmit } from './preferences_submit';
+  needsSelfProfileLoad,
+  resolveSelfProfileSeedLanguageId,
+  resolveSelfProfileSeedTimezone,
+} from '@/auth/web/stores/auth/self_profile_seed';
+import { runSelfProfileSubmit } from '@/auth/web/stores/auth/self_profile_submit';
 import {
-  applyPreferencesAppearance,
-  readPreferencesDensityMode,
-  readPreferencesThemeMode,
+  applyUserAppearance,
   resolveUserDensity,
   resolveUserThemeMode,
-} from './preferences_theme';
+} from '@/auth/web/stores/auth/user_appearance';
+import { readChoyThemePreference } from '@/web/web/composables/applyChoyThemePreference';
 
 defineOptions({ name: 'PreferencesDialog' });
 
@@ -301,38 +303,41 @@ function profileIdentityMeta(formData: Record<string, unknown> | null | undefine
   });
 }
 
-const themeFieldHelp = computed(() =>
-  _t('UI color theme (light, dark, or follow the system).'),
-);
-const timezoneFieldHelp = computed(() =>
-  _t('Display timezone; empty uses browser timezone on first login.'),
-);
-
-function languageRefId(value: unknown): string {
-  if (value == null || Array.isArray(value)) return '';
-  if (typeof value !== 'object') return String(value).trim();
-  if (!('Id' in value)) return '';
-  return String((value as { Id?: unknown }).Id ?? '').trim();
-}
-
-function timezoneText(value: unknown): string {
+function fieldText(value: unknown): string {
   return value == null ? '' : String(value).trim();
 }
 
 function showLanguageSessionHint(formData: Record<string, unknown>): boolean {
-  const seed = languageRefId(seedLanguageId.value);
+  const seed = normalizeLanguageId(seedLanguageId.value);
   if (!languageFromSession.value || !seed) return false;
-  return languageRefId(formData?.LanguageId) === seed;
+  return normalizeLanguageId(formData?.LanguageId) === seed;
 }
 
 function showTimezoneBrowserHint(formData: Record<string, unknown>): boolean {
-  const seed = timezoneText(seedTimezone.value);
+  const seed = fieldText(seedTimezone.value);
   if (!timezoneFromBrowser.value || !seed) return false;
-  return timezoneText(formData?.Timezone) === seed;
+  return fieldText(formData?.Timezone) === seed;
 }
 
-async function resolveSeedLanguageId(): Promise<void> {
-  const resolved = await resolvePreferencesSeedLanguageId({
+async function openAndLoad() {
+  activeTab.value = 'general';
+  if (authStore.isAuthenticated && needsSelfProfileLoad(currentUser.value)) {
+    try {
+      await authStore.loadUser(false);
+    } catch {
+      // Fall back to whatever is already in auth state / identity.
+    }
+  }
+
+  const local = readChoyThemePreference();
+  seedTheme.value = resolveUserThemeMode(currentUser.value, local.theme);
+  seedDensity.value = resolveUserDensity(currentUser.value, local.density);
+
+  const tz = resolveSelfProfileSeedTimezone(currentUser.value?.Timezone);
+  seedTimezone.value = tz.seedTimezone;
+  timezoneFromBrowser.value = tz.timezoneFromBrowser;
+
+  const lang = await resolveSelfProfileSeedLanguageId({
     languageId: currentUser.value?.LanguageId,
     sessionTerminologyLang: i18nStore.terminologyLang,
     searchLanguageByCode: async code => {
@@ -343,41 +348,8 @@ async function resolveSeedLanguageId(): Promise<void> {
       return String(rows?.[0]?.Id || '').trim();
     },
   });
-  seedLanguageId.value = resolved.seedLanguageId;
-  languageFromSession.value = resolved.languageFromSession;
-}
-
-function resolveSeedTimezone(): void {
-  const resolved = resolvePreferencesSeedTimezone(currentUser.value?.Timezone);
-  seedTimezone.value = resolved.seedTimezone;
-  timezoneFromBrowser.value = resolved.timezoneFromBrowser;
-}
-
-function resolveSeedTheme(): void {
-  seedTheme.value = resolveUserThemeMode(currentUser.value, readPreferencesThemeMode());
-}
-
-function resolveSeedDensity(): void {
-  seedDensity.value = resolveUserDensity(currentUser.value, readPreferencesDensityMode());
-}
-
-function resetDialogLocalState(): void {
-  activeTab.value = 'general';
-}
-
-async function openAndLoad() {
-  resetDialogLocalState();
-  if (authStore.isAuthenticated && needsUserLoadOnPreferencesOpen(currentUser.value)) {
-    try {
-      await authStore.loadUser(false);
-    } catch {
-      // Fall back to whatever is already in auth state / identity.
-    }
-  }
-  resolveSeedTheme();
-  resolveSeedDensity();
-  resolveSeedTimezone();
-  await resolveSeedLanguageId();
+  seedLanguageId.value = lang.seedLanguageId;
+  languageFromSession.value = lang.languageFromSession;
 }
 
 watch(
@@ -392,8 +364,10 @@ onMounted(async () => {
   await openAndLoad();
 });
 
+const missingUserMessage = () => _t('Cannot update preferences: missing user id');
+
 function onMissingUserSubmit() {
-  ChoyMessage.error(_t('Cannot update preferences: missing user id'));
+  ChoyMessage.error(missingUserMessage());
 }
 
 async function onPreferencesSubmit(ctx: {
@@ -405,25 +379,26 @@ async function onPreferencesSubmit(ctx: {
   }
   saving.value = true;
   try {
-    await runPreferencesSubmit({
+    await runSelfProfileSubmit({
       userId: userId.value,
       hasCurrentUserId: Boolean(currentUser.value?.Id),
       loadUser: () => authStore.loadUser(true),
-      missingUserMessage: _t('Cannot update preferences: missing user id'),
+      missingUserMessage: missingUserMessage(),
       defaultSubmit: async () => (await ctx.defaultSubmit()) as Record<string, unknown> | null,
       formData: (ctx.formData || {}) as Record<string, unknown>,
       patchCurrentUser: (languageId, timezone, theme, density) => {
-        if (!authStore.currentUser) return;
-        (authStore.currentUser as any).LanguageId = languageId;
-        (authStore.currentUser as any).Timezone = timezone;
-        (authStore.currentUser as any).Theme = theme;
-        (authStore.currentUser as any).Density = density;
+        const user = authStore.currentUser as Record<string, unknown> | null | undefined;
+        if (!user) return;
+        user.LanguageId = languageId;
+        user.Timezone = timezone;
+        user.Theme = theme;
+        user.Density = density;
         const firstName = ctx.formData?.FirstName;
         const lastName = ctx.formData?.LastName;
         const avatar = ctx.formData?.Avatar;
-        if (firstName != null) (authStore.currentUser as any).FirstName = firstName;
-        if (lastName != null) (authStore.currentUser as any).LastName = lastName;
-        if (avatar != null) (authStore.currentUser as any).Avatar = avatar;
+        if (firstName != null) user.FirstName = firstName;
+        if (lastName != null) user.LastName = lastName;
+        if (avatar != null) user.Avatar = avatar;
       },
       applyLanguage: languageId =>
         applyUserLanguagePreference({
@@ -433,9 +408,7 @@ async function onPreferencesSubmit(ctx: {
           langToUiKey,
           getCurrentUiKey: () => i18nStore.localeCode,
         }),
-      applyAppearance: (theme, density) => {
-        applyPreferencesAppearance(theme, density);
-      },
+      applyAppearance: applyUserAppearance,
       refreshToken: () => authStore.refreshToken(true),
       afterLocaleChange: () => afterLocaleChange({ remount: softLocaleRemount }),
       onSuccess: () => {

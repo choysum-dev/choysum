@@ -1,7 +1,19 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { applyUserLanguagePreference, terminologyCodeFromLanguageId } from './language_preference';
+import {
+  applyUserLanguagePreference,
+  normalizeLanguageId,
+  terminologyCodeFromLanguageId,
+} from './language_preference';
+
+test('normalizeLanguageId: unwraps ManyToOne and scalars', () => {
+  expect(normalizeLanguageId({ Id: 'lang-1' })).toBe('lang-1');
+  expect(normalizeLanguageId('lang-2')).toBe('lang-2');
+  expect(normalizeLanguageId({ Id: '' })).toBe(null);
+  expect(normalizeLanguageId(null)).toBe(null);
+  expect(normalizeLanguageId(['lang-tuple'])).toBe(null);
+});
 
 test('terminologyCodeFromLanguageId: empty id skips Browse', async () => {
   let browsed = false;

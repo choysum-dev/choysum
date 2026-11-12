@@ -21,7 +21,7 @@ function isEmptyField(value: unknown): boolean {
  * Fill empty LanguageId / Timezone / Theme / Density on the FormView draft from hints.
  * Does not Write until the user submits.
  */
-export function seedPreferenceDraft(
+export function seedSelfProfileDraft(
   formRoot: FormRootApi | null | undefined,
   opts: { languageId?: unknown; timezone?: string; theme?: string; density?: string },
 ): void {
@@ -48,12 +48,12 @@ export function seedPreferenceDraft(
 }
 
 /**
- * After FormView beginEdit, seed empty preference fields once each seed value arrives.
+ * After FormView beginEdit, seed empty self-profile fields once each seed value arrives.
  * Seeds are tracked separately so a ready form that settles before resolution still
  * receives late-arriving hints.
  */
-export const PreferenceDraftSeeder = defineComponent({
-  name: 'PreferenceDraftSeeder',
+export const SelfProfileDraftSeeder = defineComponent({
+  name: 'SelfProfileDraftSeeder',
   props: {
     ready: { type: Boolean, default: false },
     languageId: { type: String, default: '' },
@@ -71,19 +71,19 @@ export const PreferenceDraftSeeder = defineComponent({
     function apply(): void {
       if (!formRoot || !props.ready) return;
       if (!languageApplied && props.languageId) {
-        seedPreferenceDraft(formRoot, { languageId: props.languageId });
+        seedSelfProfileDraft(formRoot, { languageId: props.languageId });
         languageApplied = true;
       }
       if (!timezoneApplied && props.timezone) {
-        seedPreferenceDraft(formRoot, { timezone: props.timezone });
+        seedSelfProfileDraft(formRoot, { timezone: props.timezone });
         timezoneApplied = true;
       }
       if (!themeApplied && props.theme) {
-        seedPreferenceDraft(formRoot, { theme: props.theme });
+        seedSelfProfileDraft(formRoot, { theme: props.theme });
         themeApplied = true;
       }
       if (!densityApplied && props.density) {
-        seedPreferenceDraft(formRoot, { density: props.density });
+        seedSelfProfileDraft(formRoot, { density: props.density });
         densityApplied = true;
       }
     }

@@ -3,11 +3,11 @@
 
 import { defineComponent, h, provide, ref } from 'vue';
 import { mount, flushPromises } from '@choysum/test-utils';
-import { PreferenceDraftSeeder, seedPreferenceDraft } from './PreferenceDraftSeeder';
+import { SelfProfileDraftSeeder, seedSelfProfileDraft } from './SelfProfileDraftSeeder';
 
-test('seedPreferenceDraft: fills empty LanguageId, Timezone, and Theme', () => {
+test('seedSelfProfileDraft: fills empty LanguageId, Timezone, and Theme', () => {
   const draft: Record<string, unknown> = { LanguageId: '', Timezone: '', Theme: null };
-  seedPreferenceDraft(
+  seedSelfProfileDraft(
     {
       getField: path => draft[path],
       setField: (path, value) => {
@@ -21,9 +21,9 @@ test('seedPreferenceDraft: fills empty LanguageId, Timezone, and Theme', () => {
   expect(draft.Theme).toBe('dark');
 });
 
-test('seedPreferenceDraft: does not overwrite persisted LanguageId / Timezone / Theme', () => {
+test('seedSelfProfileDraft: does not overwrite persisted LanguageId / Timezone / Theme', () => {
   const draft: Record<string, unknown> = { LanguageId: 'saved-lang', Timezone: 'UTC', Theme: 'light' };
-  seedPreferenceDraft(
+  seedSelfProfileDraft(
     {
       getField: path => draft[path],
       setField: (path, value) => {
@@ -37,13 +37,13 @@ test('seedPreferenceDraft: does not overwrite persisted LanguageId / Timezone / 
   expect(draft.Theme).toBe('light');
 });
 
-test('seedPreferenceDraft: no-ops without form-root', () => {
-  seedPreferenceDraft(null, { languageId: 'lang-1', timezone: 'UTC' });
+test('seedSelfProfileDraft: no-ops without form-root', () => {
+  seedSelfProfileDraft(null, { languageId: 'lang-1', timezone: 'UTC' });
 });
 
-test('seedPreferenceDraft: treats empty ManyToOne LanguageId as empty and seeds Id', () => {
+test('seedSelfProfileDraft: treats empty ManyToOne LanguageId as empty and seeds Id', () => {
   const draft: Record<string, unknown> = { LanguageId: { Id: '' }, Timezone: null };
-  seedPreferenceDraft(
+  seedSelfProfileDraft(
     {
       getField: path => draft[path],
       setField: (path, value) => {
@@ -56,9 +56,9 @@ test('seedPreferenceDraft: treats empty ManyToOne LanguageId as empty and seeds 
   expect(draft.Timezone).toBe('UTC');
 });
 
-test('seedPreferenceDraft: non-empty non-Id field values are left alone', () => {
+test('seedSelfProfileDraft: non-empty non-Id field values are left alone', () => {
   const draft: Record<string, unknown> = { LanguageId: 1, Timezone: 2 };
-  seedPreferenceDraft(
+  seedSelfProfileDraft(
     {
       getField: path => draft[path],
       setField: (path, value) => {
@@ -71,7 +71,7 @@ test('seedPreferenceDraft: non-empty non-Id field values are left alone', () => 
   expect(draft.Timezone).toBe(2);
 });
 
-test('PreferenceDraftSeeder: injects form-root and seeds after ready + late hints', async () => {
+test('SelfProfileDraftSeeder: injects form-root and seeds after ready + late hints', async () => {
   const draft: Record<string, unknown> = { LanguageId: '', Timezone: '' };
   const ready = ref(false);
   const languageId = ref('');
@@ -85,7 +85,7 @@ test('PreferenceDraftSeeder: injects form-root and seeds after ready + late hint
         },
       });
       return () =>
-        h(PreferenceDraftSeeder, {
+        h(SelfProfileDraftSeeder, {
           ready: ready.value,
           languageId: languageId.value,
           timezone: timezone.value,
@@ -94,7 +94,6 @@ test('PreferenceDraftSeeder: injects form-root and seeds after ready + late hint
   });
   const wrapper = mount(Host as any);
   await flushPromises();
-  // Form ready before seeds arrive must not latch forever.
   ready.value = true;
   await flushPromises();
   expect(draft.LanguageId).toBe('');
@@ -111,10 +110,10 @@ test('PreferenceDraftSeeder: injects form-root and seeds after ready + late hint
   wrapper.unmount();
 });
 
-test('PreferenceDraftSeeder: without form-root inject, seeding is a no-op', async () => {
+test('SelfProfileDraftSeeder: without form-root inject, seeding is a no-op', async () => {
   const Host = defineComponent({
     setup() {
-      return () => h(PreferenceDraftSeeder, { ready: true, languageId: 'lang-1', timezone: 'UTC' });
+      return () => h(SelfProfileDraftSeeder, { ready: true, languageId: 'lang-1', timezone: 'UTC' });
     },
   });
   const wrapper = mount(Host as any);
@@ -122,7 +121,7 @@ test('PreferenceDraftSeeder: without form-root inject, seeding is a no-op', asyn
   wrapper.unmount();
 });
 
-test('PreferenceDraftSeeder: does not overwrite server LanguageId when seed arrives late', async () => {
+test('SelfProfileDraftSeeder: does not overwrite server LanguageId when seed arrives late', async () => {
   const draft: Record<string, unknown> = { LanguageId: 'saved-lang', Timezone: 'UTC' };
   const languageId = ref('');
   const Host = defineComponent({
@@ -133,7 +132,8 @@ test('PreferenceDraftSeeder: does not overwrite server LanguageId when seed arri
           draft[path] = value;
         },
       });
-      return () => h(PreferenceDraftSeeder, { ready: true, languageId: languageId.value, timezone: '' });
+      return () =>
+        h(SelfProfileDraftSeeder, { ready: true, languageId: languageId.value, timezone: '' });
     },
   });
   const wrapper = mount(Host as any);

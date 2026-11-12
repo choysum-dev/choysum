@@ -599,15 +599,14 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
           '@/web/web/composables/applyChoyThemePreference'
         );
         const {
-          applyPreferencesAppearance,
-          resolvePreferencesThemeMode,
+          applyUserAppearance,
           resolveUserDensity,
           resolveUserThemeMode,
-        } = await import('@/auth/web/components/preferences/preferences_theme');
+        } = await import('./user_appearance');
         const local = readChoyThemePreference();
-        applyPreferencesAppearance(
-          resolveUserThemeMode(user as any, resolvePreferencesThemeMode(local.theme)),
-          resolveUserDensity(user as any, local.density === 'compact' ? 'compact' : 'comfortable'),
+        applyUserAppearance(
+          resolveUserThemeMode(user as any, local.theme),
+          resolveUserDensity(user as any, local.density),
         );
       } catch {
         // Best-effort; auth must not fail because of theme wiring.
