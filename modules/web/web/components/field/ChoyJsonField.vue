@@ -19,6 +19,7 @@ SPDX-License-Identifier: Apache-2.0
     :cellVisible="cellVisible"
     :renderMode="renderMode"
     :showInlineError="showInlineError"
+    :inline-error-space="inlineErrorSpace"
     :label-for-control="false"
     v-bind="$attrs"
   >
@@ -134,6 +135,8 @@ const props = withDefaults(
     commitOnBlur?: boolean;
     renderMode?: 'auto' | 'form' | 'table' | 'inline';
     showInlineError?: boolean;
+    /** collapse | reserve | overlay; forwarded to ChoyFieldBase. */
+    inlineErrorSpace?: 'collapse' | 'reserve' | 'overlay';
   }>(),
   {
     rules: () => [],

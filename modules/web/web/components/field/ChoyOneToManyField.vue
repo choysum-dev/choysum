@@ -18,6 +18,7 @@ SPDX-License-Identifier: Apache-2.0
     :cellVisible="cellVisible"
     :renderMode="renderMode"
     :showInlineError="showInlineError"
+    :inline-error-space="inlineErrorSpace"
     :label-for-control="false"
   >
     <template #edit="{ inputId, labelId, describedBy, invalid }">
@@ -184,6 +185,8 @@ const props = withDefaults(
     confirmOnRemove?: boolean;
     renderMode?: 'auto' | 'form' | 'table' | 'inline';
     showInlineError?: boolean;
+    /** collapse | reserve | overlay; forwarded to ChoyFieldBase. */
+    inlineErrorSpace?: 'collapse' | 'reserve' | 'overlay';
   }>(),
   {
     rules: () => [],

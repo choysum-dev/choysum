@@ -12,6 +12,7 @@ export { default as ChoyPage } from './components/layout/ChoyPage.vue';
 export { default as ChoyPageIoMenu } from './components/layout/ChoyPageIoMenu.vue';
 export { default as ChoyActionTray } from './components/layout/ChoyActionTray.vue';
 export { default as ChoyConfirmHost } from './components/layout/ChoyConfirmHost.vue';
+export { default as ChoyDialogHost } from './components/layout/ChoyDialogHost.vue';
 export { default as ChoySkeleton } from './components/layout/ChoySkeleton.vue';
 export { default as ChoyEmpty } from './components/layout/ChoyEmpty.vue';
 export { default as ChoySpinner } from './components/layout/ChoySpinner.vue';
@@ -47,7 +48,11 @@ export {
 } from './components/vendor/ui/sidebar/index';
 export { resolveCompanyLogoUrl, productLogoUrl } from './utils/resolveCompanyLogoUrl';
 
-export { Avatar as ChoyAvatar, AvatarFallback as ChoyAvatarFallback } from './components/vendor/ui/avatar';
+export {
+  Avatar as ChoyAvatar,
+  AvatarFallback as ChoyAvatarFallback,
+  AvatarImage as ChoyAvatarImage,
+} from './components/vendor/ui/avatar';
 export {
   DropdownMenu as ChoyDropdownMenu,
   DropdownMenuContent as ChoyDropdownMenuContent,
@@ -75,6 +80,7 @@ export {
   ChoyDialog,
   ChoyDialogContent,
   ChoyDialogDescription,
+  ChoyDialogFooter,
   ChoyDialogHeader,
   ChoyDialogTitle,
 } from './components/layout/choyDialog';
@@ -226,6 +232,7 @@ export { groupRowsToChartSeries } from './components/view/chartStoreHelpers';
 
 export { default as ChoyFieldBase } from './components/field/ChoyFieldBase.vue';
 export type {
+  ChoyInlineErrorSpace,
   FieldStateExpr,
   FormItemProps,
 } from './components/field/ChoyFieldBase.vue';
@@ -263,6 +270,7 @@ export { default as ChoyPropertiesDefinitionField } from './components/field/Cho
 export { default as ChoyPropertiesDefinitionItemDialog } from './components/field/ChoyPropertiesDefinitionItemDialog.vue';
 export { default as ChoyPropertiesDefinitionSelectionEditor } from './components/field/ChoyPropertiesDefinitionSelectionEditor.vue';
 export { default as ChoyVirtualField } from './components/field/ChoyVirtualField.vue';
+export { default as ChoySlotField } from './components/field/ChoySlotField.vue';
 export { default as ChoyFieldTranslationsDialog } from './components/field/ChoyFieldTranslationsDialog.vue';
 export { default as ChoyFieldCompanyValuesDialog } from './components/field/ChoyFieldCompanyValuesDialog.vue';
 export {
@@ -338,6 +346,20 @@ export {
   useConfirmChoyStore,
 } from './composables/confirmChoyAction';
 export type { ConfirmChoyChoice, ConfirmChoyOptions } from './composables/confirmChoyAction';
+export { useDetachedField } from './composables/useDetachedField';
+export type { UseDetachedFieldOptions } from './composables/useDetachedField';
+export {
+  closeAllDialogs,
+  closeDialog,
+  onDialogInterrupt,
+  openDialog,
+  useDialogStack,
+} from './composables/dialogService';
+export type {
+  DialogEntry,
+  DialogMode,
+  DialogOpenOptions,
+} from './composables/dialogService';
 export { choyControlHeightPx } from './lib/choyControlHeight';
 export {
   applyChoyThemePreference,

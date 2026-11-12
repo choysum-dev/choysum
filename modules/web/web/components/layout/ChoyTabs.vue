@@ -8,12 +8,14 @@ SPDX-License-Identifier: Apache-2.0
     v-model="modelValue"
     :data-anchor="props.dataAnchor?.trim() || 'choy.tabs'"
     :data-variant="variant"
+    :data-equal-pane-height="equalPaneHeight ? 'true' : undefined"
     :class="cn('choy-tabs', props.class)"
   >
     <TabsList v-if="tabs.length" :class="listClass">
       <TabsTrigger
         v-for="tab in tabs"
         :key="tab.value"
+        type="button"
         :value="tab.value"
         :disabled="tab.disabled"
         :class="triggerClass"
@@ -47,6 +49,8 @@ export type ChoyTabsVariant = 'line' | 'pill';
  * Line styles live in scoped CSS so they win over kit utilities (cn does not tw-merge).
  * `dataAnchor` overrides the default L1 anchor for IMD extension points
  * (e.g. partner.detail.tab-panels).
+ * `equalPaneHeight` stacks force-mounted panes in one grid cell so dialogs keep
+ * a stable height across tabs (inactive panes use visibility, not display:none).
  */
 const props = withDefaults(
   defineProps<{
@@ -55,15 +59,22 @@ const props = withDefaults(
     /** Public IMD extension anchor; defaults to choy.tabs. */
     dataAnchor?: string;
     variant?: ChoyTabsVariant;
+    /**
+     * Keep force-mounted pane heights equal (tallest wins). Pair with ChoyTab
+     * force-mount; inactive panes stay invisible but still occupy layout.
+     */
+    equalPaneHeight?: boolean;
   }>(),
   {
     variant: 'line',
+    equalPaneHeight: false,
   },
 );
 
 const modelValue = defineModel<string>();
 const tabs = ref<ChoyTabRegistration[]>([]);
-const ctx = createChoyTabsContext(tabs, modelValue);
+const equalPaneHeight = computed(() => props.equalPaneHeight === true);
+const ctx = createChoyTabsContext(tabs, modelValue, equalPaneHeight);
 /** True after initial mount; children have already registered by then. */
 const settled = ref(false);
 
@@ -152,5 +163,30 @@ onBeforeUnmount(() => {
 .choy-tabs[data-variant='line'] :deep([data-slot='tabs-content']) {
   margin-top: 0;
   padding-top: 1rem;
+}
+
+/*
+ * Equal pane height: list on row 1; all force-mounted panes share row 2 so the
+ * track size is the max pane (inactive panes use visibility:hidden, not display:none).
+ */
+.choy-tabs[data-equal-pane-height='true'] {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  align-content: start;
+}
+.choy-tabs[data-equal-pane-height='true'] :deep([data-slot='tabs-list']) {
+  grid-column: 1;
+  grid-row: 1;
+}
+.choy-tabs[data-equal-pane-height='true'] :deep([data-slot='tabs-content']) {
+  grid-column: 1;
+  grid-row: 2;
+  min-width: 0;
+  align-self: stretch;
+}
+/* Reka may set the HTML hidden attribute; keep inactive panes in layout. */
+.choy-tabs[data-equal-pane-height='true'] :deep([data-slot='tabs-content'][hidden]) {
+  display: block !important;
 }
 </style>

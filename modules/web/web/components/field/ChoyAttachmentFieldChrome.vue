@@ -10,7 +10,7 @@ SPDX-License-Identifier: Apache-2.0
       rootClass,
     ]"
   >
-    <!-- Image form presentation (Odoo-style avatar when valued); empty edit uses compact upload. -->
+    <!-- Image form presentation: valued avatar + same-size empty pick box. -->
     <template v-if="useImagePresentation">
       <template v-if="mode === 'edit'">
         <div
@@ -101,9 +101,13 @@ SPDX-License-Identifier: Apache-2.0
             </div>
           </TooltipProvider>
         </div>
+        <!-- Empty image edit: same-size avatar box (icon + pick), not a full-width dashed banner. -->
         <label
           v-else
-          :class="['choy-attachment-upload box-border block w-full cursor-pointer', uploadClass]"
+          class="choy-image-avatar choy-image-avatar--empty group/image-avatar relative box-border flex cursor-pointer items-center justify-center overflow-hidden border border-dashed border-input bg-muted hover:border-primary hover:bg-primary-subtle"
+          :class="[{ 'opacity-60': uploadBlocked, 'cursor-not-allowed': uploadBlocked }, avatarRadiusClass, uploadClass]"
+          :style="avatarBoxStyle"
+          :data-fit="effectiveFit"
           @dragover.prevent="onDragOver"
           @drop.prevent="onDrop"
         >
@@ -114,21 +118,13 @@ SPDX-License-Identifier: Apache-2.0
             :name="inputName || undefined"
             :aria-describedby="describedBy || undefined"
             :aria-invalid="invalid ? 'true' : undefined"
+            :aria-label="drag ? dropLabel : uploadLabel"
             :accept="acceptAttr"
             :disabled="uploadBlocked"
             @change="onFileInputChange"
           />
-          <Attachment
-            size="xs"
-            :state="attachmentState === 'uploading' ? 'uploading' : 'idle'"
-            class="choy-attachment-upload--compact w-full max-w-full min-h-control flex-nowrap items-center rounded-md border border-dashed border-input bg-transparent px-3 hover:border-primary hover:bg-primary-subtle"
-            :class="{ 'opacity-60': uploadBlocked }"
-          >
-            <Upload class="size-4 shrink-0 text-primary" />
-            <div class="min-w-0 flex-1 truncate text-sm leading-none text-muted-foreground">
-              {{ drag ? dropLabel : uploadLabel }}
-            </div>
-          </Attachment>
+          <Upload class="size-5 shrink-0 text-muted-foreground group-hover/image-avatar:text-primary" aria-hidden="true" />
+          <span class="sr-only">{{ drag ? dropLabel : uploadLabel }}</span>
         </label>
       </template>
       <template v-else>
@@ -550,12 +546,12 @@ function onPreviewClick(): void {
 }
 
 function onDragOver(ev: DragEvent): void {
-  if (uploadBlocked.value) return;
+  if (!props.drag || uploadBlocked.value) return;
   if (ev.dataTransfer) ev.dataTransfer.dropEffect = 'copy';
 }
 
 function onDrop(ev: DragEvent): void {
-  if (uploadBlocked.value) return;
+  if (!props.drag || uploadBlocked.value) return;
   const file = ev.dataTransfer?.files?.[0];
   if (!file) return;
   emit('file', file);

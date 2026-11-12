@@ -8,6 +8,7 @@ SPDX-License-Identifier: Apache-2.0
     <router-view />
     <Toaster rich-colors close-button />
     <ChoyConfirmHost />
+    <ChoyDialogHost />
   </div>
 </template>
 
@@ -18,4 +19,5 @@ SPDX-License-Identifier: Apache-2.0
  */
 import Toaster from './components/vendor/ui/sonner/Sonner.vue';
 import ChoyConfirmHost from './components/layout/ChoyConfirmHost.vue';
+import ChoyDialogHost from './components/layout/ChoyDialogHost.vue';
 </script>

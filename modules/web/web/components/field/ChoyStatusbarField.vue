@@ -21,6 +21,7 @@ SPDX-License-Identifier: Apache-2.0
     :cellVisible="cellVisible"
     :renderMode="renderMode"
     :showInlineError="showInlineError"
+    :inline-error-space="inlineErrorSpace"
     :label-for-control="false"
   >
     <!-- Same chrome in edit + display; interactivity follows isInteractive. -->
@@ -160,6 +161,8 @@ const props = withDefaults(
     /** Prefer `inline` in form header chrome (outside form layout). */
     renderMode?: 'auto' | 'form' | 'table' | 'inline';
     showInlineError?: boolean;
+    /** collapse | reserve | overlay; forwarded to ChoyFieldBase. */
+    inlineErrorSpace?: 'collapse' | 'reserve' | 'overlay';
   }>(),
   {
     rules: () => [],

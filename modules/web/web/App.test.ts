@@ -6,11 +6,12 @@ import { createPinia, setActivePinia } from 'pinia';
 import { flushPromises, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
 import App from './App.vue';
 import ChoyConfirmHost from './components/layout/ChoyConfirmHost.vue';
+import ChoyDialogHost from './components/layout/ChoyDialogHost.vue';
 import Toaster from './components/vendor/ui/sonner/Sonner.vue';
 import { useI18nStore } from './stores';
 
 describe('App', () => {
-  test('mounts router-view with toaster and confirm host', async () => {
+  test('mounts router-view with toaster, confirm host, and dialog host', async () => {
     const pinia = createPinia();
     setActivePinia(pinia);
     useI18nStore().localeCode = 'en';
@@ -25,6 +26,12 @@ describe('App', () => {
       name: 'ChoyConfirmHost',
       setup() {
         return () => h('div', { 'data-test': 'confirm-host' });
+      },
+    });
+    stubSfc(ChoyDialogHost as any, {
+      name: 'ChoyDialogHost',
+      setup() {
+        return () => h('div', { 'data-test': 'dialog-host' });
       },
     });
 
@@ -49,9 +56,11 @@ describe('App', () => {
     expect(el.querySelector('[data-test=router-view]')).not.toBeNull();
     expect(el.querySelector('[data-test=toaster]')).not.toBeNull();
     expect(el.querySelector('[data-test=confirm-host]')).not.toBeNull();
+    expect(el.querySelector('[data-test=dialog-host]')).not.toBeNull();
     app.unmount();
     el.remove();
     restoreSfc(Toaster as any);
     restoreSfc(ChoyConfirmHost as any);
+    restoreSfc(ChoyDialogHost as any);
   });
 });

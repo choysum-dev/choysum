@@ -686,7 +686,7 @@ describe('ChoyFieldBase auto renderMode from fieldPresentation', () => {
     m.unmount();
   });
 
-  test('form chrome exposes label for, help describedBy, and reserved error space', async () => {
+  test('form chrome exposes label for, help describedBy; collapse default skips error reserve', async () => {
     const m = mountBase(
       {
         binding: makeBinding({ string: 'Name', help: 'Help text' }),
@@ -713,6 +713,7 @@ describe('ChoyFieldBase auto renderMode from fieldPresentation', () => {
     expect(root).toBeTruthy();
     expect(root?.getAttribute('data-slot')).toBe('field');
     expect(root?.getAttribute('data-orientation')).toBe('horizontal');
+    expect(root?.getAttribute('data-inline-error-space')).toBe('collapse');
     expect(root?.className || '').toContain('choy-field-base');
     expect(root?.className || '').toContain('extra-field');
     expect(m.q('[data-slot="form-item"]')).toBeFalsy();
@@ -724,8 +725,70 @@ describe('ChoyFieldBase auto renderMode from fieldPresentation', () => {
     expect(probe?.id).toBe('aria-field');
     expect(probe?.getAttribute('data-invalid')).toBe('false');
     expect(probe?.getAttribute('data-describedby')).toBe('aria-field-help');
-    const reserved = m.q('.choy-field-base__error-reserve');
-    expect(reserved).toBeTruthy();
+    expect(m.q('.choy-field-base__error-reserve')).toBeFalsy();
+    m.unmount();
+  });
+
+  test('inlineErrorSpace reserve keeps empty error placeholder', async () => {
+    const m = mountBase(
+      {
+        binding: makeBinding({ string: 'Name' }),
+        renderMode: 'form',
+        showInlineError: true,
+        inlineErrorSpace: 'reserve',
+      },
+      {
+        slots: {
+          edit: () => h('input', { class: 'reserve-probe' }),
+          display: () => h('span'),
+        },
+      },
+    );
+    await flushPromises();
+    const root = m.q('[data-anchor="choy.field-base"]') as HTMLElement | null;
+    expect(root?.getAttribute('data-inline-error-space')).toBe('reserve');
+    expect(m.q('.choy-field-base__error-reserve')).toBeTruthy();
+    m.unmount();
+  });
+
+  test('inlineErrorSpace overlay paints absolute error without reserve', async () => {
+    const { FIELD_CLIENT_VALIDATORS_KEY } = await import('@/web/web/composables/fieldClientValidation');
+    const validators = new Map<string, () => Promise<string>>();
+    const binding = makeBinding({ string: 'Name' });
+    binding.__value.value = '';
+    const m = mountBase(
+      {
+        binding,
+        renderMode: 'form',
+        showInlineError: true,
+        inlineErrorSpace: 'overlay',
+        rules: [
+          {
+            validator: (_r: unknown, v: unknown, cb: (e?: Error) => void) => {
+              if (!v) cb(new Error('need value'));
+              else cb();
+            },
+          },
+        ],
+      },
+      {
+        provide: { [FIELD_CLIENT_VALIDATORS_KEY as any]: validators },
+        slots: {
+          edit: () => h('input', { class: 'overlay-probe' }),
+          display: () => h('span'),
+        },
+      },
+    );
+    await flushPromises();
+    expect(m.q('.choy-field-base__error-reserve')).toBeFalsy();
+    expect(m.q('[data-slot="field-error"]')).toBeFalsy();
+    const validate = [...validators.values()][0];
+    expect(await validate()).toBe('need value');
+    await flushPromises();
+    const err = m.q('[data-slot="field-error"]') as HTMLElement | null;
+    expect(err?.textContent).toContain('need value');
+    expect(String(err?.className || '')).toContain('choy-field-base__error--overlay');
+    expect(String(err?.className || '')).toContain('absolute');
     m.unmount();
   });
 

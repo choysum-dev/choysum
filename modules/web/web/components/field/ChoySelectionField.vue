@@ -20,6 +20,7 @@ SPDX-License-Identifier: Apache-2.0
     :cellVisible="cellVisible"
     :renderMode="renderMode"
     :showInlineError="showInlineError"
+    :inline-error-space="inlineErrorSpace"
   >
     <!-- shadcn-vue Combobox: button trigger + search in list + check on selected. -->
     <template #edit="{ fieldValue, record, inputId, inputName, labelId, describedBy, invalid}">
@@ -177,6 +178,8 @@ const props = withDefaults(
     selection?: string[];
     renderMode?: 'auto' | 'form' | 'table' | 'inline';
     showInlineError?: boolean;
+    /** collapse | reserve | overlay; forwarded to ChoyFieldBase. */
+    inlineErrorSpace?: 'collapse' | 'reserve' | 'overlay';
   }>(),
   {
     rules: () => [],
