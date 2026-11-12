@@ -51,7 +51,8 @@ func runAtomic(ctx context.Context, runtimeScope scope.Scope, spec importpkg.Spe
 
 	atomicFn := func(txScope scope.Scope, _ scope.Transaction) error {
 		for _, unit := range p.Units {
-			unitErr := writer.Write(txScope.Context(), txScope, []plan.Unit{unit})
+			// Prefer the Run ctx so callers (e.g. hotreload stats sink) keep values.
+			unitErr := writer.Write(ctx, txScope, []plan.Unit{unit})
 			if unitErr != nil {
 				collector.addError(unitErr, unit)
 				continue

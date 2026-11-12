@@ -12,7 +12,8 @@ import { detectBestUiKey, updateDocumentDirection, formatDateTime, formatNumber,
 import { loadDayjsLocale, loadVueI18nMessages } from './loader';
 import { uiKeyToLang, langToUiKey } from './lang';
 import { fetchWebTranslations, type TerminologyLoadResult } from './terminologyLoader';
-import { afterLocaleChange } from './localeRemount';
+import { afterLocaleChange, softLocaleRemount } from './localeRemount';
+import { revalidateTerminologyCatalog } from './terminologyRevalidate';
 import { createStoreByModel } from '@/web/web/stores/registry';
 import {
   resolveFormatConfig,
@@ -321,6 +322,46 @@ export const useI18nStore = defineStore(
     }
 
     /**
+     * Revalidate Gateway catalog with prevHash (visibility / pageshow after po hotreload).
+     * Merges only when catalogHash changed; then soft-remounts scoped stores.
+     */
+    async function revalidateTerminologyIfStale(): Promise<TerminologyLoadResult | null> {
+      if (!isInitialized.value) {
+        return null;
+      }
+      const targetLocale =
+        (localeCode.value && localeCode.value in SUPPORTED_LOCALES
+          ? localeCode.value
+          : currentLocale.value.code) || '';
+      if (!targetLocale || !(targetLocale in SUPPORTED_LOCALES)) {
+        return null;
+      }
+      const lang = uiKeyToLang(targetLocale);
+      const prevHash = terminologyHashByLang.value[lang] || '';
+      try {
+        const load = await revalidateTerminologyCatalog({
+          lang,
+          locale: targetLocale,
+          prevHash,
+        });
+        if (load.hash) {
+          terminologyHashByLang.value = {
+            ...terminologyHashByLang.value,
+            [lang]: load.hash,
+          };
+        }
+        if (!load.unchanged) {
+          lastTerminologyLoad.value = load;
+          await softLocaleRemount();
+        }
+        return load;
+      } catch (error) {
+        console.warn('Failed to revalidate terminology from Gateway', error);
+        return null;
+      }
+    }
+
+    /**
      * Load active languages from base.Language/GetActiveLanguages (gRPC-Web).
      * Also caches format overlays for number/date runtime (P2).
      * Failures keep DEFAULT_ACTIVE_UI_KEYS and catalog format fallbacks.
@@ -426,6 +467,7 @@ export const useI18nStore = defineStore(
       setDisplayOverrides,
       loadActiveUiKeysFromServer,
       reloadTerminology,
+      revalidateTerminologyIfStale,
 
       // Formatting helpers.
       formatDateTime: wrappedFormatDateTime,

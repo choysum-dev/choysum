@@ -10,15 +10,71 @@ import (
 
 	i18nimport "github.com/choysum-dev/choysum/internal/i18n/import"
 	"github.com/choysum-dev/choysum/internal/i18n/store"
+	"github.com/choysum-dev/choysum/internal/module/policy"
 	importpkg "github.com/choysum-dev/choysum/pkg/import"
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	xfmt "golang.org/x/exp/errors/fmt"
 )
 
+// TerminologyReloadStats aggregates packaged PO import counters for hotreload logs.
+type TerminologyReloadStats struct {
+	Upserted        int
+	SkippedOverride int
+	RejectedNoCtxt  int
+	SkippedObsolete int
+	PurgedRetired   int
+}
+
 // frameworkModuleName is the shared platform module. Its PO catalogs are written
 // to core_translation_term (Scheme B); host apps import only their own PO.
 const frameworkModuleName = "core"
+
+// ReloadModuleTerminology re-imports modules/<module>/i18n/*.po into TranslationTerm
+// without a full module Upgrade. Used by server hotreload when a .po file changes.
+func ReloadModuleTerminology(runtimeScope scope.Scope, moduleName string) (TerminologyReloadStats, error) {
+	out := TerminologyReloadStats{}
+	moduleName = strings.TrimSpace(moduleName)
+	if moduleName == "" {
+		return out, xfmt.Errorf("module name is required")
+	}
+	if runtimeScope == nil {
+		return out, xfmt.Errorf("runtime scope is nil")
+	}
+
+	modulesPath := strings.TrimSpace(runtimeOptionsFromScope(runtimeScope).modulesPath)
+	application, err := policy.ReadModuleApplicationFromPackageJSON(modulesPath, moduleName)
+	if err != nil {
+		return out, xfmt.Errorf("resolve application for module %s: %w", moduleName, err)
+	}
+	application = strings.TrimSpace(application)
+	if application == "" {
+		application = moduleName
+	}
+
+	acc := &i18nimport.ImportStats{}
+	ctx := runtimeScope.Context()
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	ctx = i18nimport.ContextWithStatsAccumulator(ctx, acc)
+	scoped := runtimeScope.WithContext(ctx)
+
+	mod := &meta.Module{
+		Name:           moduleName,
+		ApplicationStr: application,
+		Path:           filepath.Join(modulesPath, moduleName),
+	}
+	if err := importModuleTerminology(scoped, mod, modulesPath); err != nil {
+		return out, err
+	}
+	out.Upserted = acc.Upserted
+	out.SkippedOverride = acc.SkippedOverride
+	out.RejectedNoCtxt = acc.RejectedNoCtxt
+	out.SkippedObsolete = acc.SkippedObsolete
+	out.PurgedRetired = acc.PurgedRetired
+	return out, nil
+}
 
 // importModuleTerminology loads modules/<m>/i18n/*.po into the application table.
 // Missing i18n dir is a no-op.

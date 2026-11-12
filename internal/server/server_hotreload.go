@@ -33,6 +33,8 @@ var hotreloadLeaseRetryMax = 8
 // often fire right after a product-file save, colliding with the same lease.
 // Editor atomic-save temps (extensionless XX* basenames) are ignored so they
 // do not consume hotreload queue slots alongside the real target file.
+// Module i18n/*.pot files are extract artifacts only (import reads *.po); pot
+// saves must not occupy the upgrade queue ahead of real po/code changes.
 func shouldIgnoreWatchPath(path string) bool {
 	base := filepath.Base(path)
 	lowerBase := strings.ToLower(base)
@@ -51,7 +53,29 @@ func shouldIgnoreWatchPath(path string) bool {
 	if isEditorAtomicTempBasename(base) {
 		return true
 	}
+	if isModuleI18nPotWatchPath(path) {
+		return true
+	}
 	return isChoyTailwindGeneratedWatchPath(path)
+}
+
+// isModuleI18nDirWatchPath reports files directly under a module i18n/ directory.
+func isModuleI18nDirWatchPath(path string) bool {
+	slash := filepath.ToSlash(filepath.Clean(path))
+	dir := filepath.ToSlash(filepath.Dir(slash))
+	return dir == "i18n" || strings.HasSuffix(dir, "/i18n")
+}
+
+// isModuleI18nPotWatchPath reports modules/*/i18n/*.pot (extract catalogs).
+func isModuleI18nPotWatchPath(path string) bool {
+	base := strings.ToLower(filepath.Base(path))
+	return strings.HasSuffix(base, ".pot") && isModuleI18nDirWatchPath(path)
+}
+
+// isModuleI18nPoWatchPath reports modules/*/i18n/*.po (packaged terminology).
+func isModuleI18nPoWatchPath(path string) bool {
+	base := strings.ToLower(filepath.Base(path))
+	return strings.HasSuffix(base, ".po") && isModuleI18nDirWatchPath(path)
 }
 
 // isEditorAtomicTempBasename matches editor atomic-write temps such as

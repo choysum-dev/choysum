@@ -64,8 +64,12 @@ func (s *GRPCWebServer) dispatchWatchTarget(target registeredWatchTarget, file s
 	if s == nil {
 		return xfmt.Errorf("dispatchWatchTarget called on nil receiver")
 	}
+	// Packaged PO always uses terminology-only reload even when the watch
+	// target was registered with the full-module Upgrade callback.
 	handle := target.handle
-	if handle == nil {
+	if isModuleI18nPoWatchPath(file) {
+		handle = s.handleWatchedTerminologyReload
+	} else if handle == nil {
 		handle = s.handleWatchedModuleUpgrade
 	}
 	if err := handle(target.moduleName, file); err != nil {
@@ -113,6 +117,42 @@ func (s *GRPCWebServer) handleWatchedModuleUpgrade(moduleName string, file strin
 		return xfmt.Errorf("error running watch handler: %w", err)
 	}
 	s.runtimeScope.Logger().Debug("watch module upgraded", "module", moduleName, "file", file)
+	return nil
+}
+
+// hotreloadTerminologyReload imports packaged PO for a watched module (tests may stub).
+var hotreloadTerminologyReload = func(s *GRPCWebServer, moduleName string) (lifecycle.TerminologyReloadStats, error) {
+	return lifecycle.ReloadModuleTerminology(s.runtimeScope, moduleName)
+}
+
+// handleWatchedTerminologyReload imports modules/<m>/i18n/*.po without Upgrade/restart.
+func (s *GRPCWebServer) handleWatchedTerminologyReload(moduleName string, file string) error {
+	if s == nil {
+		return xfmt.Errorf("handleWatchedTerminologyReload called on nil receiver")
+	}
+	if s.runtimeScope == nil {
+		return xfmt.Errorf("runtime scope is nil")
+	}
+	moduleName = strings.TrimSpace(moduleName)
+	if moduleName == "" {
+		return xfmt.Errorf("module name is required")
+	}
+	s.runtimeScope.Logger().Debug("watch terminology reload started", "module", moduleName, "file", file)
+	s.hotreload.setProgressMessage(fmt.Sprintf("Reloading terminology: %s", moduleName))
+	stats, err := hotreloadTerminologyReload(s, moduleName)
+	if err != nil {
+		return xfmt.Errorf("error reloading terminology for %s: %w", moduleName, err)
+	}
+	s.runtimeScope.Logger().Info(
+		"watch terminology reload completed",
+		"module", moduleName,
+		"file", file,
+		"upserted", stats.Upserted,
+		"skipped_override", stats.SkippedOverride,
+		"rejected_no_ctxt", stats.RejectedNoCtxt,
+		"skipped_obsolete", stats.SkippedObsolete,
+		"purged_retired", stats.PurgedRetired,
+	)
 	return nil
 }
 
@@ -188,6 +228,21 @@ func (s *GRPCWebServer) handleWatchedFileChangeResolved(resolvedFile string) err
 	if dispatched == 0 {
 		s.hotreload.finishProgress("→", fmt.Sprintf("Skipped (no module matched): %s", filepath.Base(resolvedFile)))
 		s.runtimeScope.Logger().Debug("watch file did not match any module, skipping restart", "file", resolvedFile)
+		return nil
+	}
+
+	// Packaged PO hotreload only upserts TranslationTerm + TermStore; keep the
+	// running process (no Upgrade/restart) so FE can revalidate catalog hash.
+	if isModuleI18nPoWatchPath(resolvedFile) {
+		s.hotreload.clearLeaseRetry(resolvedFile)
+		s.hotreload.stopProgressSpinner()
+		s.runtimeScope.Logger().Info(
+			"watch reload completed",
+			"file", resolvedFile,
+			"terminology_only", true,
+			"watch_dropped_count", s.watchDroppedCount(),
+			"watch_coalesced_count", s.watchCoalescedCount(),
+		)
 		return nil
 	}
 

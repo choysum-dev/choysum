@@ -22,12 +22,18 @@ import (
 
 func newI18nTestScope(t *testing.T) scope.Scope {
 	t.Helper()
+	return newI18nTestScopeWithModulesPath(t, "")
+}
+
+func newI18nTestScopeWithModulesPath(t *testing.T, modulesPath string) scope.Scope {
+	t.Helper()
 	store.ResetSharedRegistryForTests()
 	cfg := &config.Config{
 		Db: &config.DbConfig{
 			Dialect: "sqlite",
 			DSN:     filepath.Join(t.TempDir(), "lifecycle_i18n.db"),
 		},
+		ModulesPath: modulesPath,
 	}
 	runtimeScope := defaultscope.NewDefaultScope(
 		context.Background(),
@@ -311,5 +317,79 @@ func TestDeleteModuleTerminologySkipsHostAppCoreModule(t *testing.T) {
 	rs := newI18nTestScope(t)
 	if err := deleteModuleTerminology(rs, &meta.Module{Name: "core", ApplicationStr: "auth"}); err != nil {
 		t.Fatalf("expected no-op, got %v", err)
+	}
+}
+
+func TestReloadModuleTerminology_importsPoAndReportsStats(t *testing.T) {
+	t.Parallel()
+	modulesPath := t.TempDir()
+	moduleRoot := filepath.Join(modulesPath, "demo")
+	i18nDir := filepath.Join(moduleRoot, "i18n")
+	if err := os.MkdirAll(i18nDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	pkgJSON := `{
+  "name": "@choysum-dev/demo",
+  "choysum": { "moduleName": "demo", "application": "auth" }
+}`
+	if err := os.WriteFile(filepath.Join(moduleRoot, "package.json"), []byte(pkgJSON), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(i18nDir, "zh_CN.po"), []byte(`
+msgctxt "auth.model.User.fields"
+msgid "Light"
+msgstr "浅色"
+`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	rs := newI18nTestScopeWithModulesPath(t, modulesPath)
+	stats, err := ReloadModuleTerminology(rs, "demo")
+	if err != nil {
+		t.Fatalf("ReloadModuleTerminology: %v", err)
+	}
+	if stats.Upserted < 1 {
+		t.Fatalf("Upserted = %d, want >= 1", stats.Upserted)
+	}
+
+	var row i18nmodels.TranslationTerm
+	if err := rs.Session().Table("auth_translation_term").Where("src = ?", "Light").Take(&row).Error; err != nil {
+		t.Fatalf("expected Light term: %v", err)
+	}
+	if row.Value != "浅色" {
+		t.Fatalf("Value = %q, want 浅色", row.Value)
+	}
+
+	if err := os.WriteFile(filepath.Join(i18nDir, "zh_CN.po"), []byte(`
+msgctxt "auth.model.User.fields"
+msgid "Light"
+msgstr "亮色"
+`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	stats2, err := ReloadModuleTerminology(rs, "demo")
+	if err != nil {
+		t.Fatalf("ReloadModuleTerminology second: %v", err)
+	}
+	if stats2.Upserted < 1 {
+		t.Fatalf("second Upserted = %d, want >= 1", stats2.Upserted)
+	}
+	var after i18nmodels.TranslationTerm
+	if err := rs.Session().Table("auth_translation_term").Where("src = ?", "Light").Take(&after).Error; err != nil {
+		t.Fatal(err)
+	}
+	if after.Value != "亮色" {
+		t.Fatalf("Value after reload = %q, want 亮色", after.Value)
+	}
+}
+
+func TestReloadModuleTerminology_requiresModuleName(t *testing.T) {
+	t.Parallel()
+	rs := newI18nTestScope(t)
+	if _, err := ReloadModuleTerminology(rs, "  "); err == nil {
+		t.Fatal("expected error for empty module name")
+	}
+	if _, err := ReloadModuleTerminology(nil, "demo"); err == nil {
+		t.Fatal("expected error for nil scope")
 	}
 }
