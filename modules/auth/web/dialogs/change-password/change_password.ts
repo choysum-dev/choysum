@@ -7,7 +7,7 @@ const MIN_PASSWORD_LENGTH = 6;
 
 // Literal `_t` anchors keep RuleItem msgids in the auth catalog.
 const { _t: _tChangePasswordRule } = createTranslate('auth', {
-  scope: 'web/components/change-password/ChangePasswordDialog',
+  scope: 'web/dialogs/change-password/ChangePasswordDialog',
 });
 void [
   _tChangePasswordRule('Current password is required'),

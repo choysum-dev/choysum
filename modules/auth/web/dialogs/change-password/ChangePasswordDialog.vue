@@ -131,7 +131,7 @@ const props = defineProps<{ modelValue: boolean }>();
 const emit = defineEmits<{ 'update:modelValue': [boolean] }>();
 
 const { _t } = createTranslate('auth', {
-  scope: 'web/components/change-password/ChangePasswordDialog',
+  scope: 'web/dialogs/change-password/ChangePasswordDialog',
 });
 const authStore = useAuthStore();
 const userStore = createStoreByModel('auth.User');

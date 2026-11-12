@@ -108,7 +108,7 @@ import { createTranslate } from '@/web/web/i18n';
 import { useAuthStore } from '@/auth/web/stores/auth';
 import { useI18nStore } from '@/web/web/stores/i18nStore';
 import { useReactiveCollaborationCaps } from '@/web/web/platform/collaborationCaps';
-import PreferencesDialog from '@/auth/web/components/preferences/PreferencesDialog.vue';
+import PreferencesDialog from '@/auth/web/dialogs/preferences/PreferencesDialog.vue';
 import { collapsedIdentityTooltip } from './collapsed_identity_tooltip';
 import { reuseParentSetupState } from './reuse_parent_setup_state';
 import { resolveUserMenuAvatarDisplaySrc } from './user_menu_avatar';

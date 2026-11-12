@@ -265,10 +265,13 @@ import { ChevronRight } from 'lucide-vue-next';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type MetaModuleOperation from '@/meta/service/models/module_operation';
 import { createTranslate } from '@/web/web/i18n';
-import { useModuleCatalogOpDrawerSession } from '../composables/useModuleCatalogOpDrawerSession';
-import { formatModuleOpSummary } from './module_catalog_chrome';
-import { formatPlanVersionDisplay, shouldShowPlanVersionArrow } from './module_op_plan_impact';
-import type { ModuleOpPlanModuleView } from './module_op_plan_impact';
+import { useModuleCatalogOpDrawerSession } from '@/meta/web/composables/useModuleCatalogOpDrawerSession';
+import { formatModuleOpSummary } from '@/meta/web/views/module_catalog_chrome';
+import {
+  formatPlanVersionDisplay,
+  shouldShowPlanVersionArrow,
+} from '@/meta/web/views/module_op_plan_impact';
+import type { ModuleOpPlanModuleView } from '@/meta/web/views/module_op_plan_impact';
 import {
   ChoyBadge,
   ChoyButton,
@@ -281,8 +284,9 @@ import {
 
 defineOptions({ name: 'ModuleCatalogOpDialog' });
 
-// Keep OpDrawer i18n scope so existing pot/zh_CN entries continue to resolve.
-const { _t } = createTranslate('meta', { scope: 'web/views/ModuleCatalogOpDrawer' });
+const { _t } = createTranslate('meta', {
+  scope: 'web/dialogs/module-catalog-op/ModuleCatalogOpDialog',
+});
 
 const open = defineModel<boolean>('open', { default: false });
 

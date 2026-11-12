@@ -1034,61 +1034,61 @@ msgctxt "web/components/layout/SwitchCompany"
 msgid "Workspace"
 msgstr ""
 
-#: web/components/preferences/PreferencesDialog.vue:20
-msgctxt "web/components/preferences/PreferencesDialog"
+#: web/dialogs/preferences/PreferencesDialog.vue:20
+msgctxt "web/dialogs/preferences/PreferencesDialog"
 msgid "Appearance"
 msgstr ""
 
-#: web/components/preferences/PreferencesDialog.vue:37
-#: web/components/preferences/PreferencesDialog.vue:9
-msgctxt "web/components/preferences/PreferencesDialog"
+#: web/dialogs/preferences/PreferencesDialog.vue:37
+#: web/dialogs/preferences/PreferencesDialog.vue:9
+msgctxt "web/dialogs/preferences/PreferencesDialog"
 msgid "Cancel"
 msgstr ""
 
-#: web/components/preferences/PreferencesDialog.vue:194
-#: web/components/preferences/PreferencesDialog.vue:207
-msgctxt "web/components/preferences/PreferencesDialog"
+#: web/dialogs/preferences/PreferencesDialog.vue:194
+#: web/dialogs/preferences/PreferencesDialog.vue:207
+msgctxt "web/dialogs/preferences/PreferencesDialog"
 msgid "Cannot update preferences: missing user id"
 msgstr ""
 
-#: web/components/preferences/PreferencesDialog.vue:240
-msgctxt "web/components/preferences/PreferencesDialog"
+#: web/dialogs/preferences/PreferencesDialog.vue:240
+msgctxt "web/dialogs/preferences/PreferencesDialog"
 msgid "Failed to update preferences"
 msgstr ""
 
-#: web/components/preferences/PreferencesDialog.vue:23
-msgctxt "web/components/preferences/PreferencesDialog"
+#: web/dialogs/preferences/PreferencesDialog.vue:23
+msgctxt "web/dialogs/preferences/PreferencesDialog"
 msgid "Locale"
 msgstr ""
 
-#: web/components/preferences/PreferencesDialog.vue:5
-msgctxt "web/components/preferences/PreferencesDialog"
+#: web/dialogs/preferences/PreferencesDialog.vue:5
+msgctxt "web/dialogs/preferences/PreferencesDialog"
 msgid "Preferences"
 msgstr ""
 
-#: web/components/preferences/PreferencesDialog.vue:234
-msgctxt "web/components/preferences/PreferencesDialog"
+#: web/dialogs/preferences/PreferencesDialog.vue:234
+msgctxt "web/dialogs/preferences/PreferencesDialog"
 msgid "Preferences updated"
 msgstr ""
 
-#: web/components/preferences/PreferencesDialog.vue:31
-msgctxt "web/components/preferences/PreferencesDialog"
+#: web/dialogs/preferences/PreferencesDialog.vue:31
+msgctxt "web/dialogs/preferences/PreferencesDialog"
 msgid "Select timezone"
 msgstr ""
 
-#: web/components/preferences/PreferencesDialog.vue:33
-msgctxt "web/components/preferences/PreferencesDialog"
+#: web/dialogs/preferences/PreferencesDialog.vue:33
+msgctxt "web/dialogs/preferences/PreferencesDialog"
 msgid "Suggested from your browser"
 msgstr ""
 
-#: web/components/preferences/PreferencesDialog.vue:10
-#: web/components/preferences/PreferencesDialog.vue:38
-msgctxt "web/components/preferences/PreferencesDialog"
+#: web/dialogs/preferences/PreferencesDialog.vue:10
+#: web/dialogs/preferences/PreferencesDialog.vue:38
+msgctxt "web/dialogs/preferences/PreferencesDialog"
 msgid "Update preferences"
 msgstr ""
 
-#: web/components/preferences/PreferencesDialog.vue:27
-msgctxt "web/components/preferences/PreferencesDialog"
+#: web/dialogs/preferences/PreferencesDialog.vue:27
+msgctxt "web/dialogs/preferences/PreferencesDialog"
 msgid "Using current session language"
 msgstr ""
 

@@ -237,7 +237,7 @@ import { useReactiveCollaborationCaps } from '@/web/web/platform/collaborationCa
 import { isUserAvatarFieldVisible } from '@/auth/web/views/user_avatar_visibility';
 import { resolveUserMenuMeta } from '@/auth/web/components/layout/user_menu_display_name';
 import { SelfProfileDraftSeeder } from './SelfProfileDraftSeeder';
-import ChangePasswordDialog from '@/auth/web/components/change-password/ChangePasswordDialog.vue';
+import ChangePasswordDialog from '@/auth/web/dialogs/change-password/ChangePasswordDialog.vue';
 import {
   needsSelfProfileLoad,
   resolveSelfProfileSeedLanguageId,
@@ -256,7 +256,7 @@ defineOptions({ name: 'PreferencesDialog' });
 const props = defineProps<{ modelValue: boolean }>();
 const emit = defineEmits<{ 'update:modelValue': [boolean]; closed: [] }>();
 
-const { _t } = createTranslate('auth', { scope: 'web/components/preferences/PreferencesDialog' });
+const { _t } = createTranslate('auth', { scope: 'web/dialogs/preferences/PreferencesDialog' });
 const authStore = useAuthStore();
 const i18nStore = useI18nStore();
 const collaborationCaps = useReactiveCollaborationCaps();
