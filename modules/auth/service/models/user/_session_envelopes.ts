@@ -20,7 +20,7 @@ export type LoginReq = {
 
 /**
  * Anonymous-callable Register user fields. Server-managed columns
- * (Id, Company*, PasswordHash, Preferences, roles, …) are intentionally excluded.
+ * (Id, Company*, ActiveCompanyId, EnabledCompanyIds, PasswordHash, roles, …) are intentionally excluded.
  */
 const REGISTER_USER_KEYS = [
   'Username',
@@ -134,7 +134,7 @@ export type RefreshTokensReq = {
 
 export type SwitchCompanyScopeReq = {
   ActiveCompanyId: string;
-  /** Readable company scope; omit to default from Preferences / [ActiveCompanyId]. */
+  /** Readable company scope; omit to default from stored EnabledCompanyIds / [ActiveCompanyId]. */
   EnabledCompanyIds?: string[];
 };
 

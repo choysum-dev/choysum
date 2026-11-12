@@ -28,11 +28,13 @@ import type { MethodAccessDecision } from './_method_access';
 
 const Language = createServiceByModel<typeof LanguageModel>('base.Language');
 import {
-  buildScopePreferences,
+  buildAllowedCompanyIds,
   computeTokenCompanyScope,
   createSwitchCompanyScopeAuditEmitter,
   normalizeRequestedEnabledCompanyIds,
   normalizeScopeId,
+  readStoredEnabledCompanyIds,
+  uniqScopeIds,
   validateSwitchCompanyScopeInput,
 } from './_lifecycle_scope';
 import {
@@ -256,8 +258,7 @@ export default class User extends AttachmentOwnerMixin {
   Timezone: string | null;
 
   /**
-   * UI color theme. Mirrored into Preferences.theme on write so shell helpers
-   * that read the JSON bag stay aligned with the selection field.
+   * UI color theme (light, dark, or follow the system).
    */
   @Field({
     type: 'selection',
@@ -265,7 +266,6 @@ export default class User extends AttachmentOwnerMixin {
     selection: [
       { value: 'light', label: _lt('Light', { scope: 'auth.model.User.fields' }) },
       { value: 'dark', label: _lt('Dark', { scope: 'auth.model.User.fields' }) },
-      // value stays `auto` (shell / Preferences.theme); label is the user-facing "System".
       { value: 'auto', label: _lt('System', { scope: 'auth.model.User.fields' }) },
     ],
     string: _lt('Theme', { scope: 'auth.model.User.fields' }),
@@ -276,39 +276,20 @@ export default class User extends AttachmentOwnerMixin {
   Theme: 'light' | 'dark' | 'auto' | null;
 
   /**
-   * User-specific UI and company-scope preferences.
+   * Spacing density for lists and the app shell.
    */
   @Field({
-    type: 'jsonobject',
-    default: () => {},
-    string: _lt('Preferences', { scope: 'auth.model.User.fields' }),
+    type: 'selection',
+    selection: [
+      { value: 'comfortable', label: _lt('Comfortable', { scope: 'auth.model.User.fields' }) },
+      { value: 'compact', label: _lt('Compact', { scope: 'auth.model.User.fields' }) },
+    ],
+    string: _lt('Density', { scope: 'auth.model.User.fields' }),
+    help: _lt('Spacing density for lists and the app shell.', {
+      scope: 'auth.model.User.fields',
+    }),
   })
-  Preferences: {
-    // Company scope preferences (P3).
-    activeCompanyId?: string;
-    enabledCompanyIds?: string[];
-
-    // UI appearance preferences (theme mirrored from Theme field on write).
-    avatar?: string;
-    theme?: 'light' | 'dark' | 'auto';
-    density?: 'comfortable' | 'compact' | 'standard';
-
-    // Notification preferences.
-    notifications?: {
-      email?: boolean;
-      push?: boolean;
-      inApp?: boolean;
-    };
-
-    // Formatting and display preferences.
-    display?: {
-      dateFormat?: string;
-      timeFormat?: string;
-      currency?: string;
-    };
-
-    // Additional infrequently used preferences.
-  };
+  Density: 'comfortable' | 'compact' | null;
 
   /**
    * Primary company assigned by the base company module.
@@ -334,6 +315,34 @@ export default class User extends AttachmentOwnerMixin {
     }),
   })
   CompanyIds: string[];
+
+  /**
+   * Current write company for the signed-in work context (must stay in EnabledCompanyIds).
+   */
+  @Field<Company>({
+    type: 'ManyToOneRef',
+    relation: { targetModel: 'base.Company' },
+    condition: ['IsActive', '=', true],
+    string: _lt('Active Company', { scope: 'auth.model.User.fields' }),
+    help: _lt('Company used for current write operations; switched via SwitchCompanyScope.', {
+      scope: 'auth.model.User.fields',
+    }),
+  })
+  ActiveCompanyId?: string | null;
+
+  /**
+   * Current readable company working set (subset of CompanyId ∪ CompanyIds).
+   */
+  @Field<Company>({
+    type: 'ManyToManyRef',
+    relation: { targetModel: 'base.Company' },
+    condition: ['IsActive', '=', true],
+    string: _lt('Enabled Companies', { scope: 'auth.model.User.fields' }),
+    help: _lt('Readable company scope for the current session; switched via SwitchCompanyScope.', {
+      scope: 'auth.model.User.fields',
+    }),
+  })
+  EnabledCompanyIds?: string[];
 
   /**
    * Whether the account is currently active.
@@ -416,30 +425,56 @@ export default class User extends AttachmentOwnerMixin {
   }
 
   /**
-   * Normalize Theme and keep Preferences.theme in sync (Form field ↔ JSON bag).
+   * Normalize Theme to a known selection value or null.
    */
-  @Constraint<User>(['Theme', 'Preferences'])
-  syncThemePreferenceConstraint(): void {
-    const prefsRaw = this.Preferences;
-    const prefs =
-      prefsRaw && typeof prefsRaw === 'object' && !Array.isArray(prefsRaw)
-        ? { ...(prefsRaw as Record<string, unknown>) }
-        : {};
-    const fromTheme = this.Theme;
-    const fromPrefs = prefs.theme;
-    const raw =
-      fromTheme === 'light' || fromTheme === 'dark' || fromTheme === 'auto'
-        ? fromTheme
-        : fromPrefs === 'light' || fromPrefs === 'dark' || fromPrefs === 'auto'
-          ? fromPrefs
-          : null;
-    this.Theme = raw;
-    if (raw) {
-      prefs.theme = raw;
-    } else {
-      delete prefs.theme;
+  @Constraint<User>(['Theme'])
+  normalizeThemeConstraint(): void {
+    const raw = this.Theme;
+    this.Theme = raw === 'light' || raw === 'dark' || raw === 'auto' ? raw : null;
+  }
+
+  /**
+   * Normalize Density; legacy `standard` maps to comfortable.
+   */
+  @Constraint<User>(['Density'])
+  normalizeDensityConstraint(): void {
+    const raw = this.Density as string | null | undefined;
+    if (raw === 'compact') {
+      this.Density = 'compact';
+      return;
     }
-    this.Preferences = prefs as User['Preferences'];
+    if (raw === 'comfortable' || raw === 'standard') {
+      this.Density = 'comfortable';
+      return;
+    }
+    this.Density = null;
+  }
+
+  /**
+   * Keep ActiveCompanyId / EnabledCompanyIds inside CompanyId ∪ CompanyIds.
+   */
+  @Constraint<User>(['ActiveCompanyId', 'EnabledCompanyIds', 'CompanyId', 'CompanyIds'])
+  trimCompanyWorkContextConstraint(): void {
+    const allowed = buildAllowedCompanyIds(this);
+    let enabled = readStoredEnabledCompanyIds(this).filter(id => allowed.includes(id));
+    let active = normalizeScopeId(this.ActiveCompanyId);
+
+    if (active && !allowed.includes(active)) {
+      active = '';
+    }
+    if (!active) {
+      const fallback = normalizeScopeId(this.CompanyId);
+      active = fallback && allowed.includes(fallback) ? fallback : allowed[0] || '';
+    }
+    if (active && !enabled.includes(active)) {
+      enabled = active ? [active, ...enabled] : enabled;
+    }
+    if (!enabled.length && active) {
+      enabled = [active];
+    }
+
+    this.ActiveCompanyId = active || null;
+    this.EnabledCompanyIds = uniqScopeIds(enabled);
   }
 
   /**
@@ -566,7 +601,7 @@ export default class User extends AttachmentOwnerMixin {
       });
 
       const userId = ensureCreatedUserIdOrThrow(created?.Id);
-      await provisionRegisteredUserBaseline(userId, undefined, {
+      await provisionRegisteredUserBaseline(userId, {
         updateUserCompanyContext: async values => {
           await this.UpdateById(userId, values as Partial<Insertable<User>>, ['Id']);
         },
@@ -735,7 +770,7 @@ export default class User extends AttachmentOwnerMixin {
   /**
    * Switch the current company scope for the authenticated user.
    * - ActiveCompanyId: company used for current write operations.
-   * - EnabledCompanyIds: readable company scope; defaults to Preferences or [ActiveCompanyId].
+   * - EnabledCompanyIds: readable company scope; omit defaults to stored EnabledCompanyIds or [ActiveCompanyId].
    *
    * Strict fail-closed validation:
    * - enabled ⊆ allowed
@@ -778,7 +813,7 @@ export default class User extends AttachmentOwnerMixin {
 
     try {
       const user = await this.Browse(userId);
-      await user.load(['CompanyIds']);
+      await user.load(['CompanyIds', 'EnabledCompanyIds']);
       const validated = validateSwitchCompanyScopeInput(user, active, enabledCompanyIds);
       if (!validated.ok) {
         if (validated.code === 'enabled_type') {
@@ -843,18 +878,17 @@ export default class User extends AttachmentOwnerMixin {
       }
 
       const enabled = validated.enabled;
-      const nextPrefs = buildScopePreferences(validated.prefs, active, enabled);
 
-      // NOTE: Switching company scope is a self-service auth operation.
-      // Users may legitimately have zero roles at this stage; record rules are deny-by-default for write.
-      // We bypass RecordRule/FieldRule for this internal preference update (still guarded by strict validation above).
+      // Self-service auth write: bypass RecordRule/FieldRule (still guarded by validation above).
       await withPermissionGraphBypass(async () => {
-        await this.UpdateById(userId, { Preferences: nextPrefs as User['Preferences'] });
+        await this.UpdateById(userId, {
+          ActiveCompanyId: active,
+          EnabledCompanyIds: enabled,
+        } as Partial<Insertable<User>>);
       });
 
-      // Reload the record so UpdatedAt and metadata reflect the persisted preferences.
       const updated = await this.Browse(userId);
-      await updated.load(['CompanyIds']);
+      await updated.load(['CompanyIds', 'EnabledCompanyIds']);
       const metadata = await this.extractUserMetadata(updated);
 
       audit.emitOnce({

@@ -18,12 +18,12 @@ function isEmptyField(value: unknown): boolean {
 }
 
 /**
- * Fill empty LanguageId / Timezone / Theme on the FormView draft from hints.
+ * Fill empty LanguageId / Timezone / Theme / Density on the FormView draft from hints.
  * Does not Write until the user submits.
  */
 export function seedPreferenceDraft(
   formRoot: FormRootApi | null | undefined,
-  opts: { languageId?: unknown; timezone?: string; theme?: string },
+  opts: { languageId?: unknown; timezone?: string; theme?: string; density?: string },
 ): void {
   if (!formRoot) return;
   const languageId = opts.languageId;
@@ -38,12 +38,19 @@ export function seedPreferenceDraft(
   if (isEmptyField(formRoot.getField('Theme')) && (theme === 'light' || theme === 'dark' || theme === 'auto')) {
     formRoot.setField('Theme', theme);
   }
+  const density = String(opts.density || '').trim();
+  if (
+    isEmptyField(formRoot.getField('Density')) &&
+    (density === 'comfortable' || density === 'compact')
+  ) {
+    formRoot.setField('Density', density);
+  }
 }
 
 /**
  * After FormView beginEdit, seed empty preference fields once each seed value arrives.
- * Language, timezone, and theme are tracked separately so a ready form that settles
- * before seed resolution still receives late-arriving hints.
+ * Seeds are tracked separately so a ready form that settles before resolution still
+ * receives late-arriving hints.
  */
 export const PreferenceDraftSeeder = defineComponent({
   name: 'PreferenceDraftSeeder',
@@ -52,12 +59,14 @@ export const PreferenceDraftSeeder = defineComponent({
     languageId: { type: String, default: '' },
     timezone: { type: String, default: '' },
     theme: { type: String, default: '' },
+    density: { type: String, default: '' },
   },
   setup(props) {
     const formRoot = inject<FormRootApi | null>('form-root', null);
     let languageApplied = false;
     let timezoneApplied = false;
     let themeApplied = false;
+    let densityApplied = false;
 
     function apply(): void {
       if (!formRoot || !props.ready) return;
@@ -73,10 +82,15 @@ export const PreferenceDraftSeeder = defineComponent({
         seedPreferenceDraft(formRoot, { theme: props.theme });
         themeApplied = true;
       }
+      if (!densityApplied && props.density) {
+        seedPreferenceDraft(formRoot, { density: props.density });
+        densityApplied = true;
+      }
     }
 
     watch(
-      () => [props.ready, props.languageId, props.timezone, props.theme] as const,
+      () =>
+        [props.ready, props.languageId, props.timezone, props.theme, props.density] as const,
       () => apply(),
       { immediate: true },
     );

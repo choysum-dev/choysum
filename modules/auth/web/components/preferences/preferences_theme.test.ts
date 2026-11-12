@@ -39,14 +39,11 @@ test('applyPreferencesAppearance: returns normalized theme and density', () => {
   ).toEqual({ theme: 'dark', density: 'compact' });
 });
 
-test('resolveUserThemeMode: Theme wins, then Preferences.theme, then fallback', () => {
-  expect(resolveUserThemeMode({ Theme: 'dark', Preferences: { theme: 'light' } }, 'auto')).toBe(
-    'dark',
-  );
-  expect(resolveUserThemeMode({ Theme: null, Preferences: { theme: 'auto' } }, 'light')).toBe(
-    'auto',
-  );
-  expect(resolveUserThemeMode({ Theme: null, Preferences: {} }, 'dark')).toBe('dark');
+test('resolveUserThemeMode: User.Theme when set, else fallback', () => {
+  expect(resolveUserThemeMode({ Theme: 'dark' }, 'auto')).toBe('dark');
+  expect(resolveUserThemeMode({ Theme: 'auto' }, 'light')).toBe('auto');
+  expect(resolveUserThemeMode({ Theme: null }, 'dark')).toBe('dark');
+  expect(resolveUserThemeMode({}, 'auto')).toBe('auto');
   expect(resolveUserThemeMode(null, 'auto')).toBe('auto');
 });
 

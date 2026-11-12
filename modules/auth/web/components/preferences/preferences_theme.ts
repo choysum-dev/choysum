@@ -8,38 +8,44 @@ import {
   type ChoyDensityPreference,
   type ChoyThemeMode,
 } from '@/web/web/composables/applyChoyThemePreference';
-import { normalizePreferencesDensity, type PreferencesDensityUi } from './preferences_bag';
 
-/** Theme modes offered on auth.User.Theme / Preferences.theme. */
+/** Theme modes offered on auth.User.Theme. */
 export const PREFERENCES_THEME_MODES: readonly ChoyThemeMode[] = ['light', 'dark', 'auto'];
+
+export type PreferencesDensityUi = 'comfortable' | 'compact';
 
 /** Normalize stored preference to a concrete Theme selection value. */
 export function resolvePreferencesThemeMode(theme: unknown): ChoyThemeMode {
   return theme === 'dark' || theme === 'auto' || theme === 'light' ? theme : 'light';
 }
 
-/** Density offered in the Preferences dialog UI. */
+/** Normalize Density; legacy `standard` maps to comfortable. */
 export function resolvePreferencesDensity(density: unknown): PreferencesDensityUi {
-  return normalizePreferencesDensity(density);
+  return density === 'compact' ? 'compact' : 'comfortable';
 }
 
 /**
- * Resolve Theme for Preferences seeding: User.Theme, then Preferences.theme,
- * then local shell storage (guest / pre-migration).
+ * Resolve Theme for Preferences seeding: User.Theme, then local shell storage.
  */
 export function resolveUserThemeMode(
-  user: { Theme?: unknown; Preferences?: { theme?: unknown } | null } | null | undefined,
+  user: { Theme?: unknown } | null | undefined,
   fallback: ChoyThemeMode = 'light',
 ): ChoyThemeMode {
-  const fromTheme = resolvePreferencesThemeMode(user?.Theme);
   if (user?.Theme === 'light' || user?.Theme === 'dark' || user?.Theme === 'auto') {
-    return fromTheme;
-  }
-  const fromPrefs = user?.Preferences?.theme;
-  if (fromPrefs === 'light' || fromPrefs === 'dark' || fromPrefs === 'auto') {
-    return fromPrefs;
+    return user.Theme;
   }
   return resolvePreferencesThemeMode(fallback);
+}
+
+/** Resolve Density from User.Density with localStorage-friendly fallback. */
+export function resolveUserDensity(
+  user: { Density?: unknown } | null | undefined,
+  fallback: PreferencesDensityUi = 'comfortable',
+): PreferencesDensityUi {
+  if (user?.Density === 'compact' || user?.Density === 'comfortable') {
+    return user.Density;
+  }
+  return resolvePreferencesDensity(fallback);
 }
 
 /** Read the current shell theme from local storage. */
@@ -47,6 +53,13 @@ export function readPreferencesThemeMode(
   storage?: ApplyChoyThemePreferenceOptions['storage'],
 ): ChoyThemeMode {
   return resolvePreferencesThemeMode(readChoyThemePreference(storage).theme);
+}
+
+/** Read shell density from local storage. */
+export function readPreferencesDensityMode(
+  storage?: ApplyChoyThemePreferenceOptions['storage'],
+): PreferencesDensityUi {
+  return resolvePreferencesDensity(readChoyThemePreference(storage).density);
 }
 
 /** Apply a theme to the shell document (and optionally persist locally). */

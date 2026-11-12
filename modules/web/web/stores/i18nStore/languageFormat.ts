@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /**
- * FE number/date formatting driven by Language format fields (+ optional Preferences.display overrides).
+ * FE number/date formatting driven by Language format fields.
  */
 
 export type LanguageFormatOverlay = {
@@ -16,12 +16,6 @@ export type LanguageFormatOverlay = {
   CurrencySymbolSpacing?: boolean;
   /** Language.PersonNameFormat template ({FirstName}/{LastName}). */
   PersonNameFormat?: string;
-};
-
-export type DisplayFormatOverrides = {
-  dateFormat?: string;
-  timeFormat?: string;
-  currency?: string;
 };
 
 export function parseGrouping(raw: unknown): number[] {
@@ -89,13 +83,12 @@ export function applyGrouping(integerDigits: string, grouping: number[], thousan
 }
 
 /**
- * Resolve effective number/date config: Preferences.display sparse overrides > Language > catalog fallback.
+ * Resolve effective number/date config: Language > catalog fallback.
  */
 export function resolveFormatConfig(
   catalogNumber?: { thousandsSeparator?: string; decimalSeparator?: string; grouping?: number[]; decimalDigits?: number } | null,
   catalogDate?: { shortDate?: string; longDate?: string; shortTime?: string; longTime?: string; firstDayOfWeek?: number } | null,
   language?: LanguageFormatOverlay | null,
-  display?: DisplayFormatOverrides | null
 ) {
   const decimalDigits = catalogNumber?.decimalDigits ?? 2;
   return {
@@ -106,13 +99,13 @@ export function resolveFormatConfig(
       decimalDigits,
     },
     dateTimeFormat: {
-      shortDate: display?.dateFormat || language?.DateFormat || catalogDate?.shortDate || 'YYYY-MM-DD',
+      shortDate: language?.DateFormat || catalogDate?.shortDate || 'YYYY-MM-DD',
       longDate: language?.DateFormat || catalogDate?.longDate || catalogDate?.shortDate || 'YYYY-MM-DD',
-      shortTime: display?.timeFormat || language?.TimeFormat || catalogDate?.shortTime || 'HH:mm',
+      shortTime: language?.TimeFormat || catalogDate?.shortTime || 'HH:mm',
       longTime: language?.TimeFormat || catalogDate?.longTime || catalogDate?.shortTime || 'HH:mm:ss',
       firstDayOfWeek: language?.FirstDayOfWeek ?? catalogDate?.firstDayOfWeek ?? 1,
     },
-    currencyCodeOverride: display?.currency,
+    currencyCodeOverride: undefined as string | undefined,
     currencySymbolPosition: language?.CurrencySymbolPosition,
     currencySymbolSpacing: language?.CurrencySymbolSpacing,
   };

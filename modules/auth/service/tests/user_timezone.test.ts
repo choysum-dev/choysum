@@ -17,7 +17,6 @@ function metadataStub(overrides: Record<string, unknown>): User {
     Timezone: null,
     CompanyId: '',
     CompanyIds: [],
-    Preferences: {},
     UpdatedAt: new Date(0),
     ...overrides,
   }) as User;

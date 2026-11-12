@@ -31,7 +31,6 @@ export type AuthActionDeps = {
   importI18nStore?: () => Promise<{
     useI18nStore: () => {
       setUiKey: (uiKey: string) => Promise<unknown> | unknown;
-      setDisplayOverrides: (overrides: unknown) => void;
       localeCode?: string | null;
     };
     langToUiKey: (terminologyLang: string) => string;
@@ -80,19 +79,6 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
 
     // Drop the cached permission snapshot.
     state.permissionState.value = null;
-
-    // Clear Preferences.display format overrides (guest sessions use Language/catalog only).
-    try {
-      void import('@/web/web/stores/i18nStore')
-        .then(({ useI18nStore }) => {
-          useI18nStore().setDisplayOverrides(null);
-        })
-        .catch(() => {
-          // Best-effort when Pinia/i18n is unavailable (FE unit host).
-        });
-    } catch {
-      // Best-effort.
-    }
 
     // Clear persisted auth storage in the browser.
     if (clientSide) {
@@ -602,20 +588,27 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
         'LanguageId',
         'Timezone',
         'Theme',
-        'Preferences',
+        'Density',
+        'ActiveCompanyId',
+        'EnabledCompanyIds',
       ]);
       state.currentUser.value = user;
-      // Align shell theme with User.Theme / Preferences.theme (localStorage as fallback).
+      // Align shell theme/density with User fields (localStorage as fallback).
       try {
-        const { applyChoyThemePreference, readChoyThemePreference } = await import(
+        const { readChoyThemePreference } = await import(
           '@/web/web/composables/applyChoyThemePreference'
         );
-        const { resolveUserThemeMode, resolvePreferencesThemeMode } = await import(
-          '@/auth/web/components/preferences/preferences_theme'
+        const {
+          applyPreferencesAppearance,
+          resolvePreferencesThemeMode,
+          resolveUserDensity,
+          resolveUserThemeMode,
+        } = await import('@/auth/web/components/preferences/preferences_theme');
+        const local = readChoyThemePreference();
+        applyPreferencesAppearance(
+          resolveUserThemeMode(user as any, resolvePreferencesThemeMode(local.theme)),
+          resolveUserDensity(user as any, local.density === 'compact' ? 'compact' : 'comfortable'),
         );
-        applyChoyThemePreference({
-          theme: resolveUserThemeMode(user as any, resolvePreferencesThemeMode(readChoyThemePreference().theme)),
-        });
       } catch {
         // Best-effort; auth must not fail because of theme wiring.
       }
@@ -632,14 +625,12 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
           const languageStore = await getLanguageStore();
           browseLanguage = (id, fields) => languageStore.Browse(id, fields);
         } catch {
-          // Language registry unavailable; display overrides still apply below.
+          // Language registry unavailable.
         }
         await applyUserLanguagePreference({
           languageId: (user as any)?.LanguageId,
-          displayOverrides: (user as any)?.Preferences?.display ?? null,
           browseLanguage,
           setUiKey: key => i18nStore.setUiKey(key),
-          setDisplayOverrides: overrides => i18nStore.setDisplayOverrides(overrides as any),
           langToUiKey,
           getCurrentUiKey: () => i18nStore.localeCode ?? null,
         });

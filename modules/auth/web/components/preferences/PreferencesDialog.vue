@@ -41,9 +41,8 @@ SPDX-License-Identifier: Apache-2.0
               :language-id="seedLanguageId"
               :timezone="seedTimezone"
               :theme="seedTheme"
+              :density="seedDensity"
             />
-            <PreferenceBagBinder :store="userStore as any" :active="bagHydrated && !loading" :bag-draft="bagDraft" />
-            <BagHydrator :ready="!loading" :preferences="formData?.Preferences" @hydrate="onBagHydrate" />
 
             <!-- Compact identity chrome above tabs: fixed First | Last order. -->
             <div class="choy-preferences-dialog__profile flex shrink-0 items-start gap-3">
@@ -118,17 +117,15 @@ SPDX-License-Identifier: Apache-2.0
                         />
                       </div>
                       <div class="choy-preferences-dialog__setting">
-                        <PreferenceDensityHost :store="densityStore" :bag-draft="bagDraft">
-                          <ChoySelectionField
-                            :store="densityStore"
-                            prop="Density"
-                            :label="_t('Density')"
-                            :help="_t('Spacing density for lists and the app shell.')"
-                            :clearable="false"
-                            orientation="horizontal"
-                            :select-props="{ 'data-testid': 'preferences-density' }"
-                          />
-                        </PreferenceDensityHost>
+                        <ChoySelectionField
+                          :store="userStore"
+                          prop="Density"
+                          :label="_t('Density')"
+                          :help="_t('Spacing density for lists and the app shell.')"
+                          :clearable="false"
+                          orientation="horizontal"
+                          :select-props="{ 'data-testid': 'preferences-density' }"
+                        />
                       </div>
                     </div>
 
@@ -209,17 +206,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import {
-  computed,
-  defineComponent,
-  nextTick,
-  onMounted,
-  provide,
-  reactive,
-  ref,
-  watch,
-  type PropType,
-} from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import {
   ChoyButton,
   ChoyDialog,
@@ -236,9 +223,7 @@ import {
   ChoyTab,
   ChoyTabs,
   ChoyVarcharField,
-  createLocalFormStore,
   openDialog,
-  type LocalFormStore,
 } from '@/web';
 import { createTranslate } from '@/web/web/i18n';
 import { useAuthStore } from '@/auth/web/stores/auth';
@@ -249,22 +234,18 @@ import { useReactiveCollaborationCaps } from '@/web/web/platform/collaborationCa
 import { isUserAvatarFieldVisible } from '@/auth/web/views/user_avatar_visibility';
 import { resolveUserMenuMeta } from '@/auth/web/components/layout/user_menu_display_name';
 import { PreferenceDraftSeeder } from './PreferenceDraftSeeder';
-import { PreferenceBagBinder } from './PreferenceBagBinder';
 import ChangePasswordDialog from '@/auth/web/components/change-password/ChangePasswordDialog.vue';
 import {
   needsUserLoadOnPreferencesOpen,
   resolvePreferencesSeedLanguageId,
   resolvePreferencesSeedTimezone,
 } from './preferences_open';
-import {
-  normalizePreferencesDensity,
-  readPreferencesBag,
-  type PreferencesBagDraft,
-} from './preferences_bag';
 import { runPreferencesSubmit } from './preferences_submit';
 import {
   applyPreferencesAppearance,
+  readPreferencesDensityMode,
   readPreferencesThemeMode,
+  resolveUserDensity,
   resolveUserThemeMode,
 } from './preferences_theme';
 
@@ -305,116 +286,11 @@ const userId = computed(() => String(currentUser.value?.Id || authStore.identity
 const seedLanguageId = ref('');
 const seedTimezone = ref('');
 const seedTheme = ref('');
+const seedDensity = ref('');
 const languageFromSession = ref(false);
 const timezoneFromBrowser = ref(false);
 const saving = ref(false);
 const activeTab = ref('general');
-const bagHydrated = ref(false);
-const bagDraft = reactive<PreferencesBagDraft>(readPreferencesBag(null));
-
-function densitySelectionOptions() {
-  return [
-    { value: 'comfortable', label: _t('Comfortable') },
-    { value: 'compact', label: _t('Compact') },
-  ];
-}
-
-const densityStore = createLocalFormStore({
-  storeId: 'auth.preferences.density',
-  fields: [
-    {
-      name: 'Density',
-      label: 'Density',
-      type: 'selection',
-      selection: densitySelectionOptions(),
-    },
-  ],
-  initialValues: { Density: bagDraft.density },
-});
-
-watch(
-  () => i18nStore.localeCode,
-  () => {
-    densityStore.setFieldSelection('Density', densitySelectionOptions());
-  },
-);
-
-/** Binds bag density to ChoySelectionField without a nested <form>. */
-const PreferenceDensityHost = defineComponent({
-  name: 'PreferenceDensityHost',
-  props: {
-    store: { type: Object as PropType<LocalFormStore>, required: true },
-    bagDraft: { type: Object as PropType<PreferencesBagDraft>, required: true },
-  },
-  setup(props, { slots }) {
-    provide('form-root', {
-      get draft() {
-        return { Density: props.bagDraft.density };
-      },
-      getField(path: string) {
-        if (String(path) === 'Density') return props.bagDraft.density;
-        return props.store.getField(path);
-      },
-      setField(path: string, value: unknown) {
-        if (String(path) === 'Density') {
-          const next = normalizePreferencesDensity(value);
-          props.bagDraft.density = next;
-          props.store.setField('Density', next);
-          return;
-        }
-        props.store.setField(path, value);
-      },
-    });
-    watch(
-      () => props.bagDraft.density,
-      density => {
-        if (props.store.getField('Density') !== density) {
-          props.store.setField('Density', density);
-        }
-      },
-    );
-    return () => slots.default?.();
-  },
-});
-
-const BagHydrator = defineComponent({
-  name: 'BagHydrator',
-  props: {
-    ready: { type: Boolean, default: false },
-    preferences: { type: null as unknown as any, default: undefined },
-  },
-  emits: ['hydrate'],
-  setup(props, { emit }) {
-    let done = false;
-    watch(
-      () => [props.ready, props.preferences] as const,
-      async () => {
-        if (!props.ready || done) return;
-        if (props.preferences === undefined) {
-          await nextTick();
-          if (!props.ready || done) return;
-        }
-        done = true;
-        emit('hydrate', props.preferences ?? null);
-      },
-      { immediate: true },
-    );
-    return () => null;
-  },
-});
-
-function onBagHydrate(preferences: unknown): void {
-  const next = readPreferencesBag(preferences ?? currentUser.value?.Preferences);
-  bagDraft.density = next.density;
-  bagDraft.notifications.email = next.notifications.email;
-  bagDraft.notifications.inApp = next.notifications.inApp;
-  bagDraft.notifications.push = next.notifications.push;
-  // Keep display overrides in the bag silently so Save does not wipe them.
-  bagDraft.display.dateFormat = next.display.dateFormat;
-  bagDraft.display.timeFormat = next.display.timeFormat;
-  bagDraft.display.currency = next.display.currency;
-  bagHydrated.value = true;
-}
 
 /** Readonly identity under name fields: username · email (whichever is set). */
 function profileIdentityMeta(formData: Record<string, unknown> | null | undefined): string {
@@ -425,7 +301,6 @@ function profileIdentityMeta(formData: Record<string, unknown> | null | undefine
   });
 }
 
-// Prefer PreferencesDialog _t (zh_CN.po) over raw User field meta, which may still be msgid English.
 const themeFieldHelp = computed(() =>
   _t('UI color theme (light, dark, or follow the system).'),
 );
@@ -482,10 +357,12 @@ function resolveSeedTheme(): void {
   seedTheme.value = resolveUserThemeMode(currentUser.value, readPreferencesThemeMode());
 }
 
+function resolveSeedDensity(): void {
+  seedDensity.value = resolveUserDensity(currentUser.value, readPreferencesDensityMode());
+}
+
 function resetDialogLocalState(): void {
   activeTab.value = 'general';
-  bagHydrated.value = false;
-  Object.assign(bagDraft, readPreferencesBag(currentUser.value?.Preferences));
 }
 
 async function openAndLoad() {
@@ -498,6 +375,7 @@ async function openAndLoad() {
     }
   }
   resolveSeedTheme();
+  resolveSeedDensity();
   resolveSeedTimezone();
   await resolveSeedLanguageId();
 }
@@ -534,14 +412,12 @@ async function onPreferencesSubmit(ctx: {
       missingUserMessage: _t('Cannot update preferences: missing user id'),
       defaultSubmit: async () => (await ctx.defaultSubmit()) as Record<string, unknown> | null,
       formData: (ctx.formData || {}) as Record<string, unknown>,
-      patchCurrentUser: (languageId, timezone, theme, preferences) => {
+      patchCurrentUser: (languageId, timezone, theme, density) => {
         if (!authStore.currentUser) return;
         (authStore.currentUser as any).LanguageId = languageId;
         (authStore.currentUser as any).Timezone = timezone;
         (authStore.currentUser as any).Theme = theme;
-        if (preferences && typeof preferences === 'object') {
-          (authStore.currentUser as any).Preferences = preferences;
-        }
+        (authStore.currentUser as any).Density = density;
         const firstName = ctx.formData?.FirstName;
         const lastName = ctx.formData?.LastName;
         const avatar = ctx.formData?.Avatar;
@@ -552,26 +428,13 @@ async function onPreferencesSubmit(ctx: {
       applyLanguage: languageId =>
         applyUserLanguagePreference({
           languageId,
-          displayOverrides: (authStore.currentUser as any)?.Preferences?.display,
           browseLanguage: (id, fields) => (languageStore as any).Browse(id, fields),
           setUiKey: k => i18nStore.setUiKey(k),
-          setDisplayOverrides: o => i18nStore.setDisplayOverrides(o as never),
           langToUiKey,
           getCurrentUiKey: () => i18nStore.localeCode,
         }),
-      applyTheme: (theme, preferences) => {
-        const density =
-          preferences && typeof preferences === 'object'
-            ? (preferences as { density?: unknown }).density
-            : bagDraft.density;
+      applyAppearance: (theme, density) => {
         applyPreferencesAppearance(theme, density);
-      },
-      applyDisplay: preferences => {
-        const display =
-          preferences && typeof preferences === 'object'
-            ? (preferences as { display?: unknown }).display
-            : null;
-        i18nStore.setDisplayOverrides((display as never) ?? null);
       },
       refreshToken: () => authStore.refreshToken(true),
       afterLocaleChange: () => afterLocaleChange({ remount: softLocaleRemount }),

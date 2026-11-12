@@ -38,13 +38,11 @@ export async function runPreferencesSubmit(opts: {
     languageId: unknown,
     timezone: unknown,
     theme: unknown,
-    preferences: unknown,
+    density: unknown,
   ) => void;
   applyLanguage: (languageId: unknown) => Promise<void>;
-  /** Apply shell theme (and optional density from Preferences). */
-  applyTheme?: (theme: unknown, preferences: unknown) => void;
-  /** Apply Preferences.display overrides to i18n formatting. */
-  applyDisplay?: (preferences: unknown) => void;
+  /** Apply shell theme and density from User fields. */
+  applyAppearance?: (theme: unknown, density: unknown) => void;
   refreshToken: () => Promise<unknown>;
   afterLocaleChange: () => Promise<unknown>;
   onSuccess: () => void;
@@ -73,22 +71,15 @@ export async function runPreferencesSubmit(opts: {
   );
   const timezone = record.Timezone ?? opts.formData.Timezone ?? null;
   const theme = record.Theme ?? opts.formData.Theme ?? null;
-  const preferences = record.Preferences ?? opts.formData.Preferences ?? null;
-  opts.patchCurrentUser(languageId, timezone, theme, preferences);
+  const density = record.Density ?? opts.formData.Density ?? null;
+  opts.patchCurrentUser(languageId, timezone, theme, density);
 
   try {
-    opts.applyTheme?.(theme, preferences);
+    opts.applyAppearance?.(theme, density);
   } catch {
     // Best-effort shell theme/density apply.
   }
 
-  try {
-    opts.applyDisplay?.(preferences);
-  } catch {
-    // Best-effort display overrides.
-  }
-
-  // Match loadUser: i18n wiring must not undo a successful preference Write.
   try {
     await opts.applyLanguage(languageId);
   } catch {

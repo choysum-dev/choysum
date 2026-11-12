@@ -25,22 +25,18 @@ function languageRefId(value: unknown): string {
 }
 
 /**
- * Apply a User.LanguageId (and optional display overrides) to the FE i18n store.
- * Display overrides are applied first so they stick even when language Browse/setUiKey rejects.
+ * Apply a User.LanguageId to the FE i18n store.
  * When getCurrentUiKey returns the same uiKey as the preferred language, setUiKey is skipped
  * (avoids re-fetching translations / active languages on Preferences open / loadUser).
  * Best-effort: callers wrap this when login/auth must continue on i18n failure.
  */
 export async function applyUserLanguagePreference(opts: {
   languageId: unknown;
-  displayOverrides?: unknown;
   browseLanguage: (id: string, fields: string[]) => Promise<{ Code?: string; IsActive?: boolean } | null | undefined>;
   setUiKey: (uiKey: string) => Promise<unknown> | unknown;
-  setDisplayOverrides: (overrides: unknown) => void;
   langToUiKey: (terminologyLang: string) => string;
   getCurrentUiKey?: () => string | null | undefined;
 }): Promise<void> {
-  opts.setDisplayOverrides(opts.displayOverrides ?? null);
   const preferredLang = await terminologyCodeFromLanguageId(opts.languageId, opts.browseLanguage);
   if (!preferredLang) return;
   const uiKey = opts.langToUiKey(preferredLang);

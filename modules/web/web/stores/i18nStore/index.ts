@@ -18,7 +18,6 @@ import { shouldNoopSetUiKey } from './setUiKeyGuard';
 import { createStoreByModel } from '@/web/web/stores/registry';
 import {
   resolveFormatConfig,
-  type DisplayFormatOverrides,
   type LanguageFormatOverlay,
 } from './languageFormat';
 
@@ -38,7 +37,6 @@ export {
   formatCurrencyFromConfig,
   parseGrouping,
   applyGrouping,
-  type DisplayFormatOverrides,
   type LanguageFormatOverlay,
 } from './languageFormat';
 
@@ -74,9 +72,6 @@ export const useI18nStore = defineStore(
     // Format overlays keyed by POSIX Language.Code (from GetActiveLanguages).
     const languageFormatByCode = ref<Record<string, LanguageFormatOverlay>>({});
 
-    // Sparse Preferences.display overrides (dateFormat / timeFormat / currency).
-    const displayOverrides = ref<DisplayFormatOverrides | null>(null);
-
     // Current locale config, combining the code with its metadata.
     const currentLocale = computed(() => {
       const code =
@@ -90,7 +85,6 @@ export const useI18nStore = defineStore(
         config.numberFormat,
         config.dateTimeFormat,
         language,
-        displayOverrides.value
       );
 
       return {
@@ -257,24 +251,6 @@ export const useI18nStore = defineStore(
         },
         currencyCode
       );
-    }
-
-    /**
-     * Apply sparse Preferences.display overrides (or clear with null).
-     */
-    function setDisplayOverrides(overrides: DisplayFormatOverrides | null | undefined) {
-      if (!overrides || typeof overrides !== 'object') {
-        displayOverrides.value = null;
-        return;
-      }
-      displayOverrides.value = {
-        ...(overrides.dateFormat ? { dateFormat: String(overrides.dateFormat) } : {}),
-        ...(overrides.timeFormat ? { timeFormat: String(overrides.timeFormat) } : {}),
-        ...(overrides.currency ? { currency: String(overrides.currency) } : {}),
-      };
-      if (!displayOverrides.value.dateFormat && !displayOverrides.value.timeFormat && !displayOverrides.value.currency) {
-        displayOverrides.value = null;
-      }
     }
 
     /**
@@ -479,7 +455,6 @@ export const useI18nStore = defineStore(
       // Locale management methods.
       setUiKey,
       setActiveUiKeys,
-      setDisplayOverrides,
       loadActiveUiKeysFromServer,
       reloadTerminology,
       revalidateTerminologyIfStale,
