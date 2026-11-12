@@ -5,8 +5,8 @@ import { defineComponent, h, provide, ref } from 'vue';
 import { mount, flushPromises } from '@choysum/test-utils';
 import { PreferenceDraftSeeder, seedPreferenceDraft } from './PreferenceDraftSeeder';
 
-test('seedPreferenceDraft: fills empty LanguageId and Timezone', () => {
-  const draft: Record<string, unknown> = { LanguageId: '', Timezone: '' };
+test('seedPreferenceDraft: fills empty LanguageId, Timezone, and Theme', () => {
+  const draft: Record<string, unknown> = { LanguageId: '', Timezone: '', Theme: null };
   seedPreferenceDraft(
     {
       getField: path => draft[path],
@@ -14,14 +14,15 @@ test('seedPreferenceDraft: fills empty LanguageId and Timezone', () => {
         draft[path] = value;
       },
     },
-    { languageId: 'lang-1', timezone: 'Asia/Shanghai' },
+    { languageId: 'lang-1', timezone: 'Asia/Shanghai', theme: 'dark' },
   );
   expect(draft.LanguageId).toBe('lang-1');
   expect(draft.Timezone).toBe('Asia/Shanghai');
+  expect(draft.Theme).toBe('dark');
 });
 
-test('seedPreferenceDraft: does not overwrite persisted LanguageId / Timezone', () => {
-  const draft: Record<string, unknown> = { LanguageId: 'saved-lang', Timezone: 'UTC' };
+test('seedPreferenceDraft: does not overwrite persisted LanguageId / Timezone / Theme', () => {
+  const draft: Record<string, unknown> = { LanguageId: 'saved-lang', Timezone: 'UTC', Theme: 'light' };
   seedPreferenceDraft(
     {
       getField: path => draft[path],
@@ -29,10 +30,11 @@ test('seedPreferenceDraft: does not overwrite persisted LanguageId / Timezone', 
         draft[path] = value;
       },
     },
-    { languageId: 'hint-lang', timezone: 'Asia/Shanghai' },
+    { languageId: 'hint-lang', timezone: 'Asia/Shanghai', theme: 'dark' },
   );
   expect(draft.LanguageId).toBe('saved-lang');
   expect(draft.Timezone).toBe('UTC');
+  expect(draft.Theme).toBe('light');
 });
 
 test('seedPreferenceDraft: no-ops without form-root', () => {

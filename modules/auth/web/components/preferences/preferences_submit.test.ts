@@ -13,11 +13,14 @@ function deps(overrides?: Partial<Parameters<typeof runPreferencesSubmit>[0]>) {
       missingUserMessage: 'missing id',
       defaultSubmit: async () => {
         calls.push('defaultSubmit');
-        return { LanguageId: 'lang-1', Timezone: 'Asia/Shanghai' };
+        return { LanguageId: 'lang-1', Timezone: 'Asia/Shanghai', Theme: 'dark' };
       },
-      formData: { LanguageId: 'lang-draft', Timezone: 'UTC' } as Record<string, unknown>,
-      patchCurrentUser: (languageId: unknown, timezone: unknown) => {
-        calls.push(`patch:${String(languageId)}:${String(timezone)}`);
+      formData: { LanguageId: 'lang-draft', Timezone: 'UTC', Theme: 'light' } as Record<string, unknown>,
+      patchCurrentUser: (languageId: unknown, timezone: unknown, theme: unknown) => {
+        calls.push(`patch:${String(languageId)}:${String(timezone)}:${String(theme)}`);
+      },
+      applyTheme: (theme: unknown) => {
+        calls.push(`theme:${String(theme)}`);
       },
       applyLanguage: async (languageId: unknown) => {
         calls.push(`apply:${String(languageId)}`);
@@ -61,7 +64,8 @@ test('runPreferencesSubmit: defaultSubmit then language/token side effects', asy
   expect(ok).toBe(true);
   expect(calls).toEqual([
     'defaultSubmit',
-    'patch:lang-1:Asia/Shanghai',
+    'patch:lang-1:Asia/Shanghai:dark',
+    'theme:dark',
     'apply:lang-1',
     'refreshToken',
     'afterLocaleChange',
@@ -80,7 +84,8 @@ test('runPreferencesSubmit: normalizes ManyToOne LanguageId before side effects'
   expect(ok).toBe(true);
   expect(calls).toEqual([
     'defaultSubmit',
-    'patch:lang-obj:UTC',
+    'patch:lang-obj:UTC:light',
+    'theme:light',
     'apply:lang-obj',
     'refreshToken',
     'afterLocaleChange',
@@ -124,7 +129,8 @@ test('runPreferencesSubmit: applyLanguage failure still refreshes and succeeds',
   expect(ok).toBe(true);
   expect(calls).toEqual([
     'defaultSubmit',
-    'patch:lang-1:Asia/Shanghai',
+    'patch:lang-1:Asia/Shanghai:dark',
+    'theme:dark',
     'apply:lang-1',
     'refreshToken',
     'afterLocaleChange',
@@ -143,7 +149,8 @@ test('runPreferencesSubmit: refreshToken failure after Write still succeeds', as
   expect(ok).toBe(true);
   expect(calls).toEqual([
     'defaultSubmit',
-    'patch:lang-1:Asia/Shanghai',
+    'patch:lang-1:Asia/Shanghai:dark',
+    'theme:dark',
     'apply:lang-1',
     'refreshToken',
     'success',

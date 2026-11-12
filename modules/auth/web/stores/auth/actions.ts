@@ -590,8 +590,30 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
       if (!forceRefresh && state.currentUser.value) return true;
 
       // Fetch the current user profile from the backend store.
-      const user = await state.userStore.Browse(userId, ['Id', 'Username', 'Email', 'LanguageId', 'Timezone', 'Preferences']);
+      const user = await state.userStore.Browse(userId, [
+        'Id',
+        'Username',
+        'Email',
+        'LanguageId',
+        'Timezone',
+        'Theme',
+        'Preferences',
+      ]);
       state.currentUser.value = user;
+      // Align shell theme with User.Theme / Preferences.theme (localStorage as fallback).
+      try {
+        const { applyChoyThemePreference, readChoyThemePreference } = await import(
+          '@/web/web/composables/applyChoyThemePreference'
+        );
+        const { resolveUserThemeMode, resolvePreferencesThemeMode } = await import(
+          '@/auth/web/components/preferences/preferences_theme'
+        );
+        applyChoyThemePreference({
+          theme: resolveUserThemeMode(user as any, resolvePreferencesThemeMode(readChoyThemePreference().theme)),
+        });
+      } catch {
+        // Best-effort; auth must not fail because of theme wiring.
+      }
       // Align FE UI key with the user's LanguageId (covers initAuth refresh paths; Login also applies this).
       try {
         const { useI18nStore, langToUiKey } = await (deps?.importI18nStore

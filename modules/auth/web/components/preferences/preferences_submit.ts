@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /**
- * Preferences save path: FormView Write (`defaultSubmit`) then i18n / token
- * side effects. Callers must not issue a second UpdateById.
+ * Preferences save path: FormView Write (`defaultSubmit`) then i18n / theme /
+ * token side effects. Callers must not issue a second UpdateById.
  *
  * Post-write locale/token steps are best-effort: a successful Write must not be
  * reported as a failed save when applyLanguage / refreshToken later rejects.
@@ -34,8 +34,14 @@ export async function runPreferencesSubmit(opts: {
   missingUserMessage: string;
   defaultSubmit: () => Promise<Record<string, unknown> | null | undefined>;
   formData: Record<string, unknown>;
-  patchCurrentUser: (languageId: unknown, timezone: unknown) => void;
+  patchCurrentUser: (
+    languageId: unknown,
+    timezone: unknown,
+    theme: unknown,
+    preferences: unknown,
+  ) => void;
   applyLanguage: (languageId: unknown) => Promise<void>;
+  applyTheme?: (theme: unknown) => void;
   refreshToken: () => Promise<unknown>;
   afterLocaleChange: () => Promise<unknown>;
   onSuccess: () => void;
@@ -63,7 +69,15 @@ export async function runPreferencesSubmit(opts: {
     record.LanguageId ?? opts.formData.LanguageId ?? null,
   );
   const timezone = record.Timezone ?? opts.formData.Timezone ?? null;
-  opts.patchCurrentUser(languageId, timezone);
+  const theme = record.Theme ?? opts.formData.Theme ?? null;
+  const preferences = record.Preferences ?? opts.formData.Preferences ?? null;
+  opts.patchCurrentUser(languageId, timezone, theme, preferences);
+
+  try {
+    opts.applyTheme?.(theme);
+  } catch {
+    // Best-effort shell theme apply.
+  }
 
   // Match loadUser: i18n wiring must not undo a successful preference Write.
   try {
