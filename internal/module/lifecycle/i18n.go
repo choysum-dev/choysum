@@ -38,7 +38,7 @@ func ReloadModuleTerminology(runtimeScope scope.Scope, moduleName string) (Termi
 	if moduleName == "" {
 		return out, xfmt.Errorf("module name is required")
 	}
-	if moduleName == "." || moduleName == ".." || strings.ContainsAny(moduleName, `/\`) {
+	if filepath.IsAbs(moduleName) || moduleName == "." || moduleName == ".." || strings.ContainsAny(moduleName, `/\`) {
 		return out, xfmt.Errorf("invalid module name %q", moduleName)
 	}
 	if runtimeScope == nil {
@@ -46,6 +46,13 @@ func ReloadModuleTerminology(runtimeScope scope.Scope, moduleName string) (Termi
 	}
 
 	modulesPath := strings.TrimSpace(runtimeOptionsFromScope(runtimeScope).modulesPath)
+	moduleRoot := filepath.Join(modulesPath, moduleName)
+	if modulesPath != "" {
+		rel, relErr := filepath.Rel(modulesPath, moduleRoot)
+		if relErr != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+			return out, xfmt.Errorf("module name %q escapes modules path", moduleName)
+		}
+	}
 	application, err := policy.ReadModuleApplicationFromPackageJSON(modulesPath, moduleName)
 	if err != nil {
 		return out, xfmt.Errorf("resolve application for module %s: %w", moduleName, err)
@@ -63,7 +70,7 @@ func ReloadModuleTerminology(runtimeScope scope.Scope, moduleName string) (Termi
 	mod := &meta.Module{
 		Name:           moduleName,
 		ApplicationStr: application,
-		Path:           filepath.Join(modulesPath, moduleName),
+		Path:           moduleRoot,
 	}
 	if err := importModuleTerminology(scoped, mod, modulesPath); err != nil {
 		return out, err

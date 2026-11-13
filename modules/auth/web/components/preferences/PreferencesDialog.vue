@@ -50,7 +50,11 @@ SPDX-License-Identifier: Apache-2.0
               :timezone="seedTimezone"
               :theme="seedTheme"
             />
-            <span class="hidden">{{ trackThemeDraft(formData) }}</span>
+            <PreferenceThemeDraftApplier
+              :theme="formData?.Theme"
+              :active="visible"
+              @apply="onThemeDraftApply"
+            />
             <ChoyFieldGroup class="choy-preferences-dialog__form gap-4">
               <div class="choy-preferences-dialog__appearance space-y-2">
                 <div class="text-sm font-medium text-foreground">{{ _t('Appearance') }}</div>
@@ -120,12 +124,14 @@ import {
 import { restoreDialogFocus } from './dialog_focus_restore';
 import { trapDialogTabKey } from './dialog_focus_trap';
 import { PreferenceDraftSeeder } from './PreferenceDraftSeeder';
+import { PreferenceThemeDraftApplier } from './PreferenceThemeDraftApplier';
 import { runPreferencesSubmit } from './preferences_submit';
 import {
   applyPreferencesThemeMode,
   readPreferencesThemeMode,
   resolvePreferencesThemeMode,
   resolveUserThemeMode,
+  type ChoyThemeMode,
 } from './preferences_theme';
 
 defineOptions({ name: 'PreferencesDialog' });
@@ -198,13 +204,10 @@ function showTimezoneBrowserHint(formData: Record<string, unknown>): boolean {
 }
 
 /** Live-apply Theme from the User form draft to the shell (still persisted on submit). */
-function trackThemeDraft(formData: Record<string, unknown>): string {
-  const mode = resolvePreferencesThemeMode(formData?.Theme);
-  if (mode !== lastAppliedTheme) {
-    lastAppliedTheme = mode;
-    applyPreferencesThemeMode(mode);
-  }
-  return mode;
+function onThemeDraftApply(mode: ChoyThemeMode): void {
+  if (mode === lastAppliedTheme) return;
+  lastAppliedTheme = mode;
+  applyPreferencesThemeMode(mode);
 }
 
 async function resolveSeedLanguageId(): Promise<void> {

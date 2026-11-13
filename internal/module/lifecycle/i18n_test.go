@@ -401,6 +401,9 @@ func TestReloadModuleTerminology_requiresModuleName(t *testing.T) {
 	if _, err := ReloadModuleTerminology(rs, `mod\evil`); err == nil {
 		t.Fatal("expected error for separator in module name")
 	}
+	if _, err := ReloadModuleTerminology(rs, filepath.Join(string(filepath.Separator), "tmp", "escape")); err == nil {
+		t.Fatal("expected error for absolute module name")
+	}
 }
 
 func TestReloadModuleTerminology_nilContextFallsBackToBackground(t *testing.T) {

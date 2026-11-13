@@ -8,6 +8,8 @@ import {
   type ChoyThemeMode,
 } from '@/web/web/composables/applyChoyThemePreference';
 
+export type { ChoyThemeMode };
+
 /** Theme modes offered on auth.User.Theme / Preferences.theme. */
 export const PREFERENCES_THEME_MODES: readonly ChoyThemeMode[] = ['light', 'dark', 'auto'];
 
