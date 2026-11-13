@@ -34,7 +34,6 @@ SPDX-License-Identifier: Apache-2.0
         :checkbox-label="_t('Load demo data')"
         render-mode="inline"
         buffer-strategy="live"
-        show-inline-error
       />
     </section>
   </div>

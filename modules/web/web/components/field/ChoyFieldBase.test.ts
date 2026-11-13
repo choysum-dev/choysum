@@ -26,6 +26,7 @@ function makeBinding(
     translate?: boolean;
     companyDependent?: boolean;
     isReadonly?: boolean;
+    notNull?: boolean;
     type?: string;
   },
   opts?: {
@@ -250,6 +251,38 @@ describe('ChoyFieldBase label and help', () => {
     );
     expect(m.q('[data-slot="field-label"]')?.getAttribute('for')).toBeFalsy();
     m.unmount();
+  });
+
+  test('shows required asterisk on form label in display and edit', () => {
+    const display = mountBase(
+      {
+        binding: makeBinding({ string: 'NameChar', notNull: true }, { isEditMode: false }),
+        renderMode: 'form',
+      },
+      {
+        slots: {
+          edit: () => h('input'),
+          display: () => h('span', { class: 'display-probe' }, 'Virt Lines'),
+        },
+      },
+    );
+    expect(display.q('[data-slot="field-label"]')?.textContent).toContain('*');
+    display.unmount();
+
+    const edit = mountBase(
+      {
+        binding: makeBinding({ string: 'NameChar', notNull: true }, { isEditMode: true }),
+        renderMode: 'form',
+      },
+      {
+        slots: {
+          edit: () => h('input', { class: 'edit-probe' }),
+          display: () => h('span'),
+        },
+      },
+    );
+    expect(edit.q('[data-slot="field-label"]')?.textContent).toContain('*');
+    edit.unmount();
   });
 
   test('lets explicit label override metadata', () => {
@@ -813,13 +846,121 @@ describe('ChoyFieldBase auto renderMode from fieldPresentation', () => {
     await flushPromises();
     expect(m.q('.choy-field-base__error-reserve')).toBeFalsy();
     expect(m.q('[data-slot="field-error"]')).toBeFalsy();
+    const contentBefore = m.q('[data-slot="field-content"]') as HTMLElement | null;
+    expect(String(contentBefore?.className || '')).not.toContain('pb-5');
     const validate = [...validators.values()][0];
     expect(await validate()).toBe('need value');
     await flushPromises();
+    const contentAfter = m.q('[data-slot="field-content"]') as HTMLElement | null;
+    expect(String(contentAfter?.className || '')).not.toContain('pb-5');
     const err = m.q('[data-slot="field-error"]') as HTMLElement | null;
     expect(err?.textContent).toContain('need value');
     expect(String(err?.className || '')).toContain('choy-field-base__error--overlay');
     expect(String(err?.className || '')).toContain('absolute');
+    m.unmount();
+  });
+
+  test('form mode inherits inject overlay without showInlineError', async () => {
+    const { FIELD_CLIENT_VALIDATORS_KEY } = await import('@/web/web/composables/fieldClientValidation');
+    const { FIELD_ERROR_SPACE_KEY } = await import('@/web/web/composables/fieldErrorSpace');
+    const validators = new Map<string, () => Promise<string>>();
+    const binding = makeBinding({ string: 'Code' });
+    binding.__value.value = '';
+    const m = mountBase(
+      {
+        binding,
+        renderMode: 'form',
+        rules: [
+          {
+            validator: (_r: unknown, v: unknown, cb: (e?: Error) => void) => {
+              if (!v) cb(new Error('Required'));
+              else cb();
+            },
+          },
+        ],
+      },
+      {
+        provide: {
+          [FIELD_CLIENT_VALIDATORS_KEY as any]: validators,
+          [FIELD_ERROR_SPACE_KEY as any]: 'overlay',
+        },
+        slots: {
+          edit: () => h('input', { class: 'inject-overlay-probe' }),
+          display: () => h('span'),
+        },
+      },
+    );
+    await flushPromises();
+    const root = m.q('[data-anchor="choy.field-base"]') as HTMLElement | null;
+    expect(root?.getAttribute('data-inline-error-space')).toBe('overlay');
+    expect(m.q('.choy-field-base__error-reserve')).toBeFalsy();
+    const validate = [...validators.values()][0];
+    expect(await validate()).toBe('Required');
+    await flushPromises();
+    const err = m.q('[data-slot="field-error"]') as HTMLElement | null;
+    expect(err?.textContent).toContain('Required');
+    expect(String(err?.className || '')).toContain('choy-field-base__error--overlay');
+    m.unmount();
+  });
+
+  test('prop reserve overrides inject overlay', async () => {
+    const { FIELD_ERROR_SPACE_KEY } = await import('@/web/web/composables/fieldErrorSpace');
+    const m = mountBase(
+      {
+        binding: makeBinding({ string: 'Name' }),
+        renderMode: 'form',
+        inlineErrorSpace: 'reserve',
+      },
+      {
+        provide: { [FIELD_ERROR_SPACE_KEY as any]: 'overlay' },
+        slots: {
+          edit: () => h('input', { class: 'override-probe' }),
+          display: () => h('span'),
+        },
+      },
+    );
+    await flushPromises();
+    const root = m.q('[data-anchor="choy.field-base"]') as HTMLElement | null;
+    expect(root?.getAttribute('data-inline-error-space')).toBe('reserve');
+    expect(m.q('.choy-field-base__error-reserve')).toBeTruthy();
+    m.unmount();
+  });
+
+  test('inline mode without showInlineError still hides field errors', async () => {
+    const { FIELD_CLIENT_VALIDATORS_KEY } = await import('@/web/web/composables/fieldClientValidation');
+    const { FIELD_ERROR_SPACE_KEY } = await import('@/web/web/composables/fieldErrorSpace');
+    const validators = new Map<string, () => Promise<string>>();
+    const binding = makeBinding({ string: 'Name' }, { fieldPresentation: 'none' });
+    binding.__value.value = '';
+    const m = mountBase(
+      {
+        binding,
+        renderMode: 'inline',
+        rules: [
+          {
+            validator: (_r: unknown, v: unknown, cb: (e?: Error) => void) => {
+              if (!v) cb(new Error('need value'));
+              else cb();
+            },
+          },
+        ],
+      },
+      {
+        provide: {
+          [FIELD_CLIENT_VALIDATORS_KEY as any]: validators,
+          [FIELD_ERROR_SPACE_KEY as any]: 'overlay',
+        },
+        slots: {
+          edit: () => h('input', { class: 'inline-silent-probe' }),
+          display: () => h('span'),
+        },
+      },
+    );
+    await flushPromises();
+    const validate = [...validators.values()][0];
+    expect(await validate()).toBe('need value');
+    await flushPromises();
+    expect(m.q('[data-slot="field-error"]')).toBeFalsy();
     m.unmount();
   });
 

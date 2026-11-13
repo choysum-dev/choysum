@@ -166,6 +166,7 @@ SPDX-License-Identifier: Apache-2.0
 // =============================
 import { ref, computed, provide, inject, watch, toRaw, onMounted, onBeforeUnmount, getCurrentInstance, useSlots } from 'vue';
 import { FIELD_CLIENT_VALIDATORS_KEY } from '@/web/web/composables/fieldClientValidation';
+import { FIELD_ERROR_SPACE_KEY } from '@/web/web/composables/fieldErrorSpace';
 import type { ClientModel, BaseModel, Updateable, Insertable } from '@/core/rpc';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type { RouteLocationRaw } from 'vue-router';
@@ -376,6 +377,8 @@ provide('field-errors', fieldErrors);
 // Client-side RuleItem validators registered by ChoyFieldBase.
 const fieldClientValidators = new Map<string, () => Promise<string>>();
 provide(FIELD_CLIENT_VALIDATORS_KEY, fieldClientValidators);
+// Multi-column form + display/edit: absolute errors avoid row jump; fields may override.
+provide(FIELD_ERROR_SPACE_KEY, 'overlay');
 
 // =============================
 // Section 11: Onchange controller (session scoped)
