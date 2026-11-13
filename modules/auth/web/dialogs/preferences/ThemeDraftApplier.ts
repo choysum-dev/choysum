@@ -12,17 +12,19 @@ export const ThemeDraftApplier = defineComponent({
   name: 'ThemeDraftApplier',
   props: {
     theme: { default: undefined as unknown },
+    /** Live Density draft so theme preview does not keep a stale shell density. */
+    density: { default: undefined as unknown },
     active: { type: Boolean, default: true },
   },
   emits: {
-    apply: (_mode: ChoyThemeMode) => true,
+    apply: (_mode: ChoyThemeMode, _density?: unknown) => true,
   },
   setup(props, { emit }) {
     watch(
-      () => resolveThemeMode(props.theme),
-      mode => {
+      () => [resolveThemeMode(props.theme), props.density] as const,
+      ([mode, density]) => {
         if (!props.active) return;
-        emit('apply', mode);
+        emit('apply', mode, density);
       },
       // Post-flush so parent @apply listeners are attached before the first emit.
       { immediate: true, flush: 'post' },

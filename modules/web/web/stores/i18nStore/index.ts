@@ -191,13 +191,6 @@ export const useI18nStore = defineStore(
           };
         }
 
-        if (generation !== setUiKeyGeneration) {
-          return false;
-        }
-
-        // Update the active locale.
-        localeCode.value = locale as SupportedLocale;
-
         // Refresh Language format overlays when switching UI key (P2 runtime authority).
         if (isClient) {
           try {
@@ -207,9 +200,14 @@ export const useI18nStore = defineStore(
           }
         }
 
+        // Yield so a concurrent setUiKey can win before we mutate localeCode.
+        await Promise.resolve();
         if (generation !== setUiKeyGeneration) {
           return false;
         }
+
+        // Update the active locale.
+        localeCode.value = locale as SupportedLocale;
 
         // Configure the dayjs locale.
         const dayjsLocaleCode = SUPPORTED_LOCALES[locale as SupportedLocale].dayjsLocaleCode;

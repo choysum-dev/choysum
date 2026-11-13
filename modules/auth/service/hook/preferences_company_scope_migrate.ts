@@ -15,6 +15,10 @@ type AuthUserScopeRow = {
   ActiveCompanyId?: unknown;
   enabled_company_ids?: unknown;
   EnabledCompanyIds?: unknown;
+  company_id?: unknown;
+  CompanyId?: unknown;
+  company_ids?: unknown;
+  CompanyIds?: unknown;
 };
 
 function resolveDb(): ChoysumDb | undefined {
@@ -35,6 +39,40 @@ function rowActiveCompanyId(row: AuthUserScopeRow): string {
 
 function rowEnabledCompanyIds(row: AuthUserScopeRow): unknown {
   return row.enabled_company_ids ?? row.EnabledCompanyIds;
+}
+
+function parseIdList(raw: unknown): string[] {
+  if (Array.isArray(raw)) {
+    return raw.map(id => String(id ?? '').trim()).filter(Boolean);
+  }
+  if (typeof raw === 'string') {
+    const text = raw.trim();
+    if (!text || text === '[]' || text === 'null') return [];
+    try {
+      const parsed = JSON.parse(text);
+      if (Array.isArray(parsed)) {
+        return parsed.map(id => String(id ?? '').trim()).filter(Boolean);
+      }
+    } catch {
+      // fall through
+    }
+    return text ? [text] : [];
+  }
+  return [];
+}
+
+/** Allowed company set from primary CompanyId ∪ CompanyIds JSON column. */
+function buildAllowedFromRow(row: AuthUserScopeRow): string[] {
+  const primary = String(row.company_id ?? row.CompanyId ?? '').trim();
+  const secondary = parseIdList(row.company_ids ?? row.CompanyIds);
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const id of [primary, ...secondary]) {
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    out.push(id);
+  }
+  return out;
 }
 
 function parsePreferencesBag(raw: unknown): { activeCompanyId?: string; enabledCompanyIds?: string[] } | null {
@@ -61,25 +99,14 @@ function parsePreferencesBag(raw: unknown): { activeCompanyId?: string; enabledC
 }
 
 function hasStoredEnabled(raw: unknown): boolean {
-  if (raw == null) return false;
-  if (Array.isArray(raw)) return raw.length > 0;
-  if (typeof raw === 'string') {
-    const text = raw.trim();
-    if (!text || text === '[]' || text === 'null') return false;
-    try {
-      const parsed = JSON.parse(text);
-      return Array.isArray(parsed) && parsed.length > 0;
-    } catch {
-      return text.length > 0;
-    }
-  }
-  return false;
+  return parseIdList(raw).length > 0;
 }
 
 /**
  * Copy Preferences.activeCompanyId / enabledCompanyIds into first-class columns
- * when those columns are still empty. No-ops when the leftover Preferences column
- * is already gone.
+ * when those columns are still empty. Values outside CompanyId ∪ CompanyIds are
+ * dropped so a stale preference cannot seed an unauthorized active company.
+ * No-ops when the leftover Preferences column is already gone.
  */
 export async function migratePreferencesCompanyScopeToColumns(): Promise<void> {
   const db = resolveDb();
@@ -88,7 +115,7 @@ export async function migratePreferencesCompanyScopeToColumns(): Promise<void> {
   let rows: AuthUserScopeRow[] = [];
   try {
     const raw = await db.query(
-      'SELECT id, preferences, active_company_id, enabled_company_ids FROM auth_user WHERE preferences IS NOT NULL',
+      'SELECT id, preferences, active_company_id, enabled_company_ids, company_id, company_ids FROM auth_user WHERE preferences IS NOT NULL',
       '[]',
     );
     const parsed = JSON.parse(String(raw || '[]'));
@@ -105,13 +132,15 @@ export async function migratePreferencesCompanyScopeToColumns(): Promise<void> {
     const bag = parsePreferencesBag(rowPreferences(row));
     if (!bag) continue;
 
-    const nextActive = rowActiveCompanyId(row) || bag.activeCompanyId || '';
+    const allowed = buildAllowedFromRow(row);
+    const allowedSet = new Set(allowed);
+    const bagActive =
+      bag.activeCompanyId && allowedSet.has(bag.activeCompanyId) ? bag.activeCompanyId : '';
+    const bagEnabled = (bag.enabledCompanyIds || []).filter(cid => allowedSet.has(cid));
+
+    const nextActive = rowActiveCompanyId(row) || bagActive || '';
     const keepEnabled = hasStoredEnabled(rowEnabledCompanyIds(row));
-    const nextEnabled = keepEnabled
-      ? null
-      : bag.enabledCompanyIds && bag.enabledCompanyIds.length
-        ? bag.enabledCompanyIds
-        : null;
+    const nextEnabled = keepEnabled ? null : bagEnabled.length ? bagEnabled : null;
 
     if (!nextActive && !nextEnabled) continue;
 

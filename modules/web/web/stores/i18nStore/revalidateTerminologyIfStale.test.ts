@@ -299,6 +299,77 @@ describe('useI18nStore.revalidateTerminologyIfStale / reloadTerminology', () => 
     expect(store.localeCode).toBe('en');
   });
 
+  test('setUiKey: discards stale gateway failure after a newer request', async () => {
+    const store = useI18nStore();
+    store.isInitialized = true;
+    store.localeCode = 'en';
+    (store as any).loadedLocales = { en: true, 'zh-CN': true };
+    let rejectSlow: (err: Error) => void = () => undefined;
+    const slow = new Promise<Response>((_resolve, reject) => {
+      rejectSlow = reject;
+    });
+    let calls = 0;
+    globalThis.fetch = (async () => {
+      calls += 1;
+      if (calls === 1) return slow;
+      return jsonResponse({
+        lang: 'en_US',
+        locale: 'en',
+        hash: 'en-ok',
+        unchanged: true,
+        messages: null,
+      });
+    }) as typeof fetch;
+
+    const first = store.setUiKey('zh-CN');
+    await store.setUiKey('en');
+    rejectSlow(new Error('gateway-stale'));
+    expect(await first).toBe(false);
+    expect(store.localeCode).toBe('en');
+  });
+
+  test('setUiKey: discards stale success after yield before locale apply', async () => {
+    const store = useI18nStore();
+    store.isInitialized = true;
+    store.localeCode = 'en';
+    (store as any).loadedLocales = { en: true, 'zh-CN': true };
+    let calls = 0;
+    let releaseFirst!: () => void;
+    const firstGate = new Promise<void>(resolve => {
+      releaseFirst = resolve;
+    });
+    globalThis.fetch = (async () => {
+      calls += 1;
+      if (calls === 1) {
+        await firstGate;
+        return jsonResponse({
+          lang: 'zh_CN',
+          locale: 'zh-CN',
+          hash: 'zh',
+          unchanged: true,
+          messages: null,
+        });
+      }
+      return jsonResponse({
+        lang: 'en_US',
+        locale: 'en',
+        hash: 'en',
+        unchanged: true,
+        messages: null,
+      });
+    }) as typeof fetch;
+
+    const first = store.setUiKey('zh-CN');
+    // Let the first request pass fetch, then win with a newer switch before apply.
+    releaseFirst();
+    await Promise.resolve();
+    await Promise.resolve();
+    const second = store.setUiKey('en');
+    expect(await first).toBe(false);
+    expect(await second).toBe(true);
+    expect(store.localeCode).toBe('en');
+  });
+
   test('revalidateTerminologyIfStale: soft-remounts when remount mode is enabled', async () => {
     const store = useI18nStore();
     store.isInitialized = true;

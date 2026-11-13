@@ -19,6 +19,8 @@ test('migratePreferencesCompanyScopeToColumns: copies Preferences scope into emp
             }),
             active_company_id: null,
             enabled_company_ids: null,
+            company_id: 'c_active',
+            company_ids: JSON.stringify(['c2']),
           },
         ]),
       execute: async (sql: string, params: string) => {
@@ -41,6 +43,42 @@ test('migratePreferencesCompanyScopeToColumns: copies Preferences scope into emp
   ]);
 });
 
+test('migratePreferencesCompanyScopeToColumns: drops out-of-scope Preferences companies', async () => {
+  const executes: Array<{ sql: string; params: string }> = [];
+  const prev = (globalThis as any).$choysum;
+  (globalThis as any).$choysum = {
+    ...(prev || {}),
+    db: {
+      query: async () =>
+        JSON.stringify([
+          {
+            id: 'u_bad',
+            preferences: JSON.stringify({
+              activeCompanyId: 'c_foreign',
+              enabledCompanyIds: ['c_foreign', 'c1'],
+            }),
+            active_company_id: null,
+            enabled_company_ids: null,
+            company_id: 'c1',
+            company_ids: '[]',
+          },
+        ]),
+      execute: async (sql: string, params: string) => {
+        executes.push({ sql, params });
+      },
+    },
+  };
+  try {
+    await migratePreferencesCompanyScopeToColumns();
+  } finally {
+    (globalThis as any).$choysum = prev;
+  }
+  expect(executes).toHaveLength(1);
+  expect(executes[0].sql).toContain('enabled_company_ids');
+  expect(executes[0].sql).not.toContain('active_company_id');
+  expect(JSON.parse(executes[0].params)).toEqual([JSON.stringify(['c1']), 'u_bad']);
+});
+
 test('migratePreferencesCompanyScopeToColumns: keeps existing EnabledCompanyIds', async () => {
   const executes: Array<{ sql: string; params: string }> = [];
   const prev = (globalThis as any).$choysum;
@@ -57,6 +95,8 @@ test('migratePreferencesCompanyScopeToColumns: keeps existing EnabledCompanyIds'
             }),
             active_company_id: '',
             enabled_company_ids: JSON.stringify(['c_keep']),
+            company_id: 'c_new',
+            company_ids: JSON.stringify(['c_new']),
           },
         ]),
       execute: async (sql: string, params: string) => {

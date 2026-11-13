@@ -45,6 +45,7 @@ SPDX-License-Identifier: Apache-2.0
             />
             <ThemeDraftApplier
               :theme="formData?.Theme"
+              :density="formData?.Density"
               :active="visible && !saving"
               @apply="onThemeDraftApply"
             />
@@ -339,11 +340,18 @@ function showTimezoneBrowserHint(formData: Record<string, unknown>): boolean {
   return fieldText(formData?.Timezone) === seed;
 }
 
-/** Live-apply Theme from the User form draft to the shell (still persisted on submit). */
-function onThemeDraftApply(mode: ChoyThemeMode): void {
-  if (mode === lastAppliedTheme) return;
+/** Live-apply Theme (and draft Density) from the form to the shell; persisted on submit. */
+function onThemeDraftApply(mode: ChoyThemeMode, draftDensity?: unknown): void {
+  const density = resolveUserDensity(
+    { Density: draftDensity ?? (currentUser.value as { Density?: unknown } | null | undefined)?.Density },
+    readChoyThemePreference().density,
+  );
+  if (mode === lastAppliedTheme) {
+    // Density-only draft edits still need a shell update.
+    applyUserAppearance(mode, density);
+    return;
+  }
   lastAppliedTheme = mode;
-  const density = resolveUserDensity(currentUser.value, readChoyThemePreference().density);
   applyUserAppearance(mode, density);
 }
 
