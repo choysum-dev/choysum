@@ -264,7 +264,8 @@ describe('useI18nStore.revalidateTerminologyIfStale / reloadTerminology', () => 
     const store = useI18nStore();
     store.isInitialized = true;
     store.localeCode = 'en';
-    store.loadedLocales = { en: true } as any;
+    // loadedLocales is store-private; seed so setUiKey skips dayjs import work.
+    (store as any).loadedLocales = { en: true, 'zh-CN': true };
     let resolveSlow: (v: Response) => void = () => undefined;
     const slow = new Promise<Response>(resolve => {
       resolveSlow = resolve;
