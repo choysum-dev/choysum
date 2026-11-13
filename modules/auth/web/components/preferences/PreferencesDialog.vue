@@ -257,7 +257,15 @@ function resolveSeedTheme(): void {
   seedTheme.value = resolveUserThemeMode(currentUser.value, readPreferencesThemeMode());
 }
 
+let openGeneration = 0;
+
 async function openAndLoad() {
+  const gen = ++openGeneration;
+  // Capture shell theme before any await so early dismiss restores correctly.
+  openedTheme = readPreferencesThemeMode();
+  lastAppliedTheme = openedTheme;
+  themeCommitted = false;
+
   if (authStore.isAuthenticated) {
     try {
       await authStore.loadUser(true);
@@ -265,10 +273,10 @@ async function openAndLoad() {
       // Fall back to whatever is already in auth state / identity.
     }
   }
+  // Dismissed (or a newer open) while loading: do not overwrite restore state.
+  if (gen !== openGeneration || !props.modelValue) return;
+
   resolveSeedTheme();
-  openedTheme = seedTheme.value || readPreferencesThemeMode();
-  lastAppliedTheme = openedTheme;
-  themeCommitted = false;
   await Promise.all([resolveSeedLanguageId(), resolveSeedTimezone()]);
 }
 
@@ -345,6 +353,9 @@ async function onPreferencesSubmit(ctx: {
         const mode = resolvePreferencesThemeMode(theme);
         lastAppliedTheme = mode;
         applyPreferencesThemeMode(mode);
+        // Commit before language/token awaits so dismiss cannot restore the old theme.
+        themeCommitted = true;
+        openedTheme = mode;
       },
       refreshToken: () => authStore.refreshToken(true),
       afterLocaleChange: () => afterLocaleChange({ remount: softLocaleRemount }),

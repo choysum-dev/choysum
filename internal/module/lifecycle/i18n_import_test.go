@@ -23,6 +23,13 @@ type nilContextScope struct {
 
 func (nilContextScope) Context() context.Context { return nil }
 
+func (s nilContextScope) FactoryInput() scope.FactoryInput {
+	if carrier, ok := s.Scope.(scope.FactoryInputCarrier); ok {
+		return carrier.FactoryInput()
+	}
+	return nil
+}
+
 func TestImportModuleTerminology_nilModule(t *testing.T) {
 	t.Parallel()
 	if err := importModuleTerminology(nil, nil, ""); err != nil {

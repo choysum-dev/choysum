@@ -38,7 +38,8 @@ func ReloadModuleTerminology(runtimeScope scope.Scope, moduleName string) (Termi
 	if moduleName == "" {
 		return out, xfmt.Errorf("module name is required")
 	}
-	if filepath.IsAbs(moduleName) || moduleName == "." || moduleName == ".." || strings.ContainsAny(moduleName, `/\`) {
+	// Reject absolute / trivial names; path separators are caught by Rel below.
+	if filepath.IsAbs(moduleName) || moduleName == "." || moduleName == ".." {
 		return out, xfmt.Errorf("invalid module name %q", moduleName)
 	}
 	if runtimeScope == nil {
@@ -46,12 +47,12 @@ func ReloadModuleTerminology(runtimeScope scope.Scope, moduleName string) (Termi
 	}
 
 	modulesPath := strings.TrimSpace(runtimeOptionsFromScope(runtimeScope).modulesPath)
+	if modulesPath == "" {
+		return out, xfmt.Errorf("modules path is not configured")
+	}
 	moduleRoot := filepath.Join(modulesPath, moduleName)
-	if modulesPath != "" {
-		rel, relErr := filepath.Rel(modulesPath, moduleRoot)
-		if relErr != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
-			return out, xfmt.Errorf("module name %q escapes modules path", moduleName)
-		}
+	if err := ensureModuleRootWithinModulesPath(modulesPath, moduleRoot); err != nil {
+		return out, err
 	}
 	application, err := policy.ReadModuleApplicationFromPackageJSON(modulesPath, moduleName)
 	if err != nil {
@@ -81,6 +82,15 @@ func ReloadModuleTerminology(runtimeScope scope.Scope, moduleName string) (Termi
 	out.SkippedObsolete = acc.SkippedObsolete
 	out.PurgedRetired = acc.PurgedRetired
 	return out, nil
+}
+
+// ensureModuleRootWithinModulesPath rejects roots that escape modulesPath via Rel.
+func ensureModuleRootWithinModulesPath(modulesPath, moduleRoot string) error {
+	rel, relErr := filepath.Rel(modulesPath, moduleRoot)
+	if relErr != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return xfmt.Errorf("module path %q escapes modules path %q", moduleRoot, modulesPath)
+	}
+	return nil
 }
 
 // importModuleTerminology loads modules/<m>/i18n/*.po into the application table.

@@ -64,10 +64,9 @@ export function openDialog(opts: DialogOpenOptions): string {
   let carriedOpener: HTMLElement | null = null;
   if (mode === 'replace' || mode === 'interrupt') {
     if (mode === 'interrupt') runInterruptHandlers();
-    const top = stack.value[stack.value.length - 1];
-    // Carry the cleared top opener onto the replacement entry instead of
-    // focusing it here (the new dialog would immediately steal focus anyway).
-    carriedOpener = top?.opener ?? null;
+    // Clearing the whole stack: keep the outermost (bottom) opener so focus
+    // returns to the page trigger, not a button inside a removed parent dialog.
+    carriedOpener = stack.value[0]?.opener ?? null;
     setStack([]);
   }
   const key = nextKey();
@@ -107,18 +106,20 @@ export function closeDialog(key?: string): void {
     return;
   }
   const removed = cur.find(entry => entry.key === key);
+  const wasTop = cur[cur.length - 1]?.key === key;
   const next = cur.filter(entry => entry.key !== key);
   if (next.length === cur.length) return;
   setStack(next);
-  restoreOpener(removed?.opener);
+  // Closing a buried entry must not steal focus from a still-open top dialog.
+  if (wasTop) restoreOpener(removed?.opener);
 }
 
 /** Close every managed dialog. */
 export function closeAllDialogs(): void {
   if (!stack.value.length) return;
-  const top = stack.value[stack.value.length - 1];
+  const bottom = stack.value[0];
   setStack([]);
-  restoreOpener(top?.opener);
+  restoreOpener(bottom?.opener);
 }
 
 /**

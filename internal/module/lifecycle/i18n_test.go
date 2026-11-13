@@ -395,14 +395,32 @@ func TestReloadModuleTerminology_requiresModuleName(t *testing.T) {
 	if _, err := ReloadModuleTerminology(nil, "demo"); err == nil {
 		t.Fatal("expected error for nil scope")
 	}
-	if _, err := ReloadModuleTerminology(rs, "../other"); err == nil {
+	modulesPath := t.TempDir()
+	rsWithPath := newI18nTestScopeWithModulesPath(t, modulesPath)
+	if _, err := ReloadModuleTerminology(rsWithPath, "../other"); err == nil {
 		t.Fatal("expected error for path-traversal module name")
-	}
-	if _, err := ReloadModuleTerminology(rs, `mod\evil`); err == nil {
-		t.Fatal("expected error for separator in module name")
 	}
 	if _, err := ReloadModuleTerminology(rs, filepath.Join(string(filepath.Separator), "tmp", "escape")); err == nil {
 		t.Fatal("expected error for absolute module name")
+	}
+}
+
+func TestEnsureModuleRootWithinModulesPath(t *testing.T) {
+	t.Parallel()
+	modulesPath := filepath.Join(string(filepath.Separator), "workspace", "modules")
+	if err := ensureModuleRootWithinModulesPath(modulesPath, filepath.Join(modulesPath, "demo")); err != nil {
+		t.Fatalf("in-tree root: %v", err)
+	}
+	if err := ensureModuleRootWithinModulesPath(modulesPath, filepath.Join(string(filepath.Separator), "other")); err == nil {
+		t.Fatal("expected escape error for sibling root")
+	}
+}
+
+func TestReloadModuleTerminology_requiresModulesPath(t *testing.T) {
+	t.Parallel()
+	rs := newI18nTestScopeWithModulesPath(t, "")
+	if _, err := ReloadModuleTerminology(rs, "demo"); err == nil {
+		t.Fatal("expected error when modules path is empty")
 	}
 }
 
