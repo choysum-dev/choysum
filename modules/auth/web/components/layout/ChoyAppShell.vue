@@ -35,6 +35,7 @@ SPDX-License-Identifier: Apache-2.0
             >
               <span class="truncate font-medium">{{ userMenuLabel }}</span>
               <span
+                v-if="userMenuMeta"
                 class="text-muted-foreground truncate text-xs"
                 data-testid="auth-user-menu-meta"
               >
@@ -51,69 +52,17 @@ SPDX-License-Identifier: Apache-2.0
           </ChoySidebarMenuButton>
         </ChoyDropdownMenuTrigger>
         <ChoyDropdownMenuContent side="right" align="end" class="min-w-56 rounded-lg">
-          <ChoyDropdownMenuLabel class="p-0 font-normal text-foreground">
-            <div
-              class="flex items-center gap-2 px-1 py-1.5 text-start text-sm"
-              data-testid="auth-user-menu-heading"
-            >
-              <ChoyAvatar class="size-8 shrink-0 rounded-full">
-                <ChoyAvatarFallback
-                  class="rounded-full border border-sidebar-border bg-background text-xs font-medium text-sidebar-foreground"
-                >
-                  {{ userInitials }}
-                </ChoyAvatarFallback>
-              </ChoyAvatar>
-              <div class="grid min-w-0 flex-1 text-start text-sm leading-tight">
-                <span class="truncate font-medium">{{ userMenuLabel }}</span>
-                <span class="text-muted-foreground truncate text-xs">{{ userMenuMeta }}</span>
-              </div>
-            </div>
-          </ChoyDropdownMenuLabel>
-          <ChoyDropdownMenuSeparator />
-          <ChoyDropdownMenuItem @select="onMenuProfile">
-            {{ _t('Profile') }}
-          </ChoyDropdownMenuItem>
-          <ChoyDropdownMenuItem @select="onMenuSettings">
-            {{ _t('Settings') }}
-          </ChoyDropdownMenuItem>
-          <ChoyDropdownMenuSeparator />
-          <ChoyDropdownMenuLabel>{{ _t('Theme') }}</ChoyDropdownMenuLabel>
+          <!-- No identity heading: trigger already shows avatar / name / email. -->
           <ChoyDropdownMenuItem
-            v-for="item in themeItems"
-            :key="item.mode"
-            role="menuitemradio"
-            :aria-checked="themeMode === item.mode"
-            :data-testid="`auth-user-menu-theme-${item.mode}`"
-            class="gap-2"
-            @select="applyTheme(item.mode)"
+            data-testid="auth-user-menu-preferences"
+            @select="onMenuPreferences"
           >
-            <Check
-              class="size-4"
-              :class="themeMode === item.mode ? 'opacity-100' : 'opacity-0'"
-              aria-hidden="true"
-            />
-            {{ item.label }}
-          </ChoyDropdownMenuItem>
-          <ChoyDropdownMenuSeparator />
-          <ChoyDropdownMenuLabel>{{ _t('Language') }}</ChoyDropdownMenuLabel>
-          <ChoyDropdownMenuItem
-            v-for="code in localeCodes"
-            :key="code"
-            role="menuitemradio"
-            :aria-checked="code === currentLocaleCode"
-            :data-testid="`auth-user-menu-locale-${code}`"
-            class="gap-2"
-            @select="applyLocale(code)"
-          >
-            <Check
-              class="size-4"
-              :class="code === currentLocaleCode ? 'opacity-100' : 'opacity-0'"
-              aria-hidden="true"
-            />
-            {{ localeName(code) }}
+            <Settings class="size-4" aria-hidden="true" />
+            {{ _t('Preferences') }}
           </ChoyDropdownMenuItem>
           <ChoyDropdownMenuSeparator />
           <ChoyDropdownMenuItem @select="onMenuLogout">
+            <LogOut class="size-4" aria-hidden="true" />
             {{ _t('Log Out') }}
           </ChoyDropdownMenuItem>
         </ChoyDropdownMenuContent>
@@ -124,9 +73,9 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script lang="ts" _name="ChoyAppShell">
-import { computed, defineComponent, ref, watch } from 'vue';
+import { computed, defineComponent, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { Check, ChevronsUpDown } from 'lucide-vue-next';
+import { ChevronsUpDown, LogOut, Settings } from 'lucide-vue-next';
 import { Xpath } from '@/core/web';
 import {
   ChoyAvatar,
@@ -134,7 +83,6 @@ import {
   ChoyDropdownMenu,
   ChoyDropdownMenuContent,
   ChoyDropdownMenuItem,
-  ChoyDropdownMenuLabel,
   ChoyDropdownMenuSeparator,
   ChoyDropdownMenuTrigger,
   ChoyCollapsedIdentityTipHost,
@@ -145,16 +93,7 @@ import { firstGrapheme } from '@/web/web/components/layout/appRailGlyph';
 import ChoyAppShell from '@/web/web/components/layout/ChoyAppShell.vue';
 import { createTranslate } from '@/web/web/i18n';
 import { useAuthStore } from '@/auth/web/stores/auth';
-import {
-  applyChoyThemePreference,
-  readChoyThemePreference,
-  type ChoyThemeMode,
-} from '@/web/web/composables/applyChoyThemePreference';
 import { useReactiveCollaborationCaps } from '@/web/web/platform/collaborationCaps';
-import { useI18nStore } from '@/web/web/stores/i18nStore';
-import { DEFAULT_ACTIVE_UI_KEYS } from '@/web/web/stores/i18nStore/activeUiKeys';
-import { SUPPORTED_LOCALES } from '@/web/web/stores/i18nStore/locales';
-import type { SupportedLocale } from '@/web/web/stores/i18nStore/types';
 import { collapsedIdentityTooltip } from './collapsed_identity_tooltip';
 import { reuseParentSetupState } from './reuse_parent_setup_state';
 import SwitchCompany from './SwitchCompany.vue';
@@ -169,8 +108,9 @@ export default defineComponent({
   extends: ChoyAppShell,
   components: {
     Xpath,
-    Check,
     ChevronsUpDown,
+    LogOut,
+    Settings,
     ChoyNotificationBell,
     SwitchCompany,
     PreferencesDialog,
@@ -180,7 +120,6 @@ export default defineComponent({
     ChoyDropdownMenu,
     ChoyDropdownMenuContent,
     ChoyDropdownMenuItem,
-    ChoyDropdownMenuLabel,
     ChoyDropdownMenuSeparator,
     ChoyDropdownMenuTrigger,
     ChoySidebarMenuButton,
@@ -197,17 +136,6 @@ export default defineComponent({
     const authStore = useAuthStore();
     const preferencesVisible = ref(false);
     const userMenuOpen = ref(false);
-    const themeMode = ref<ChoyThemeMode>(readChoyThemePreference().theme || 'light');
-    watch(userMenuOpen, (open) => {
-      if (open) themeMode.value = readChoyThemePreference().theme || 'light';
-    });
-
-    let i18nStore: ReturnType<typeof useI18nStore> | null = null;
-    try {
-      i18nStore = useI18nStore();
-    } catch {
-      i18nStore = null;
-    }
 
     const userMenuLabel = computed(() => {
       const user = (authStore.currentUser as any) || {};
@@ -225,13 +153,13 @@ export default defineComponent({
       collapsedIdentityTooltip(userMenuOpen.value, userMenuLabel.value),
     );
 
+    /** Secondary line: email only. Avoid repeating the display name or a generic “Account”. */
     const userMenuMeta = computed(() => {
       const user = (authStore.currentUser as any) || {};
       const email = String(user.Email || '').trim();
       if (email) return email;
       const identity = (authStore.identity as any) || {};
-      const fromToken = String(identity.email || identity.username || '').trim();
-      return fromToken || _t('Account');
+      return String(identity.email || '').trim();
     });
 
     const userInitials = computed(() => {
@@ -244,35 +172,6 @@ export default defineComponent({
       }
       return firstGrapheme(label);
     });
-
-    const themeItems = computed(() => [
-      { mode: 'light' as const, label: _t('Light') },
-      { mode: 'dark' as const, label: _t('Dark') },
-      { mode: 'auto' as const, label: _t('System') },
-    ]);
-
-    const localeCodes = computed(() => {
-      const fromStore = i18nStore?.activeUiKeys;
-      if (Array.isArray(fromStore) && fromStore.length) return fromStore as SupportedLocale[];
-      return [...DEFAULT_ACTIVE_UI_KEYS] as SupportedLocale[];
-    });
-
-    const currentLocaleCode = computed(
-      () => (i18nStore?.localeCode as SupportedLocale | null) || 'en',
-    );
-
-    function localeName(code: string): string {
-      return SUPPORTED_LOCALES[code as SupportedLocale]?.name || code;
-    }
-
-    function applyTheme(next: ChoyThemeMode) {
-      themeMode.value = next;
-      applyChoyThemePreference({ theme: next });
-    }
-
-    function applyLocale(code: SupportedLocale) {
-      void i18nStore?.setUiKey(code);
-    }
 
     function closeUserMenu() {
       userMenuOpen.value = false;
@@ -293,11 +192,7 @@ export default defineComponent({
       void router?.push?.({ name: 'logout' });
     }
 
-    function onMenuProfile() {
-      openPreferences();
-    }
-
-    function onMenuSettings() {
+    function onMenuPreferences() {
       openPreferences();
     }
 
@@ -315,15 +210,7 @@ export default defineComponent({
       userIdentityTooltip,
       userMenuMeta,
       userInitials,
-      themeMode,
-      themeItems,
-      localeCodes,
-      currentLocaleCode,
-      localeName,
-      applyTheme,
-      applyLocale,
-      onMenuProfile,
-      onMenuSettings,
+      onMenuPreferences,
       onMenuLogout,
     };
   },

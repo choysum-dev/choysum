@@ -20,6 +20,7 @@ SPDX-License-Identifier: Apache-2.0
     :cellVisible="cellVisible"
     :renderMode="renderMode"
     :showInlineError="showInlineError"
+    :inline-error-space="inlineErrorSpace"
     v-bind="$attrs"
   >
     <!-- Reuse the slot-provided fieldValue for both form and row rendering. -->
@@ -152,6 +153,8 @@ const props = withDefaults(
     agg?: NarrowAggProp<NonNumericAggFns>;
     renderMode?: 'auto' | 'form' | 'table' | 'inline';
     showInlineError?: boolean;
+    /** collapse | reserve | overlay; forwarded to ChoyFieldBase. */
+    inlineErrorSpace?: 'collapse' | 'reserve' | 'overlay';
   }>(),
   {
     rules: () => [],

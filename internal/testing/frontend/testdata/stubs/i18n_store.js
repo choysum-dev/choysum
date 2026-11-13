@@ -12,6 +12,14 @@ export function downloadTerminologyPo() {
   return Promise.resolve(new Uint8Array());
 }
 
+export function afterLocaleChange() {
+  return Promise.resolve();
+}
+
+export function softLocaleRemount() {
+  return Promise.resolve();
+}
+
 export const useI18nStore = defineStore('i18n-fe-stub', function () {
   return {
     setUiKey: function () {
@@ -21,4 +29,10 @@ export const useI18nStore = defineStore('i18n-fe-stub', function () {
   };
 });
 
-export default { useI18nStore: useI18nStore, langToUiKey: langToUiKey, downloadTerminologyPo: downloadTerminologyPo };
+export default {
+  useI18nStore: useI18nStore,
+  langToUiKey: langToUiKey,
+  downloadTerminologyPo: downloadTerminologyPo,
+  afterLocaleChange: afterLocaleChange,
+  softLocaleRemount: softLocaleRemount,
+};

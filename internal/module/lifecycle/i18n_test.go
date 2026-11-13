@@ -5,22 +5,31 @@ package lifecycle
 
 import (
 	"context"
+	"errors"
 	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/choysum-dev/choysum/internal/defaultscope"
+	"github.com/choysum-dev/choysum/internal/import/runner"
 	i18nmodels "github.com/choysum-dev/choysum/internal/i18n/models"
 	"github.com/choysum-dev/choysum/internal/i18n/store"
 	"github.com/choysum-dev/choysum/internal/testing/scopetest"
 	"github.com/choysum-dev/choysum/pkg/config"
+	importpkg "github.com/choysum-dev/choysum/pkg/import"
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
 )
 
 func newI18nTestScope(t *testing.T) scope.Scope {
+	t.Helper()
+	return newI18nTestScopeWithModulesPath(t, "")
+}
+
+func newI18nTestScopeWithModulesPath(t *testing.T, modulesPath string) scope.Scope {
 	t.Helper()
 	store.ResetSharedRegistryForTests()
 	cfg := &config.Config{
@@ -28,6 +37,7 @@ func newI18nTestScope(t *testing.T) scope.Scope {
 			Dialect: "sqlite",
 			DSN:     filepath.Join(t.TempDir(), "lifecycle_i18n.db"),
 		},
+		ModulesPath: modulesPath,
 	}
 	runtimeScope := defaultscope.NewDefaultScope(
 		context.Background(),
@@ -311,5 +321,231 @@ func TestDeleteModuleTerminologySkipsHostAppCoreModule(t *testing.T) {
 	rs := newI18nTestScope(t)
 	if err := deleteModuleTerminology(rs, &meta.Module{Name: "core", ApplicationStr: "auth"}); err != nil {
 		t.Fatalf("expected no-op, got %v", err)
+	}
+}
+
+func TestReloadModuleTerminology_importsPoAndReportsStats(t *testing.T) {
+	t.Parallel()
+	modulesPath := t.TempDir()
+	moduleRoot := filepath.Join(modulesPath, "demo")
+	i18nDir := filepath.Join(moduleRoot, "i18n")
+	if err := os.MkdirAll(i18nDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	pkgJSON := `{
+  "name": "@choysum-dev/demo",
+  "choysum": { "moduleName": "demo", "application": "auth" }
+}`
+	if err := os.WriteFile(filepath.Join(moduleRoot, "package.json"), []byte(pkgJSON), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(i18nDir, "zh_CN.po"), []byte(`
+msgctxt "auth.model.User.fields"
+msgid "Light"
+msgstr "浅色"
+`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	rs := newI18nTestScopeWithModulesPath(t, modulesPath)
+	stats, err := ReloadModuleTerminology(rs, "demo")
+	if err != nil {
+		t.Fatalf("ReloadModuleTerminology: %v", err)
+	}
+	if stats.Upserted < 1 {
+		t.Fatalf("Upserted = %d, want >= 1", stats.Upserted)
+	}
+
+	var row i18nmodels.TranslationTerm
+	if err := rs.Session().Table("auth_translation_term").Where("src = ?", "Light").Take(&row).Error; err != nil {
+		t.Fatalf("expected Light term: %v", err)
+	}
+	if row.Value != "浅色" {
+		t.Fatalf("Value = %q, want 浅色", row.Value)
+	}
+
+	if err := os.WriteFile(filepath.Join(i18nDir, "zh_CN.po"), []byte(`
+msgctxt "auth.model.User.fields"
+msgid "Light"
+msgstr "亮色"
+`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	stats2, err := ReloadModuleTerminology(rs, "demo")
+	if err != nil {
+		t.Fatalf("ReloadModuleTerminology second: %v", err)
+	}
+	if stats2.Upserted < 1 {
+		t.Fatalf("second Upserted = %d, want >= 1", stats2.Upserted)
+	}
+	var after i18nmodels.TranslationTerm
+	if err := rs.Session().Table("auth_translation_term").Where("src = ?", "Light").Take(&after).Error; err != nil {
+		t.Fatal(err)
+	}
+	if after.Value != "亮色" {
+		t.Fatalf("Value after reload = %q, want 亮色", after.Value)
+	}
+}
+
+func TestReloadModuleTerminology_requiresModuleName(t *testing.T) {
+	t.Parallel()
+	rs := newI18nTestScope(t)
+	if _, err := ReloadModuleTerminology(rs, "  "); err == nil {
+		t.Fatal("expected error for empty module name")
+	}
+	if _, err := ReloadModuleTerminology(nil, "demo"); err == nil {
+		t.Fatal("expected error for nil scope")
+	}
+	modulesPath := t.TempDir()
+	rsWithPath := newI18nTestScopeWithModulesPath(t, modulesPath)
+	if _, err := ReloadModuleTerminology(rsWithPath, "../other"); err == nil {
+		t.Fatal("expected error for path-traversal module name")
+	}
+	if _, err := ReloadModuleTerminology(rs, filepath.Join(string(filepath.Separator), "tmp", "escape")); err == nil {
+		t.Fatal("expected error for absolute module name")
+	}
+}
+
+func TestEnsureModuleRootWithinModulesPath(t *testing.T) {
+	t.Parallel()
+	modulesPath := filepath.Join(string(filepath.Separator), "workspace", "modules")
+	if err := ensureModuleRootWithinModulesPath(modulesPath, filepath.Join(modulesPath, "demo")); err != nil {
+		t.Fatalf("in-tree root: %v", err)
+	}
+	if err := ensureModuleRootWithinModulesPath(modulesPath, filepath.Join(string(filepath.Separator), "other")); err == nil {
+		t.Fatal("expected escape error for sibling root")
+	}
+}
+
+func TestReloadModuleTerminology_rejectsSymlinkEscapingModulesPath(t *testing.T) {
+	t.Parallel()
+	modulesPath := t.TempDir()
+	outside := t.TempDir()
+	moduleRoot := filepath.Join(modulesPath, "demo")
+	if err := os.Symlink(outside, moduleRoot); err != nil {
+		t.Skipf("symlink not available: %v", err)
+	}
+	rs := newI18nTestScopeWithModulesPath(t, modulesPath)
+	if _, err := ReloadModuleTerminology(rs, "demo"); err == nil {
+		t.Fatal("expected error for symlink escaping modules path")
+	}
+}
+
+func TestReloadModuleTerminology_requiresModulesPath(t *testing.T) {
+	t.Parallel()
+	rs := newI18nTestScopeWithModulesPath(t, "")
+	if _, err := ReloadModuleTerminology(rs, "demo"); err == nil {
+		t.Fatal("expected error when modules path is empty")
+	}
+}
+
+func TestReloadModuleTerminology_resolvePathErrors(t *testing.T) {
+	t.Cleanup(func() { evalSymlinks = filepath.EvalSymlinks })
+
+	modulesPath := t.TempDir()
+	rs := newI18nTestScopeWithModulesPath(t, modulesPath)
+
+	evalSymlinks = func(path string) (string, error) {
+		return "", errors.New("forced modules path resolve failure")
+	}
+	if _, err := ReloadModuleTerminology(rs, "demo"); err == nil || !strings.Contains(err.Error(), "resolve modules path") {
+		t.Fatalf("modules path resolve error = %v", err)
+	}
+
+	var calls int
+	evalSymlinks = func(path string) (string, error) {
+		calls++
+		if calls == 1 {
+			return path, nil
+		}
+		return "", errors.New("forced module root resolve failure")
+	}
+	if _, err := ReloadModuleTerminology(rs, "demo"); err == nil || !strings.Contains(err.Error(), "resolve module path") {
+		t.Fatalf("module root resolve error = %v", err)
+	}
+
+	calls = 0
+	evalSymlinks = func(path string) (string, error) {
+		calls++
+		if calls == 1 {
+			return path, nil
+		}
+		return "", os.ErrNotExist
+	}
+	if _, err := ReloadModuleTerminology(rs, "demo"); err == nil || !strings.Contains(err.Error(), "not found under modules path") {
+		t.Fatalf("missing module error = %v", err)
+	}
+}
+
+func TestReloadModuleTerminology_nilContextFallsBackToBackground(t *testing.T) {
+	t.Parallel()
+	modulesPath := t.TempDir()
+	moduleRoot := filepath.Join(modulesPath, "demo")
+	i18nDir := filepath.Join(moduleRoot, "i18n")
+	if err := os.MkdirAll(i18nDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	pkgJSON := `{
+  "name": "@choysum-dev/demo",
+  "choysum": { "moduleName": "demo", "application": "auth" }
+}`
+	if err := os.WriteFile(filepath.Join(moduleRoot, "package.json"), []byte(pkgJSON), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(i18nDir, "zh_CN.po"), []byte(`
+msgctxt "auth.model.User.fields"
+msgid "Night"
+msgstr "夜间"
+`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	base := newI18nTestScopeWithModulesPath(t, modulesPath)
+	rs := nilContextScope{Scope: base}
+	if _, err := ReloadModuleTerminology(rs, "demo"); err != nil {
+		t.Fatalf("ReloadModuleTerminology: %v", err)
+	}
+	// Stats may still accumulate via the WithContext child; the goal here is the
+	// nil Context() → background fallback path, not the upsert counter.
+}
+
+func TestReloadModuleTerminology_rejectsInvalidPackageJSON(t *testing.T) {
+	t.Parallel()
+	modulesPath := t.TempDir()
+	moduleRoot := filepath.Join(modulesPath, "demo")
+	if err := os.MkdirAll(moduleRoot, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(moduleRoot, "package.json"), []byte("{"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	rs := newI18nTestScopeWithModulesPath(t, modulesPath)
+	if _, err := ReloadModuleTerminology(rs, "demo"); err == nil {
+		t.Fatal("expected error for invalid package.json")
+	}
+}
+
+func TestReloadModuleTerminology_importError(t *testing.T) {
+	t.Cleanup(func() { importpkg.SetRun(runner.Run) })
+	importpkg.SetRun(func(_ context.Context, _ scope.Scope, _ importpkg.Spec) (importpkg.Report, error) {
+		return importpkg.Report{}, errors.New("forced terminology failure")
+	})
+
+	modulesPath := t.TempDir()
+	moduleRoot := filepath.Join(modulesPath, "demo")
+	if err := os.MkdirAll(moduleRoot, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	pkgJSON := `{
+  "name": "@choysum-dev/demo",
+  "choysum": { "moduleName": "demo", "application": "auth" }
+}`
+	if err := os.WriteFile(filepath.Join(moduleRoot, "package.json"), []byte(pkgJSON), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	rs := newI18nTestScopeWithModulesPath(t, modulesPath)
+	if _, err := ReloadModuleTerminology(rs, "demo"); err == nil {
+		t.Fatal("expected import error from forced Run failure")
 	}
 }

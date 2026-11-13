@@ -53,6 +53,7 @@ test('setupApp > registers plugins and exposes browser i18n globals', () => {
       getDateTimeFormats: () => ({ short: {} }),
       getNumberFormats: () => ({ currency: {} }),
       loadVueI18nMessages,
+      revalidateTerminologyIfStale: async () => null,
     })) as any,
     setUserTimeZoneResolver: fnRecorder() as any,
     setGlobalRequestContextProvider: fnRecorder() as any,
@@ -235,6 +236,7 @@ function baseDeps(overrides: Partial<SetupAppDeps> & Record<string, unknown> = {
     getDateTimeFormats: () => ({}),
     getNumberFormats: () => ({}),
     loadVueI18nMessages: async () => null as unknown,
+    revalidateTerminologyIfStale: async () => null as unknown,
   };
   const deps: SetupAppDeps & { _store: typeof store; _lastTerminologyLoad: typeof lastTerminologyLoad; _i18nLocale: typeof i18nLocale } = {
     registerGlobalDirectives: fnRecorder() as any,
@@ -268,6 +270,45 @@ function baseDeps(overrides: Partial<SetupAppDeps> & Record<string, unknown> = {
   };
   return deps;
 }
+
+test('setupApp > revalidates terminology when document becomes visible', async () => {
+  const revalidate = asyncFnRecorder(async () => ({ unchanged: true }));
+  const listeners: Record<string, Array<() => void>> = {};
+  const originalAdd = window.addEventListener.bind(window);
+  window.addEventListener = ((type: string, listener: EventListenerOrEventListenerObject) => {
+    const fn = typeof listener === 'function' ? listener : () => undefined;
+    (listeners[type] ||= []).push(fn as () => void);
+    return originalAdd(type, listener);
+  }) as typeof window.addEventListener;
+
+  try {
+    const deps = baseDeps({ hasWindow: () => true });
+    (deps as any)._store.revalidateTerminologyIfStale = revalidate;
+    setupApp(makeApp() as any, deps);
+    expect((listeners.visibilitychange || []).length).toBe(1);
+    expect((listeners.pageshow || []).length).toBe(1);
+
+    Object.defineProperty(document, 'visibilityState', {
+      configurable: true,
+      get: () => 'hidden',
+    });
+    for (const fn of listeners.visibilitychange || []) fn();
+    for (const fn of listeners.pageshow || []) fn();
+    await Promise.resolve();
+    expect(revalidate.calls.length).toBe(0);
+
+    Object.defineProperty(document, 'visibilityState', {
+      configurable: true,
+      get: () => 'visible',
+    });
+    for (const fn of listeners.visibilitychange || []) fn();
+    for (const fn of listeners.pageshow || []) fn();
+    await Promise.resolve();
+    expect(revalidate.calls.length).toBeGreaterThanOrEqual(2);
+  } finally {
+    window.addEventListener = originalAdd;
+  }
+});
 
 test('setupApp > builds request context with terminology lang and resolved tz', () => {
   let requestContextProvider: (() => Record<string, string>) | undefined;

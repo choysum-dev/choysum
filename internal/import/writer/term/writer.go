@@ -37,9 +37,11 @@ func (Writer) Write(ctx context.Context, txScope scope.Scope, units []plan.Unit)
 		if err != nil {
 			return importpkg.ErrorfWrap(importpkg.CodeInvalidFormat, fmt.Sprintf("read PO %s", u.PoPath), err)
 		}
-		if _, err := i18nimport.UpsertPackagedTerms(txScope, reg, u.Application, u.ModuleName, u.Lang, raw); err != nil {
+		stats, err := i18nimport.UpsertPackagedTerms(txScope, reg, u.Application, u.ModuleName, u.Lang, raw)
+		if err != nil {
 			return err
 		}
+		i18nimport.AccumulateImportStats(ctx, stats)
 	}
 	return nil
 }

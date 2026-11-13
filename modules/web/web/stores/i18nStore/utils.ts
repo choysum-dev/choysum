@@ -32,7 +32,7 @@ export function detectBestUiKey(allowedKeys?: readonly string[]): SupportedLocal
   const preferredLanguages = usePreferredLanguages();
 
   // Try matching the user's preferred language list.
-  for (const lang of preferredLanguages.value) {
+  for (const lang of preferredLanguages.value || []) {
     // Exact match.
     if (catalog.includes(lang)) {
       return lang as SupportedLocale;

@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 
+	i18nimport "github.com/choysum-dev/choysum/internal/i18n/import"
 	"github.com/choysum-dev/choysum/internal/import/plan"
 	"github.com/choysum-dev/choysum/internal/import/registry"
 	importpkg "github.com/choysum-dev/choysum/pkg/import"
@@ -51,7 +52,10 @@ func runAtomic(ctx context.Context, runtimeScope scope.Scope, spec importpkg.Spe
 
 	atomicFn := func(txScope scope.Scope, _ scope.Transaction) error {
 		for _, unit := range p.Units {
-			unitErr := writer.Write(txScope.Context(), txScope, []plan.Unit{unit})
+			// Writers must see the TX-bound context (SQLite lock / savepoint). Copy any
+			// Run-ctx stats sink onto that context so terminology imports still accumulate.
+			writeCtx := i18nimport.PropagateStatsAccumulator(txScope.Context(), ctx)
+			unitErr := writer.Write(writeCtx, txScope, []plan.Unit{unit})
 			if unitErr != nil {
 				collector.addError(unitErr, unit)
 				continue

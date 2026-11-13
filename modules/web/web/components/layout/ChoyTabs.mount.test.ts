@@ -88,6 +88,44 @@ describe('ChoyTabs mount', () => {
     mounted.unmount();
   });
 
+  test('equalPaneHeight keeps inactive forceMount panes invisible instead of display-hidden', async () => {
+    const selected = ref('a');
+    const Host = defineComponent({
+      setup() {
+        return () =>
+          h(
+            ChoyTabs as any,
+            {
+              modelValue: selected.value,
+              'onUpdate:modelValue': (value: string) => {
+                selected.value = value;
+              },
+              defaultValue: 'a',
+              equalPaneHeight: true,
+            },
+            {
+              default: () => [
+                h(ChoyTab, { value: 'a', label: 'Alpha', forceMount: true }, { default: () => 'PANEL-A' }),
+                h(ChoyTab, { value: 'b', label: 'Beta', forceMount: true }, { default: () => 'PANEL-B' }),
+              ],
+            },
+          );
+      },
+    });
+    const mounted = mountApp(Host as any);
+    await flushPromises();
+    await nextTick();
+    const root = mounted.qa('.choy-tabs')[0] as HTMLElement | undefined;
+    expect(root?.getAttribute('data-equal-pane-height')).toBe('true');
+    const panes = mounted.qa('[data-anchor="choy.tab"]');
+    const inactive = panes.find(el => String(el.className || '').split(/\s+/).includes('invisible'));
+    expect(inactive).toBeTruthy();
+    expect(String(inactive?.className || '').split(/\s+/).includes('hidden')).toBe(false);
+    expect(inactive?.getAttribute('data-force-mount')).toBe('true');
+    expect(inactive?.textContent || '').toContain('PANEL-B');
+    mounted.unmount();
+  });
+
   test('uncontrolled ChoyTabs still renders the default panel', async () => {
     const Host = defineComponent({
       setup() {

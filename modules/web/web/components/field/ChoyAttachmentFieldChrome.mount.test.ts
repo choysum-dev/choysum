@@ -70,6 +70,45 @@ describe('ChoyAttachmentFieldChrome', () => {
     m.unmount();
   });
 
+  test('image presentation: empty edit uses sized avatar box not banner', async () => {
+    installButtonStub();
+    const files: File[] = [];
+    const m = mountApp(ChoyAttachmentFieldChrome as any, {
+      props: {
+        ...baseLabels,
+        mode: 'edit',
+        hasValue: false,
+        presentation: 'image',
+        width: 72,
+        height: 72,
+        fit: 'cover',
+        radius: 'xl',
+        drag: false,
+        onFile: (f: File) => files.push(f),
+      },
+    });
+    await flushPromises();
+    const empty = m.q('.choy-image-avatar--empty') as HTMLElement | null;
+    expect(empty).toBeTruthy();
+    expect(empty?.style?.width || '').toContain('72');
+    expect(m.q('.choy-attachment-upload--compact')).toBeFalsy();
+    const input = m.q('input.sr-only') as HTMLInputElement | null;
+    expect(input).toBeTruthy();
+    const file = new File([new Uint8Array([1])], 'a.png', { type: 'image/png' });
+    Object.defineProperty(input, 'files', {
+      configurable: true,
+      value: { 0: file, length: 1, item: (i: number) => (i === 0 ? file : null) },
+    });
+    input!.dispatchEvent(new Event('change', { bubbles: true }));
+    await flushPromises();
+    expect(files.length).toBe(1);
+    // drag=false: drop must not accept files.
+    const ss = m.setupState() as any;
+    ss.onDrop?.({ dataTransfer: { files: [new File([new Uint8Array([2])], 'b.png')] } });
+    expect(files.length).toBe(1);
+    m.unmount();
+  });
+
   test('image presentation: valued edit renders avatar chrome and remove', async () => {
     installButtonStub();
     const m = mountApp(ChoyAttachmentFieldChrome as any, {

@@ -18,12 +18,12 @@ function isEmptyField(value: unknown): boolean {
 }
 
 /**
- * Fill empty LanguageId / Timezone on the FormView draft from session / browser hints.
+ * Fill empty LanguageId / Timezone / Theme on the FormView draft from hints.
  * Does not Write until the user submits.
  */
 export function seedPreferenceDraft(
   formRoot: FormRootApi | null | undefined,
-  opts: { languageId?: unknown; timezone?: string },
+  opts: { languageId?: unknown; timezone?: string; theme?: string },
 ): void {
   if (!formRoot) return;
   const languageId = opts.languageId;
@@ -34,12 +34,16 @@ export function seedPreferenceDraft(
   if (isEmptyField(formRoot.getField('Timezone')) && timezone) {
     formRoot.setField('Timezone', timezone);
   }
+  const theme = String(opts.theme || '').trim();
+  if (isEmptyField(formRoot.getField('Theme')) && (theme === 'light' || theme === 'dark' || theme === 'auto')) {
+    formRoot.setField('Theme', theme);
+  }
 }
 
 /**
  * After FormView beginEdit, seed empty preference fields once each seed value arrives.
- * Language and timezone are tracked separately so a ready form that settles before
- * seed resolution still receives late-arriving hints.
+ * Language, timezone, and theme are tracked separately so a ready form that settles
+ * before seed resolution still receives late-arriving hints.
  */
 export const PreferenceDraftSeeder = defineComponent({
   name: 'PreferenceDraftSeeder',
@@ -47,11 +51,13 @@ export const PreferenceDraftSeeder = defineComponent({
     ready: { type: Boolean, default: false },
     languageId: { type: String, default: '' },
     timezone: { type: String, default: '' },
+    theme: { type: String, default: '' },
   },
   setup(props) {
     const formRoot = inject<FormRootApi | null>('form-root', null);
     let languageApplied = false;
     let timezoneApplied = false;
+    let themeApplied = false;
 
     function apply(): void {
       if (!formRoot || !props.ready) return;
@@ -63,10 +69,14 @@ export const PreferenceDraftSeeder = defineComponent({
         seedPreferenceDraft(formRoot, { timezone: props.timezone });
         timezoneApplied = true;
       }
+      if (!themeApplied && props.theme) {
+        seedPreferenceDraft(formRoot, { theme: props.theme });
+        themeApplied = true;
+      }
     }
 
     watch(
-      () => [props.ready, props.languageId, props.timezone] as const,
+      () => [props.ready, props.languageId, props.timezone, props.theme] as const,
       () => apply(),
       { immediate: true },
     );

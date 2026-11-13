@@ -5,20 +5,111 @@ package lifecycle
 
 import (
 	"context"
+	"os"
 	"path/filepath"
 	"strings"
 
 	i18nimport "github.com/choysum-dev/choysum/internal/i18n/import"
 	"github.com/choysum-dev/choysum/internal/i18n/store"
+	"github.com/choysum-dev/choysum/internal/module/policy"
 	importpkg "github.com/choysum-dev/choysum/pkg/import"
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	xfmt "golang.org/x/exp/errors/fmt"
 )
 
+// TerminologyReloadStats aggregates packaged PO import counters for hotreload logs.
+type TerminologyReloadStats struct {
+	Upserted        int
+	SkippedOverride int
+	RejectedNoCtxt  int
+	SkippedObsolete int
+	PurgedRetired   int
+}
+
 // frameworkModuleName is the shared platform module. Its PO catalogs are written
 // to core_translation_term (Scheme B); host apps import only their own PO.
 const frameworkModuleName = "core"
+
+// ReloadModuleTerminology re-imports modules/<module>/i18n/*.po into TranslationTerm
+// without a full module Upgrade. Used by server hotreload when a .po file changes.
+func ReloadModuleTerminology(runtimeScope scope.Scope, moduleName string) (TerminologyReloadStats, error) {
+	out := TerminologyReloadStats{}
+	moduleName = strings.TrimSpace(moduleName)
+	if moduleName == "" {
+		return out, xfmt.Errorf("module name is required")
+	}
+	// Reject absolute / trivial names; path separators are caught by Rel below.
+	if filepath.IsAbs(moduleName) || moduleName == "." || moduleName == ".." {
+		return out, xfmt.Errorf("invalid module name %q", moduleName)
+	}
+	if runtimeScope == nil {
+		return out, xfmt.Errorf("runtime scope is nil")
+	}
+
+	modulesPath := strings.TrimSpace(runtimeOptionsFromScope(runtimeScope).modulesPath)
+	if modulesPath == "" {
+		return out, xfmt.Errorf("modules path is not configured")
+	}
+	resolvedModulesPath, err := evalSymlinks(modulesPath)
+	if err != nil {
+		return out, xfmt.Errorf("resolve modules path %q: %w", modulesPath, err)
+	}
+	moduleRoot := filepath.Join(resolvedModulesPath, moduleName)
+	if err := ensureModuleRootWithinModulesPath(resolvedModulesPath, moduleRoot); err != nil {
+		return out, err
+	}
+	if resolvedRoot, linkErr := evalSymlinks(moduleRoot); linkErr == nil {
+		if err := ensureModuleRootWithinModulesPath(resolvedModulesPath, resolvedRoot); err != nil {
+			return out, err
+		}
+		moduleRoot = resolvedRoot
+	} else if os.IsNotExist(linkErr) {
+		return out, xfmt.Errorf("module %q not found under modules path", moduleName)
+	} else {
+		return out, xfmt.Errorf("resolve module path %q: %w", moduleRoot, linkErr)
+	}
+	application, err := policy.ReadModuleApplicationFromPackageJSON(resolvedModulesPath, moduleName)
+	if err != nil {
+		return out, xfmt.Errorf("resolve application for module %s: %w", moduleName, err)
+	}
+	application = strings.TrimSpace(application)
+
+	acc := &i18nimport.ImportStats{}
+	ctx := runtimeScope.Context()
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	ctx = i18nimport.ContextWithStatsAccumulator(ctx, acc)
+	scoped := runtimeScope.WithContext(ctx)
+
+	mod := &meta.Module{
+		Name:           moduleName,
+		ApplicationStr: application,
+		Path:           moduleRoot,
+	}
+	if err := importModuleTerminology(scoped, mod, resolvedModulesPath); err != nil {
+		return out, err
+	}
+	out.Upserted = acc.Upserted
+	out.SkippedOverride = acc.SkippedOverride
+	out.RejectedNoCtxt = acc.RejectedNoCtxt
+	out.SkippedObsolete = acc.SkippedObsolete
+	out.PurgedRetired = acc.PurgedRetired
+	return out, nil
+}
+
+// evalSymlinks resolves symlinks for ReloadModuleTerminology path checks (tests may stub).
+var evalSymlinks = filepath.EvalSymlinks
+
+// ensureModuleRootWithinModulesPath rejects roots that escape modulesPath via Rel.
+func ensureModuleRootWithinModulesPath(modulesPath, moduleRoot string) error {
+	rel, relErr := filepath.Rel(modulesPath, moduleRoot)
+	if relErr != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return xfmt.Errorf("module path %q escapes modules path %q", moduleRoot, modulesPath)
+	}
+	return nil
+}
 
 // importModuleTerminology loads modules/<m>/i18n/*.po into the application table.
 // Missing i18n dir is a no-op.

@@ -25,7 +25,12 @@ async function setUserTimezoneViaPreferences(p: Page, iana: string) {
   const userMenu = p.getByTestId('auth-user-menu-trigger');
   await expect(userMenu).toBeVisible({ timeout: 20_000 });
   await userMenu.click();
-  await p.getByRole('menuitem', { name: /Settings|Profile|设置|个人资料/i }).first().click();
+  const preferencesItem = p.getByTestId('auth-user-menu-preferences');
+  if (await preferencesItem.count()) {
+    await preferencesItem.click();
+  } else {
+    await p.getByRole('menuitem', { name: /Preferences|偏好设置/i }).first().click();
+  }
 
   const dialog = p.locator('.choy-preferences-dialog');
   await expect(dialog).toBeVisible({ timeout: 15_000 });

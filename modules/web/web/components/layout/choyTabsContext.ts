@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { ref, type InjectionKey, type Ref } from 'vue';
+import { ref, type ComputedRef, type InjectionKey, type Ref } from 'vue';
 
 export type ChoyTabRegistration = {
   value: string;
@@ -13,6 +13,11 @@ export type ChoyTabsContext = {
   tabs: Ref<ChoyTabRegistration[]>;
   /** Host v-model; tab panels render their slot only when this matches. */
   activeValue: Ref<string | undefined>;
+  /**
+   * When true with force-mounted panes, inactive panes stay in layout (visibility
+   * hidden) so the host height tracks the tallest pane.
+   */
+  equalPaneHeight: Ref<boolean> | ComputedRef<boolean>;
   register: (tab: ChoyTabRegistration) => boolean;
   unregister: (value: string) => void;
   update: (value: string, patch: Partial<ChoyTabRegistration>) => boolean;
@@ -31,10 +36,12 @@ function isUsableTabValue(value: string | undefined): boolean {
 export function createChoyTabsContext(
   tabs: Ref<ChoyTabRegistration[]> = ref([]),
   activeValue: Ref<string | undefined> = ref(undefined),
+  equalPaneHeight: Ref<boolean> | ComputedRef<boolean> = ref(false),
 ): ChoyTabsContext {
   return {
     tabs,
     activeValue,
+    equalPaneHeight,
     register(tab) {
       if (!isUsableTabValue(tab.value)) {
         return false;

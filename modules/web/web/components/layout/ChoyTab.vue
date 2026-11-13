@@ -12,7 +12,10 @@ SPDX-License-Identifier: Apache-2.0
     data-anchor="choy.tab"
     :value="registeredValue"
     :force-mount="forceMount"
+    :data-force-mount="forceMount ? 'true' : undefined"
     :class="contentClass"
+    :inert="equalHeightInactive || undefined"
+    :aria-hidden="equalHeightInactive || undefined"
   >
     <!-- forceMount keeps inactive panes mounted so Form returnFields stay registered. -->
     <slot v-if="isActive || forceMount" />
@@ -35,8 +38,8 @@ const props = withDefaults(
     label?: string;
     disabled?: boolean;
     /**
-     * Keep pane content mounted while inactive (hidden). Use when sibling tabs
-     * share Form field registration (e.g. O2M table + kanban for the same prop).
+     * Keep pane content mounted while inactive. Hidden with display:none unless
+     * the host enables equalPaneHeight (then visibility:hidden so height is kept).
      */
     forceMount?: boolean;
   }>(),
@@ -53,8 +56,15 @@ const registeredValue = ref(props.value);
 const isActive = computed(() => !!ctx && ctx.activeValue.value === registeredValue.value);
 /** False when register was refused (duplicate value); skip unregister/patch. */
 const ownsRegistration = ref(false);
+const equalPaneHeight = computed(() => !!ctx?.equalPaneHeight.value);
+const forceMountInactive = computed(() => props.forceMount && !isActive.value);
+const equalHeightInactive = computed(() => forceMountInactive.value && equalPaneHeight.value);
 const contentClass = computed(() =>
-  cn(props.class, props.forceMount && !isActive.value ? 'hidden' : undefined)
+  cn(
+    props.class,
+    forceMountInactive.value && !equalPaneHeight.value ? 'hidden' : undefined,
+    equalHeightInactive.value ? 'invisible pointer-events-none' : undefined,
+  ),
 );
 
 function resolveLabel(): string {

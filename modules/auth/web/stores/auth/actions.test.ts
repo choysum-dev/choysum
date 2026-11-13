@@ -1157,6 +1157,7 @@ test('loadUser: applies LanguageId via injected language store', async () => {
     'Email',
     'LanguageId',
     'Timezone',
+    'Theme',
     'Preferences',
   ]);
   expect((mockState.currentUser.value as any)?.LanguageId).toBe('lang_zh');

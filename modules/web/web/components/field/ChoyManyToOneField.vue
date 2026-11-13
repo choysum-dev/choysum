@@ -20,6 +20,7 @@ SPDX-License-Identifier: Apache-2.0
     :cellVisible="cellVisible"
     :renderMode="renderMode"
     :showInlineError="showInlineError"
+    :inline-error-space="inlineErrorSpace"
   >
     <template #edit="{ fieldValue, record, inputId, inputName, describedBy, invalid}">
       <div class="w-full" :style="{ width: width || '100%' }">
@@ -199,6 +200,8 @@ const props = withDefaults(
     // Added render mode and inline error support.
     renderMode?: 'auto' | 'form' | 'table' | 'inline';
     showInlineError?: boolean;
+    /** collapse | reserve | overlay; forwarded to ChoyFieldBase. */
+    inlineErrorSpace?: 'collapse' | 'reserve' | 'overlay';
     valueClickable?: boolean | 'auto';
   }>(),
   {

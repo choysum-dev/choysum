@@ -17,6 +17,7 @@ SPDX-License-Identifier: Apache-2.0
     :cellVisible="cellVisible"
     :renderMode="renderMode"
     :showInlineError="showInlineError"
+    :inline-error-space="inlineErrorSpace"
   >
     <template #edit="{ inputId, inputName, describedBy, invalid }">
       <div class="choy-m2m-tags w-full" @keydown="handleKeydown">
@@ -240,6 +241,8 @@ const props = withDefaults(
     condition?: QueryCondition<any> | QueryCondition<any>[];
     renderMode?: 'auto' | 'form' | 'table' | 'inline';
     showInlineError?: boolean;
+    /** collapse | reserve | overlay; forwarded to ChoyFieldBase. */
+    inlineErrorSpace?: 'collapse' | 'reserve' | 'overlay';
 
     searchList?: Component;
     searchViewTitle?: string;

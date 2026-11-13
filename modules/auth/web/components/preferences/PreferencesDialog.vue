@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
   <Teleport to="body">
     <div
       v-if="visible"
-      class="choy-preferences-dialog fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4"
+      class="choy-preferences-dialog fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
       role="presentation"
       @click.self="visible = false"
     >
@@ -21,16 +21,9 @@ SPDX-License-Identifier: Apache-2.0
         @click.stop
         @keydown="onDialogKeydown"
       >
-        <h2 :id="titleId" class="text-lg font-semibold">{{ _t('Edit Profile') }}</h2>
+        <h2 :id="titleId" class="text-lg font-semibold">{{ _t('Preferences') }}</h2>
 
-        <div v-if="currentUser" class="choy-preferences-dialog__header mb-4 mt-3">
-          <div class="choy-preferences-dialog__identity">
-            <div class="choy-preferences-dialog__name font-semibold text-foreground">{{ displayName }}</div>
-            <div class="choy-preferences-dialog__email text-sm text-foreground/70">{{ currentUser.Email || '' }}</div>
-          </div>
-        </div>
-
-        <form v-if="!userId" class="choy-preferences-dialog__form flex flex-col gap-4" @submit.prevent="onMissingUserSubmit">
+        <form v-if="!userId" class="choy-preferences-dialog__form mt-4 flex flex-col gap-4" @submit.prevent="onMissingUserSubmit">
           <div class="flex justify-end gap-2 pt-2">
             <ChoyButton type="button" variant="outline" @click="visible = false">{{ _t('Cancel') }}</ChoyButton>
             <ChoyButton type="submit">{{ _t('Update preferences') }}</ChoyButton>
@@ -39,6 +32,7 @@ SPDX-License-Identifier: Apache-2.0
 
         <ChoyFormView
           v-else
+          class="mt-4"
           :store="userStore"
           :record-id="userId"
           view-mode="edit"
@@ -54,8 +48,25 @@ SPDX-License-Identifier: Apache-2.0
               :ready="!loading"
               :language-id="seedLanguageId"
               :timezone="seedTimezone"
+              :theme="seedTheme"
+            />
+            <PreferenceThemeDraftApplier
+              :theme="formData?.Theme"
+              :active="visible && !saving"
+              @apply="onThemeDraftApply"
             />
             <ChoyFieldGroup class="choy-preferences-dialog__form gap-4">
+              <div class="choy-preferences-dialog__appearance space-y-2">
+                <div class="text-sm font-medium text-foreground">{{ _t('Appearance') }}</div>
+                <ChoySelectionField
+                  :store="userStore"
+                  prop="Theme"
+                  :clearable="false"
+                  :disabled="saving"
+                  :select-props="{ 'data-testid': 'preferences-theme' }"
+                />
+              </div>
+              <div class="text-sm font-medium text-foreground">{{ _t('Locale') }}</div>
               <div class="choy-preferences-dialog__language">
                 <ChoyManyToOneRefField
                   :store="userStore"
@@ -114,7 +125,15 @@ import {
 import { restoreDialogFocus } from './dialog_focus_restore';
 import { trapDialogTabKey } from './dialog_focus_trap';
 import { PreferenceDraftSeeder } from './PreferenceDraftSeeder';
+import { PreferenceThemeDraftApplier } from './PreferenceThemeDraftApplier';
 import { runPreferencesSubmit } from './preferences_submit';
+import {
+  applyPreferencesThemeMode,
+  readPreferencesThemeMode,
+  resolvePreferencesThemeMode,
+  resolveUserThemeMode,
+  type ChoyThemeMode,
+} from './preferences_theme';
 
 defineOptions({ name: 'PreferencesDialog' });
 
@@ -129,6 +148,10 @@ const languageStore = createStoreByModel('base.Language');
 const titleId = useId();
 const dialogRef = ref<HTMLElement | null>(null);
 let lastFocused: HTMLElement | null = null;
+/** Last Theme value applied to the shell from this dialog (avoids re-apply loops). */
+let lastAppliedTheme = '';
+/** Target shell theme on dismiss: opening capture, or the last successfully saved mode. */
+let openedTheme = '';
 
 const visible = computed({
   get: () => props.modelValue,
@@ -149,15 +172,10 @@ function onDialogKeydown(event: KeyboardEvent): void {
 }
 
 const currentUser = computed(() => authStore.currentUser as any);
-const displayName = computed(() => {
-  const u = currentUser.value;
-  if (!u) return '';
-  return String(u.DisplayName || u.Username || u.Email || '');
-});
-
 const userId = computed(() => String(currentUser.value?.Id || authStore.identity?.userId || '').trim());
 const seedLanguageId = ref('');
 const seedTimezone = ref('');
+const seedTheme = ref('');
 const languageFromSession = ref(false);
 const timezoneFromBrowser = ref(false);
 const saving = ref(false);
@@ -183,6 +201,13 @@ function showTimezoneBrowserHint(formData: Record<string, unknown>): boolean {
   const seed = timezoneText(seedTimezone.value);
   if (!timezoneFromBrowser.value || !seed) return false;
   return timezoneText(formData?.Timezone) === seed;
+}
+
+/** Live-apply Theme from the User form draft to the shell (still persisted on submit). */
+function onThemeDraftApply(mode: ChoyThemeMode): void {
+  if (mode === lastAppliedTheme) return;
+  lastAppliedTheme = mode;
+  applyPreferencesThemeMode(mode);
 }
 
 async function resolveSeedLanguageId(): Promise<void> {
@@ -228,7 +253,18 @@ async function resolveSeedTimezone(): Promise<void> {
   timezoneFromBrowser.value = resolved.fromBrowser;
 }
 
+function resolveSeedTheme(): void {
+  seedTheme.value = resolveUserThemeMode(currentUser.value, readPreferencesThemeMode());
+}
+
+let openGeneration = 0;
+
 async function openAndLoad() {
+  const gen = ++openGeneration;
+  // Capture shell theme before any await so early dismiss restores correctly.
+  openedTheme = readPreferencesThemeMode();
+  lastAppliedTheme = openedTheme;
+
   if (authStore.isAuthenticated) {
     try {
       await authStore.loadUser(true);
@@ -236,7 +272,19 @@ async function openAndLoad() {
       // Fall back to whatever is already in auth state / identity.
     }
   }
+  // Dismissed (or a newer open) while loading: do not overwrite restore state.
+  if (gen !== openGeneration || !props.modelValue) return;
+
+  resolveSeedTheme();
   await Promise.all([resolveSeedLanguageId(), resolveSeedTimezone()]);
+}
+
+function restoreOpeningThemeIfNeeded(): void {
+  // Always sync shell to openedTheme (open capture or last successful save).
+  const mode = resolvePreferencesThemeMode(openedTheme);
+  if (mode === lastAppliedTheme) return;
+  lastAppliedTheme = mode;
+  applyPreferencesThemeMode(mode);
 }
 
 watch(
@@ -251,6 +299,7 @@ watch(
       await openAndLoad();
       return;
     }
+    restoreOpeningThemeIfNeeded();
     restoreDialogFocus(lastFocused);
     lastFocused = null;
   },
@@ -281,10 +330,14 @@ async function onPreferencesSubmit(ctx: {
       missingUserMessage: _t('Cannot update preferences: missing user id'),
       defaultSubmit: async () => (await ctx.defaultSubmit()) as Record<string, unknown> | null,
       formData: (ctx.formData || {}) as Record<string, unknown>,
-      patchCurrentUser: (languageId, timezone) => {
+      patchCurrentUser: (languageId, timezone, theme, preferences) => {
         if (!authStore.currentUser) return;
         (authStore.currentUser as any).LanguageId = languageId;
         (authStore.currentUser as any).Timezone = timezone;
+        (authStore.currentUser as any).Theme = theme;
+        if (preferences && typeof preferences === 'object') {
+          (authStore.currentUser as any).Preferences = preferences;
+        }
       },
       applyLanguage: languageId =>
         applyUserLanguagePreference({
@@ -295,9 +348,17 @@ async function onPreferencesSubmit(ctx: {
           setDisplayOverrides: o => i18nStore.setDisplayOverrides(o as never),
           langToUiKey,
         }),
+      applyTheme: theme => {
+        const mode = resolvePreferencesThemeMode(theme);
+        lastAppliedTheme = mode;
+        applyPreferencesThemeMode(mode);
+        // Remember the saved mode so dismiss after a later draft tweak restores it.
+        openedTheme = mode;
+      },
       refreshToken: () => authStore.refreshToken(true),
       afterLocaleChange: () => afterLocaleChange({ remount: softLocaleRemount }),
       onSuccess: () => {
+        openedTheme = lastAppliedTheme;
         ChoyMessage.success(_t('Preferences updated'));
         visible.value = false;
       },

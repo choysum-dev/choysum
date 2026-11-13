@@ -10,6 +10,7 @@ SPDX-License-Identifier: Apache-2.0
     v-if="effectiveRenderMode === 'form'"
     v-show="visibleForm"
     data-anchor="choy.field-base"
+    :data-inline-error-space="inlineErrorSpace"
     :orientation="orientation"
     :class="formChromeClass"
     @focusout="onFieldFocusOut"
@@ -45,7 +46,10 @@ SPDX-License-Identifier: Apache-2.0
         </Tooltip>
       </TooltipProvider>
     </div>
-    <FieldContent class="choy-field-base__content min-w-0">
+    <FieldContent
+      class="choy-field-base__content min-w-0"
+      :class="{ relative: inlineErrorSpace === 'overlay' }"
+    >
       <FieldDescription v-if="effectiveHelp" :id="formHelpId" class="sr-only">
         {{ effectiveHelp }}
       </FieldDescription>
@@ -202,11 +206,18 @@ SPDX-License-Identifier: Apache-2.0
         @saved="onCompanyValuesSaved"
       />
       </div>
-      <FieldError v-if="displayError" :id="formErrorId">
+      <FieldError v-if="showErrorFlow" :id="formErrorId">
+        {{ displayError }}
+      </FieldError>
+      <FieldError
+        v-else-if="showErrorOverlay"
+        :id="formErrorId"
+        class="choy-field-base__error--overlay absolute left-0 top-full z-10 mt-0.5 w-full"
+      >
         {{ displayError }}
       </FieldError>
       <p
-        v-else-if="showInlineError"
+        v-else-if="showErrorReserve"
         class="choy-field-base__error-reserve invisible text-sm font-normal"
         data-slot="field-error"
         aria-hidden="true"
@@ -283,7 +294,12 @@ SPDX-License-Identifier: Apache-2.0
   <div
     v-else-if="effectiveRenderMode === 'inline'"
     class="choy-field-base__inline inline-flex"
-    :class="showInlineError ? 'w-full min-w-0 flex-col' : 'items-center gap-1'"
+    :class="[
+      showInlineError ? 'w-full min-w-0 flex-col' : 'items-center gap-1',
+      inlineErrorSpace === 'overlay' ? 'relative' : undefined,
+    ]"
+    :data-inline-error-space="inlineErrorSpace"
+    data-anchor="choy.field-base"
     v-show="visibleInline"
     @focusout="onFieldFocusOut"
   >
@@ -386,7 +402,23 @@ SPDX-License-Identifier: Apache-2.0
       </TooltipProvider>
     </div>
     <p
-      v-if="showInlineError"
+      v-if="showErrorFlowInline"
+      :id="formErrorId"
+      class="choy-field-base__error mt-0 w-full whitespace-normal pb-2 text-sm font-normal leading-4 text-destructive"
+      data-slot="field-error"
+      :title="displayError || undefined"
+      role="alert"
+    >{{ displayError }}</p>
+    <p
+      v-else-if="showErrorOverlay"
+      :id="formErrorId"
+      class="choy-field-base__error choy-field-base__error--overlay absolute left-0 top-full z-10 mt-0.5 w-full whitespace-normal text-sm font-normal leading-4 text-destructive"
+      data-slot="field-error"
+      :title="displayError || undefined"
+      role="alert"
+    >{{ displayError }}</p>
+    <p
+      v-else-if="showErrorReserve"
       :id="formErrorId"
       class="choy-field-base__error mt-0 min-h-4 w-full whitespace-normal pb-2 text-sm font-normal leading-4 text-destructive"
       data-slot="field-error"
@@ -437,6 +469,9 @@ export type FormItemProps = {
 /** Form-mode label/control layout; ignored for table / inline. */
 export type FieldOrientation = 'horizontal' | 'vertical';
 
+/** How show-inline-error occupies vertical space under the control. */
+export type ChoyInlineErrorSpace = 'collapse' | 'reserve' | 'overlay';
+
 export type FieldStatePredicate<T, V> = (args: { record: T; value: V | null; env: FieldEnv }) => boolean;
 export type FieldStateExpr<T, V> = boolean | FieldStatePredicate<T, V>;
 
@@ -476,6 +511,12 @@ const props = withDefaults(
      * Help remains available via the sr-only FieldDescription when present.
      */
     hideLabel?: boolean;
+    /**
+     * Suppress the help tip (and sr-only FieldDescription) even when FieldsGet /
+     * meta.help is set. Use in compact chrome (e.g. Preferences) where the tip
+     * competes with section titles.
+     */
+    hideHelp?: boolean;
     toView?: (raw: V) => View;
     fromView?: (v: View) => V;
     required?: FieldStateExpr<T, V>;
@@ -485,6 +526,11 @@ const props = withDefaults(
     renderMode?: 'auto' | 'form' | 'table' | 'inline';
     preserveModeSlot?: boolean;
     showInlineError?: boolean;
+    /**
+     * Vertical layout for the inline error row when showInlineError is on.
+     * collapse (default): no empty reserve; reserve: always hold space; overlay: absolute under control.
+     */
+    inlineErrorSpace?: ChoyInlineErrorSpace;
   }>(),
   {
     rules: () => [],
@@ -492,6 +538,7 @@ const props = withDefaults(
     vColumnProps: () => ({}),
     orientation: 'horizontal',
     hideLabel: false,
+    hideHelp: false,
     visible: true,
     cellVisible: true,
     required: false,
@@ -499,6 +546,7 @@ const props = withDefaults(
     renderMode: 'auto',
     preserveModeSlot: false,
     showInlineError: false,
+    inlineErrorSpace: 'collapse',
     labelForControl: true,
   }
 );
@@ -552,6 +600,7 @@ const resolvedLabel = computed(() => {
 });
 
 const effectiveHelp = computed(() => {
+  if (props.hideHelp) return '';
   const propHelp = String(props.help || '').trim();
   if (propHelp) return propHelp;
   const leaf = leafFieldName.value;
@@ -693,6 +742,11 @@ const effectiveRenderMode = computed(() => {
   return 'inline';
 });
 const showInlineError = computed(() => props.showInlineError === true);
+const inlineErrorSpace = computed<ChoyInlineErrorSpace>(() => {
+  const space = props.inlineErrorSpace;
+  if (space === 'reserve' || space === 'overlay' || space === 'collapse') return space;
+  return 'collapse';
+});
 const preserveModeSlotForm = computed(() => props.preserveModeSlot === true);
 
 /* Derive INLINE-mode state from form logic without form chrome. */
@@ -940,6 +994,25 @@ const displayError = computed(() => {
   if (clientRulesRevealed.value && clientRuleError.value) return clientRuleError.value;
   return undefined;
 });
+const showErrorReserve = computed(
+  () => showInlineError.value && inlineErrorSpace.value === 'reserve' && !displayError.value,
+);
+/** Flow error row: any displayError except overlay mode under showInlineError. */
+const showErrorFlow = computed(
+  () =>
+    !!displayError.value &&
+    !(showInlineError.value && inlineErrorSpace.value === 'overlay'),
+);
+const showErrorOverlay = computed(
+  () => showInlineError.value && !!displayError.value && inlineErrorSpace.value === 'overlay',
+);
+/** Inline mode never shows errors unless showInlineError is on. */
+const showErrorFlowInline = computed(
+  () =>
+    showInlineError.value &&
+    !!displayError.value &&
+    inlineErrorSpace.value !== 'overlay',
+);
 const formHelpId = computed(() => (effectiveHelp.value ? `${inputIdForm.value}-help` : ''));
 const formErrorId = computed(() => `${inputIdForm.value}-error`);
 const formDescribedBy = computed(() => {

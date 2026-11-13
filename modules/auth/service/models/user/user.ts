@@ -234,6 +234,26 @@ export default class User extends AttachmentOwnerMixin {
   Timezone: string | null;
 
   /**
+   * UI color theme. Mirrored into Preferences.theme on write so shell helpers
+   * that read the JSON bag stay aligned with the selection field.
+   */
+  @Field({
+    type: 'selection',
+    // Static list (not a callable): decorator attaches labelText so FieldsGet can translate.
+    selection: [
+      { value: 'light', label: _lt('Light', { scope: 'auth.model.User.fields' }) },
+      { value: 'dark', label: _lt('Dark', { scope: 'auth.model.User.fields' }) },
+      // value stays `auto` (shell / Preferences.theme); label is the user-facing "System".
+      { value: 'auto', label: _lt('System', { scope: 'auth.model.User.fields' }) },
+    ],
+    string: _lt('Theme', { scope: 'auth.model.User.fields' }),
+    help: _lt('UI color theme (light, dark, or follow the system).', {
+      scope: 'auth.model.User.fields',
+    }),
+  })
+  Theme: 'light' | 'dark' | 'auto' | null;
+
+  /**
    * User-specific UI and company-scope preferences.
    */
   @Field({
@@ -246,7 +266,7 @@ export default class User extends AttachmentOwnerMixin {
     activeCompanyId?: string;
     enabledCompanyIds?: string[];
 
-    // UI appearance preferences.
+    // UI appearance preferences (theme mirrored from Theme field on write).
     avatar?: string;
     theme?: 'light' | 'dark' | 'auto';
     density?: 'comfortable' | 'compact' | 'standard';
@@ -371,6 +391,33 @@ export default class User extends AttachmentOwnerMixin {
       }).withGrpcCode(GrpcCode.InvalidArgument);
     }
     this.Timezone = timezone;
+  }
+
+  /**
+   * Normalize Theme and keep Preferences.theme in sync (Form field ↔ JSON bag).
+   */
+  @Constraint<User>(['Theme', 'Preferences'])
+  syncThemePreferenceConstraint(): void {
+    const prefsRaw = this.Preferences;
+    const prefs =
+      prefsRaw && typeof prefsRaw === 'object' && !Array.isArray(prefsRaw)
+        ? { ...(prefsRaw as Record<string, unknown>) }
+        : {};
+    const fromTheme = this.Theme;
+    const fromPrefs = prefs.theme;
+    const raw =
+      fromTheme === 'light' || fromTheme === 'dark' || fromTheme === 'auto'
+        ? fromTheme
+        : fromPrefs === 'light' || fromPrefs === 'dark' || fromPrefs === 'auto'
+          ? fromPrefs
+          : null;
+    this.Theme = raw;
+    if (raw) {
+      prefs.theme = raw;
+    } else {
+      delete prefs.theme;
+    }
+    this.Preferences = prefs as User['Preferences'];
   }
 
   /**

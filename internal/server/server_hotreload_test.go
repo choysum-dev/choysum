@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/choysum-dev/choysum/internal/logger"
+	"github.com/choysum-dev/choysum/internal/module/lifecycle"
 	"github.com/choysum-dev/choysum/pkg/oerrors"
 	"github.com/fsnotify/fsnotify"
 	xfmt "golang.org/x/exp/errors/fmt"
@@ -270,6 +271,9 @@ func TestShouldIgnoreWatchPath(t *testing.T) {
 		{filepath.Join("modules", "base", "i18n", "XXd1jJQ9"), true},
 		{filepath.Join("modules", "web", "web", "route", "routes.ts"), false},
 		{filepath.Join("modules", "base", "i18n", "zh_CN.po"), false},
+		{filepath.Join("modules", "auth", "i18n", "auth.pot"), true},
+		{filepath.Join("modules", "base", "i18n", "base.pot"), true},
+		{filepath.Join("modules", "auth", "service", "auth.pot"), false},
 		{filepath.Join("modules", "web", "Makefile"), false},
 		{filepath.Join("tmp", "other.tmp"), false},
 		{filepath.Join("styles", ".choy-tailwind-x.tmp.bak"), false},
@@ -1928,6 +1932,135 @@ func TestHandleWatchedModuleUpgradeNilScope(t *testing.T) {
 	err := srv.handleWatchedModuleUpgrade("web", "/some/file.ts")
 	if err == nil {
 		t.Fatal("expected error from handleWatchedModuleUpgrade with nil runtimeScope")
+	}
+}
+
+func TestHandleWatchedFileChangeResolvedPoSkipsRestart(t *testing.T) {
+	runtimeScope := newRichServerTestScope(t)
+	runtimeScope.cfg.Server.HotReload = true
+	runtimeScope.cfg.Server.JsEngineFactory = "missing"
+
+	moduleDir := t.TempDir()
+	i18nDir := filepath.Join(moduleDir, "i18n")
+	if err := os.MkdirAll(i18nDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	poFile := filepath.Join(i18nDir, "zh_CN.po")
+	if err := os.WriteFile(poFile, []byte("msgid \"A\"\nmsgstr \"a\"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	tracked := &fakeWatchedService{name: "demo", watchDirs: []string{moduleDir}}
+	srv := &GRPCWebServer{runtimeScope: runtimeScope}
+	srv.hotreload.storeWatchTargets(srv.buildRegisteredWatchTargets(tracked.watchPlans(), tracked.watchCallback))
+
+	prevReload := hotreloadTerminologyReload
+	var reloadCalls int
+	hotreloadTerminologyReload = func(_ *GRPCWebServer, moduleName string) (lifecycle.TerminologyReloadStats, error) {
+		reloadCalls++
+		if moduleName != filepath.Base(moduleDir) {
+			t.Fatalf("moduleName = %q", moduleName)
+		}
+		return lifecycle.TerminologyReloadStats{Upserted: 2}, nil
+	}
+	t.Cleanup(func() { hotreloadTerminologyReload = prevReload })
+
+	resolvedFile, err := resolveWatchPath(poFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	hash, ok := fileFingerprint(resolvedFile)
+	if !ok {
+		t.Fatal("fingerprint")
+	}
+	srv.hotreload.setFingerprintIfAbsentResolved(resolvedFile, hash)
+	if err := os.WriteFile(poFile, []byte("msgid \"A\"\nmsgstr \"甲\"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Broken JsEngineFactory would fail restart; po path must not restart.
+	if err := srv.handleWatchedFileChangeResolved(resolvedFile); err != nil {
+		t.Fatalf("po hotreload error = %v", err)
+	}
+	if reloadCalls != 1 {
+		t.Fatalf("terminology reload calls = %d, want 1", reloadCalls)
+	}
+	if tracked.callCount() != 0 {
+		t.Fatalf("upgrade callback calls = %d, want 0", tracked.callCount())
+	}
+}
+
+func TestDispatchWatchTarget_nilReceiverAndNilHandle(t *testing.T) {
+	var nilSrv *GRPCWebServer
+	if err := nilSrv.dispatchWatchTarget(registeredWatchTarget{moduleName: "demo"}, "x.ts"); err == nil {
+		t.Fatal("expected nil receiver error")
+	}
+
+	runtimeScope := newRichServerTestScope(t)
+	srv := &GRPCWebServer{runtimeScope: runtimeScope}
+	prevUpgrade := hotreloadModuleUpgrade
+	var upgradeCalls int
+	hotreloadModuleUpgrade = func(_ *GRPCWebServer, _ context.Context, moduleName string) error {
+		upgradeCalls++
+		if moduleName != "demo" {
+			t.Fatalf("moduleName = %q", moduleName)
+		}
+		return nil
+	}
+	t.Cleanup(func() { hotreloadModuleUpgrade = prevUpgrade })
+
+	if err := srv.dispatchWatchTarget(registeredWatchTarget{
+		moduleName:  "demo",
+		serviceName: "demo",
+		handle:      nil,
+	}, filepath.Join("modules", "demo", "handler.ts")); err != nil {
+		t.Fatalf("dispatchWatchTarget: %v", err)
+	}
+	if upgradeCalls != 1 {
+		t.Fatalf("upgradeCalls = %d, want 1", upgradeCalls)
+	}
+}
+
+func TestHandleWatchedTerminologyReload_guardsAndDefaultLoader(t *testing.T) {
+	var nilSrv *GRPCWebServer
+	if err := nilSrv.handleWatchedTerminologyReload("demo", "zh_CN.po"); err == nil {
+		t.Fatal("expected nil receiver error")
+	}
+	if err := (&GRPCWebServer{}).handleWatchedTerminologyReload("demo", "zh_CN.po"); err == nil {
+		t.Fatal("expected nil runtimeScope error")
+	}
+
+	runtimeScope := newRichServerTestScope(t)
+	srv := &GRPCWebServer{runtimeScope: runtimeScope}
+	if err := srv.handleWatchedTerminologyReload("  ", "zh_CN.po"); err == nil {
+		t.Fatal("expected empty module name error")
+	}
+
+	prevReload := hotreloadTerminologyReload
+	hotreloadTerminologyReload = func(*GRPCWebServer, string) (lifecycle.TerminologyReloadStats, error) {
+		return lifecycle.TerminologyReloadStats{}, errors.New("boom")
+	}
+	t.Cleanup(func() { hotreloadTerminologyReload = prevReload })
+	if err := srv.handleWatchedTerminologyReload("demo", "zh_CN.po"); err == nil || !strings.Contains(err.Error(), "boom") {
+		t.Fatalf("error = %v, want boom", err)
+	}
+
+	// Exercise the package-default loader body without a full DB import.
+	hotreloadTerminologyReload = prevReload
+	if _, err := hotreloadTerminologyReload(srv, "  "); err == nil {
+		t.Fatal("expected default loader to reject empty module name")
+	}
+}
+
+func TestShouldIgnoreWatchPathIgnoresPotKeepsPo(t *testing.T) {
+	if !shouldIgnoreWatchPath(filepath.Join("modules", "auth", "i18n", "auth.pot")) {
+		t.Fatal("expected auth.pot ignored")
+	}
+	if shouldIgnoreWatchPath(filepath.Join("modules", "auth", "i18n", "zh_CN.po")) {
+		t.Fatal("expected zh_CN.po not ignored")
+	}
+	if !isModuleI18nPoWatchPath(filepath.Join("modules", "auth", "i18n", "zh_CN.po")) {
+		t.Fatal("expected zh_CN.po classified as i18n po")
 	}
 }
 

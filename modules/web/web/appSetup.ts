@@ -169,6 +169,21 @@ export function setupApp(app: ChoysumWebApp, deps: SetupAppDeps = {}): void {
     exposeBrowserI18n(i18n.global);
     // Restore persisted theme/density onto documentElement for Choy tokens.
     applyTheme(readTheme());
+
+    // After packaged PO hotreload, catalog hash may change while the SPA stays up.
+    // Revalidate cheaply on tab focus / pageshow (prevHash negotiation).
+    const onDocumentVisible = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+        return;
+      }
+      void i18nStore.revalidateTerminologyIfStale();
+    };
+    window.addEventListener('visibilitychange', () => {
+      if (typeof document === 'undefined' || document.visibilityState === 'visible') {
+        onDocumentVisible();
+      }
+    });
+    window.addEventListener('pageshow', onDocumentVisible);
   }
 
   watch(
