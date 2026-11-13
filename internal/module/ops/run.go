@@ -108,24 +108,26 @@ func (o *Ops) executeOperation(ctx context.Context, row *modmeta.ModuleOperation
 		if err := o.runLifecycle(ctx, row.Action, row.ModuleName, withDemo, doc); err != nil {
 			return err
 		}
-		// First install that lands meta: full local+registry snapshot sync + catalog rewrite
-		// so Catalog UI is populated without a page-open auto sync.
-		// Soft-fail origin/materialize errors: lifecycle Install already succeeded;
-		// offline registry must not mark the install operation failed (same policy as executeSync).
+		// Soft-fail only origin snapshot sync (network). Local installed projection and
+		// MaterializeCatalog read the DB only and must hard-fail after lifecycle success.
 		if row.Action == ActionInstall && moduleNamesInclude(names, "meta") {
-			// Soft-fail origin and materialize: lifecycle Install already succeeded, and an
-			// offline registry must not mark the install operation failed (same policy as executeSync).
+			// First install that lands meta: full local+registry snapshot sync so Catalog UI
+			// is populated without a page-open auto sync. Offline registry must not fail the op.
 			if _, originErr := o.syncSourceSnapshots(ctx, "all"); originErr != nil {
 				if o.Scope != nil && o.Scope.Logger() != nil {
 					o.Scope.Logger().Warn("ops: catalog sync after meta install failed", "error", originErr)
 				}
 			}
-			if matErr := o.MaterializeCatalog(ctx, nil); matErr != nil {
-				if o.Scope != nil && o.Scope.Logger() != nil {
-					o.Scope.Logger().Warn("ops: catalog materialize after meta install failed", "error", matErr)
-				}
+			if err := o.ProjectCatalogInstalled(ctx); err != nil {
+				return fmt.Errorf("ops: project catalog installed after %s: %w", row.Action, err)
+			}
+			if err := o.MaterializeCatalog(ctx, nil); err != nil {
+				return fmt.Errorf("ops: materialize catalog after %s: %w", row.Action, err)
 			}
 			return nil
+		}
+		if err := o.ProjectCatalogInstalled(ctx); err != nil {
+			return fmt.Errorf("ops: project catalog installed after %s: %w", row.Action, err)
 		}
 		if err := o.MaterializeCatalog(ctx, names); err != nil {
 			return fmt.Errorf("ops: materialize catalog after %s: %w", row.Action, err)

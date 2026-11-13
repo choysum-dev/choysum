@@ -588,9 +588,16 @@ func TestRun_InstallMetaSoftFailsCatalogSync(t *testing.T) {
 	if row.Status != StatusSucceeded {
 		t.Fatalf("status=%q want succeeded", row.Status)
 	}
+	var catalog modmeta.ModuleCatalog
+	if err := db.Where("module_name = ?", "meta").Take(&catalog).Error; err != nil {
+		t.Fatalf("catalog: %v", err)
+	}
+	if !catalog.Installed || catalog.InstalledVersion.String != "1.0.0" {
+		t.Fatalf("catalog installed=%v version=%q after soft-fail origin sync", catalog.Installed, catalog.InstalledVersion.String)
+	}
 }
 
-func TestRun_InstallMetaSoftFailsMaterialize(t *testing.T) {
+func TestRun_InstallMetaHardFailsMaterialize(t *testing.T) {
 	t.Parallel()
 	db := newOpsTestDB(t)
 	runtimeScope := newOpsTestScope(t, db)
@@ -609,7 +616,7 @@ func TestRun_InstallMetaSoftFailsMaterialize(t *testing.T) {
 			return lifecycle.ModuleSourceSnapshotSyncStats{}, nil
 		},
 		SyncRegistrySnapshot: func(context.Context, scope.Scope, statepkg.LockerFactory) (lifecycle.ModuleSourceSnapshotSyncStats, error) {
-			// After origin sync succeeds, block catalog reads so MaterializeCatalog soft-fails.
+			// After origin sync succeeds, block catalog reads so MaterializeCatalog fails hard.
 			if err := db.Callback().Query().Before("gorm:query").Register(blockMaterialize, func(tx *gorm.DB) {
 				if tx.Statement != nil && tx.Statement.Table == "meta_module_catalog" {
 					_ = tx.AddError(errors.New("materialize blocked"))
@@ -634,15 +641,99 @@ func TestRun_InstallMetaSoftFailsMaterialize(t *testing.T) {
 	if err := o.Apply(context.Background(), ApplyRequest{Id: result.Id}); err != nil {
 		t.Fatalf("Apply: %v", err)
 	}
-	if err := o.Run(context.Background(), RunRequest{Id: result.Id}); err != nil {
-		t.Fatalf("Run should soft-fail materialize: %v", err)
+	if err := o.Run(context.Background(), RunRequest{Id: result.Id}); err == nil {
+		t.Fatal("Run should hard-fail materialize")
+	} else if !strings.Contains(err.Error(), "materialize") && !strings.Contains(err.Error(), "project catalog installed") {
+		t.Fatalf("Run error = %v, want materialize/project failure", err)
 	}
 	row, err := o.loadOperation(context.Background(), result.Id)
 	if err != nil {
 		t.Fatalf("load: %v", err)
 	}
-	if row.Status != StatusSucceeded {
-		t.Fatalf("status=%q want succeeded", row.Status)
+	if row.Status != StatusFailed {
+		t.Fatalf("status=%q want failed", row.Status)
+	}
+}
+
+func TestRun_UpgradeDoesNotLeaveStaleProfileExtra(t *testing.T) {
+	t.Parallel()
+	db := newOpsTestDB(t)
+	runtimeScope := newOpsTestScope(t, db)
+	core := &pkgmeta.Module{Name: "core", Version: "1.0.0", ApplicationStr: "core", Status: pkgmeta.Installed}
+	life := &stubLifecycle{}
+	o := &Ops{
+		Scope: runtimeScope,
+		Resolver: &mapResolver{
+			peek: map[string]*pkgmeta.Module{"core": core},
+			load: map[string]*pkgmeta.Module{"core": core},
+		},
+		Lifecycle: life,
+		Events:    &recordingBus{},
+		LockerFactory: func(scope.Scope) statepkg.Locker {
+			return testLocker{}
+		},
+	}
+	if err := db.Create(&pkgmeta.Module{
+		Name: "document", Version: "v1.0.0", Status: pkgmeta.Installed, ApplicationStr: "document",
+	}).Error; err != nil {
+		t.Fatalf("seed document module: %v", err)
+	}
+	if err := db.Create(&pkgmeta.Module{
+		Name: "core", Version: "v1.0.0", Status: pkgmeta.Installed, ApplicationStr: "core",
+	}).Error; err != nil {
+		t.Fatalf("seed core module: %v", err)
+	}
+	if err := db.Create(&modmeta.ModuleCatalog{
+		ModuleName:     "document",
+		Available:      true,
+		Installed:      false,
+		LocalVersion:   nullString("1.0.0"),
+		LocalPath:      nullString("/modules/document"),
+		InstalledVersion: nullString(""),
+	}).Error; err != nil {
+		t.Fatalf("seed stale document catalog: %v", err)
+	}
+	if err := db.Create(&modmeta.ModuleSourceSnapshot{
+		ModuleName: "core", SourceType: originLocal, SourceRef: "local", Available: true,
+		Version: nullString("1.0.0"),
+	}).Error; err != nil {
+		t.Fatalf("seed core snapshot: %v", err)
+	}
+
+	result, err := o.Plan(context.Background(), PlanRequest{
+		ModuleName:   "core",
+		Action:       ActionUpgrade,
+		SkipWebShell: true,
+	})
+	if err != nil {
+		t.Fatalf("Plan: %v", err)
+	}
+	for _, e := range result.ModuleOrder {
+		if e.ModuleName == "document" {
+			t.Fatalf("plan ModuleOrder unexpectedly includes document: %#v", result.ModuleOrder)
+		}
+	}
+	for _, e := range result.EnsureModules {
+		if e.ModuleName == "document" {
+			t.Fatalf("plan EnsureModules unexpectedly includes document: %#v", result.EnsureModules)
+		}
+	}
+	if err := o.Apply(context.Background(), ApplyRequest{Id: result.Id}); err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+	if err := o.Run(context.Background(), RunRequest{Id: result.Id}); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+
+	var catalog modmeta.ModuleCatalog
+	if err := db.Where("module_name = ?", "document").Take(&catalog).Error; err != nil {
+		t.Fatalf("document catalog: %v", err)
+	}
+	if !catalog.Installed || catalog.InstalledVersion.String != "1.0.0" {
+		t.Fatalf("document catalog installed=%v version=%q", catalog.Installed, catalog.InstalledVersion.String)
+	}
+	if catalog.LocalVersion.String != "1.0.0" || catalog.LocalPath.String != "/modules/document" {
+		t.Fatalf("snapshot fields wiped: local=%q path=%q", catalog.LocalVersion.String, catalog.LocalPath.String)
 	}
 }
 

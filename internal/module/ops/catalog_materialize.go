@@ -153,6 +153,164 @@ func (o *Ops) persistSyncResult(ctx context.Context, row *modmeta.ModuleOperatio
 	return o.casSaveOperation(ctx, row, StatusRunning)
 }
 
+// ProjectCatalogInstalled rewrites only installation-related catalog columns
+// from meta_module (status=installed). Does not touch origin snapshot fields.
+func (o *Ops) ProjectCatalogInstalled(ctx context.Context) error {
+	if o == nil {
+		return errors.New("ops: nil host")
+	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	sess, err := o.session(ctx)
+	if err != nil {
+		return err
+	}
+
+	var installed []pkgmeta.Module
+	if err := sess.WithContext(ctx).Model(&pkgmeta.Module{}).
+		Where("status = ?", pkgmeta.Installed).
+		Find(&installed).Error; err != nil {
+		return err
+	}
+	installedByName := make(map[string]*pkgmeta.Module, len(installed))
+	for i := range installed {
+		name := strings.TrimSpace(installed[i].Name)
+		if name == "" {
+			continue
+		}
+		installedByName[name] = &installed[i]
+	}
+
+	lifecycleTimes, err := loadCatalogLifecycleTimes(sess.WithContext(ctx), nil, false)
+	if err != nil {
+		return err
+	}
+
+	var catalogRows []modmeta.ModuleCatalog
+	if err := sess.WithContext(ctx).Model(&modmeta.ModuleCatalog{}).Find(&catalogRows).Error; err != nil {
+		return err
+	}
+
+	now := time.Now().UTC()
+	return sess.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		seen := make(map[string]struct{}, len(catalogRows))
+		for i := range catalogRows {
+			row := &catalogRows[i]
+			name := strings.TrimSpace(row.ModuleName)
+			if name == "" {
+				continue
+			}
+			seen[name] = struct{}{}
+			updates := projectInstalledColumnUpdates(row, installedByName[name], lifecycleTimes[name], now)
+			if err := tx.Model(&modmeta.ModuleCatalog{}).
+				Where("module_name = ?", name).
+				Updates(updates).Error; err != nil {
+				return err
+			}
+		}
+		for name, mod := range installedByName {
+			if _, ok := seen[name]; ok {
+				continue
+			}
+			newRow := minimalCatalogFromInstalled(name, mod, lifecycleTimes[name])
+			if err := tx.Create(&newRow).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
+// projectInstalledColumnUpdates builds a map so false/NULL installation fields are written.
+func projectInstalledColumnUpdates(row *modmeta.ModuleCatalog, mod *pkgmeta.Module, life catalogLifecycleTimes, now time.Time) map[string]any {
+	installed := mod != nil
+	installedV := ""
+	var lastAt *time.Time
+	demoLoaded := false
+	if installed {
+		installedV = strings.TrimSpace(mod.Version)
+		var createdAt *time.Time
+		if !mod.CreatedAt.IsZero() {
+			t := mod.CreatedAt.UTC()
+			createdAt = &t
+		}
+		lastAt = life.lastInstalledOrUpgradedAt(createdAt)
+		priorVer := ""
+		if row != nil && row.InstalledVersion.Valid {
+			priorVer = strings.TrimSpace(row.InstalledVersion.String)
+		}
+		hasDemo := row != nil && row.HasDemo
+		priorDemo := row != nil && row.DemoLoaded
+		switch {
+		case !hasDemo:
+			demoLoaded = false
+		case priorDemo && priorVer != "" && installedV != "" &&
+			normalizeVersion(priorVer) != normalizeVersion(installedV):
+			demoLoaded = false
+		default:
+			demoLoaded = priorDemo
+		}
+	}
+	localV, registryV := "", ""
+	if row != nil {
+		if row.LocalVersion.Valid {
+			localV = strings.TrimSpace(row.LocalVersion.String)
+		}
+		if row.RegistryVersion.Valid {
+			registryV = strings.TrimSpace(row.RegistryVersion.String)
+		}
+	}
+	defaultFetch := firstNonEmpty(localV, registryV)
+	updates := map[string]any{
+		"installed":                     installed,
+		"update_available":              installed && versionNewer(defaultFetch, installedV),
+		"demo_loaded":                   demoLoaded,
+		"last_installed_or_upgraded_at": lastAt,
+		"updated_at":                    now,
+	}
+	if installedV == "" {
+		updates["installed_version"] = nil
+	} else {
+		updates["installed_version"] = displayVersion(installedV)
+	}
+	return updates
+}
+
+func minimalCatalogFromInstalled(name string, mod *pkgmeta.Module, life catalogLifecycleTimes) modmeta.ModuleCatalog {
+	installedV := ""
+	var createdAt *time.Time
+	if mod != nil {
+		installedV = strings.TrimSpace(mod.Version)
+		if !mod.CreatedAt.IsZero() {
+			t := mod.CreatedAt.UTC()
+			createdAt = &t
+		}
+	}
+	row := modmeta.ModuleCatalog{
+		ModuleName:                name,
+		Available:                 true,
+		Installed:                 true,
+		InstalledVersion:          nullString(displayVersion(installedV)),
+		LastInstalledOrUpgradedAt: life.lastInstalledOrUpgradedAt(createdAt),
+		DemoLoaded:                false,
+	}
+	if mod != nil {
+		row.Summary = mod.Summary
+		row.Description = mod.Description
+		row.Category = mod.Category
+		row.Application = mod.ApplicationStr
+		row.Author = mod.Author
+		row.License = mod.License
+		row.DependsJson = mod.DependsStr
+		row.HasDemo = hasDemoPayload(mod.DemoStr)
+		if mod.Path != "" {
+			row.LocalPath = nullString(mod.Path)
+		}
+	}
+	return row
+}
+
 // MaterializeCatalog rewrites meta_module_catalog rows from source snapshots + installed modules.
 // Empty moduleNames means full rewrite of all known names.
 func (o *Ops) MaterializeCatalog(ctx context.Context, moduleNames []string) error {
