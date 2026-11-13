@@ -293,6 +293,7 @@ test('setupApp > revalidates terminology when document becomes visible', async (
       get: () => 'hidden',
     });
     for (const fn of listeners.visibilitychange || []) fn();
+    for (const fn of listeners.pageshow || []) fn();
     await Promise.resolve();
     expect(revalidate.calls.length).toBe(0);
 

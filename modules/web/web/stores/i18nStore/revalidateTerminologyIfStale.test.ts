@@ -84,7 +84,7 @@ describe('useI18nStore.revalidateTerminologyIfStale / reloadTerminology', () => 
   test('reloadTerminology: discards stale completions after a newer request', async () => {
     const store = useI18nStore();
     store.localeCode = 'en';
-    let resolveSlow: ((v: Response) => void) | null = null;
+    let resolveSlow: (v: Response) => void = () => undefined;
     const slow = new Promise<Response>(resolve => {
       resolveSlow = resolve;
     });
@@ -104,7 +104,7 @@ describe('useI18nStore.revalidateTerminologyIfStale / reloadTerminology', () => 
     const first = store.reloadTerminology('en');
     const second = await store.reloadTerminology('en');
     expect(second?.hash).toBe('fast');
-    resolveSlow?.(
+    resolveSlow(
       jsonResponse({
         lang: 'en_US',
         locale: 'en',
@@ -120,5 +120,90 @@ describe('useI18nStore.revalidateTerminologyIfStale / reloadTerminology', () => 
   test('reloadTerminology: returns null for unsupported locale', async () => {
     const store = useI18nStore();
     expect(await store.reloadTerminology('nope-XX')).toBeNull();
+  });
+
+  test('revalidateTerminologyIfStale: falls back to currentLocale when localeCode empty', async () => {
+    const store = useI18nStore();
+    store.isInitialized = true;
+    store.localeCode = null;
+    store.terminologyHashByLang = { en_US: 'old' };
+    globalThis.fetch = (async () =>
+      jsonResponse({
+        lang: 'en_US',
+        locale: 'en',
+        hash: 'from-current',
+        unchanged: true,
+        messages: null,
+      })) as typeof fetch;
+
+    const load = await store.revalidateTerminologyIfStale();
+    expect(load?.hash).toBe('from-current');
+    expect(store.terminologyHashByLang.en_US).toBe('from-current');
+  });
+
+  test('revalidateTerminologyIfStale: discards stale completions after a newer request', async () => {
+    const store = useI18nStore();
+    store.isInitialized = true;
+    store.localeCode = 'en';
+    store.terminologyHashByLang = { en_US: 'old' };
+    let resolveSlow: (v: Response) => void = () => undefined;
+    const slow = new Promise<Response>(resolve => {
+      resolveSlow = resolve;
+    });
+    let calls = 0;
+    globalThis.fetch = (async () => {
+      calls += 1;
+      if (calls === 1) return slow;
+      return jsonResponse({
+        lang: 'en_US',
+        locale: 'en',
+        hash: 'fast',
+        unchanged: true,
+        messages: null,
+      });
+    }) as typeof fetch;
+
+    const first = store.revalidateTerminologyIfStale();
+    const second = await store.revalidateTerminologyIfStale();
+    expect(second?.hash).toBe('fast');
+    resolveSlow(
+      jsonResponse({
+        lang: 'en_US',
+        locale: 'en',
+        hash: 'slow',
+        unchanged: false,
+        messages: { web: { scope: { B: 'b' } } },
+      }),
+    );
+    expect(await first).toBeNull();
+    expect(store.terminologyHashByLang.en_US).toBe('fast');
+  });
+
+  test('revalidateTerminologyIfStale: stale failure after newer request stays quiet', async () => {
+    const store = useI18nStore();
+    store.isInitialized = true;
+    store.localeCode = 'en';
+    let rejectSlow: (err: Error) => void = () => undefined;
+    const slow = new Promise<Response>((_resolve, reject) => {
+      rejectSlow = reject;
+    });
+    let calls = 0;
+    globalThis.fetch = (async () => {
+      calls += 1;
+      if (calls === 1) return slow;
+      return jsonResponse({
+        lang: 'en_US',
+        locale: 'en',
+        hash: 'ok',
+        unchanged: true,
+        messages: null,
+      });
+    }) as typeof fetch;
+
+    const first = store.revalidateTerminologyIfStale();
+    await store.revalidateTerminologyIfStale();
+    rejectSlow(new Error('offline-stale'));
+    expect(await first).toBeNull();
+    expect(store.terminologyHashByLang.en_US).toBe('ok');
   });
 });

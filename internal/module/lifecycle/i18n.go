@@ -48,9 +48,6 @@ func ReloadModuleTerminology(runtimeScope scope.Scope, moduleName string) (Termi
 		return out, xfmt.Errorf("resolve application for module %s: %w", moduleName, err)
 	}
 	application = strings.TrimSpace(application)
-	if application == "" {
-		application = moduleName
-	}
 
 	acc := &i18nimport.ImportStats{}
 	ctx := runtimeScope.Context()

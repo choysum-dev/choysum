@@ -370,6 +370,9 @@ export const useI18nStore = defineStore(
         }
         return load;
       } catch (error) {
+        if (generation !== terminologyCatalogGeneration) {
+          return null;
+        }
         console.warn('Failed to revalidate terminology from Gateway', error);
         return null;
       }

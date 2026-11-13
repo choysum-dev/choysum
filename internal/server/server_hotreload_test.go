@@ -1990,6 +1990,68 @@ func TestHandleWatchedFileChangeResolvedPoSkipsRestart(t *testing.T) {
 	}
 }
 
+func TestDispatchWatchTarget_nilReceiverAndNilHandle(t *testing.T) {
+	var nilSrv *GRPCWebServer
+	if err := nilSrv.dispatchWatchTarget(registeredWatchTarget{moduleName: "demo"}, "x.ts"); err == nil {
+		t.Fatal("expected nil receiver error")
+	}
+
+	runtimeScope := newRichServerTestScope(t)
+	srv := &GRPCWebServer{runtimeScope: runtimeScope}
+	prevUpgrade := hotreloadModuleUpgrade
+	var upgradeCalls int
+	hotreloadModuleUpgrade = func(_ *GRPCWebServer, _ context.Context, moduleName string) error {
+		upgradeCalls++
+		if moduleName != "demo" {
+			t.Fatalf("moduleName = %q", moduleName)
+		}
+		return nil
+	}
+	t.Cleanup(func() { hotreloadModuleUpgrade = prevUpgrade })
+
+	if err := srv.dispatchWatchTarget(registeredWatchTarget{
+		moduleName:  "demo",
+		serviceName: "demo",
+		handle:      nil,
+	}, filepath.Join("modules", "demo", "handler.ts")); err != nil {
+		t.Fatalf("dispatchWatchTarget: %v", err)
+	}
+	if upgradeCalls != 1 {
+		t.Fatalf("upgradeCalls = %d, want 1", upgradeCalls)
+	}
+}
+
+func TestHandleWatchedTerminologyReload_guardsAndDefaultLoader(t *testing.T) {
+	var nilSrv *GRPCWebServer
+	if err := nilSrv.handleWatchedTerminologyReload("demo", "zh_CN.po"); err == nil {
+		t.Fatal("expected nil receiver error")
+	}
+	if err := (&GRPCWebServer{}).handleWatchedTerminologyReload("demo", "zh_CN.po"); err == nil {
+		t.Fatal("expected nil runtimeScope error")
+	}
+
+	runtimeScope := newRichServerTestScope(t)
+	srv := &GRPCWebServer{runtimeScope: runtimeScope}
+	if err := srv.handleWatchedTerminologyReload("  ", "zh_CN.po"); err == nil {
+		t.Fatal("expected empty module name error")
+	}
+
+	prevReload := hotreloadTerminologyReload
+	hotreloadTerminologyReload = func(*GRPCWebServer, string) (lifecycle.TerminologyReloadStats, error) {
+		return lifecycle.TerminologyReloadStats{}, errors.New("boom")
+	}
+	t.Cleanup(func() { hotreloadTerminologyReload = prevReload })
+	if err := srv.handleWatchedTerminologyReload("demo", "zh_CN.po"); err == nil || !strings.Contains(err.Error(), "boom") {
+		t.Fatalf("error = %v, want boom", err)
+	}
+
+	// Exercise the package-default loader body without a full DB import.
+	hotreloadTerminologyReload = prevReload
+	if _, err := hotreloadTerminologyReload(srv, "  "); err == nil {
+		t.Fatal("expected default loader to reject empty module name")
+	}
+}
+
 func TestShouldIgnoreWatchPathIgnoresPotKeepsPo(t *testing.T) {
 	if !shouldIgnoreWatchPath(filepath.Join("modules", "auth", "i18n", "auth.pot")) {
 		t.Fatal("expected auth.pot ignored")

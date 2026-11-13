@@ -37,6 +37,23 @@ describe('dialogService', () => {
     expect(stack.value[0]?.mode).toBe('replace');
   });
 
+  test('replace restores opener focus from the cleared top entry', () => {
+    const opener = document.createElement('button');
+    document.body.appendChild(opener);
+    opener.focus();
+    openDialog({ component: StubA, mode: 'child' });
+
+    const other = document.createElement('button');
+    document.body.appendChild(other);
+    other.focus();
+    expect(document.activeElement).toBe(other);
+
+    openDialog({ component: StubB, mode: 'replace' });
+    expect(document.activeElement).toBe(opener);
+    opener.remove();
+    other.remove();
+  });
+
   test('interrupt clears stack, runs handlers, then opens', () => {
     const stack = useDialogStack();
     let calls = 0;

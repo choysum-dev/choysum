@@ -63,7 +63,9 @@ export function openDialog(opts: DialogOpenOptions): string {
   const mode: DialogMode = opts.mode || 'child';
   if (mode === 'replace' || mode === 'interrupt') {
     if (mode === 'interrupt') runInterruptHandlers();
+    const top = stack.value[stack.value.length - 1];
     setStack([]);
+    restoreOpener(top?.opener);
   }
   const key = nextKey();
   const opener =

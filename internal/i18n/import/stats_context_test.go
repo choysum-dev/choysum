@@ -52,3 +52,13 @@ func TestPropagateStatsAccumulator_copiesSink(t *testing.T) {
 		t.Fatal("no sink should return dst")
 	}
 }
+
+func TestContextWithStatsAccumulator_nilContextUsesBackground(t *testing.T) {
+	t.Parallel()
+	acc := &ImportStats{}
+	ctx := ContextWithStatsAccumulator(nil, acc)
+	AccumulateImportStats(ctx, &ImportStats{Upserted: 1})
+	if acc.Upserted != 1 {
+		t.Fatalf("Upserted = %d, want 1", acc.Upserted)
+	}
+}

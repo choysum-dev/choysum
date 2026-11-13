@@ -5,6 +5,7 @@ package lifecycle
 
 import (
 	"context"
+	"errors"
 	"io"
 	"log/slog"
 	"os"
@@ -12,10 +13,12 @@ import (
 	"testing"
 
 	"github.com/choysum-dev/choysum/internal/defaultscope"
+	"github.com/choysum-dev/choysum/internal/import/runner"
 	i18nmodels "github.com/choysum-dev/choysum/internal/i18n/models"
 	"github.com/choysum-dev/choysum/internal/i18n/store"
 	"github.com/choysum-dev/choysum/internal/testing/scopetest"
 	"github.com/choysum-dev/choysum/pkg/config"
+	importpkg "github.com/choysum-dev/choysum/pkg/import"
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
 )
@@ -391,5 +394,78 @@ func TestReloadModuleTerminology_requiresModuleName(t *testing.T) {
 	}
 	if _, err := ReloadModuleTerminology(nil, "demo"); err == nil {
 		t.Fatal("expected error for nil scope")
+	}
+}
+
+func TestReloadModuleTerminology_nilContextFallsBackToBackground(t *testing.T) {
+	t.Parallel()
+	modulesPath := t.TempDir()
+	moduleRoot := filepath.Join(modulesPath, "demo")
+	i18nDir := filepath.Join(moduleRoot, "i18n")
+	if err := os.MkdirAll(i18nDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	pkgJSON := `{
+  "name": "@choysum-dev/demo",
+  "choysum": { "moduleName": "demo", "application": "auth" }
+}`
+	if err := os.WriteFile(filepath.Join(moduleRoot, "package.json"), []byte(pkgJSON), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(i18nDir, "zh_CN.po"), []byte(`
+msgctxt "auth.model.User.fields"
+msgid "Night"
+msgstr "夜间"
+`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	base := newI18nTestScopeWithModulesPath(t, modulesPath)
+	rs := nilContextScope{Scope: base}
+	if _, err := ReloadModuleTerminology(rs, "demo"); err != nil {
+		t.Fatalf("ReloadModuleTerminology: %v", err)
+	}
+	// Stats may still accumulate via the WithContext child; the goal here is the
+	// nil Context() → background fallback path, not the upsert counter.
+}
+
+func TestReloadModuleTerminology_rejectsInvalidPackageJSON(t *testing.T) {
+	t.Parallel()
+	modulesPath := t.TempDir()
+	moduleRoot := filepath.Join(modulesPath, "demo")
+	if err := os.MkdirAll(moduleRoot, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(moduleRoot, "package.json"), []byte("{"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	rs := newI18nTestScopeWithModulesPath(t, modulesPath)
+	if _, err := ReloadModuleTerminology(rs, "demo"); err == nil {
+		t.Fatal("expected error for invalid package.json")
+	}
+}
+
+func TestReloadModuleTerminology_importError(t *testing.T) {
+	t.Cleanup(func() { importpkg.SetRun(runner.Run) })
+	importpkg.SetRun(func(_ context.Context, _ scope.Scope, _ importpkg.Spec) (importpkg.Report, error) {
+		return importpkg.Report{}, errors.New("forced terminology failure")
+	})
+
+	modulesPath := t.TempDir()
+	moduleRoot := filepath.Join(modulesPath, "demo")
+	if err := os.MkdirAll(moduleRoot, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	pkgJSON := `{
+  "name": "@choysum-dev/demo",
+  "choysum": { "moduleName": "demo", "application": "auth" }
+}`
+	if err := os.WriteFile(filepath.Join(moduleRoot, "package.json"), []byte(pkgJSON), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	rs := newI18nTestScopeWithModulesPath(t, modulesPath)
+	if _, err := ReloadModuleTerminology(rs, "demo"); err == nil {
+		t.Fatal("expected import error from forced Run failure")
 	}
 }
