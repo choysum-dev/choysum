@@ -5,6 +5,7 @@ package lifecycle
 
 import (
 	"context"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -50,11 +51,23 @@ func ReloadModuleTerminology(runtimeScope scope.Scope, moduleName string) (Termi
 	if modulesPath == "" {
 		return out, xfmt.Errorf("modules path is not configured")
 	}
-	moduleRoot := filepath.Join(modulesPath, moduleName)
-	if err := ensureModuleRootWithinModulesPath(modulesPath, moduleRoot); err != nil {
+	resolvedModulesPath, err := filepath.EvalSymlinks(modulesPath)
+	if err != nil {
+		return out, xfmt.Errorf("resolve modules path %q: %w", modulesPath, err)
+	}
+	moduleRoot := filepath.Join(resolvedModulesPath, moduleName)
+	if err := ensureModuleRootWithinModulesPath(resolvedModulesPath, moduleRoot); err != nil {
 		return out, err
 	}
-	application, err := policy.ReadModuleApplicationFromPackageJSON(modulesPath, moduleName)
+	if resolvedRoot, linkErr := filepath.EvalSymlinks(moduleRoot); linkErr == nil {
+		if err := ensureModuleRootWithinModulesPath(resolvedModulesPath, resolvedRoot); err != nil {
+			return out, err
+		}
+		moduleRoot = resolvedRoot
+	} else if !os.IsNotExist(linkErr) {
+		return out, xfmt.Errorf("resolve module path %q: %w", moduleRoot, linkErr)
+	}
+	application, err := policy.ReadModuleApplicationFromPackageJSON(resolvedModulesPath, moduleName)
 	if err != nil {
 		return out, xfmt.Errorf("resolve application for module %s: %w", moduleName, err)
 	}
@@ -73,7 +86,7 @@ func ReloadModuleTerminology(runtimeScope scope.Scope, moduleName string) (Termi
 		ApplicationStr: application,
 		Path:           moduleRoot,
 	}
-	if err := importModuleTerminology(scoped, mod, modulesPath); err != nil {
+	if err := importModuleTerminology(scoped, mod, resolvedModulesPath); err != nil {
 		return out, err
 	}
 	out.Upserted = acc.Upserted

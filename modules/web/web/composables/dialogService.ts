@@ -70,10 +70,12 @@ export function openDialog(opts: DialogOpenOptions): string {
     setStack([]);
   }
   const key = nextKey();
-  const active =
+  const activeEl =
     typeof document !== 'undefined' && document.activeElement instanceof HTMLElement
       ? document.activeElement
       : null;
+  // body is often focused when openDialog runs from a click before the trigger focuses.
+  const active = activeEl && activeEl !== document.body ? activeEl : null;
   const opener = carriedOpener ?? active;
   const entry: DialogEntry = {
     key,

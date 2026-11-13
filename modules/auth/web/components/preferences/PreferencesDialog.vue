@@ -52,7 +52,7 @@ SPDX-License-Identifier: Apache-2.0
             />
             <PreferenceThemeDraftApplier
               :theme="formData?.Theme"
-              :active="visible"
+              :active="visible && !saving"
               @apply="onThemeDraftApply"
             />
             <ChoyFieldGroup class="choy-preferences-dialog__form gap-4">
@@ -62,6 +62,7 @@ SPDX-License-Identifier: Apache-2.0
                   :store="userStore"
                   prop="Theme"
                   :clearable="false"
+                  :disabled="saving"
                   :select-props="{ 'data-testid': 'preferences-theme' }"
                 />
               </div>
@@ -149,9 +150,8 @@ const dialogRef = ref<HTMLElement | null>(null);
 let lastFocused: HTMLElement | null = null;
 /** Last Theme value applied to the shell from this dialog (avoids re-apply loops). */
 let lastAppliedTheme = '';
-/** Theme captured when the dialog opened; restored on cancel unless submit commits. */
+/** Target shell theme on dismiss: opening capture, or the last successfully saved mode. */
 let openedTheme = '';
-let themeCommitted = false;
 
 const visible = computed({
   get: () => props.modelValue,
@@ -264,7 +264,6 @@ async function openAndLoad() {
   // Capture shell theme before any await so early dismiss restores correctly.
   openedTheme = readPreferencesThemeMode();
   lastAppliedTheme = openedTheme;
-  themeCommitted = false;
 
   if (authStore.isAuthenticated) {
     try {
@@ -281,7 +280,7 @@ async function openAndLoad() {
 }
 
 function restoreOpeningThemeIfNeeded(): void {
-  if (themeCommitted) return;
+  // Always sync shell to openedTheme (open capture or last successful save).
   const mode = resolvePreferencesThemeMode(openedTheme);
   if (mode === lastAppliedTheme) return;
   lastAppliedTheme = mode;
@@ -353,14 +352,12 @@ async function onPreferencesSubmit(ctx: {
         const mode = resolvePreferencesThemeMode(theme);
         lastAppliedTheme = mode;
         applyPreferencesThemeMode(mode);
-        // Commit before language/token awaits so dismiss cannot restore the old theme.
-        themeCommitted = true;
+        // Remember the saved mode so dismiss after a later draft tweak restores it.
         openedTheme = mode;
       },
       refreshToken: () => authStore.refreshToken(true),
       afterLocaleChange: () => afterLocaleChange({ remount: softLocaleRemount }),
       onSuccess: () => {
-        themeCommitted = true;
         openedTheme = lastAppliedTheme;
         ChoyMessage.success(_t('Preferences updated'));
         visible.value = false;

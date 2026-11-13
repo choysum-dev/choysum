@@ -416,6 +416,20 @@ func TestEnsureModuleRootWithinModulesPath(t *testing.T) {
 	}
 }
 
+func TestReloadModuleTerminology_rejectsSymlinkEscapingModulesPath(t *testing.T) {
+	t.Parallel()
+	modulesPath := t.TempDir()
+	outside := t.TempDir()
+	moduleRoot := filepath.Join(modulesPath, "demo")
+	if err := os.Symlink(outside, moduleRoot); err != nil {
+		t.Skipf("symlink not available: %v", err)
+	}
+	rs := newI18nTestScopeWithModulesPath(t, modulesPath)
+	if _, err := ReloadModuleTerminology(rs, "demo"); err == nil {
+		t.Fatal("expected error for symlink escaping modules path")
+	}
+}
+
 func TestReloadModuleTerminology_requiresModulesPath(t *testing.T) {
 	t.Parallel()
 	rs := newI18nTestScopeWithModulesPath(t, "")

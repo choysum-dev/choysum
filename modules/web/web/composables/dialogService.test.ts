@@ -154,4 +154,16 @@ describe('dialogService', () => {
     opener.remove();
     other.remove();
   });
+
+  test('openDialog ignores body as opener', () => {
+    const stack = useDialogStack();
+    document.body.focus?.();
+    // Some environments cannot focus body; force the active element.
+    if (document.activeElement !== document.body) {
+      (document.body as HTMLElement).tabIndex = -1;
+      document.body.focus();
+    }
+    openDialog({ component: StubA });
+    expect(stack.value[0]?.opener).toBeNull();
+  });
 });
