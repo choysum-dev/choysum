@@ -237,12 +237,15 @@ export function encodeForDb(meta: ModelMetadata, input: SelectResult): SelectRes
     }
 
     if (fm?.type === 'ManyToManyRef' && fm.column) {
+      // Persist as a JSON array string (column type is JSON). Passing a raw JS
+      // array makes the SQL binder expand it as a row-value tuple and SQLite
+      // fails with "row value misused" on UPDATE.
       if (v == null) {
         out[k] = null;
       } else if (Array.isArray(v)) {
-        out[k] = v;
+        out[k] = JSON.stringify(v.map(x => String(x)));
       } else {
-        out[k] = [v];
+        out[k] = JSON.stringify([String(v)]);
       }
       continue;
     }

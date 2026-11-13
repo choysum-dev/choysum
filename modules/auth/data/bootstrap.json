@@ -220,6 +220,14 @@
           {
             "ref": "base.company_main"
           }
+        ],
+        "ActiveCompanyId": {
+          "ref": "base.company_main"
+        },
+        "EnabledCompanyIds": [
+          {
+            "ref": "base.company_main"
+          }
         ]
       }
     },

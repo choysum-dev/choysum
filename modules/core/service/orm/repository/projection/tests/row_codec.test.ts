@@ -38,7 +38,7 @@ test('repository row codec encodes relation, jsonobject, decimal and ignores int
   expect(encoded).toEqual({
     Owner: 'user_1',
     RemoteId: 'remote_1',
-    TagIds: ['tag_a'],
+    TagIds: '["tag_a"]',
     Payload: '{"ok":true}',
     Amount: { $bigdecimal: '12.35' },
     AmountScale: 2,
@@ -191,7 +191,7 @@ test('repository row codec handles passthrough inputs and explicit relation ref 
 
   expect(encoded.Owner).toBeNull();
   expect(encoded.RemoteId).toBe('remote-string');
-  expect(encoded.Tags).toEqual(['a', 2]);
+  expect(encoded.Tags).toBe('["a","2"]');
 });
 
 test('repository row codec decodes early-return and many2many array/null branches', () => {

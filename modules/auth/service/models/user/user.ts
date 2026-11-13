@@ -3,7 +3,7 @@
 
 import { Model, Field, Compute } from '@/core/service';
 import AttachmentOwnerMixin from '@/core/service/mixins/attachment_owner_model';
-import { getCurrentReq, getOrInitReqServiceState, memoizeInReqState } from '@/core/service/api/context';
+import { getCurrentReq, getOrInitReqServiceState, memoizeInReqState, withContext } from '@/core/service/api/context';
 import type { Insertable } from '@/core/service/api/input';
 import type { ConditionEnvelope, FieldRuleSpec, RecordRuleOp } from '@/core/service/api/authz';
 import { ChoysumError } from '@/core/service/error';
@@ -878,17 +878,22 @@ export default class User extends AttachmentOwnerMixin {
       }
 
       const enabled = validated.enabled;
+      // Write under the target (and allowed) company context so M2O/M2M Company
+      // links resolve; session scope may still be the previous single-company set.
+      const writeEnabled = uniqScopeIds([...validated.allowed, ...enabled, active]);
 
       // Self-service auth write: bypass RecordRule/FieldRule (still guarded by validation above).
       await withPermissionGraphBypass(async () => {
-        await this.UpdateById(userId, {
-          ActiveCompanyId: active,
-          EnabledCompanyIds: enabled,
-        } as Partial<Insertable<User>>);
+        await withContext({ activeCompanyId: active, enabledCompanyIds: writeEnabled }, async () => {
+          await this.UpdateById(userId, {
+            ActiveCompanyId: active,
+            EnabledCompanyIds: enabled,
+          } as Partial<Insertable<User>>);
+        });
       });
 
       const updated = await this.Browse(userId);
-      await updated.load(['CompanyIds', 'EnabledCompanyIds']);
+      await updated.load(['CompanyIds', 'EnabledCompanyIds', 'ActiveCompanyId']);
       const metadata = await this.extractUserMetadata(updated);
 
       audit.emitOnce({
@@ -921,9 +926,15 @@ export default class User extends AttachmentOwnerMixin {
       if (error instanceof ChoysumError && error.domain === 'auth') {
         throw error;
       }
+      const cause =
+        error instanceof Error
+          ? error.message
+          : error && typeof error === 'object' && 'message' in error && typeof (error as { message?: unknown }).message === 'string'
+            ? String((error as { message: string }).message)
+            : String(error);
       throw wrapAuthError(error, {
         code: AuthErrCode.UNKNOWN,
-        message: _t('Switch company scope failed', { scope: 'service/models/user' }),
+        message: `${_t('Switch company scope failed', { scope: 'service/models/user' })}: ${cause || 'unknown'}`,
       });
     }
   }
