@@ -10,6 +10,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/choysum-dev/choysum/internal/defaultscope"
@@ -435,6 +436,44 @@ func TestReloadModuleTerminology_requiresModulesPath(t *testing.T) {
 	rs := newI18nTestScopeWithModulesPath(t, "")
 	if _, err := ReloadModuleTerminology(rs, "demo"); err == nil {
 		t.Fatal("expected error when modules path is empty")
+	}
+}
+
+func TestReloadModuleTerminology_resolvePathErrors(t *testing.T) {
+	t.Cleanup(func() { evalSymlinks = filepath.EvalSymlinks })
+
+	modulesPath := t.TempDir()
+	rs := newI18nTestScopeWithModulesPath(t, modulesPath)
+
+	evalSymlinks = func(path string) (string, error) {
+		return "", errors.New("forced modules path resolve failure")
+	}
+	if _, err := ReloadModuleTerminology(rs, "demo"); err == nil || !strings.Contains(err.Error(), "resolve modules path") {
+		t.Fatalf("modules path resolve error = %v", err)
+	}
+
+	var calls int
+	evalSymlinks = func(path string) (string, error) {
+		calls++
+		if calls == 1 {
+			return path, nil
+		}
+		return "", errors.New("forced module root resolve failure")
+	}
+	if _, err := ReloadModuleTerminology(rs, "demo"); err == nil || !strings.Contains(err.Error(), "resolve module path") {
+		t.Fatalf("module root resolve error = %v", err)
+	}
+
+	calls = 0
+	evalSymlinks = func(path string) (string, error) {
+		calls++
+		if calls == 1 {
+			return path, nil
+		}
+		return "", os.ErrNotExist
+	}
+	if _, err := ReloadModuleTerminology(rs, "demo"); err == nil || !strings.Contains(err.Error(), "not found under modules path") {
+		t.Fatalf("missing module error = %v", err)
 	}
 }
 

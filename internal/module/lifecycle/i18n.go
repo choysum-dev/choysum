@@ -51,7 +51,7 @@ func ReloadModuleTerminology(runtimeScope scope.Scope, moduleName string) (Termi
 	if modulesPath == "" {
 		return out, xfmt.Errorf("modules path is not configured")
 	}
-	resolvedModulesPath, err := filepath.EvalSymlinks(modulesPath)
+	resolvedModulesPath, err := evalSymlinks(modulesPath)
 	if err != nil {
 		return out, xfmt.Errorf("resolve modules path %q: %w", modulesPath, err)
 	}
@@ -59,12 +59,14 @@ func ReloadModuleTerminology(runtimeScope scope.Scope, moduleName string) (Termi
 	if err := ensureModuleRootWithinModulesPath(resolvedModulesPath, moduleRoot); err != nil {
 		return out, err
 	}
-	if resolvedRoot, linkErr := filepath.EvalSymlinks(moduleRoot); linkErr == nil {
+	if resolvedRoot, linkErr := evalSymlinks(moduleRoot); linkErr == nil {
 		if err := ensureModuleRootWithinModulesPath(resolvedModulesPath, resolvedRoot); err != nil {
 			return out, err
 		}
 		moduleRoot = resolvedRoot
-	} else if !os.IsNotExist(linkErr) {
+	} else if os.IsNotExist(linkErr) {
+		return out, xfmt.Errorf("module %q not found under modules path", moduleName)
+	} else {
 		return out, xfmt.Errorf("resolve module path %q: %w", moduleRoot, linkErr)
 	}
 	application, err := policy.ReadModuleApplicationFromPackageJSON(resolvedModulesPath, moduleName)
@@ -96,6 +98,9 @@ func ReloadModuleTerminology(runtimeScope scope.Scope, moduleName string) (Termi
 	out.PurgedRetired = acc.PurgedRetired
 	return out, nil
 }
+
+// evalSymlinks resolves symlinks for ReloadModuleTerminology path checks (tests may stub).
+var evalSymlinks = filepath.EvalSymlinks
 
 // ensureModuleRootWithinModulesPath rejects roots that escape modulesPath via Rel.
 func ensureModuleRootWithinModulesPath(modulesPath, moduleRoot string) error {
