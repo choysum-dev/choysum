@@ -172,3 +172,79 @@ func TestMaterializeCatalog_UpdateAvailableUsesRegistryWhenNoLocal(t *testing.T)
 		t.Fatal("RegistryNewerThanLocal should be false without local")
 	}
 }
+
+func TestProjectCatalogInstalled_HealsStaleFlag(t *testing.T) {
+	t.Parallel()
+	db := newOpsTestDB(t)
+	o := &Ops{Scope: newOpsTestScope(t, db)}
+
+	if err := db.Create(&pkgmeta.Module{
+		Name: "document", Version: "v1.2.3", Status: pkgmeta.Installed, ApplicationStr: "document",
+	}).Error; err != nil {
+		t.Fatalf("seed module: %v", err)
+	}
+	if err := db.Create(&modmeta.ModuleCatalog{
+		ModuleName:   "document",
+		Available:    true,
+		Installed:    false,
+		LocalVersion: nullString("1.2.3"),
+		LocalPath:    nullString("/modules/document"),
+		HasDemo:      true,
+		DemoLoaded:   true,
+	}).Error; err != nil {
+		t.Fatalf("seed catalog: %v", err)
+	}
+	// Uninstalled catalog row should be cleared.
+	if err := db.Create(&modmeta.ModuleCatalog{
+		ModuleName:       "partner",
+		Available:        true,
+		Installed:        true,
+		InstalledVersion: nullString("9.9.9"),
+		LocalVersion:     nullString("9.9.9"),
+	}).Error; err != nil {
+		t.Fatalf("seed partner catalog: %v", err)
+	}
+
+	if err := o.ProjectCatalogInstalled(context.Background()); err != nil {
+		t.Fatalf("ProjectCatalogInstalled: %v", err)
+	}
+
+	var doc modmeta.ModuleCatalog
+	if err := db.Where("module_name = ?", "document").Take(&doc).Error; err != nil {
+		t.Fatalf("load document: %v", err)
+	}
+	if !doc.Installed || doc.InstalledVersion.String != "1.2.3" {
+		t.Fatalf("document installed=%v version=%q", doc.Installed, doc.InstalledVersion.String)
+	}
+	if doc.LocalVersion.String != "1.2.3" || doc.LocalPath.String != "/modules/document" {
+		t.Fatalf("snapshot fields changed: local=%q path=%q", doc.LocalVersion.String, doc.LocalPath.String)
+	}
+	if !doc.DemoLoaded {
+		t.Fatal("expected DemoLoaded preserved when version unchanged and HasDemo")
+	}
+
+	var partner modmeta.ModuleCatalog
+	if err := db.Where("module_name = ?", "partner").Take(&partner).Error; err != nil {
+		t.Fatalf("load partner: %v", err)
+	}
+	if partner.Installed || partner.InstalledVersion.Valid {
+		t.Fatalf("partner installed=%v version=%q want cleared", partner.Installed, partner.InstalledVersion.String)
+	}
+
+	// Installed module without catalog row gets a minimal row.
+	if err := db.Create(&pkgmeta.Module{
+		Name: "task", Version: "v0.1.0", Status: pkgmeta.Installed, ApplicationStr: "task", Summary: "Tasks",
+	}).Error; err != nil {
+		t.Fatalf("seed task module: %v", err)
+	}
+	if err := o.ProjectCatalogInstalled(context.Background()); err != nil {
+		t.Fatalf("ProjectCatalogInstalled (task): %v", err)
+	}
+	var task modmeta.ModuleCatalog
+	if err := db.Where("module_name = ?", "task").Take(&task).Error; err != nil {
+		t.Fatalf("load task catalog: %v", err)
+	}
+	if !task.Installed || task.InstalledVersion.String != "0.1.0" || task.Summary != "Tasks" {
+		t.Fatalf("task catalog installed=%v version=%q summary=%q", task.Installed, task.InstalledVersion.String, task.Summary)
+	}
+}
