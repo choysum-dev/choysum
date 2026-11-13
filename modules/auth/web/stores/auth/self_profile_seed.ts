@@ -46,9 +46,6 @@ export async function resolveSelfProfileSeedLanguageId(opts: {
   }
   const session = resolveSessionLanguageCode(null, opts.sessionTerminologyLang);
   const code = String(session.code || '').trim();
-  if (!code) {
-    return { seedLanguageId: '', languageFromSession: session.fromSession };
-  }
   try {
     const id = String((await opts.searchLanguageByCode(code)) || '').trim();
     return { seedLanguageId: id, languageFromSession: session.fromSession };

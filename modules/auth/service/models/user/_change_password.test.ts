@@ -21,6 +21,21 @@ test('normalizeChangePasswordInput: enforces plaintext min length and difference
   ).toEqual({ currentPassword: 'oldpass', newPassword: 'newpass' });
 });
 
+test('normalizeChangePasswordInput: rejects malformed $CH$ client hashes', () => {
+  expect(() =>
+    normalizeChangePasswordInput({ CurrentPassword: 'oldpass', NewPassword: '$CH$a' }),
+  ).toThrow(/client hash/);
+  const ok =
+    '$CH$' +
+    '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
+  expect(
+    normalizeChangePasswordInput({
+      CurrentPassword: 'oldpass',
+      NewPassword: ok,
+    }),
+  ).toEqual({ currentPassword: 'oldpass', newPassword: ok });
+});
+
 test('buildChangedPasswordHash: rejects wrong current password', () => {
   const passwordHash = hashPassword('correct');
   expect(() =>
@@ -30,6 +45,25 @@ test('buildChangedPasswordHash: rejects wrong current password', () => {
       passwordHash,
     }),
   ).toThrow(/incorrect/);
+});
+
+test('buildChangedPasswordHash: rejects empty stored hash and marker-equivalent new password', () => {
+  expect(() =>
+    buildChangedPasswordHash({
+      currentPassword: 'correct',
+      newPassword: 'newpass',
+      passwordHash: '',
+    }),
+  ).toThrow(/incorrect/);
+
+  const passwordHash = hashPassword('correct');
+  expect(() =>
+    buildChangedPasswordHash({
+      currentPassword: 'correct',
+      newPassword: 'correct',
+      passwordHash,
+    }),
+  ).toThrow(/differ/);
 });
 
 test('buildChangedPasswordHash: returns a new hash for a valid current password', () => {

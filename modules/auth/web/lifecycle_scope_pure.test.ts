@@ -75,14 +75,15 @@ function validateSwitchCompanyScopeInput(user: any, activeCompanyId: string, ena
 
   enabled = uniqScopeIds(enabled);
 
+  // Match production (_lifecycle_scope.ts): authorize active before enabled loop.
+  if (!allowed.includes(active)) {
+    return { ok: false, code: 'active_outside_allowed', active, enabled, allowed };
+  }
+
   for (const cid of enabled) {
     if (!allowed.includes(cid)) {
       return { ok: false, code: 'enabled_unauthorized', active, enabled, allowed, companyId: cid };
     }
-  }
-
-  if (!allowed.includes(active)) {
-    return { ok: false, code: 'active_outside_allowed', active, enabled, allowed };
   }
 
   if (!enabled.includes(active)) {
@@ -170,10 +171,10 @@ test('validateSwitchCompanyScopeInput: rejects enabled company outside allowed s
   if (!result.ok) expect(result.code).toBe('enabled_unauthorized');
 });
 
-test('validateSwitchCompanyScopeInput: rejects active outside allowed scope (caught by enabled check when enabled defaults to active)', () => {
+test('validateSwitchCompanyScopeInput: rejects active outside allowed scope', () => {
   const result = validateSwitchCompanyScopeInput(baseUser, 'C99', undefined);
   expect(result.ok).toBe(false);
-  if (!result.ok) expect(result.code).toBe('enabled_unauthorized');
+  if (!result.ok) expect(result.code).toBe('active_outside_allowed');
 });
 
 test('validateSwitchCompanyScopeInput: accepts valid active and enabled', () => {

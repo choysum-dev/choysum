@@ -106,24 +106,15 @@ export function validateChangePasswordForm(
     sameAsCurrent: string;
   },
 ): string | null {
-  const t = (key: string) => {
-    switch (key) {
-      case 'Current password is required':
-        return messages.currentRequired;
-      case 'New password is required':
-        return messages.newRequired;
-      case 'Confirm new password is required':
-        return messages.confirmRequired;
-      case 'Password must be at least 6 characters':
-        return messages.tooShort;
-      case 'Passwords do not match':
-        return messages.mismatch;
-      case 'New password must differ from the current password':
-        return messages.sameAsCurrent;
-      default:
-        return key;
-    }
+  const mapped: Record<string, string> = {
+    'Current password is required': messages.currentRequired,
+    'New password is required': messages.newRequired,
+    'Confirm new password is required': messages.confirmRequired,
+    'Password must be at least 6 characters': messages.tooShort,
+    'Passwords do not match': messages.mismatch,
+    'New password must differ from the current password': messages.sameAsCurrent,
   };
+  const t = (key: string) => mapped[key]!;
   return (
     changePasswordCurrentError(form.currentPassword, t) ||
     changePasswordNewError(form.newPassword, form.currentPassword, t) ||

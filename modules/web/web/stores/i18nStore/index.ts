@@ -17,6 +17,7 @@ import { revalidateTerminologyCatalog } from './terminologyRevalidate';
 import { shouldNoopSetUiKey } from './setUiKeyGuard';
 import { createStoreByModel } from '@/web/web/stores/registry';
 import {
+  overlayFromActiveLanguageRow,
   resolveFormatConfig,
   type LanguageFormatOverlay,
 } from './languageFormat';
@@ -68,6 +69,10 @@ export const useI18nStore = defineStore(
 
     // Bumped by reload/revalidate so a slower older response cannot overwrite newer state.
     let terminologyCatalogGeneration = 0;
+    // Bumped by setUiKey so a slower older switch cannot overwrite the latest locale.
+    let setUiKeyGeneration = 0;
+    // Non-null while a setUiKey that will change localeCode is in flight.
+    let pendingUiKey: string | null = null;
 
     // Language switcher codes (Language.IsActive ∩ format catalog; fallback DEFAULT_ACTIVE_UI_KEYS).
     const activeUiKeys = ref<string[]>([...DEFAULT_ACTIVE_UI_KEYS]);
@@ -122,16 +127,20 @@ export const useI18nStore = defineStore(
         return false;
       }
 
+      // Skip only when already on this locale and no other switch is pending.
       if (
         shouldNoopSetUiKey({
           locale,
           currentLocaleCode: localeCode.value,
           isInitialized: isInitialized.value,
-        })
+        }) &&
+        (pendingUiKey == null || pendingUiKey === locale)
       ) {
         return true;
       }
 
+      const generation = ++setUiKeyGeneration;
+      pendingUiKey = locale;
       isLoading.value = true;
 
       try {
@@ -151,6 +160,9 @@ export const useI18nStore = defineStore(
         const prevHash = terminologyHashByLang.value[lang] || '';
         try {
           const res = await fetchWebTranslations(lang, prevHash || undefined);
+          if (generation !== setUiKeyGeneration) {
+            return false;
+          }
           if (res.hash) {
             terminologyHashByLang.value = {
               ...terminologyHashByLang.value,
@@ -165,6 +177,9 @@ export const useI18nStore = defineStore(
             messages: res.unchanged ? null : res.messages,
           };
         } catch (error) {
+          if (generation !== setUiKeyGeneration) {
+            return false;
+          }
           console.warn('Failed to load terminology from Gateway; falling back to msgid', error);
           lastTerminologyLoad.value = {
             lang,
@@ -174,6 +189,10 @@ export const useI18nStore = defineStore(
             messages: null,
             gatewayError: true,
           };
+        }
+
+        if (generation !== setUiKeyGeneration) {
+          return false;
         }
 
         // Update the active locale.
@@ -186,6 +205,10 @@ export const useI18nStore = defineStore(
           } catch {
             // Best-effort; catalog fallbacks remain.
           }
+        }
+
+        if (generation !== setUiKeyGeneration) {
+          return false;
         }
 
         // Configure the dayjs locale.
@@ -202,7 +225,10 @@ export const useI18nStore = defineStore(
         console.error('Failed to set locale:', error);
         return false;
       } finally {
-        isLoading.value = false;
+        if (generation === setUiKeyGeneration) {
+          pendingUiKey = null;
+          isLoading.value = false;
+        }
       }
     }
 
@@ -383,26 +409,7 @@ export const useI18nStore = defineStore(
           .map((row: any) => {
             const posix = String(row?.Code || row?.code || '').trim();
             if (posix) {
-              const thousand = row.ThousandSeparator ?? row.thousandSeparator;
-              const decimal = row.DecimalSeparator ?? row.decimalSeparator;
-              const grouping = row.Grouping ?? row.grouping;
-              const dateFormat = row.DateFormat ?? row.dateFormat;
-              const timeFormat = row.TimeFormat ?? row.timeFormat;
-              const firstDay = row.FirstDayOfWeek ?? row.firstDayOfWeek;
-              const symbolPos = row.CurrencySymbolPosition ?? row.currencySymbolPosition;
-              const symbolSpacing = row.CurrencySymbolSpacing ?? row.currencySymbolSpacing;
-              const personNameFormat = row.PersonNameFormat ?? row.personNameFormat;
-              formats[posix] = {
-                DecimalSeparator: decimal != null ? String(decimal) : undefined,
-                ThousandSeparator: thousand != null ? String(thousand) : undefined,
-                Grouping: grouping != null ? String(grouping) : undefined,
-                DateFormat: dateFormat != null ? String(dateFormat) : undefined,
-                TimeFormat: timeFormat != null ? String(timeFormat) : undefined,
-                FirstDayOfWeek: firstDay != null ? Number(firstDay) : undefined,
-                CurrencySymbolPosition: symbolPos === 'after' ? 'after' : symbolPos === 'before' ? 'before' : undefined,
-                CurrencySymbolSpacing: symbolSpacing != null ? Boolean(symbolSpacing) : undefined,
-                PersonNameFormat: personNameFormat != null ? String(personNameFormat) : undefined,
-              };
+              formats[posix] = overlayFromActiveLanguageRow(row);
             }
             return langToUiKey(posix);
           })
@@ -468,6 +475,7 @@ export const useI18nStore = defineStore(
       terminologyHashByLang,
       lastTerminologyLoad,
       activeUiKeys,
+      languageFormatByCode,
       // Locale support information.
       supportedLocales: Object.keys(SUPPORTED_LOCALES) as SupportedLocale[],
 

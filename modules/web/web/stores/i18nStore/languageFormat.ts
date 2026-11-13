@@ -18,6 +18,33 @@ export type LanguageFormatOverlay = {
   PersonNameFormat?: string;
 };
 
+/**
+ * Build a format overlay from a GetActiveLanguages row (PascalCase or camelCase keys).
+ */
+export function overlayFromActiveLanguageRow(row: Record<string, unknown> | null | undefined): LanguageFormatOverlay {
+  const r = row || {};
+  const thousand = r.ThousandSeparator ?? r.thousandSeparator;
+  const decimal = r.DecimalSeparator ?? r.decimalSeparator;
+  const grouping = r.Grouping ?? r.grouping;
+  const dateFormat = r.DateFormat ?? r.dateFormat;
+  const timeFormat = r.TimeFormat ?? r.timeFormat;
+  const firstDay = r.FirstDayOfWeek ?? r.firstDayOfWeek;
+  const symbolPos = r.CurrencySymbolPosition ?? r.currencySymbolPosition;
+  const symbolSpacing = r.CurrencySymbolSpacing ?? r.currencySymbolSpacing;
+  const personNameFormat = r.PersonNameFormat ?? r.personNameFormat;
+  return {
+    DecimalSeparator: decimal != null ? String(decimal) : undefined,
+    ThousandSeparator: thousand != null ? String(thousand) : undefined,
+    Grouping: grouping != null ? String(grouping) : undefined,
+    DateFormat: dateFormat != null ? String(dateFormat) : undefined,
+    TimeFormat: timeFormat != null ? String(timeFormat) : undefined,
+    FirstDayOfWeek: firstDay != null ? Number(firstDay) : undefined,
+    CurrencySymbolPosition: symbolPos === 'after' ? 'after' : symbolPos === 'before' ? 'before' : undefined,
+    CurrencySymbolSpacing: symbolSpacing != null ? Boolean(symbolSpacing) : undefined,
+    PersonNameFormat: personNameFormat != null ? String(personNameFormat) : undefined,
+  };
+}
+
 export function parseGrouping(raw: unknown): number[] {
   if (Array.isArray(raw)) {
     return raw.map(n => Number(n)).filter(n => Number.isFinite(n) && n >= 0);

@@ -686,7 +686,7 @@ msgctxt "service/models/user"
 msgid "%s requires a payload"
 msgstr "%s 需要请求体"
 
-#: service/models/user/user.ts:958
+#: service/models/user/user.ts:969
 msgctxt "service/models/user"
 msgid "Account is disabled"
 msgstr "账户已禁用"
@@ -711,22 +711,22 @@ msgctxt "service/models/user"
 msgid "CompleteInitialSetup requires an Organization object"
 msgstr "CompleteInitialSetup 需要 Organization 对象"
 
-#: service/models/user/_change_password.ts:58
+#: service/models/user/_change_password.ts:66
 msgctxt "service/models/user"
 msgid "Current password is incorrect"
 msgstr "当前密码不正确"
 
-#: service/models/user/_change_password.ts:22
+#: service/models/user/_change_password.ts:23
 msgctxt "service/models/user"
 msgid "Current password is required"
 msgstr "请输入当前密码"
 
-#: service/models/user/user.ts:976
+#: service/models/user/user.ts:987
 msgctxt "service/models/user"
 msgid "Failed to change password"
 msgstr "更改密码失败"
 
-#: service/models/user/user.ts:1284
+#: service/models/user/user.ts:1295
 msgctxt "service/models/user"
 msgid "Failed to compute field rule spec"
 msgstr "计算字段规则规格失败"
@@ -736,7 +736,7 @@ msgctxt "service/models/user"
 msgid "Invalid IANA timezone: %s"
 msgstr "无效的 IANA 时区：%s"
 
-#: service/models/user/user.ts:1265
+#: service/models/user/user.ts:1276
 msgctxt "service/models/user"
 msgid "Invalid model full name; expected \"<app>.<Model>\""
 msgstr "无效的模型全名；期望 \"<app>.<Model>\""
@@ -766,47 +766,52 @@ msgctxt "service/models/user"
 msgid "Login requires username and password"
 msgstr "登录需要用户名和密码"
 
-#: service/models/user/user.ts:1015
+#: service/models/user/user.ts:1026
 msgctxt "service/models/user"
 msgid "Logout failed"
 msgstr "退出失败"
 
-#: service/models/user/user.ts:996
+#: service/models/user/user.ts:1007
 msgctxt "service/models/user"
 msgid "Logout requires a boolean AllDevices"
 msgstr "登出需要布尔型 AllDevices"
 
-#: service/models/user/user.ts:1003
+#: service/models/user/user.ts:1014
 msgctxt "service/models/user"
 msgid "Logout requires a string DeviceInfo"
 msgstr "登出需要字符串 DeviceInfo"
 
-#: service/models/user/user.ts:989
+#: service/models/user/user.ts:1000
 msgctxt "service/models/user"
 msgid "Logout requires a token string"
 msgstr "登出需要令牌字符串"
 
-#: service/models/user/user.ts:1249
+#: service/models/user/user.ts:1260
 msgctxt "service/models/user"
 msgid "Missing identity information (userId)"
 msgstr "缺少身份信息（userId）"
 
-#: service/models/user/user.ts:1257
+#: service/models/user/user.ts:1268
 msgctxt "service/models/user"
 msgid "Missing model name (model)"
 msgstr "缺少模型名称（model）"
 
-#: service/models/user/_change_password.ts:28
+#: service/models/user/_change_password.ts:37
+msgctxt "service/models/user"
+msgid "New password is not a valid client hash"
+msgstr "新密码不是有效的客户端哈希"
+
+#: service/models/user/_change_password.ts:29
 msgctxt "service/models/user"
 msgid "New password is required"
 msgstr "请输入新密码"
 
-#: service/models/user/_change_password.ts:41
+#: service/models/user/_change_password.ts:49 service/models/user/_change_password.ts:73
 msgctxt "service/models/user"
 msgid "New password must differ from the current password"
 msgstr "新密码不能与当前密码相同"
 
-#: service/models/user/_change_password.ts:35
+#: service/models/user/_change_password.ts:43
 msgctxt "service/models/user"
 msgid "Password must be at least 6 characters"
 msgstr "密码至少 6 个字符"
@@ -826,7 +831,7 @@ msgctxt "service/models/user"
 msgid "Register requires a password string"
 msgstr "注册需要密码字符串"
 
-#: service/models/user/user.ts:926
+#: service/models/user/user.ts:937
 msgctxt "service/models/user"
 msgid "Switch company scope failed"
 msgstr "切换公司范围失败"
@@ -841,12 +846,12 @@ msgctxt "service/models/user"
 msgid "Token refresh failed"
 msgstr "令牌刷新失败"
 
-#: service/models/user/user.ts:793 service/models/user/user.ts:941
+#: service/models/user/user.ts:793 service/models/user/user.ts:952
 msgctxt "service/models/user"
 msgid "User is not logged in"
 msgstr "用户未登录"
 
-#: service/models/user/user.ts:952
+#: service/models/user/user.ts:963
 msgctxt "service/models/user"
 msgid "User not found"
 msgstr "用户不存在"
@@ -1166,12 +1171,12 @@ msgctxt "web/dialogs/preferences/PreferencesDialog"
 msgid "Appearance"
 msgstr "外观"
 
-#: web/dialogs/preferences/PreferencesDialog.vue:10 web/dialogs/preferences/PreferencesDialog.vue:83
+#: web/dialogs/preferences/PreferencesDialog.vue:10 web/dialogs/preferences/PreferencesDialog.vue:84
 msgctxt "web/dialogs/preferences/PreferencesDialog"
 msgid "Cancel"
 msgstr "取消"
 
-#: web/dialogs/preferences/PreferencesDialog.vue:198
+#: web/dialogs/preferences/PreferencesDialog.vue:204
 msgctxt "web/dialogs/preferences/PreferencesDialog"
 msgid "Cannot update preferences: missing user id"
 msgstr "无法更新偏好设置：缺少用户 ID"
@@ -1191,7 +1196,7 @@ msgctxt "web/dialogs/preferences/PreferencesDialog"
 msgid "Display timezone; empty uses browser timezone on first login."
 msgstr "显示时区；为空时首次登录会使用浏览器时区。"
 
-#: web/dialogs/preferences/PreferencesDialog.vue:258
+#: web/dialogs/preferences/PreferencesDialog.vue:264
 msgctxt "web/dialogs/preferences/PreferencesDialog"
 msgid "Failed to update preferences"
 msgstr "更新偏好设置失败"
@@ -1236,12 +1241,12 @@ msgctxt "web/dialogs/preferences/PreferencesDialog"
 msgid "Preferences"
 msgstr "偏好设置"
 
-#: web/dialogs/preferences/PreferencesDialog.vue:252
+#: web/dialogs/preferences/PreferencesDialog.vue:258
 msgctxt "web/dialogs/preferences/PreferencesDialog"
 msgid "Preferences updated"
 msgstr "偏好设置已更新"
 
-#: web/dialogs/preferences/PreferencesDialog.vue:11 web/dialogs/preferences/PreferencesDialog.vue:84
+#: web/dialogs/preferences/PreferencesDialog.vue:11 web/dialogs/preferences/PreferencesDialog.vue:86
 msgctxt "web/dialogs/preferences/PreferencesDialog"
 msgid "Save"
 msgstr "保存"

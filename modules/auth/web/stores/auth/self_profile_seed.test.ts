@@ -96,3 +96,10 @@ test('resolveSelfProfileSeedTimezone: empty browser yields empty seed', () => {
     timezoneFromBrowser: false,
   });
 });
+
+test('resolveSelfProfileSeedTimezone: array Timezone is treated as empty', () => {
+  expect(resolveSelfProfileSeedTimezone(['UTC'] as unknown as string, () => 'Asia/Tokyo')).toEqual({
+    seedTimezone: 'Asia/Tokyo',
+    timezoneFromBrowser: true,
+  });
+});

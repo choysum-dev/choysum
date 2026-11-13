@@ -5,8 +5,8 @@ import { defineComponent, h, provide, ref } from 'vue';
 import { mount, flushPromises } from '@choysum/test-utils';
 import { SelfProfileDraftSeeder, seedSelfProfileDraft } from './SelfProfileDraftSeeder';
 
-test('seedSelfProfileDraft: fills empty LanguageId, Timezone, and Theme', () => {
-  const draft: Record<string, unknown> = { LanguageId: '', Timezone: '', Theme: null };
+test('seedSelfProfileDraft: fills empty LanguageId, Timezone, Theme, and Density', () => {
+  const draft: Record<string, unknown> = { LanguageId: '', Timezone: '', Theme: null, Density: '' };
   seedSelfProfileDraft(
     {
       getField: path => draft[path],
@@ -14,11 +14,12 @@ test('seedSelfProfileDraft: fills empty LanguageId, Timezone, and Theme', () => 
         draft[path] = value;
       },
     },
-    { languageId: 'lang-1', timezone: 'Asia/Shanghai', theme: 'dark' },
+    { languageId: 'lang-1', timezone: 'Asia/Shanghai', theme: 'dark', density: 'compact' },
   );
   expect(draft.LanguageId).toBe('lang-1');
   expect(draft.Timezone).toBe('Asia/Shanghai');
   expect(draft.Theme).toBe('dark');
+  expect(draft.Density).toBe('compact');
 });
 
 test('seedSelfProfileDraft: does not overwrite persisted LanguageId / Timezone / Theme', () => {
@@ -72,10 +73,12 @@ test('seedSelfProfileDraft: non-empty non-Id field values are left alone', () =>
 });
 
 test('SelfProfileDraftSeeder: injects form-root and seeds after ready + late hints', async () => {
-  const draft: Record<string, unknown> = { LanguageId: '', Timezone: '' };
+  const draft: Record<string, unknown> = { LanguageId: '', Timezone: '', Theme: '', Density: '' };
   const ready = ref(false);
   const languageId = ref('');
   const timezone = ref('');
+  const theme = ref('');
+  const density = ref('');
   const Host = defineComponent({
     setup() {
       provide('form-root', {
@@ -89,6 +92,8 @@ test('SelfProfileDraftSeeder: injects form-root and seeds after ready + late hin
           ready: ready.value,
           languageId: languageId.value,
           timezone: timezone.value,
+          theme: theme.value,
+          density: density.value,
         });
     },
   });
@@ -107,6 +112,14 @@ test('SelfProfileDraftSeeder: injects form-root and seeds after ready + late hin
   timezone.value = 'Asia/Tokyo';
   await flushPromises();
   expect(draft.Timezone).toBe('Asia/Tokyo');
+
+  theme.value = 'auto';
+  await flushPromises();
+  expect(draft.Theme).toBe('auto');
+
+  density.value = 'comfortable';
+  await flushPromises();
+  expect(draft.Density).toBe('comfortable');
   wrapper.unmount();
 });
 

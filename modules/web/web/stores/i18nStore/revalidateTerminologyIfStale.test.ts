@@ -247,6 +247,57 @@ describe('useI18nStore.revalidateTerminologyIfStale / reloadTerminology', () => 
     expect(store.terminologyHashByLang.en_US).toBe('ok');
   });
 
+  test('getPersonNameFormat: returns overlay for POSIX code or current UI language', () => {
+    const store = useI18nStore();
+    store.localeCode = 'zh-CN';
+    store.languageFormatByCode = {
+      zh_CN: { PersonNameFormat: '{LastName}{FirstName}' },
+      en_US: { PersonNameFormat: '{FirstName} {LastName}' },
+    } as any;
+    expect(store.getPersonNameFormat('zh_CN')).toBe('{LastName}{FirstName}');
+    expect(store.getPersonNameFormat('en_US')).toBe('{FirstName} {LastName}');
+    expect(store.getPersonNameFormat()).toBe('{LastName}{FirstName}');
+    expect(store.getPersonNameFormat('missing')).toBeUndefined();
+  });
+
+  test('setUiKey: pending switch is not no-opped by a same-as-current request', async () => {
+    const store = useI18nStore();
+    store.isInitialized = true;
+    store.localeCode = 'en';
+    store.loadedLocales = { en: true } as any;
+    let resolveSlow: (v: Response) => void = () => undefined;
+    const slow = new Promise<Response>(resolve => {
+      resolveSlow = resolve;
+    });
+    let calls = 0;
+    globalThis.fetch = (async () => {
+      calls += 1;
+      if (calls === 1) return slow;
+      return jsonResponse({
+        lang: 'en_US',
+        locale: 'en',
+        hash: 'en-fast',
+        unchanged: true,
+        messages: null,
+      });
+    }) as typeof fetch;
+
+    const first = store.setUiKey('zh-CN');
+    const second = await store.setUiKey('en');
+    expect(second).toBe(true);
+    resolveSlow(
+      jsonResponse({
+        lang: 'zh_CN',
+        locale: 'zh-CN',
+        hash: 'zh-slow',
+        unchanged: true,
+        messages: null,
+      }),
+    );
+    expect(await first).toBe(false);
+    expect(store.localeCode).toBe('en');
+  });
+
   test('revalidateTerminologyIfStale: soft-remounts when remount mode is enabled', async () => {
     const store = useI18nStore();
     store.isInitialized = true;

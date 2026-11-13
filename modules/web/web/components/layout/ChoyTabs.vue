@@ -191,7 +191,7 @@ onBeforeUnmount(() => {
  * remain truly hidden so empty panels do not stretch the track.
  */
 .choy-tabs[data-equal-pane-height='true']
-  :deep([data-slot='tabs-content'][data-force-mount='true'][hidden]) {
+  > :deep([data-slot='tabs-content'][data-force-mount='true'][hidden]) {
   display: block !important;
 }
 </style>

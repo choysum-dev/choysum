@@ -467,7 +467,7 @@ export default class User extends AttachmentOwnerMixin {
       active = fallback && allowed.includes(fallback) ? fallback : allowed[0] || '';
     }
     if (active && !enabled.includes(active)) {
-      enabled = active ? [active, ...enabled] : enabled;
+      enabled = [active, ...enabled];
     }
     if (!enabled.length && active) {
       enabled = [active];

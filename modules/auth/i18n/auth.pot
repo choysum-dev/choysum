@@ -702,7 +702,7 @@ msgctxt "service/models/user"
 msgid "%s requires a payload"
 msgstr ""
 
-#: service/models/user/user.ts:958
+#: service/models/user/user.ts:969
 msgctxt "service/models/user"
 msgid "Account is disabled"
 msgstr ""
@@ -727,22 +727,22 @@ msgctxt "service/models/user"
 msgid "CompleteInitialSetup requires an Organization object"
 msgstr ""
 
-#: service/models/user/_change_password.ts:58
+#: service/models/user/_change_password.ts:66
 msgctxt "service/models/user"
 msgid "Current password is incorrect"
 msgstr ""
 
-#: service/models/user/_change_password.ts:22
+#: service/models/user/_change_password.ts:23
 msgctxt "service/models/user"
 msgid "Current password is required"
 msgstr ""
 
-#: service/models/user/user.ts:976
+#: service/models/user/user.ts:987
 msgctxt "service/models/user"
 msgid "Failed to change password"
 msgstr ""
 
-#: service/models/user/user.ts:1284
+#: service/models/user/user.ts:1295
 msgctxt "service/models/user"
 msgid "Failed to compute field rule spec"
 msgstr ""
@@ -752,7 +752,7 @@ msgctxt "service/models/user"
 msgid "Invalid IANA timezone: %s"
 msgstr ""
 
-#: service/models/user/user.ts:1265
+#: service/models/user/user.ts:1276
 msgctxt "service/models/user"
 msgid "Invalid model full name; expected \"<app>.<Model>\""
 msgstr ""
@@ -782,47 +782,53 @@ msgctxt "service/models/user"
 msgid "Login requires username and password"
 msgstr ""
 
-#: service/models/user/user.ts:1015
+#: service/models/user/user.ts:1026
 msgctxt "service/models/user"
 msgid "Logout failed"
 msgstr ""
 
-#: service/models/user/user.ts:996
+#: service/models/user/user.ts:1007
 msgctxt "service/models/user"
 msgid "Logout requires a boolean AllDevices"
 msgstr ""
 
-#: service/models/user/user.ts:1003
+#: service/models/user/user.ts:1014
 msgctxt "service/models/user"
 msgid "Logout requires a string DeviceInfo"
 msgstr ""
 
-#: service/models/user/user.ts:989
+#: service/models/user/user.ts:1000
 msgctxt "service/models/user"
 msgid "Logout requires a token string"
 msgstr ""
 
-#: service/models/user/user.ts:1249
+#: service/models/user/user.ts:1260
 msgctxt "service/models/user"
 msgid "Missing identity information (userId)"
 msgstr ""
 
-#: service/models/user/user.ts:1257
+#: service/models/user/user.ts:1268
 msgctxt "service/models/user"
 msgid "Missing model name (model)"
 msgstr ""
 
-#: service/models/user/_change_password.ts:28
+#: service/models/user/_change_password.ts:37
+msgctxt "service/models/user"
+msgid "New password is not a valid client hash"
+msgstr ""
+
+#: service/models/user/_change_password.ts:29
 msgctxt "service/models/user"
 msgid "New password is required"
 msgstr ""
 
-#: service/models/user/_change_password.ts:41
+#: service/models/user/_change_password.ts:49
+#: service/models/user/_change_password.ts:73
 msgctxt "service/models/user"
 msgid "New password must differ from the current password"
 msgstr ""
 
-#: service/models/user/_change_password.ts:35
+#: service/models/user/_change_password.ts:43
 msgctxt "service/models/user"
 msgid "Password must be at least 6 characters"
 msgstr ""
@@ -842,7 +848,7 @@ msgctxt "service/models/user"
 msgid "Register requires a password string"
 msgstr ""
 
-#: service/models/user/user.ts:926
+#: service/models/user/user.ts:937
 msgctxt "service/models/user"
 msgid "Switch company scope failed"
 msgstr ""
@@ -858,12 +864,12 @@ msgid "Token refresh failed"
 msgstr ""
 
 #: service/models/user/user.ts:793
-#: service/models/user/user.ts:941
+#: service/models/user/user.ts:952
 msgctxt "service/models/user"
 msgid "User is not logged in"
 msgstr ""
 
-#: service/models/user/user.ts:952
+#: service/models/user/user.ts:963
 msgctxt "service/models/user"
 msgid "User not found"
 msgstr ""
@@ -1192,12 +1198,12 @@ msgid "Appearance"
 msgstr ""
 
 #: web/dialogs/preferences/PreferencesDialog.vue:10
-#: web/dialogs/preferences/PreferencesDialog.vue:83
+#: web/dialogs/preferences/PreferencesDialog.vue:84
 msgctxt "web/dialogs/preferences/PreferencesDialog"
 msgid "Cancel"
 msgstr ""
 
-#: web/dialogs/preferences/PreferencesDialog.vue:198
+#: web/dialogs/preferences/PreferencesDialog.vue:204
 msgctxt "web/dialogs/preferences/PreferencesDialog"
 msgid "Cannot update preferences: missing user id"
 msgstr ""
@@ -1217,7 +1223,7 @@ msgctxt "web/dialogs/preferences/PreferencesDialog"
 msgid "Display timezone; empty uses browser timezone on first login."
 msgstr ""
 
-#: web/dialogs/preferences/PreferencesDialog.vue:258
+#: web/dialogs/preferences/PreferencesDialog.vue:264
 msgctxt "web/dialogs/preferences/PreferencesDialog"
 msgid "Failed to update preferences"
 msgstr ""
@@ -1262,13 +1268,13 @@ msgctxt "web/dialogs/preferences/PreferencesDialog"
 msgid "Preferences"
 msgstr ""
 
-#: web/dialogs/preferences/PreferencesDialog.vue:252
+#: web/dialogs/preferences/PreferencesDialog.vue:258
 msgctxt "web/dialogs/preferences/PreferencesDialog"
 msgid "Preferences updated"
 msgstr ""
 
 #: web/dialogs/preferences/PreferencesDialog.vue:11
-#: web/dialogs/preferences/PreferencesDialog.vue:84
+#: web/dialogs/preferences/PreferencesDialog.vue:86
 msgctxt "web/dialogs/preferences/PreferencesDialog"
 msgid "Save"
 msgstr ""

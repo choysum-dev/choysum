@@ -6,6 +6,7 @@ import {
   formatCurrencyFromConfig,
   formatNumberFromConfig,
   formatFixedDecimalString,
+  overlayFromActiveLanguageRow,
   parseGrouping,
   resolveFormatConfig,
 } from './languageFormat';
@@ -234,5 +235,20 @@ test('languageFormat (P2): covers ensureDecimalDigitsString edge cases for curre
       spacing: false,
     })
   ).toBe('$-0.50');
+});
+
+test('overlayFromActiveLanguageRow: prefers PascalCase PersonNameFormat', () => {
+  expect(
+    overlayFromActiveLanguageRow({
+      PersonNameFormat: '{LastName}{FirstName}',
+      personNameFormat: 'ignored',
+    }).PersonNameFormat,
+  ).toBe('{LastName}{FirstName}');
+  expect(
+    overlayFromActiveLanguageRow({
+      personNameFormat: '{FirstName} {LastName}',
+    }).PersonNameFormat,
+  ).toBe('{FirstName} {LastName}');
+  expect(overlayFromActiveLanguageRow({}).PersonNameFormat).toBeUndefined();
 });
 

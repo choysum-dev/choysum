@@ -192,6 +192,7 @@ SPDX-License-Identifier: Apache-2.0
                         variant="outline"
                         class="box-border h-control min-h-control shrink-0 px-3 py-0"
                         data-testid="preferences-open-change-password"
+                        :disabled="saving"
                         @click="onOpenChangePassword"
                       >
                         {{ _t('Change password') }}
@@ -203,7 +204,9 @@ SPDX-License-Identifier: Apache-2.0
             </ChoyTabs>
 
             <ChoyDialogFooter class="mt-2 shrink-0 border-t border-border pt-2">
-              <ChoyButton type="button" variant="outline" @click="visible = false">{{ _t('Cancel') }}</ChoyButton>
+              <ChoyButton type="button" variant="outline" :disabled="saving" @click="visible = false">{{
+                _t('Cancel')
+              }}</ChoyButton>
               <ChoyButton type="submit" :disabled="saving || loading">{{ _t('Save') }}</ChoyButton>
             </ChoyDialogFooter>
           </template>
@@ -213,7 +216,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import {
   ChoyButton,
   ChoyDialog,
@@ -295,6 +298,7 @@ function armTabSwitch(event: MouseEvent): void {
 }
 
 function onOpenChangePassword(): void {
+  if (saving.value) return;
   // replace: dialog service unmounts preferences (silent draft discard).
   openDialog({ component: ChangePasswordDialog, mode: 'replace' });
 }
@@ -407,6 +411,11 @@ watch(
 onMounted(async () => {
   if (!props.modelValue) return;
   await openAndLoad();
+});
+
+onBeforeUnmount(() => {
+  // replace/closeAllDialogs unmount without flipping modelValue; restore previewed theme.
+  restoreOpeningThemeIfNeeded();
 });
 
 const missingUserMessage = () => _t('Cannot update preferences: missing user id');

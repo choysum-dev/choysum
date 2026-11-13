@@ -216,10 +216,15 @@ export default defineComponent({
       avatar => {
         const gen = ++avatarResolveGen;
         userAvatarSrc.value = '';
-        void resolveUserMenuAvatarDisplaySrc(avatar).then(src => {
-          if (gen !== avatarResolveGen) return;
-          userAvatarSrc.value = src || '';
-        });
+        void resolveUserMenuAvatarDisplaySrc(avatar)
+          .then(src => {
+            if (gen !== avatarResolveGen) return;
+            userAvatarSrc.value = src || '';
+          })
+          .catch(() => {
+            if (gen !== avatarResolveGen) return;
+            userAvatarSrc.value = '';
+          });
       },
       { immediate: true, deep: true },
     );
