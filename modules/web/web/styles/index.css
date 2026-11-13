@@ -240,8 +240,15 @@ html {
 }
 
 [data-slot='field'].choy-field-base[data-orientation='horizontal']:has(> .choy-field-base__label-row) {
+  /* max(min, basis) keeps % from shrinking the track below the CJK-safe floor. */
   grid-template-columns:
-    minmax(var(--choy-field-label-min), min(var(--choy-field-label-max), var(--choy-field-label-basis)))
+    minmax(
+      var(--choy-field-label-min),
+      min(
+        var(--choy-field-label-max),
+        max(var(--choy-field-label-min), var(--choy-field-label-basis))
+      )
+    )
     minmax(0, 1fr);
 }
 

@@ -104,9 +104,9 @@ test('Login.vue: filled native submit does not show required field errors', asyn
   // Page error swaps into the card header only when present; success keeps description.
   expect(wrapper.find('.login-error').exists()).toBe(false);
   expect(wrapper.text().includes('Login failed')).toBe(false);
-  // collapse default: no reserved / alert error row when fields are valid.
+  // Auth command forms use reserve: placeholders stay; no visible error when valid.
   const root = wrapper.element as HTMLElement;
-  expect(root.querySelectorAll('.choy-field-base__error-reserve').length).toBe(0);
+  expect(root.querySelectorAll('.choy-field-base__error-reserve').length).toBe(2);
   expect(root.querySelectorAll('.choy-field-base__error').length).toBe(0);
   expect(replaces).toEqual(['/auth/tokens']);
   wrapper.unmount();

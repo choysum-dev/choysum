@@ -48,7 +48,8 @@ SPDX-License-Identifier: Apache-2.0
               :has-error="!!error"
               @clear="error = ''"
             />
-            <ChoyFieldGroup class="register-fields" :style="{ gap: '0' }">
+            <!-- Reserve owns inter-field rhythm; gap-0 avoids stacking group gap on error slots. -->
+            <ChoyFieldGroup class="register-fields !gap-0">
               <div class="register-username">
                 <ChoyVarcharField
                   :store="formStore"
@@ -63,6 +64,7 @@ SPDX-License-Identifier: Apache-2.0
                   :nullable="false"
                   :show-word-limit="false"
                   show-inline-error
+                  inline-error-space="reserve"
                   :rules="usernameRules"
                 />
               </div>
@@ -81,6 +83,7 @@ SPDX-License-Identifier: Apache-2.0
                   :nullable="false"
                   :show-word-limit="false"
                   show-inline-error
+                  inline-error-space="reserve"
                   :rules="emailRules"
                 />
               </div>
@@ -99,6 +102,7 @@ SPDX-License-Identifier: Apache-2.0
                   :nullable="false"
                   :show-word-limit="false"
                   show-inline-error
+                  inline-error-space="reserve"
                   :rules="passwordRules"
                 />
               </div>
@@ -117,6 +121,7 @@ SPDX-License-Identifier: Apache-2.0
                   :nullable="false"
                   :show-word-limit="false"
                   show-inline-error
+                  inline-error-space="reserve"
                   :rules="confirmPasswordRules(formData.Password)"
                 />
               </div>
@@ -132,6 +137,7 @@ SPDX-License-Identifier: Apache-2.0
                   render-mode="inline"
                   buffer-strategy="live"
                   show-inline-error
+                  inline-error-space="reserve"
                   :rules="agreeTermsRules"
                 >
                     <label for="fld-AgreeTerms" class="text-sm leading-5">
@@ -157,7 +163,7 @@ SPDX-License-Identifier: Apache-2.0
                 </ChoyBooleanField>
               </div>
 
-              <ChoyField>
+              <ChoyField class="mt-3">
                 <ChoyButton
                   type="submit"
                   class="submit-button w-full"

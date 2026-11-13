@@ -318,6 +318,7 @@ import {
   type ActionIdMap,
 } from '@/web/web/components/view/actionVisibility';
 import { createTranslate } from '@/web/web/i18n';
+import { FIELD_ERROR_SPACE_KEY } from '@/web/web/composables/fieldErrorSpace';
 import type { SelectionExpose, RowEventPayload, RowEventHandlerParams } from '@/web/web/components/view/listViewTypes';
 import {
   resolvePageStore,
@@ -439,6 +440,8 @@ provide(
   LIST_SHOW_SELECTION_COLUMN_KEY,
   computed(() => props.showSelectionColumn !== false),
 );
+// Editable row cells: overlay keeps row height stable when a field errors.
+provide(FIELD_ERROR_SPACE_KEY, 'overlay');
 const slots = useSlots();
 
 const emit = defineEmits<{

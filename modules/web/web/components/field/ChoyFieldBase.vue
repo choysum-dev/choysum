@@ -27,9 +27,9 @@ SPDX-License-Identifier: Apache-2.0
         class="text-sm font-normal text-muted-foreground"
       >
         {{ resolvedLabel }}
-        <span v-if="requiredForm" class="text-destructive" aria-hidden="true">*</span>
+        <span v-if="showRequiredMark" class="text-destructive" aria-hidden="true">*</span>
       </FieldLabel>
-      <span v-else-if="requiredForm" class="text-destructive" aria-hidden="true">*</span>
+      <span v-else-if="showRequiredMark" class="text-destructive" aria-hidden="true">*</span>
       <TooltipProvider v-if="effectiveHelp">
         <Tooltip>
           <TooltipTrigger as-child>
@@ -46,14 +46,11 @@ SPDX-License-Identifier: Apache-2.0
         </Tooltip>
       </TooltipProvider>
     </div>
-    <FieldContent
-      class="choy-field-base__content min-w-0"
-      :class="{ relative: inlineErrorSpace === 'overlay' }"
-    >
+    <FieldContent class="choy-field-base__content min-w-0">
       <FieldDescription v-if="effectiveHelp" :id="formHelpId" class="sr-only">
         {{ effectiveHelp }}
       </FieldDescription>
-      <div class="choy-field-base__body w-full min-w-0">
+      <div class="choy-field-base__body w-full min-w-0" :class="formBodyClass">
       <template v-if="preserveModeSlotForm">
         <div v-show="effectiveEditForm" class="choy-field-base__edit-wrap flex w-full items-center gap-0.5">
           <div class="choy-field-base__edit-control min-w-0 flex-1">
@@ -205,15 +202,15 @@ SPDX-License-Identifier: Apache-2.0
         :draft-value="panelDraftValue"
         @saved="onCompanyValuesSaved"
       />
-      </div>
-      <FieldError v-if="showErrorFlow" :id="formErrorId">
-        {{ displayError }}
-      </FieldError>
       <FieldError
-        v-else-if="showErrorOverlay"
+        v-if="showErrorOverlay"
         :id="formErrorId"
         class="choy-field-base__error--overlay absolute left-0 top-full z-10 mt-0.5 w-full"
       >
+        {{ displayError }}
+      </FieldError>
+      </div>
+      <FieldError v-if="showErrorFlow" :id="formErrorId">
         {{ displayError }}
       </FieldError>
       <p
@@ -443,6 +440,11 @@ import {
   FIELD_CLIENT_VALIDATORS_KEY,
   firstRuleError,
 } from '@/web/web/composables/fieldClientValidation';
+import {
+  FIELD_ERROR_SPACE_KEY,
+  resolveFieldErrorSpace,
+  type ChoyInlineErrorSpace,
+} from '@/web/web/composables/fieldErrorSpace';
 import { CircleHelp, Languages, Building2 } from 'lucide-vue-next';
 import { cn, type ClassValue } from '@/web/web/lib/utils';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
@@ -461,6 +463,8 @@ import FieldCompanyValuesDialog from './ChoyFieldCompanyValuesDialog.vue';
 import { defaultListColumnAlignForFieldType } from './numericFieldHelpers';
 import { dataTableColumnJustifyClass } from '@/web/web/components/internal/dataTableHelpers';
 
+export type { ChoyInlineErrorSpace };
+
 /** Extra class merged onto the form field chrome root. */
 export type FormItemProps = {
   class?: ClassValue;
@@ -468,9 +472,6 @@ export type FormItemProps = {
 
 /** Form-mode label/control layout; ignored for table / inline. */
 export type FieldOrientation = 'horizontal' | 'vertical';
-
-/** How show-inline-error occupies vertical space under the control. */
-export type ChoyInlineErrorSpace = 'collapse' | 'reserve' | 'overlay';
 
 export type FieldStatePredicate<T, V> = (args: { record: T; value: V | null; env: FieldEnv }) => boolean;
 export type FieldStateExpr<T, V> = boolean | FieldStatePredicate<T, V>;
@@ -527,8 +528,9 @@ const props = withDefaults(
     preserveModeSlot?: boolean;
     showInlineError?: boolean;
     /**
-     * Vertical layout for the inline error row when showInlineError is on.
-     * collapse (default): no empty reserve; reserve: always hold space; overlay: absolute under control.
+     * Vertical layout for field errors under the control.
+     * When unset, inherits FIELD_ERROR_SPACE_KEY from Form/List/Settings (else collapse).
+     * collapse: no empty reserve; reserve: always hold space; overlay: absolute under control.
      */
     inlineErrorSpace?: ChoyInlineErrorSpace;
   }>(),
@@ -546,7 +548,6 @@ const props = withDefaults(
     renderMode: 'auto',
     preserveModeSlot: false,
     showInlineError: false,
-    inlineErrorSpace: 'collapse',
     labelForControl: true,
   }
 );
@@ -742,11 +743,19 @@ const effectiveRenderMode = computed(() => {
   return 'inline';
 });
 const showInlineError = computed(() => props.showInlineError === true);
-const inlineErrorSpace = computed<ChoyInlineErrorSpace>(() => {
-  const space = props.inlineErrorSpace;
-  if (space === 'reserve' || space === 'overlay' || space === 'collapse') return space;
-  return 'collapse';
+const injectedErrorSpace = inject(FIELD_ERROR_SPACE_KEY, null);
+const inlineErrorSpace = computed<ChoyInlineErrorSpace>(() =>
+  resolveFieldErrorSpace(props.inlineErrorSpace, injectedErrorSpace),
+);
+/** form/table paint errors by space; inline still requires showInlineError. */
+const errorPaintActive = computed(() => {
+  const mode = effectiveRenderMode.value;
+  if (mode === 'form' || mode === 'table') return true;
+  return showInlineError.value;
 });
+const formBodyClass = computed(() =>
+  inlineErrorSpace.value === 'overlay' ? 'relative' : undefined,
+);
 const preserveModeSlotForm = computed(() => props.preserveModeSlot === true);
 
 /* Derive INLINE-mode state from form logic without form chrome. */
@@ -916,16 +925,23 @@ const readonlyForm = computed(() => {
   if (metaReadonly.value) return true;
   return evalFlag(props.readonly, recordForm().value, rawValueForm().value, false);
 });
-const requiredForm = computed(() => {
-  if (!binding.env.isEditMode) return false;
-  if (readonlyForm.value) return false;
+/** Conceptual required (meta / prop) — drives the label * in display and edit. */
+const fieldRequired = computed(() => {
   if (metaRequired.value) return true;
   return evalFlag(props.required, recordForm().value, rawValueForm().value, false);
 });
+/** Editable required: only when the control can be filled in edit mode. */
+const requiredForm = computed(() => {
+  if (!binding.env.isEditMode) return false;
+  if (readonlyForm.value) return false;
+  return fieldRequired.value;
+});
+/** Label asterisk stays visible in display so label-column width matches edit. */
+const showRequiredMark = computed(() => fieldRequired.value);
 
 /** Form label chrome (title / * / help tip). Off when hideLabel. */
 const showLabelRow = computed(
-  () => !props.hideLabel && Boolean(resolvedLabel.value || effectiveHelp.value || requiredForm.value)
+  () => !props.hideLabel && Boolean(resolvedLabel.value || effectiveHelp.value || fieldRequired.value)
 );
 
 const effectiveEditForm = computed(() => binding.env.isEditMode && visibleForm.value && !readonlyForm.value);
@@ -995,18 +1011,25 @@ const displayError = computed(() => {
   return undefined;
 });
 const showErrorReserve = computed(
-  () => showInlineError.value && inlineErrorSpace.value === 'reserve' && !displayError.value,
+  () =>
+    errorPaintActive.value &&
+    inlineErrorSpace.value === 'reserve' &&
+    !displayError.value,
 );
-/** Flow error row: any displayError except overlay mode under showInlineError. */
+/** Document-flow error row (collapse/reserve when a message is present). */
 const showErrorFlow = computed(
   () =>
+    errorPaintActive.value &&
     !!displayError.value &&
-    !(showInlineError.value && inlineErrorSpace.value === 'overlay'),
+    inlineErrorSpace.value !== 'overlay',
 );
 const showErrorOverlay = computed(
-  () => showInlineError.value && !!displayError.value && inlineErrorSpace.value === 'overlay',
+  () =>
+    errorPaintActive.value &&
+    !!displayError.value &&
+    inlineErrorSpace.value === 'overlay',
 );
-/** Inline mode never shows errors unless showInlineError is on. */
+/** Inline mode: flow errors only when showInlineError is on (not overlay). */
 const showErrorFlowInline = computed(
   () =>
     showInlineError.value &&

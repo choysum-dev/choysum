@@ -31,7 +31,8 @@ SPDX-License-Identifier: Apache-2.0
         :submit-handler="onSubmit"
       >
         <template #default="{ formData, loading }">
-          <div class="flex flex-col gap-2.5">
+          <!-- Reserve owns inter-field rhythm; gap-0 avoids stacking group gap on error slots. -->
+          <ChoyFieldGroup class="!gap-0">
             <ChoyVarcharField
               :store="formStore"
               prop="CurrentPassword"
@@ -45,6 +46,7 @@ SPDX-License-Identifier: Apache-2.0
               :nullable="false"
               :show-word-limit="false"
               show-inline-error
+              inline-error-space="reserve"
               :rules="currentPasswordRules"
               data-testid="change-password-current"
             />
@@ -61,6 +63,7 @@ SPDX-License-Identifier: Apache-2.0
               :nullable="false"
               :show-word-limit="false"
               show-inline-error
+              inline-error-space="reserve"
               :rules="newPasswordRules(() => formData.CurrentPassword)"
               data-testid="change-password-new"
             />
@@ -77,10 +80,11 @@ SPDX-License-Identifier: Apache-2.0
               :nullable="false"
               :show-word-limit="false"
               show-inline-error
+              inline-error-space="reserve"
               :rules="confirmPasswordRules(() => formData.NewPassword)"
               data-testid="change-password-confirm"
             />
-          </div>
+          </ChoyFieldGroup>
 
           <ChoyDialogFooter class="mt-4">
             <ChoyButton type="button" variant="outline" :disabled="saving || loading" @click="close">{{
@@ -110,6 +114,7 @@ import {
   ChoyDialogFooter,
   ChoyDialogHeader,
   ChoyDialogTitle,
+  ChoyFieldGroup,
   ChoyFormView,
   ChoyMessage,
   ChoyVarcharField,

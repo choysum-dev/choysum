@@ -4,7 +4,8 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <ChoyFieldGroup class="setup-fields setup-organization-step" :style="{ gap: '0' }">
+  <!-- Reserve owns inter-field rhythm; gap-0 avoids stacking group gap on error slots. -->
+  <ChoyFieldGroup class="setup-fields setup-organization-step !gap-0">
     <div class="setup-org-name">
       <ChoyVarcharField
         :store="store"
@@ -20,6 +21,7 @@ SPDX-License-Identifier: Apache-2.0
         :show-word-limit="false"
         :required="true"
         show-inline-error
+        inline-error-space="reserve"
         :rules="orgNameRules"
       />
     </div>
@@ -32,6 +34,7 @@ SPDX-License-Identifier: Apache-2.0
         :placeholder="_t('Optional')"
         clearable
         show-inline-error
+        inline-error-space="reserve"
         :rules="countryRules"
       />
     </div>
@@ -45,6 +48,7 @@ SPDX-License-Identifier: Apache-2.0
         :help="_t('Company accounting currency. It cannot be changed once transactions exist.')"
         :required="true"
         show-inline-error
+        inline-error-space="reserve"
         :rules="currencyRules"
       />
     </div>
@@ -58,6 +62,7 @@ SPDX-License-Identifier: Apache-2.0
         :help="_t('Used for business dates and scheduled jobs; independent of personal display timezones.')"
         :required="true"
         show-inline-error
+        inline-error-space="reserve"
         :rules="timezoneRules"
       />
     </div>

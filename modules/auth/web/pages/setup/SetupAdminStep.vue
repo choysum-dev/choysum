@@ -4,7 +4,8 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <ChoyFieldGroup class="setup-fields setup-admin-step" :style="{ gap: '0' }">
+  <!-- Reserve owns inter-field rhythm; gap-0 avoids stacking group gap on error slots. -->
+  <ChoyFieldGroup class="setup-fields setup-admin-step !gap-0">
     <div class="setup-username">
       <ChoyVarcharField
         :store="store"
@@ -19,6 +20,7 @@ SPDX-License-Identifier: Apache-2.0
         :nullable="false"
         :show-word-limit="false"
         show-inline-error
+        inline-error-space="reserve"
         :rules="usernameRules"
       />
     </div>
@@ -37,6 +39,7 @@ SPDX-License-Identifier: Apache-2.0
         :nullable="false"
         :show-word-limit="false"
         show-inline-error
+        inline-error-space="reserve"
         :rules="passwordRules"
       />
     </div>
@@ -55,6 +58,7 @@ SPDX-License-Identifier: Apache-2.0
         :nullable="false"
         :show-word-limit="false"
         show-inline-error
+        inline-error-space="reserve"
         :rules="confirmPasswordRules"
       />
     </div>
@@ -71,6 +75,7 @@ SPDX-License-Identifier: Apache-2.0
         buffer-strategy="live"
         :show-word-limit="false"
         show-inline-error
+        inline-error-space="reserve"
         :rules="emailRules"
       />
     </div>
