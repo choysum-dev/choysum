@@ -5,6 +5,9 @@
  * FE number/date formatting driven by Language format fields.
  */
 
+import { SUPPORTED_LOCALES } from './locales';
+import { langToUiKey } from './lang';
+
 export type LanguageFormatOverlay = {
   DecimalSeparator?: string;
   ThousandSeparator?: string;
@@ -43,6 +46,26 @@ export function overlayFromActiveLanguageRow(row: Record<string, unknown> | null
     CurrencySymbolSpacing: symbolSpacing != null ? Boolean(symbolSpacing) : undefined,
     PersonNameFormat: personNameFormat != null ? String(personNameFormat) : undefined,
   };
+}
+
+/**
+ * Project GetActiveLanguages rows into format overlays and supported UI keys.
+ */
+export function collectActiveLanguageFormats(rows: unknown): {
+  formats: Record<string, LanguageFormatOverlay>;
+  uiKeys: string[];
+} {
+  const formats: Record<string, LanguageFormatOverlay> = {};
+  const uiKeys = (Array.isArray(rows) ? rows : [])
+    .map((row: Record<string, unknown>) => {
+      const posix = String(row?.Code ?? row?.code ?? '').trim();
+      if (posix) {
+        formats[posix] = overlayFromActiveLanguageRow(row);
+      }
+      return langToUiKey(posix);
+    })
+    .filter((code: string) => !!code && code in SUPPORTED_LOCALES);
+  return { formats, uiKeys };
 }
 
 export function parseGrouping(raw: unknown): number[] {

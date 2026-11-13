@@ -258,6 +258,7 @@ import {
 import { runSelfProfileSubmit } from '@/auth/web/stores/auth/self_profile_submit';
 import {
   applyUserAppearance,
+  resolveDensity,
   resolveThemeMode,
   resolveUserDensity,
   resolveUserThemeMode,
@@ -277,10 +278,12 @@ const collaborationCaps = useReactiveCollaborationCaps();
 const userStore = createStoreByModel('auth.User');
 const languageStore = createStoreByModel('base.Language');
 
-/** Last Theme value applied to the shell from this dialog (avoids re-apply loops). */
+/** Last Theme/Density applied to the shell from this dialog (avoids re-apply loops). */
 let lastAppliedTheme = '';
-/** Target shell theme on dismiss: opening capture, or the last successfully saved mode. */
+let lastAppliedDensity = '';
+/** Target shell appearance on dismiss: opening capture, or the last successfully saved values. */
 let openedTheme = '';
+let openedDensity = '';
 let openGeneration = 0;
 
 const visible = computed({
@@ -346,31 +349,31 @@ function onThemeDraftApply(mode: ChoyThemeMode, draftDensity?: unknown): void {
     { Density: draftDensity ?? (currentUser.value as { Density?: unknown } | null | undefined)?.Density },
     readChoyThemePreference().density,
   );
-  if (mode === lastAppliedTheme) {
-    // Density-only draft edits still need a shell update.
-    applyUserAppearance(mode, density);
-    return;
-  }
+  if (mode === lastAppliedTheme && density === lastAppliedDensity) return;
   lastAppliedTheme = mode;
+  lastAppliedDensity = density;
   applyUserAppearance(mode, density);
 }
 
 function restoreOpeningThemeIfNeeded(): void {
-  // Always sync shell to openedTheme (open capture or last successful save).
+  // Sync shell to opening (or last saved) theme+density — including density-only previews.
   const mode = resolveThemeMode(openedTheme);
-  if (mode === lastAppliedTheme) return;
+  const density = resolveDensity(openedDensity);
+  if (mode === lastAppliedTheme && density === lastAppliedDensity) return;
   lastAppliedTheme = mode;
-  const density = resolveUserDensity(currentUser.value, readChoyThemePreference().density);
+  lastAppliedDensity = density;
   applyUserAppearance(mode, density);
 }
 
 async function openAndLoad() {
   const gen = ++openGeneration;
   activeTab.value = 'general';
-  // Capture shell theme before any await so early dismiss restores correctly.
+  // Capture shell appearance before any await so early dismiss restores correctly.
   const local = readChoyThemePreference();
   openedTheme = resolveThemeMode(local.theme);
+  openedDensity = resolveUserDensity(currentUser.value, local.density);
   lastAppliedTheme = openedTheme;
+  lastAppliedDensity = openedDensity;
 
   if (authStore.isAuthenticated && needsSelfProfileLoad(currentUser.value)) {
     try {
@@ -473,13 +476,16 @@ async function onPreferencesSubmit(ctx: {
       applyAppearance: (theme, density) => {
         const applied = applyUserAppearance(theme, density);
         lastAppliedTheme = applied.theme;
-        // Remember the saved mode so dismiss after a later draft tweak restores it.
+        lastAppliedDensity = applied.density;
+        // Remember the saved appearance so dismiss after a later draft tweak restores it.
         openedTheme = applied.theme;
+        openedDensity = applied.density;
       },
       refreshToken: () => authStore.refreshToken(true),
       afterLocaleChange: () => afterLocaleChange({ remount: softLocaleRemount }),
       onSuccess: () => {
         openedTheme = lastAppliedTheme;
+        openedDensity = lastAppliedDensity;
         ChoyMessage.success(_t('Preferences updated'));
         visible.value = false;
       },

@@ -140,23 +140,41 @@ export async function migratePreferencesCompanyScopeToColumns(): Promise<void> {
 
     const nextActive = rowActiveCompanyId(row) || bagActive || '';
     const keepEnabled = hasStoredEnabled(rowEnabledCompanyIds(row));
-    const nextEnabled = keepEnabled ? null : bagEnabled.length ? bagEnabled : null;
+    let nextEnabled = keepEnabled
+      ? parseIdList(rowEnabledCompanyIds(row))
+      : bagEnabled.length
+        ? [...bagEnabled]
+        : [];
 
-    if (!nextActive && !nextEnabled) continue;
+    // Keep active ∈ enabled so token scope matches trimCompanyWorkContextConstraint.
+    if (nextActive) {
+      if (!nextEnabled.includes(nextActive)) {
+        nextEnabled = [nextActive, ...nextEnabled];
+      }
+    }
 
     const hadActive = Boolean(rowActiveCompanyId(row));
+    const hadEnabled = keepEnabled;
+    const writeActive = !hadActive && Boolean(nextActive);
+    const writeEnabled = !hadEnabled && nextEnabled.length > 0;
+    // When only active is new but stored enabled omits it, rewrite enabled too.
+    const rewriteEnabledForActive =
+      writeActive && hadEnabled && !parseIdList(rowEnabledCompanyIds(row)).includes(nextActive);
+
+    if (!writeActive && !writeEnabled && !rewriteEnabledForActive) continue;
+
     try {
-      if (!hadActive && nextActive && nextEnabled) {
+      if ((writeActive || rewriteEnabledForActive) && (writeEnabled || rewriteEnabledForActive)) {
         await db.execute(
           'UPDATE auth_user SET active_company_id = ?, enabled_company_ids = ? WHERE id = ?',
           JSON.stringify([nextActive, JSON.stringify(nextEnabled), id]),
         );
-      } else if (!hadActive && nextActive) {
+      } else if (writeActive) {
         await db.execute(
           'UPDATE auth_user SET active_company_id = ? WHERE id = ?',
           JSON.stringify([nextActive, id]),
         );
-      } else if (nextEnabled) {
+      } else if (writeEnabled) {
         await db.execute(
           'UPDATE auth_user SET enabled_company_ids = ? WHERE id = ?',
           JSON.stringify([JSON.stringify(nextEnabled), id]),

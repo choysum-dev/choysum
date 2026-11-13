@@ -94,7 +94,8 @@ test('migratePreferencesCompanyScopeToColumns: keeps existing EnabledCompanyIds'
               enabledCompanyIds: ['c_new'],
             }),
             active_company_id: '',
-            enabled_company_ids: JSON.stringify(['c_keep']),
+            // Already contains the migrated active — leave the enabled column alone.
+            enabled_company_ids: JSON.stringify(['c_keep', 'c_new']),
             company_id: 'c_new',
             company_ids: JSON.stringify(['c_new']),
           },
@@ -113,6 +114,46 @@ test('migratePreferencesCompanyScopeToColumns: keeps existing EnabledCompanyIds'
   expect(executes[0].sql).toContain('active_company_id');
   expect(executes[0].sql).not.toContain('enabled_company_ids');
   expect(JSON.parse(executes[0].params)[0]).toBe('c_new');
+});
+
+test('migratePreferencesCompanyScopeToColumns: rewrites enabled when active is outside it', async () => {
+  const executes: Array<{ sql: string; params: string }> = [];
+  const prev = (globalThis as any).$choysum;
+  (globalThis as any).$choysum = {
+    ...(prev || {}),
+    db: {
+      query: async () =>
+        JSON.stringify([
+          {
+            id: 'u3',
+            preferences: JSON.stringify({
+              activeCompanyId: 'c_new',
+              enabledCompanyIds: ['c_new'],
+            }),
+            active_company_id: '',
+            enabled_company_ids: JSON.stringify(['c_keep']),
+            company_id: 'c_new',
+            company_ids: JSON.stringify(['c_keep']),
+          },
+        ]),
+      execute: async (sql: string, params: string) => {
+        executes.push({ sql, params });
+      },
+    },
+  };
+  try {
+    await migratePreferencesCompanyScopeToColumns();
+  } finally {
+    (globalThis as any).$choysum = prev;
+  }
+  expect(executes).toHaveLength(1);
+  expect(executes[0].sql).toContain('active_company_id');
+  expect(executes[0].sql).toContain('enabled_company_ids');
+  expect(JSON.parse(executes[0].params)).toEqual([
+    'c_new',
+    JSON.stringify(['c_new', 'c_keep']),
+    'u3',
+  ]);
 });
 
 test('migratePreferencesCompanyScopeToColumns: no-ops without db or preferences column', async () => {

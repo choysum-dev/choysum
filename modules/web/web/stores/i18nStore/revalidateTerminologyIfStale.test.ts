@@ -264,16 +264,21 @@ describe('useI18nStore.revalidateTerminologyIfStale / reloadTerminology', () => 
     const store = useI18nStore();
     store.isInitialized = true;
     store.localeCode = 'en';
-    // loadedLocales is store-private; seed so setUiKey skips dayjs import work.
-    (store as any).loadedLocales = { en: true, 'zh-CN': true };
     let resolveSlow: (v: Response) => void = () => undefined;
     const slow = new Promise<Response>(resolve => {
       resolveSlow = resolve;
     });
+    let firstFetchStarted!: () => void;
+    const firstFetchGate = new Promise<void>(resolve => {
+      firstFetchStarted = resolve;
+    });
     let calls = 0;
     globalThis.fetch = (async () => {
       calls += 1;
-      if (calls === 1) return slow;
+      if (calls === 1) {
+        firstFetchStarted();
+        return slow;
+      }
       return jsonResponse({
         lang: 'en_US',
         locale: 'en',
@@ -284,6 +289,7 @@ describe('useI18nStore.revalidateTerminologyIfStale / reloadTerminology', () => 
     }) as typeof fetch;
 
     const first = store.setUiKey('zh-CN');
+    await firstFetchGate;
     const second = await store.setUiKey('en');
     expect(second).toBe(true);
     resolveSlow(
@@ -303,15 +309,21 @@ describe('useI18nStore.revalidateTerminologyIfStale / reloadTerminology', () => 
     const store = useI18nStore();
     store.isInitialized = true;
     store.localeCode = 'en';
-    (store as any).loadedLocales = { en: true, 'zh-CN': true };
     let rejectSlow: (err: Error) => void = () => undefined;
     const slow = new Promise<Response>((_resolve, reject) => {
       rejectSlow = reject;
     });
+    let firstFetchStarted!: () => void;
+    const firstFetchGate = new Promise<void>(resolve => {
+      firstFetchStarted = resolve;
+    });
     let calls = 0;
     globalThis.fetch = (async () => {
       calls += 1;
-      if (calls === 1) return slow;
+      if (calls === 1) {
+        firstFetchStarted();
+        return slow;
+      }
       return jsonResponse({
         lang: 'en_US',
         locale: 'en',
@@ -322,6 +334,7 @@ describe('useI18nStore.revalidateTerminologyIfStale / reloadTerminology', () => 
     }) as typeof fetch;
 
     const first = store.setUiKey('zh-CN');
+    await firstFetchGate;
     await store.setUiKey('en');
     rejectSlow(new Error('gateway-stale'));
     expect(await first).toBe(false);
@@ -332,16 +345,20 @@ describe('useI18nStore.revalidateTerminologyIfStale / reloadTerminology', () => 
     const store = useI18nStore();
     store.isInitialized = true;
     store.localeCode = 'en';
-    (store as any).loadedLocales = { en: true, 'zh-CN': true };
-    let calls = 0;
+    let firstFetchStarted!: () => void;
+    const firstFetchGate = new Promise<void>(resolve => {
+      firstFetchStarted = resolve;
+    });
     let releaseFirst!: () => void;
-    const firstGate = new Promise<void>(resolve => {
+    const firstBodyGate = new Promise<void>(resolve => {
       releaseFirst = resolve;
     });
+    let calls = 0;
     globalThis.fetch = (async () => {
       calls += 1;
       if (calls === 1) {
-        await firstGate;
+        firstFetchStarted();
+        await firstBodyGate;
         return jsonResponse({
           lang: 'zh_CN',
           locale: 'zh-CN',
@@ -360,7 +377,8 @@ describe('useI18nStore.revalidateTerminologyIfStale / reloadTerminology', () => 
     }) as typeof fetch;
 
     const first = store.setUiKey('zh-CN');
-    // Let the first request pass fetch, then win with a newer switch before apply.
+    await firstFetchGate;
+    // First has entered fetch; release its body, then let a newer switch win before apply.
     releaseFirst();
     await Promise.resolve();
     await Promise.resolve();

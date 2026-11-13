@@ -17,7 +17,7 @@ import { revalidateTerminologyCatalog } from './terminologyRevalidate';
 import { shouldNoopSetUiKey } from './setUiKeyGuard';
 import { createStoreByModel } from '@/web/web/stores/registry';
 import {
-  overlayFromActiveLanguageRow,
+  collectActiveLanguageFormats,
   resolveFormatConfig,
   type LanguageFormatOverlay,
 } from './languageFormat';
@@ -134,7 +134,7 @@ export const useI18nStore = defineStore(
           currentLocaleCode: localeCode.value,
           isInitialized: isInitialized.value,
         }) &&
-        (pendingUiKey == null || pendingUiKey === locale)
+        pendingUiKey == null
       ) {
         return true;
       }
@@ -402,18 +402,9 @@ export const useI18nStore = defineStore(
       try {
         const languageStore = createStoreByModel('base.Language');
         const rows = await (languageStore as any).GetActiveLanguages();
-        const formats: Record<string, LanguageFormatOverlay> = {};
-        const keys = (rows || [])
-          .map((row: any) => {
-            const posix = String(row?.Code || row?.code || '').trim();
-            if (posix) {
-              formats[posix] = overlayFromActiveLanguageRow(row);
-            }
-            return langToUiKey(posix);
-          })
-          .filter((code: string) => !!code && code in SUPPORTED_LOCALES);
+        const { formats, uiKeys } = collectActiveLanguageFormats(rows);
         languageFormatByCode.value = formats;
-        setActiveUiKeys(keys);
+        setActiveUiKeys(uiKeys);
       } catch (error) {
         console.warn('Failed to load active languages; using defaults', error);
         languageFormatByCode.value = {};

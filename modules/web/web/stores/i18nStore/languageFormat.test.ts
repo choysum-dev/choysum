@@ -3,6 +3,7 @@
 
 import { SUPPORTED_LOCALES } from './locales';
 import {
+  collectActiveLanguageFormats,
   formatCurrencyFromConfig,
   formatNumberFromConfig,
   formatFixedDecimalString,
@@ -250,5 +251,17 @@ test('overlayFromActiveLanguageRow: prefers PascalCase PersonNameFormat', () => 
     }).PersonNameFormat,
   ).toBe('{FirstName} {LastName}');
   expect(overlayFromActiveLanguageRow({}).PersonNameFormat).toBeUndefined();
+});
+
+test('collectActiveLanguageFormats: maps overlays and filters to supported UI keys', () => {
+  const { formats, uiKeys } = collectActiveLanguageFormats([
+    { Code: 'zh_CN', PersonNameFormat: '{LastName}{FirstName}' },
+    { code: 'en_US', personNameFormat: '{FirstName} {LastName}' },
+    { Code: 'xx_YY', PersonNameFormat: '{FirstName}' },
+  ]);
+  expect(formats.zh_CN?.PersonNameFormat).toBe('{LastName}{FirstName}');
+  expect(formats.en_US?.PersonNameFormat).toBe('{FirstName} {LastName}');
+  expect(uiKeys).toEqual(['zh-CN', 'en']);
+  expect(collectActiveLanguageFormats(null).uiKeys).toEqual([]);
 });
 
