@@ -61,17 +61,21 @@ export function openDialog(opts: DialogOpenOptions): string {
     throw new Error('openDialog: component is required');
   }
   const mode: DialogMode = opts.mode || 'child';
+  let carriedOpener: HTMLElement | null = null;
   if (mode === 'replace' || mode === 'interrupt') {
     if (mode === 'interrupt') runInterruptHandlers();
     const top = stack.value[stack.value.length - 1];
+    // Carry the cleared top opener onto the replacement entry instead of
+    // focusing it here (the new dialog would immediately steal focus anyway).
+    carriedOpener = top?.opener ?? null;
     setStack([]);
-    restoreOpener(top?.opener);
   }
   const key = nextKey();
-  const opener =
+  const active =
     typeof document !== 'undefined' && document.activeElement instanceof HTMLElement
       ? document.activeElement
       : null;
+  const opener = carriedOpener ?? active;
   const entry: DialogEntry = {
     key,
     component: markRaw(opts.component),

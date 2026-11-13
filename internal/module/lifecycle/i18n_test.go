@@ -395,6 +395,12 @@ func TestReloadModuleTerminology_requiresModuleName(t *testing.T) {
 	if _, err := ReloadModuleTerminology(nil, "demo"); err == nil {
 		t.Fatal("expected error for nil scope")
 	}
+	if _, err := ReloadModuleTerminology(rs, "../other"); err == nil {
+		t.Fatal("expected error for path-traversal module name")
+	}
+	if _, err := ReloadModuleTerminology(rs, `mod\evil`); err == nil {
+		t.Fatal("expected error for separator in module name")
+	}
 }
 
 func TestReloadModuleTerminology_nilContextFallsBackToBackground(t *testing.T) {

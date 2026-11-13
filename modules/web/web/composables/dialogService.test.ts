@@ -37,7 +37,8 @@ describe('dialogService', () => {
     expect(stack.value[0]?.mode).toBe('replace');
   });
 
-  test('replace restores opener focus from the cleared top entry', () => {
+  test('replace carries opener from the cleared top entry', () => {
+    const stack = useDialogStack();
     const opener = document.createElement('button');
     document.body.appendChild(opener);
     opener.focus();
@@ -49,6 +50,9 @@ describe('dialogService', () => {
     expect(document.activeElement).toBe(other);
 
     openDialog({ component: StubB, mode: 'replace' });
+    expect(stack.value).toHaveLength(1);
+    expect(stack.value[0]?.opener).toBe(opener);
+    closeDialog();
     expect(document.activeElement).toBe(opener);
     opener.remove();
     other.remove();

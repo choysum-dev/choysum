@@ -122,6 +122,46 @@ describe('useI18nStore.revalidateTerminologyIfStale / reloadTerminology', () => 
     expect(await store.reloadTerminology('nope-XX')).toBeNull();
   });
 
+  test('reloadTerminology: gateway errors return gatewayError load', async () => {
+    const store = useI18nStore();
+    store.localeCode = 'en';
+    store.terminologyHashByLang = { en_US: 'cached' };
+    globalThis.fetch = (async () => {
+      throw new Error('offline');
+    }) as typeof fetch;
+    const load = await store.reloadTerminology('en');
+    expect(load?.gatewayError).toBe(true);
+    expect(load?.hash).toBe('cached');
+    expect(store.lastTerminologyLoad?.gatewayError).toBe(true);
+  });
+
+  test('reloadTerminology: stale failure after newer request stays quiet', async () => {
+    const store = useI18nStore();
+    store.localeCode = 'en';
+    let rejectSlow: (err: Error) => void = () => undefined;
+    const slow = new Promise<Response>((_resolve, reject) => {
+      rejectSlow = reject;
+    });
+    let calls = 0;
+    globalThis.fetch = (async () => {
+      calls += 1;
+      if (calls === 1) return slow;
+      return jsonResponse({
+        lang: 'en_US',
+        locale: 'en',
+        hash: 'ok',
+        unchanged: false,
+        messages: { web: { scope: { A: 'a' } } },
+      });
+    }) as typeof fetch;
+
+    const first = store.reloadTerminology('en');
+    await store.reloadTerminology('en');
+    rejectSlow(new Error('offline-stale'));
+    expect(await first).toBeNull();
+    expect(store.terminologyHashByLang.en_US).toBe('ok');
+  });
+
   test('revalidateTerminologyIfStale: falls back to currentLocale when localeCode empty', async () => {
     const store = useI18nStore();
     store.isInitialized = true;
@@ -205,5 +245,30 @@ describe('useI18nStore.revalidateTerminologyIfStale / reloadTerminology', () => 
     rejectSlow(new Error('offline-stale'));
     expect(await first).toBeNull();
     expect(store.terminologyHashByLang.en_US).toBe('ok');
+  });
+
+  test('revalidateTerminologyIfStale: soft-remounts when remount mode is enabled', async () => {
+    const store = useI18nStore();
+    store.isInitialized = true;
+    store.localeCode = 'en';
+    const g = globalThis as { __CHOYSUM_I18N_REMOUNT_MODE__?: string };
+    const prev = g.__CHOYSUM_I18N_REMOUNT_MODE__;
+    g.__CHOYSUM_I18N_REMOUNT_MODE__ = 'remount';
+    globalThis.fetch = (async () =>
+      jsonResponse({
+        lang: 'en_US',
+        locale: 'en',
+        hash: 'remount',
+        unchanged: false,
+        messages: { web: { scope: { Hello: 'Hi' } } },
+      })) as typeof fetch;
+    try {
+      const load = await store.revalidateTerminologyIfStale();
+      expect(load?.hash).toBe('remount');
+      expect(store.lastTerminologyLoad?.hash).toBe('remount');
+    } finally {
+      if (prev === undefined) delete g.__CHOYSUM_I18N_REMOUNT_MODE__;
+      else g.__CHOYSUM_I18N_REMOUNT_MODE__ = prev;
+    }
   });
 });

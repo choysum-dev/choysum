@@ -38,6 +38,9 @@ func ReloadModuleTerminology(runtimeScope scope.Scope, moduleName string) (Termi
 	if moduleName == "" {
 		return out, xfmt.Errorf("module name is required")
 	}
+	if moduleName == "." || moduleName == ".." || strings.ContainsAny(moduleName, `/\`) {
+		return out, xfmt.Errorf("invalid module name %q", moduleName)
+	}
 	if runtimeScope == nil {
 		return out, xfmt.Errorf("runtime scope is nil")
 	}

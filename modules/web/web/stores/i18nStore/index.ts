@@ -12,7 +12,7 @@ import { detectBestUiKey, updateDocumentDirection, formatDateTime, formatNumber,
 import { loadDayjsLocale, loadVueI18nMessages } from './loader';
 import { uiKeyToLang, langToUiKey } from './lang';
 import { fetchWebTranslations, type TerminologyLoadResult } from './terminologyLoader';
-import { softLocaleRemount } from './localeRemount';
+import { resolveLocaleRemountMode, softLocaleRemount } from './localeRemount';
 import { revalidateTerminologyCatalog } from './terminologyRevalidate';
 import { createStoreByModel } from '@/web/web/stores/registry';
 import {
@@ -339,13 +339,11 @@ export const useI18nStore = defineStore(
       if (!isInitialized.value) {
         return null;
       }
+      // currentLocale always resolves to a supported UI key when falling back.
       const targetLocale =
-        (localeCode.value && localeCode.value in SUPPORTED_LOCALES
+        localeCode.value && localeCode.value in SUPPORTED_LOCALES
           ? localeCode.value
-          : currentLocale.value.code) || '';
-      if (!targetLocale || !(targetLocale in SUPPORTED_LOCALES)) {
-        return null;
-      }
+          : currentLocale.value.code;
       const lang = uiKeyToLang(targetLocale);
       const prevHash = terminologyHashByLang.value[lang] || '';
       const generation = ++terminologyCatalogGeneration;
@@ -366,7 +364,11 @@ export const useI18nStore = defineStore(
         }
         if (!load.unchanged) {
           lastTerminologyLoad.value = load;
-          await softLocaleRemount();
+          // Soft remount is experimental; default mode only merges via lastTerminologyLoad.
+          // Unconditional destroyAll on pageshow/visibility races auth e2e and live SPA state.
+          if (resolveLocaleRemountMode() === 'remount') {
+            await softLocaleRemount();
+          }
         }
         return load;
       } catch (error) {
