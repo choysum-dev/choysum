@@ -138,7 +138,11 @@ export async function migratePreferencesCompanyScopeToColumns(): Promise<void> {
       bag.activeCompanyId && allowedSet.has(bag.activeCompanyId) ? bag.activeCompanyId : '';
     const bagEnabled = (bag.enabledCompanyIds || []).filter(cid => allowedSet.has(cid));
 
-    const nextActive = rowActiveCompanyId(row) || bagActive || '';
+    const storedActiveRaw = rowActiveCompanyId(row);
+    // Ignore a stale column value outside CompanyId ∪ CompanyIds.
+    const storedActive =
+      storedActiveRaw && allowedSet.has(storedActiveRaw) ? storedActiveRaw : '';
+    const nextActive = storedActive || bagActive || '';
     const keepEnabled = hasStoredEnabled(rowEnabledCompanyIds(row));
     let nextEnabled = keepEnabled
       ? parseIdList(rowEnabledCompanyIds(row))
@@ -153,7 +157,8 @@ export async function migratePreferencesCompanyScopeToColumns(): Promise<void> {
       }
     }
 
-    const hadActive = Boolean(rowActiveCompanyId(row));
+    // Out-of-scope stored active counts as missing so Preferences can refill it.
+    const hadActive = Boolean(storedActive);
     const hadEnabled = keepEnabled;
     const writeActive = !hadActive && Boolean(nextActive);
     const writeEnabled = !hadEnabled && nextEnabled.length > 0;

@@ -177,8 +177,8 @@ function resetForm(): void {
 watch(
   () => props.modelValue,
   open => {
-    resetForm();
     if (!open) return;
+    resetForm();
   },
 );
 

@@ -22,6 +22,17 @@ import {
   type LanguageFormatOverlay,
 } from './languageFormat';
 
+type CreateStoreByModel = typeof createStoreByModel;
+let createStoreByModelImpl: CreateStoreByModel = createStoreByModel;
+
+/**
+ * Overrides createStoreByModel used by i18n RPC helpers (FE unit tests).
+ * Pass null to restore the default registry lookup.
+ */
+export function setI18nCreateStoreForTests(fn: CreateStoreByModel | null): void {
+  createStoreByModelImpl = fn ?? createStoreByModel;
+}
+
 // Re-export types for external consumers.
 export * from './types';
 export { SUPPORTED_LOCALES } from './locales';
@@ -400,7 +411,7 @@ export const useI18nStore = defineStore(
      */
     async function loadActiveUiKeysFromServer() {
       try {
-        const languageStore = createStoreByModel('base.Language');
+        const languageStore = createStoreByModelImpl('base.Language');
         const rows = await (languageStore as any).GetActiveLanguages();
         const { formats, uiKeys } = collectActiveLanguageFormats(rows);
         languageFormatByCode.value = formats;

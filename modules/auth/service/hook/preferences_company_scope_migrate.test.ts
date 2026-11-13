@@ -156,6 +156,47 @@ test('migratePreferencesCompanyScopeToColumns: rewrites enabled when active is o
   ]);
 });
 
+test('migratePreferencesCompanyScopeToColumns: ignores out-of-scope stored active', async () => {
+  const executes: Array<{ sql: string; params: string }> = [];
+  const prev = (globalThis as any).$choysum;
+  (globalThis as any).$choysum = {
+    ...(prev || {}),
+    db: {
+      query: async () =>
+        JSON.stringify([
+          {
+            id: 'u_stale_active',
+            preferences: JSON.stringify({
+              activeCompanyId: 'c1',
+              enabledCompanyIds: ['c1'],
+            }),
+            // Stale column outside allowed scope must not be copied into enabled.
+            active_company_id: 'c_foreign',
+            enabled_company_ids: null,
+            company_id: 'c1',
+            company_ids: '[]',
+          },
+        ]),
+      execute: async (sql: string, params: string) => {
+        executes.push({ sql, params });
+      },
+    },
+  };
+  try {
+    await migratePreferencesCompanyScopeToColumns();
+  } finally {
+    (globalThis as any).$choysum = prev;
+  }
+  expect(executes).toHaveLength(1);
+  expect(executes[0].sql).toContain('active_company_id');
+  expect(executes[0].sql).toContain('enabled_company_ids');
+  expect(JSON.parse(executes[0].params)).toEqual([
+    'c1',
+    JSON.stringify(['c1']),
+    'u_stale_active',
+  ]);
+});
+
 test('migratePreferencesCompanyScopeToColumns: no-ops without db or preferences column', async () => {
   const prev = (globalThis as any).$choysum;
   (globalThis as any).$choysum = { ...(prev || {}), db: undefined };

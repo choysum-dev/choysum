@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { createPinia, setActivePinia } from 'pinia';
-import { useI18nStore } from './index';
+import { setI18nCreateStoreForTests, useI18nStore } from './index';
 
 function jsonResponse(body: unknown, ok = true): Response {
   return {
@@ -22,6 +22,7 @@ describe('useI18nStore.revalidateTerminologyIfStale / reloadTerminology', () => 
 
   afterEach(() => {
     globalThis.fetch = originalFetch;
+    setI18nCreateStoreForTests(null);
   });
 
   test('revalidateTerminologyIfStale: returns null when not initialized', async () => {
@@ -260,6 +261,53 @@ describe('useI18nStore.revalidateTerminologyIfStale / reloadTerminology', () => 
     expect(store.getPersonNameFormat('missing')).toBeUndefined();
   });
 
+  test('setUiKey: no-ops when already on locale and initialized', async () => {
+    const store = useI18nStore();
+    store.isInitialized = true;
+    store.localeCode = 'en';
+    let calls = 0;
+    globalThis.fetch = (async () => {
+      calls += 1;
+      return jsonResponse({
+        lang: 'en_US',
+        locale: 'en',
+        hash: 'skip',
+        unchanged: true,
+        messages: null,
+      });
+    }) as typeof fetch;
+
+    expect(await store.setUiKey('en')).toBe(true);
+    expect(calls).toBe(0);
+  });
+
+  test('loadActiveUiKeysFromServer: applies GetActiveLanguages formats and UI keys', async () => {
+    const store = useI18nStore();
+    setI18nCreateStoreForTests(
+      () =>
+        ({
+          GetActiveLanguages: async () => [
+            {
+              Code: 'zh_CN',
+              ThousandSeparator: ',',
+              DecimalSeparator: '.',
+              PersonNameFormat: '{LastName}{FirstName}',
+            },
+            {
+              Code: 'en_US',
+              ThousandSeparator: ',',
+              DecimalSeparator: '.',
+              PersonNameFormat: '{FirstName} {LastName}',
+            },
+          ],
+        }) as any,
+    );
+    await store.loadActiveUiKeysFromServer();
+    expect(store.activeUiKeys).toEqual(['zh-CN', 'en']);
+    expect(store.languageFormatByCode.zh_CN?.PersonNameFormat).toBe('{LastName}{FirstName}');
+    expect(store.languageFormatByCode.en_US?.PersonNameFormat).toBe('{FirstName} {LastName}');
+  });
+
   test('setUiKey: pending switch is not no-opped by a same-as-current request', async () => {
     const store = useI18nStore();
     store.isInitialized = true;
@@ -345,20 +393,38 @@ describe('useI18nStore.revalidateTerminologyIfStale / reloadTerminology', () => 
     const store = useI18nStore();
     store.isInitialized = true;
     store.localeCode = 'en';
-    let firstFetchStarted!: () => void;
-    const firstFetchGate = new Promise<void>(resolve => {
-      firstFetchStarted = resolve;
+    let releaseLanguages!: () => void;
+    const languagesGate = new Promise<void>(resolve => {
+      releaseLanguages = resolve;
     });
-    let releaseFirst!: () => void;
-    const firstBodyGate = new Promise<void>(resolve => {
-      releaseFirst = resolve;
+    let languagesEntered!: () => void;
+    const languagesEnteredGate = new Promise<void>(resolve => {
+      languagesEntered = resolve;
     });
-    let calls = 0;
+    let languageCalls = 0;
+    setI18nCreateStoreForTests(
+      () =>
+        ({
+          GetActiveLanguages: async () => {
+            languageCalls += 1;
+            if (languageCalls === 1) {
+              languagesEntered();
+              await languagesGate;
+            }
+            return [
+              {
+                Code: 'en_US',
+                ThousandSeparator: ',',
+                DecimalSeparator: '.',
+              },
+            ];
+          },
+        }) as any,
+    );
+    let fetchCalls = 0;
     globalThis.fetch = (async () => {
-      calls += 1;
-      if (calls === 1) {
-        firstFetchStarted();
-        await firstBodyGate;
+      fetchCalls += 1;
+      if (fetchCalls === 1) {
         return jsonResponse({
           lang: 'zh_CN',
           locale: 'zh-CN',
@@ -377,12 +443,9 @@ describe('useI18nStore.revalidateTerminologyIfStale / reloadTerminology', () => 
     }) as typeof fetch;
 
     const first = store.setUiKey('zh-CN');
-    await firstFetchGate;
-    // First has entered fetch; release its body, then let a newer switch win before apply.
-    releaseFirst();
-    await Promise.resolve();
-    await Promise.resolve();
+    await languagesEnteredGate;
     const second = store.setUiKey('en');
+    releaseLanguages();
     expect(await first).toBe(false);
     expect(await second).toBe(true);
     expect(store.localeCode).toBe('en');
