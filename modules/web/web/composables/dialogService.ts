@@ -20,6 +20,8 @@ export type DialogEntry = {
   component: Component;
   props: Record<string, unknown>;
   mode: DialogMode;
+  /** Element that had focus when openDialog ran (restored on close when present). */
+  opener: HTMLElement | null;
 };
 
 const stack: ShallowRef<DialogEntry[]> = shallowRef([]);
@@ -64,14 +66,28 @@ export function openDialog(opts: DialogOpenOptions): string {
     setStack([]);
   }
   const key = nextKey();
+  const opener =
+    typeof document !== 'undefined' && document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null;
   const entry: DialogEntry = {
     key,
     component: markRaw(opts.component),
     props: { ...(opts.props || {}) },
     mode,
+    opener,
   };
   setStack([...stack.value, entry]);
   return key;
+}
+
+function restoreOpener(opener: HTMLElement | null | undefined): void {
+  if (!opener || typeof opener.focus !== 'function') return;
+  try {
+    opener.focus();
+  } catch {
+    // Opener may have been detached; ignore.
+  }
 }
 
 /** Close one entry by key, or the top entry when key is omitted. */
@@ -79,18 +95,24 @@ export function closeDialog(key?: string): void {
   const cur = stack.value;
   if (!cur.length) return;
   if (!key) {
+    const removed = cur[cur.length - 1];
     setStack(cur.slice(0, -1));
+    restoreOpener(removed?.opener);
     return;
   }
+  const removed = cur.find(entry => entry.key === key);
   const next = cur.filter(entry => entry.key !== key);
   if (next.length === cur.length) return;
   setStack(next);
+  restoreOpener(removed?.opener);
 }
 
 /** Close every managed dialog. */
 export function closeAllDialogs(): void {
   if (!stack.value.length) return;
+  const top = stack.value[stack.value.length - 1];
   setStack([]);
+  restoreOpener(top?.opener);
 }
 
 /**

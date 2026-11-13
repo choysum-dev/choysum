@@ -35,3 +35,20 @@ func TestAccumulateImportStats_noSinkNoPanic(t *testing.T) {
 	AccumulateImportStats(context.Background(), &ImportStats{Upserted: 1})
 	AccumulateImportStats(ContextWithStatsAccumulator(context.Background(), nil), &ImportStats{Upserted: 1})
 }
+
+func TestPropagateStatsAccumulator_copiesSink(t *testing.T) {
+	t.Parallel()
+	acc := &ImportStats{}
+	src := ContextWithStatsAccumulator(context.Background(), acc)
+	dst := PropagateStatsAccumulator(context.Background(), src)
+	AccumulateImportStats(dst, &ImportStats{Upserted: 2, Lang: "zh_CN"})
+	if acc.Upserted != 2 || acc.Lang != "zh_CN" {
+		t.Fatalf("acc=%+v", *acc)
+	}
+	if PropagateStatsAccumulator(context.Background(), nil) == nil {
+		t.Fatal("nil src should return dst")
+	}
+	if PropagateStatsAccumulator(context.Background(), context.Background()) == nil {
+		t.Fatal("no sink should return dst")
+	}
+}

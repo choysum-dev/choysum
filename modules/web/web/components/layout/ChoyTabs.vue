@@ -185,8 +185,13 @@ onBeforeUnmount(() => {
   min-width: 0;
   align-self: stretch;
 }
-/* Reka may set the HTML hidden attribute; keep inactive panes in layout. */
-.choy-tabs[data-equal-pane-height='true'] :deep([data-slot='tabs-content'][hidden]) {
+/*
+ * Reka may set the HTML hidden attribute on force-mounted panes. Only those
+ * panes should stay in layout for equal height; non-forceMount inactive panes
+ * remain truly hidden so empty panels do not stretch the track.
+ */
+.choy-tabs[data-equal-pane-height='true']
+  :deep([data-slot='tabs-content'][data-force-mount='true'][hidden]) {
   display: block !important;
 }
 </style>

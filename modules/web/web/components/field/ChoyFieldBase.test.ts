@@ -729,6 +729,37 @@ describe('ChoyFieldBase auto renderMode from fieldPresentation', () => {
     m.unmount();
   });
 
+  test('hideHelp suppresses help tip even when FieldsGet help is set', async () => {
+    const m = mountBase({
+      binding: makeBinding({ string: 'Code', help: 'Long help text' }),
+      renderMode: 'form',
+      hideHelp: true,
+    });
+    expect(m.q('[data-slot="form-help"]')).toBeFalsy();
+    m.unmount();
+  });
+
+  test('inlineErrorSpace falls back to collapse for unknown values', async () => {
+    const m = mountBase(
+      {
+        binding: makeBinding({ string: 'Name' }),
+        renderMode: 'form',
+        showInlineError: true,
+        inlineErrorSpace: 'nope' as any,
+      },
+      {
+        slots: {
+          edit: () => h('input'),
+          display: () => h('span'),
+        },
+      },
+    );
+    await flushPromises();
+    const root = m.q('[data-anchor="choy.field-base"]') as HTMLElement | null;
+    expect(root?.getAttribute('data-inline-error-space')).toBe('collapse');
+    m.unmount();
+  });
+
   test('inlineErrorSpace reserve keeps empty error placeholder', async () => {
     const m = mountBase(
       {

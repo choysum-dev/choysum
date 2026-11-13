@@ -290,11 +290,20 @@ test('setupApp > revalidates terminology when document becomes visible', async (
 
     Object.defineProperty(document, 'visibilityState', {
       configurable: true,
-      get: () => 'visible',
+      get: () => 'hidden',
     });
     for (const fn of listeners.visibilitychange || []) fn();
     await Promise.resolve();
-    expect(revalidate.calls.length).toBeGreaterThanOrEqual(1);
+    expect(revalidate.calls.length).toBe(0);
+
+    Object.defineProperty(document, 'visibilityState', {
+      configurable: true,
+      get: () => 'visible',
+    });
+    for (const fn of listeners.visibilitychange || []) fn();
+    for (const fn of listeners.pageshow || []) fn();
+    await Promise.resolve();
+    expect(revalidate.calls.length).toBeGreaterThanOrEqual(2);
   } finally {
     window.addEventListener = originalAdd;
   }

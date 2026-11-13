@@ -143,6 +143,9 @@ const dialogRef = ref<HTMLElement | null>(null);
 let lastFocused: HTMLElement | null = null;
 /** Last Theme value applied to the shell from this dialog (avoids re-apply loops). */
 let lastAppliedTheme = '';
+/** Theme captured when the dialog opened; restored on cancel unless submit commits. */
+let openedTheme = '';
+let themeCommitted = false;
 
 const visible = computed({
   get: () => props.modelValue,
@@ -260,8 +263,18 @@ async function openAndLoad() {
     }
   }
   resolveSeedTheme();
-  lastAppliedTheme = seedTheme.value || readPreferencesThemeMode();
+  openedTheme = seedTheme.value || readPreferencesThemeMode();
+  lastAppliedTheme = openedTheme;
+  themeCommitted = false;
   await Promise.all([resolveSeedLanguageId(), resolveSeedTimezone()]);
+}
+
+function restoreOpeningThemeIfNeeded(): void {
+  if (themeCommitted) return;
+  const mode = resolvePreferencesThemeMode(openedTheme);
+  if (mode === lastAppliedTheme) return;
+  lastAppliedTheme = mode;
+  applyPreferencesThemeMode(mode);
 }
 
 watch(
@@ -276,6 +289,7 @@ watch(
       await openAndLoad();
       return;
     }
+    restoreOpeningThemeIfNeeded();
     restoreDialogFocus(lastFocused);
     lastFocused = null;
   },
@@ -325,11 +339,15 @@ async function onPreferencesSubmit(ctx: {
           langToUiKey,
         }),
       applyTheme: theme => {
-        applyPreferencesThemeMode(resolvePreferencesThemeMode(theme));
+        const mode = resolvePreferencesThemeMode(theme);
+        lastAppliedTheme = mode;
+        applyPreferencesThemeMode(mode);
       },
       refreshToken: () => authStore.refreshToken(true),
       afterLocaleChange: () => afterLocaleChange({ remount: softLocaleRemount }),
       onSuccess: () => {
+        themeCommitted = true;
+        openedTheme = lastAppliedTheme;
         ChoyMessage.success(_t('Preferences updated'));
         visible.value = false;
       },

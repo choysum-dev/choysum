@@ -72,10 +72,11 @@ test('seedPreferenceDraft: non-empty non-Id field values are left alone', () => 
 });
 
 test('PreferenceDraftSeeder: injects form-root and seeds after ready + late hints', async () => {
-  const draft: Record<string, unknown> = { LanguageId: '', Timezone: '' };
+  const draft: Record<string, unknown> = { LanguageId: '', Timezone: '', Theme: '' };
   const ready = ref(false);
   const languageId = ref('');
   const timezone = ref('');
+  const theme = ref('');
   const Host = defineComponent({
     setup() {
       provide('form-root', {
@@ -89,6 +90,7 @@ test('PreferenceDraftSeeder: injects form-root and seeds after ready + late hint
           ready: ready.value,
           languageId: languageId.value,
           timezone: timezone.value,
+          theme: theme.value,
         });
     },
   });
@@ -99,6 +101,7 @@ test('PreferenceDraftSeeder: injects form-root and seeds after ready + late hint
   await flushPromises();
   expect(draft.LanguageId).toBe('');
   expect(draft.Timezone).toBe('');
+  expect(draft.Theme).toBe('');
 
   languageId.value = 'lang-late';
   await flushPromises();
@@ -108,6 +111,10 @@ test('PreferenceDraftSeeder: injects form-root and seeds after ready + late hint
   timezone.value = 'Asia/Tokyo';
   await flushPromises();
   expect(draft.Timezone).toBe('Asia/Tokyo');
+
+  theme.value = 'dark';
+  await flushPromises();
+  expect(draft.Theme).toBe('dark');
   wrapper.unmount();
 });
 

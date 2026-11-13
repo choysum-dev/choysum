@@ -12,6 +12,7 @@ SPDX-License-Identifier: Apache-2.0
     data-anchor="choy.tab"
     :value="registeredValue"
     :force-mount="forceMount"
+    :data-force-mount="forceMount ? 'true' : undefined"
     :class="contentClass"
     :inert="equalHeightInactive || undefined"
     :aria-hidden="equalHeightInactive || undefined"

@@ -121,6 +121,7 @@ describe('ChoyTabs mount', () => {
     const inactive = panes.find(el => String(el.className || '').split(/\s+/).includes('invisible'));
     expect(inactive).toBeTruthy();
     expect(String(inactive?.className || '').split(/\s+/).includes('hidden')).toBe(false);
+    expect(inactive?.getAttribute('data-force-mount')).toBe('true');
     expect(inactive?.textContent || '').toContain('PANEL-B');
     mounted.unmount();
   });

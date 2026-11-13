@@ -73,4 +73,22 @@ describe('dialogService', () => {
     closeAllDialogs();
     expect(stack.value).toHaveLength(0);
   });
+
+  test('closeDialog restores opener focus when available', () => {
+    const opener = document.createElement('button');
+    document.body.appendChild(opener);
+    opener.focus();
+    expect(document.activeElement).toBe(opener);
+
+    const other = document.createElement('button');
+    document.body.appendChild(other);
+    const key = openDialog({ component: StubA });
+    other.focus();
+    expect(document.activeElement).toBe(other);
+
+    closeDialog(key);
+    expect(document.activeElement).toBe(opener);
+    opener.remove();
+    other.remove();
+  });
 });

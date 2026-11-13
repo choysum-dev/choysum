@@ -12,7 +12,7 @@ import { detectBestUiKey, updateDocumentDirection, formatDateTime, formatNumber,
 import { loadDayjsLocale, loadVueI18nMessages } from './loader';
 import { uiKeyToLang, langToUiKey } from './lang';
 import { fetchWebTranslations, type TerminologyLoadResult } from './terminologyLoader';
-import { afterLocaleChange, softLocaleRemount } from './localeRemount';
+import { softLocaleRemount } from './localeRemount';
 import { revalidateTerminologyCatalog } from './terminologyRevalidate';
 import { createStoreByModel } from '@/web/web/stores/registry';
 import {
@@ -65,6 +65,9 @@ export const useI18nStore = defineStore(
 
     // Last Gateway load result (consumed by app.ts for mergeLocaleMessage).
     const lastTerminologyLoad = shallowRef<TerminologyLoadResult | null>(null);
+
+    // Bumped by reload/revalidate so a slower older response cannot overwrite newer state.
+    let terminologyCatalogGeneration = 0;
 
     // Language switcher codes (Language.IsActive ∩ format catalog; fallback DEFAULT_ACTIVE_UI_KEYS).
     const activeUiKeys = ref<string[]>([...DEFAULT_ACTIVE_UI_KEYS]);
@@ -288,9 +291,13 @@ export const useI18nStore = defineStore(
         return null;
       }
       const lang = uiKeyToLang(targetLocale);
+      const generation = ++terminologyCatalogGeneration;
       // Force catalog refresh: omit client hash so Gateway always returns messages.
       try {
         const res = await fetchWebTranslations(lang, undefined);
+        if (generation !== terminologyCatalogGeneration) {
+          return null;
+        }
         if (res.hash) {
           terminologyHashByLang.value = {
             ...terminologyHashByLang.value,
@@ -308,6 +315,9 @@ export const useI18nStore = defineStore(
         return load;
       } catch (error) {
         console.warn('Failed to reload terminology from Gateway', error);
+        if (generation !== terminologyCatalogGeneration) {
+          return null;
+        }
         const load: TerminologyLoadResult = {
           lang,
           locale: targetLocale,
@@ -338,12 +348,16 @@ export const useI18nStore = defineStore(
       }
       const lang = uiKeyToLang(targetLocale);
       const prevHash = terminologyHashByLang.value[lang] || '';
+      const generation = ++terminologyCatalogGeneration;
       try {
         const load = await revalidateTerminologyCatalog({
           lang,
           locale: targetLocale,
           prevHash,
         });
+        if (generation !== terminologyCatalogGeneration) {
+          return null;
+        }
         if (load.hash) {
           terminologyHashByLang.value = {
             ...terminologyHashByLang.value,
