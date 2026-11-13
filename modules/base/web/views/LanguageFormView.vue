@@ -34,6 +34,13 @@ SPDX-License-Identifier: Apache-2.0
       <ChoyGrid :cols="12">
         <ChoyCol :span="4"><ChoySelectionField :store="store" prop="CurrencySymbolPosition" /></ChoyCol>
         <ChoyCol :span="4"><ChoyBooleanField :store="store" prop="CurrencySymbolSpacing" /></ChoyCol>
+        <ChoyCol :span="4">
+          <ChoyVarcharField
+            :store="store"
+            prop="PersonNameFormat"
+            :placeholder="'{FirstName} {LastName}'"
+          />
+        </ChoyCol>
       </ChoyGrid>
     </ChoyCard>
   </ChoyFormView>

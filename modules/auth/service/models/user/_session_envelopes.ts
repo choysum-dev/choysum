@@ -20,7 +20,7 @@ export type LoginReq = {
 
 /**
  * Anonymous-callable Register user fields. Server-managed columns
- * (Id, Company*, PasswordHash, Preferences, roles, …) are intentionally excluded.
+ * (Id, Company*, ActiveCompanyId, EnabledCompanyIds, PasswordHash, roles, …) are intentionally excluded.
  */
 const REGISTER_USER_KEYS = [
   'Username',
@@ -134,7 +134,7 @@ export type RefreshTokensReq = {
 
 export type SwitchCompanyScopeReq = {
   ActiveCompanyId: string;
-  /** Readable company scope; omit to default from Preferences / [ActiveCompanyId]. */
+  /** Readable company scope; omit to default from stored EnabledCompanyIds / [ActiveCompanyId]. */
   EnabledCompanyIds?: string[];
 };
 
@@ -142,6 +142,19 @@ export type LogoutReq = {
   Token: string;
   AllDevices?: boolean;
   DeviceInfo?: string;
+};
+
+/**
+ * Self-service password change. Identity comes from the session; passwords are
+ * client-hashed the same way as Login (`$CH$…` accepted by hashPassword/verifyPassword).
+ */
+export type ChangePasswordReq = {
+  CurrentPassword: string;
+  NewPassword: string;
+};
+
+export type ChangePasswordResp = {
+  Ok: boolean;
 };
 
 /** Keep only anonymous-callable Register string fields (runtime over-posting guard). */

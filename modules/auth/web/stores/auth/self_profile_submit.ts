@@ -2,32 +2,23 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /**
- * Preferences save path: FormView Write (`defaultSubmit`) then i18n / theme /
- * token side effects. Callers must not issue a second UpdateById.
+ * Self-service auth.User FormView save: Write (`defaultSubmit`) then session
+ * side effects (appearance, language, token, locale remount). Callers must not
+ * issue a second UpdateById.
  *
- * Post-write locale/token steps are best-effort: a successful Write must not be
- * reported as a failed save when applyLanguage / refreshToken later rejects.
+ * Post-write steps are best-effort: a successful Write must not be reported as
+ * a failed save when applyLanguage / refreshToken later rejects.
  */
 
-/** Normalize ManyToOne `{ Id }` / scalar LanguageId to a trimmed id or null. */
-export function normalizePreferenceLanguageId(value: unknown): string | null {
-  if (value == null || Array.isArray(value)) return null;
-  if (typeof value === 'object') {
-    if (!('Id' in value)) return null;
-    const id = String((value as { Id?: unknown }).Id ?? '').trim();
-    return id || null;
-  }
-  const id = String(value).trim();
-  return id || null;
-}
+import { normalizeLanguageId } from './language_preference';
 
-function formatPreferencesError(err: unknown, fallback: string): string {
+function formatSelfProfileError(err: unknown, fallback: string): string {
   const message =
     err instanceof Error ? String(err.message || '').trim() : String(err ?? '').trim();
   return message || fallback;
 }
 
-export async function runPreferencesSubmit(opts: {
+export async function runSelfProfileSubmit(opts: {
   userId: string;
   hasCurrentUserId: boolean;
   loadUser?: () => Promise<unknown>;
@@ -38,10 +29,11 @@ export async function runPreferencesSubmit(opts: {
     languageId: unknown,
     timezone: unknown,
     theme: unknown,
-    preferences: unknown,
+    density: unknown,
   ) => void;
   applyLanguage: (languageId: unknown) => Promise<void>;
-  applyTheme?: (theme: unknown) => void;
+  /** Apply shell theme and density from User fields. */
+  applyAppearance?: (theme: unknown, density: unknown) => void;
   refreshToken: () => Promise<unknown>;
   afterLocaleChange: () => Promise<unknown>;
   onSuccess: () => void;
@@ -61,25 +53,22 @@ export async function runPreferencesSubmit(opts: {
     }
     record = (await opts.defaultSubmit()) || {};
   } catch (err) {
-    opts.onError(formatPreferencesError(err, opts.failedMessage));
+    opts.onError(formatSelfProfileError(err, opts.failedMessage));
     return false;
   }
 
-  const languageId = normalizePreferenceLanguageId(
-    record.LanguageId ?? opts.formData.LanguageId ?? null,
-  );
+  const languageId = normalizeLanguageId(record.LanguageId ?? opts.formData.LanguageId ?? null);
   const timezone = record.Timezone ?? opts.formData.Timezone ?? null;
   const theme = record.Theme ?? opts.formData.Theme ?? null;
-  const preferences = record.Preferences ?? opts.formData.Preferences ?? null;
-  opts.patchCurrentUser(languageId, timezone, theme, preferences);
+  const density = record.Density ?? opts.formData.Density ?? null;
+  opts.patchCurrentUser(languageId, timezone, theme, density);
 
   try {
-    opts.applyTheme?.(theme);
+    opts.applyAppearance?.(theme, density);
   } catch {
-    // Best-effort shell theme apply.
+    // Best-effort shell theme/density apply.
   }
 
-  // Match loadUser: i18n wiring must not undo a successful preference Write.
   try {
     await opts.applyLanguage(languageId);
   } catch {

@@ -14,10 +14,10 @@ import { uiKeyToLang, langToUiKey } from './lang';
 import { fetchWebTranslations, type TerminologyLoadResult } from './terminologyLoader';
 import { resolveLocaleRemountMode, softLocaleRemount } from './localeRemount';
 import { revalidateTerminologyCatalog } from './terminologyRevalidate';
+import { shouldNoopSetUiKey } from './setUiKeyGuard';
 import { createStoreByModel } from '@/web/web/stores/registry';
 import {
   resolveFormatConfig,
-  type DisplayFormatOverrides,
   type LanguageFormatOverlay,
 } from './languageFormat';
 
@@ -26,6 +26,7 @@ export * from './types';
 export { SUPPORTED_LOCALES } from './locales';
 export { uiKeyToLang, langToUiKey } from './lang';
 export { fetchWebTranslations } from './terminologyLoader';
+export { shouldNoopSetUiKey } from './setUiKeyGuard';
 
 export { componentHintFromScope } from './componentHint';
 export { afterLocaleChange, resolveLocaleRemountMode, softLocaleRemount } from './localeRemount';
@@ -36,7 +37,6 @@ export {
   formatCurrencyFromConfig,
   parseGrouping,
   applyGrouping,
-  type DisplayFormatOverrides,
   type LanguageFormatOverlay,
 } from './languageFormat';
 
@@ -75,9 +75,6 @@ export const useI18nStore = defineStore(
     // Format overlays keyed by POSIX Language.Code (from GetActiveLanguages).
     const languageFormatByCode = ref<Record<string, LanguageFormatOverlay>>({});
 
-    // Sparse Preferences.display overrides (dateFormat / timeFormat / currency).
-    const displayOverrides = ref<DisplayFormatOverrides | null>(null);
-
     // Current locale config, combining the code with its metadata.
     const currentLocale = computed(() => {
       const code =
@@ -91,7 +88,6 @@ export const useI18nStore = defineStore(
         config.numberFormat,
         config.dateTimeFormat,
         language,
-        displayOverrides.value
       );
 
       return {
@@ -117,12 +113,23 @@ export const useI18nStore = defineStore(
 
     /**
      * Set the application locale (format UI + Gateway terminology).
+     * Same locale after initialize is a no-op (no translations / GetActiveLanguages refetch).
      */
     async function setUiKey(locale: string) {
       // Check whether the locale is supported for format metadata.
       if (!(locale in SUPPORTED_LOCALES)) {
         console.warn(`Locale ${locale} is not supported`);
         return false;
+      }
+
+      if (
+        shouldNoopSetUiKey({
+          locale,
+          currentLocaleCode: localeCode.value,
+          isInitialized: isInitialized.value,
+        })
+      ) {
+        return true;
       }
 
       isLoading.value = true;
@@ -247,24 +254,6 @@ export const useI18nStore = defineStore(
         },
         currencyCode
       );
-    }
-
-    /**
-     * Apply sparse Preferences.display overrides (or clear with null).
-     */
-    function setDisplayOverrides(overrides: DisplayFormatOverrides | null | undefined) {
-      if (!overrides || typeof overrides !== 'object') {
-        displayOverrides.value = null;
-        return;
-      }
-      displayOverrides.value = {
-        ...(overrides.dateFormat ? { dateFormat: String(overrides.dateFormat) } : {}),
-        ...(overrides.timeFormat ? { timeFormat: String(overrides.timeFormat) } : {}),
-        ...(overrides.currency ? { currency: String(overrides.currency) } : {}),
-      };
-      if (!displayOverrides.value.dateFormat && !displayOverrides.value.timeFormat && !displayOverrides.value.currency) {
-        displayOverrides.value = null;
-      }
     }
 
     /**
@@ -402,6 +391,7 @@ export const useI18nStore = defineStore(
               const firstDay = row.FirstDayOfWeek ?? row.firstDayOfWeek;
               const symbolPos = row.CurrencySymbolPosition ?? row.currencySymbolPosition;
               const symbolSpacing = row.CurrencySymbolSpacing ?? row.currencySymbolSpacing;
+              const personNameFormat = row.PersonNameFormat ?? row.personNameFormat;
               formats[posix] = {
                 DecimalSeparator: decimal != null ? String(decimal) : undefined,
                 ThousandSeparator: thousand != null ? String(thousand) : undefined,
@@ -411,6 +401,7 @@ export const useI18nStore = defineStore(
                 FirstDayOfWeek: firstDay != null ? Number(firstDay) : undefined,
                 CurrencySymbolPosition: symbolPos === 'after' ? 'after' : symbolPos === 'before' ? 'before' : undefined,
                 CurrencySymbolSpacing: symbolSpacing != null ? Boolean(symbolSpacing) : undefined,
+                PersonNameFormat: personNameFormat != null ? String(personNameFormat) : undefined,
               };
             }
             return langToUiKey(posix);
@@ -483,7 +474,6 @@ export const useI18nStore = defineStore(
       // Locale management methods.
       setUiKey,
       setActiveUiKeys,
-      setDisplayOverrides,
       loadActiveUiKeysFromServer,
       reloadTerminology,
       revalidateTerminologyIfStale,
@@ -500,6 +490,12 @@ export const useI18nStore = defineStore(
 
       // Utility methods.
       getFirstDayOfWeek: () => currentLocale.value.dateTimeFormat?.firstDayOfWeek ?? 1,
+      /** PersonNameFormat for a POSIX Language.Code, or the current UI language when omitted. */
+      getPersonNameFormat: (posixCode?: string) => {
+        const code = String(posixCode || '').trim() || uiKeyToLang(currentLocale.value.code);
+        const raw = languageFormatByCode.value[code]?.PersonNameFormat;
+        return raw != null ? String(raw) : undefined;
+      },
     };
   },
   {

@@ -5,28 +5,28 @@ import { track } from './tracking';
 
 test('tracking: tracks nested object field mutations without replacing the whole object', () => {
   const draft = track({
-    Preferences: {
+    Settings: {
       theme: 'light',
-      notifications: { email: true },
+      display: { dateFormat: 'YYYY-MM-DD' },
     },
   });
 
-  draft.Preferences.theme = 'dark';
-  draft.Preferences.notifications.email = false;
+  draft.Settings.theme = 'dark';
+  draft.Settings.display.dateFormat = 'DD.MM.YYYY';
 
   expect(draft.hasChanges()).toBe(true);
   expect(draft.getChanges()).toEqual({
-    Preferences: {
+    Settings: {
       theme: 'dark',
-      notifications: { email: false },
+      display: { dateFormat: 'DD.MM.YYYY' },
     },
   });
 
   draft.resetChanges();
 
   expect(draft.hasChanges()).toBe(false);
-  expect(draft.Preferences.theme).toBe('light');
-  expect(draft.Preferences.notifications.email).toBe(true);
+  expect(draft.Settings.theme).toBe('light');
+  expect(draft.Settings.display.dateFormat).toBe('YYYY-MM-DD');
 });
 
 test('tracking: tracks relation item updates without mutating the original baseline', () => {

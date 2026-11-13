@@ -25,7 +25,6 @@ export const useI18nStore = defineStore('i18n-fe-stub', function () {
     setUiKey: function () {
       return Promise.resolve();
     },
-    setDisplayOverrides: function () {},
   };
 });
 

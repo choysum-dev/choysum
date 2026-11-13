@@ -138,7 +138,7 @@ test('Register: anonymous signup assigns base.user inside main company scope', a
   const snapshot = await withModelContext(
     { activeCompanyId: mainCompanyId, enabledCompanyIds: [mainCompanyId] } as any,
     async () => {
-      const user = await User.Browse(userId, ['Id', 'CompanyId', 'CompanyIds', 'Preferences'] as any);
+      const user = await User.Browse(userId, ['Id', 'CompanyId', 'CompanyIds', 'ActiveCompanyId', 'EnabledCompanyIds'] as any);
       const userRoles = await UserRole.Search(
         {
           And: [
@@ -157,8 +157,8 @@ test('Register: anonymous signup assigns base.user inside main company scope', a
   expect((snapshot.user as any).CompanyId).toBe(mainCompanyId);
   expect(Array.isArray((snapshot.user as any).CompanyIds)).toBe(true);
   expect(((snapshot.user as any).CompanyIds || []).includes(mainCompanyId)).toBe(true);
-  expect((snapshot.user as any).Preferences?.activeCompanyId).toBe(mainCompanyId);
-  expect((snapshot.user as any).Preferences?.enabledCompanyIds).toEqual([mainCompanyId]);
+  expect((snapshot.user as any).ActiveCompanyId).toBe(mainCompanyId);
+  expect((snapshot.user as any).EnabledCompanyIds).toEqual([mainCompanyId]);
   expect(snapshot.userRoles.length).toBe(1);
 });
 
@@ -206,7 +206,7 @@ test('Register: strips server-managed fields from User payload', async () => {
           // Over-posted server-managed columns must be ignored.
           CompanyId: 'cmp_spoof___________',
           CompanyIds: ['cmp_spoof___________'],
-          Preferences: { activeCompanyId: 'cmp_spoof___________' },
+          ActiveCompanyId: 'cmp_spoof___________',
           Id: 'usr_spoof_____________',
           PasswordHash: 'over-posted-hash',
           // Non-string allowlisted keys must also be dropped.
@@ -233,7 +233,7 @@ test('Register: strips server-managed fields from User payload', async () => {
   const user = await withModelContext(
     { activeCompanyId: mainCompanyId, enabledCompanyIds: [mainCompanyId] } as any,
     async () =>
-      User.Browse(userId, ['Id', 'Username', 'Email', 'CompanyId', 'CompanyIds', 'Preferences', 'PasswordHash', 'LanguageId', 'FirstName', 'LastName'] as any),
+      User.Browse(userId, ['Id', 'Username', 'Email', 'CompanyId', 'CompanyIds', 'ActiveCompanyId', 'EnabledCompanyIds', 'PasswordHash', 'LanguageId', 'FirstName', 'LastName'] as any),
     { merge: false }
   );
   expect((user as any).CompanyId).toBe(mainCompanyId);
@@ -241,7 +241,8 @@ test('Register: strips server-managed fields from User payload', async () => {
   expect(String((user as any).Email || '')).toBe(email);
   expect((user as any).FirstName).toBe('Strip');
   expect((user as any).LastName).toBe('Test');
-  expect((user as any).Preferences?.activeCompanyId).toBe(mainCompanyId);
+  expect((user as any).ActiveCompanyId).toBe(mainCompanyId);
+  expect((user as any).EnabledCompanyIds).toEqual([mainCompanyId]);
   const companyIds = Array.isArray((user as any).CompanyIds) ? (user as any).CompanyIds.map(String) : [];
   expect(companyIds.includes('cmp_spoof___________')).toBe(false);
   expect(String((user as any).PasswordHash || '')).not.toBe('over-posted-hash');

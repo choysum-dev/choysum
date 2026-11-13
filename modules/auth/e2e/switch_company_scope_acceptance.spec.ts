@@ -279,7 +279,7 @@ function expectIncludesAll(actual: string[], want: string[]) {
   }
 }
 
-test('auth: SwitchCompanyScope default enabled uses Preferences (enabledCompanyIds omitted)', async () => {
+test('auth: SwitchCompanyScope default enabled uses stored EnabledCompanyIds (enabledCompanyIds omitted)', async () => {
   test.skip(runtime.scenario === 'setup-pending', 'default smoke needs Ready fixture');
   test.setTimeout(120_000);
 

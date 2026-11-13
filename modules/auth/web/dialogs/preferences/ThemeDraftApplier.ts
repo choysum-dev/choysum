@@ -2,14 +2,14 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { defineComponent, watch } from 'vue';
-import { resolvePreferencesThemeMode, type ChoyThemeMode } from './preferences_theme';
+import { resolveThemeMode, type ChoyThemeMode } from '@/auth/web/stores/auth/user_appearance';
 
 /**
  * Live-apply a preferences Theme draft to the shell via watch (not render).
  * Parent owns lastAppliedTheme / cancel restore; this only emits resolved modes.
  */
-export const PreferenceThemeDraftApplier = defineComponent({
-  name: 'PreferenceThemeDraftApplier',
+export const ThemeDraftApplier = defineComponent({
+  name: 'ThemeDraftApplier',
   props: {
     theme: { default: undefined as unknown },
     active: { type: Boolean, default: true },
@@ -19,7 +19,7 @@ export const PreferenceThemeDraftApplier = defineComponent({
   },
   setup(props, { emit }) {
     watch(
-      () => resolvePreferencesThemeMode(props.theme),
+      () => resolveThemeMode(props.theme),
       mode => {
         if (!props.active) return;
         emit('apply', mode);

@@ -306,97 +306,107 @@ msgctxt "base.model.ExchangeRate.fields"
 msgid "Units of this currency per one unit of the company base currency."
 msgstr "每 1 单位公司本位币对应的该币种数量。"
 
-#: service/models/language.ts:73
+#: service/models/language.ts:75
 msgctxt "base.model.Language.fields"
 msgid "Active"
 msgstr "启用"
 
-#: service/models/language.ts:140
+#: service/models/language.ts:142
 msgctxt "base.model.Language.fields"
 msgid "After amount"
 msgstr "金额后"
 
-#: service/models/language.ts:139
+#: service/models/language.ts:141
 msgctxt "base.model.Language.fields"
 msgid "Before amount"
 msgstr "金额前"
 
-#: service/models/language.ts:61
+#: service/models/language.ts:63
 msgctxt "base.model.Language.fields"
 msgid "Code"
 msgstr "编码"
 
-#: service/models/language.ts:144
+#: service/models/language.ts:146
 msgctxt "base.model.Language.fields"
 msgid "Currency Symbol Position"
 msgstr "货币符号位置"
 
-#: service/models/language.ts:116
+#: service/models/language.ts:118
 msgctxt "base.model.Language.fields"
 msgid "Date Format"
 msgstr "日期格式"
 
-#: service/models/language.ts:91
+#: service/models/language.ts:93
 msgctxt "base.model.Language.fields"
 msgid "Decimal Separator"
 msgstr "小数分隔符"
 
-#: service/models/language.ts:107
+#: service/models/language.ts:109
 msgctxt "base.model.Language.fields"
 msgid "Digit grouping pattern, default [3,0] (thousands then none)."
 msgstr "数字分组模式，默认 [3,0]（千分位后不再分组）。"
 
-#: service/models/language.ts:84
+#: service/models/language.ts:86
 msgctxt "base.model.Language.fields"
 msgid "Direction"
 msgstr "文字方向"
 
-#: service/models/language.ts:132
+#: service/models/language.ts:134
 msgctxt "base.model.Language.fields"
 msgid "First Day of Week"
 msgstr "每周第一天"
 
-#: service/models/language.ts:106
+#: service/models/language.ts:108
 msgctxt "base.model.Language.fields"
 msgid "Grouping"
 msgstr "分组"
 
-#: service/models/language.ts:80
+#: service/models/language.ts:82
 msgctxt "base.model.Language.fields"
 msgid "Left to right"
 msgstr "从左到右"
 
-#: service/models/language.ts:51
+#: service/models/language.ts:53
 msgctxt "base.model.Language.fields"
 msgid "Name"
 msgstr "名称"
 
-#: service/models/language.ts:62
+#: service/models/language.ts:64
 msgctxt "base.model.Language.fields"
 msgid "POSIX locale code (e.g. en_US); cannot be changed after create."
 msgstr "POSIX 区域代码（如 en_US）；创建后不可更改。"
 
-#: service/models/language.ts:81
+#: service/models/language.ts:164
+msgctxt "base.model.Language.fields"
+msgid "Person Name Format"
+msgstr "姓名格式"
+
+#: service/models/language.ts:83
 msgctxt "base.model.Language.fields"
 msgid "Right to left"
 msgstr "从右到左"
 
-#: service/models/language.ts:151
+#: service/models/language.ts:153
 msgctxt "base.model.Language.fields"
 msgid "Symbol Spacing"
 msgstr "符号间距"
 
-#: service/models/language.ts:98
+#: service/models/language.ts:165
+msgctxt "base.model.Language.fields"
+msgid "Template using {FirstName} and {LastName}; e.g. {LastName}{FirstName} or {FirstName} {LastName}."
+msgstr "使用 {FirstName} 与 {LastName} 的模板，例如 {LastName}{FirstName} 或 {FirstName} {LastName}。"
+
+#: service/models/language.ts:100
 msgctxt "base.model.Language.fields"
 msgid "Thousands Separator"
 msgstr "千位分隔符"
 
-#: service/models/language.ts:126
+#: service/models/language.ts:128
 msgctxt "base.model.Language.fields"
 msgid "Time Format"
 msgstr "时间格式"
 
-#: service/models/language.ts:117
+#: service/models/language.ts:119
 msgctxt "base.model.Language.fields"
 msgid "strftime-style pattern for dates in this language."
 msgstr "该语言下的 strftime 风格日期格式。"
@@ -836,7 +846,7 @@ msgctxt "service/models/company"
 msgid "%s is required"
 msgstr "%s 为必填项"
 
-#: service/models/_company_initial_setup.ts:212
+#: service/models/_company_initial_setup.ts:219
 msgctxt "service/models/company"
 msgid "Base currency is required"
 msgstr "本位币不能为空"
@@ -846,12 +856,12 @@ msgctxt "service/models/company"
 msgid "Company Code must be unique"
 msgstr "公司编码必须唯一"
 
-#: service/models/_company_initial_setup.ts:264
+#: service/models/_company_initial_setup.ts:271
 msgctxt "service/models/company"
 msgid "Company not found: %s"
 msgstr "未找到公司：%s"
 
-#: service/models/_company_initial_setup.ts:256
+#: service/models/_company_initial_setup.ts:263
 msgctxt "service/models/company"
 msgid "CompanyId is required"
 msgstr "CompanyId 不能为空"
@@ -861,17 +871,17 @@ msgctxt "service/models/company"
 msgid "CurrencyId is required"
 msgstr "CurrencyId 为必填项"
 
-#: service/models/_company_initial_setup.ts:237 service/models/company.ts:171
+#: service/models/_company_initial_setup.ts:244 service/models/company.ts:171
 msgctxt "service/models/company"
 msgid "Invalid IANA timezone: %s"
 msgstr "无效的 IANA 时区：%s"
 
-#: service/models/_company_initial_setup.ts:204
+#: service/models/_company_initial_setup.ts:211
 msgctxt "service/models/company"
 msgid "Organization name is required"
 msgstr "组织名称不能为空"
 
-#: service/models/_company_initial_setup.ts:207
+#: service/models/_company_initial_setup.ts:214
 msgctxt "service/models/company"
 msgid "Organization name is too long"
 msgstr "组织名称过长"
@@ -891,12 +901,12 @@ msgctxt "service/models/company"
 msgid "Timezone is required"
 msgstr "时区为必填项"
 
-#: service/models/_company_initial_setup.ts:219
+#: service/models/_company_initial_setup.ts:226
 msgctxt "service/models/company"
 msgid "Unknown currency: %s"
 msgstr "未知币种：%s"
 
-#: service/models/_company_initial_setup.ts:230
+#: service/models/_company_initial_setup.ts:237
 msgctxt "service/models/company"
 msgid "Unknown or inactive country: %s"
 msgstr "国家/地区未知或未启用：%s"
@@ -961,27 +971,27 @@ msgctxt "service/models/exchange_rate"
 msgid "Rate must be greater than 0"
 msgstr "Rate 必须大于 0"
 
-#: service/models/language.ts:259
+#: service/models/language.ts:282
 msgctxt "service/models/language"
 msgid "At least one language must stay active"
 msgstr "至少需要保留一门启用的语言"
 
-#: service/models/language.ts:200
+#: service/models/language.ts:219
 msgctxt "service/models/language"
 msgid "Code or LanguageId is required"
 msgstr "必须提供 Code 或 LanguageId"
 
-#: service/models/language.ts:273
+#: service/models/language.ts:296
 msgctxt "service/models/language"
 msgid "Language code cannot be changed"
 msgstr "语言代码不可修改"
 
-#: service/models/language.ts:221
+#: service/models/language.ts:240
 msgctxt "service/models/language"
 msgid "Language not found"
 msgstr "未找到语言"
 
-#: service/models/language.ts:276
+#: service/models/language.ts:299
 msgctxt "service/models/language"
 msgid "The root language en_US cannot be deactivated"
 msgstr "根语言 en_US 不可停用"

@@ -294,6 +294,21 @@
       }
     },
     {
+      "name": "rma_base_user_change_password",
+      "model": "RoleMethodAccess",
+      "values": {
+        "RoleId": {
+          "ref": "auth.role_base_user"
+        },
+        "MetaApplicationId": null,
+        "MetaModelId": null,
+        "MetaServiceId": {
+          "serviceRef": "auth.User/ChangePassword"
+        },
+        "Mode": "allow"
+      }
+    },
+    {
       "name": "rma_base_user_company_search",
       "model": "RoleMethodAccess",
       "values": {
@@ -901,7 +916,7 @@
       }
     },
     {
-      "name": "rfr_base_user_auth_user_preferences_w",
+      "name": "rfr_base_user_auth_user_theme_w",
       "model": "RoleFieldRule",
       "values": {
         "RoleId": {
@@ -918,7 +933,42 @@
               [
                 "Name",
                 "=",
-                "Preferences"
+                "Theme"
+              ],
+              [
+                "ModelId",
+                "=",
+                {
+                  "modelRef": "auth.User"
+                }
+              ]
+            ],
+            "limit": 1
+          }
+        },
+        "PermRead": null,
+        "PermWrite": "allow"
+      }
+    },
+    {
+      "name": "rfr_base_user_auth_user_density_w",
+      "model": "RoleFieldRule",
+      "values": {
+        "RoleId": {
+          "ref": "auth.role_base_user"
+        },
+        "MetaApplicationId": null,
+        "MetaModelId": {
+          "modelRef": "auth.User"
+        },
+        "MetaFieldId": {
+          "search": {
+            "model": "meta.MetaField",
+            "domain": [
+              [
+                "Name",
+                "=",
+                "Density"
               ],
               [
                 "ModelId",

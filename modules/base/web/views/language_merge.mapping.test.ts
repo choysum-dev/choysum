@@ -18,6 +18,7 @@ test('bootstrap.json has POSIX languages and no Locale entity', () => {
   expect(byId.language_en_us?.model).toBe('Language');
   expect(byId.language_en_us?.values.Code).toBe('en_US');
   expect(byId.language_en_us?.values.Grouping).toBe('[3,0]');
+  expect(byId.language_en_us?.values.PersonNameFormat).toBe('{FirstName} {LastName}');
   expect(byId.language_en_us?.values.Name).toEqual({
     en_US: 'English (US)',
     zh_CN: '英语（美国）',
@@ -27,6 +28,7 @@ test('bootstrap.json has POSIX languages and no Locale entity', () => {
   expect(byId.language_zh_cn?.values.Code).toBe('zh_CN');
   expect(byId.language_zh_cn?.values.Grouping).toBe('[3,0]');
   expect(byId.language_zh_cn?.values.DecimalSeparator).toBe('.');
+  expect(byId.language_zh_cn?.values.PersonNameFormat).toBe('{LastName}{FirstName}');
   expect(byId.language_zh_cn?.values.Name).toEqual({
     en_US: 'Chinese (Simplified)',
     zh_CN: '简体中文',

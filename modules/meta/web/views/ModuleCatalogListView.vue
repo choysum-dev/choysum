@@ -159,7 +159,7 @@ import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
 import { useModuleCatalogViewModel } from '../composables/useModuleCatalogViewModel';
 import { moduleLoadDemoAction, moduleSyncAction, moduleUninstallAction } from './module_catalog_actions';
-import ModuleCatalogOpDialog from './ModuleCatalogOpDialog.vue';
+import ModuleCatalogOpDialog from '@/meta/web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue';
 import ModuleCatalogOpProgressStrip from './ModuleCatalogOpProgressStrip.vue';
 import { formatModuleCatalogVersionLine } from './module_catalog_chrome';
 import { unwrapListRecord } from '@/web/web/composables/listRowEdit';

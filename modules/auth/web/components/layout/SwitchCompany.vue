@@ -327,6 +327,8 @@ const fetchedSig = ref('');
 const labelsReady = ref(false);
 /** True only after Search returned ParentId edges; false when hierarchy load failed. */
 const hierarchyReady = ref(false);
+/** In-flight company label/hierarchy Search promise. */
+let companiesInFlight: Promise<void> | null = null;
 
 /**
  * Seed list rows from allowed ids while DisplayName rows are still loading.
@@ -440,8 +442,6 @@ async function syncAllowedCompaniesFromUser(): Promise<void> {
 let skipNextOpenAllowlistRefresh = false;
 /** Skip open-time draft reset after a failed switch so the user can retry Confirm. */
 let preserveDraftOnNextOpen = false;
-/** In-flight company label/hierarchy Search promise. */
-let companiesInFlight: Promise<void> | null = null;
 
 /**
  * Refresh allowlist from the user row so the trigger can unlock after CompanyIds

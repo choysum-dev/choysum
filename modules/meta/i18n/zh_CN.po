@@ -2071,228 +2071,228 @@ msgctxt "web/views/ModuleCatalogListView"
 msgid "Wrapping up…"
 msgstr "即将完成…"
 
-#: web/views/ModuleCatalogOpDialog.vue:40
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:40
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Also %s dependencies with no changes"
 msgstr "另有 %s 个依赖无需变更"
 
-#: web/views/ModuleCatalogOpDialog.vue:69
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:69
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Blockers"
 msgstr "阻断原因"
 
-#: web/views/ModuleCatalogOpDialog.vue:118
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:118
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Cancel"
 msgstr "取消"
 
-#: web/views/ModuleCatalogOpDialog.vue:118
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:118
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Close"
 msgstr "关闭"
 
-#: web/views/ModuleCatalogOpDialog.vue:64
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:64
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Completed"
 msgstr "执行完成"
 
-#: web/views/ModuleCatalogOpDialog.vue:121
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:121
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Confirm"
 msgstr "确认执行"
 
-#: web/views/ModuleCatalogOpDialog.vue:66
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:66
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Data written; page did not refresh"
 msgstr "数据已写入；页面未刷新"
 
-#: web/views/ModuleCatalogOpDialog.vue
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Reload:"
 msgstr "重载："
 
-#: web/views/ModuleCatalogOpDialog.vue
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Retry page refresh"
 msgstr "重试刷新页面"
 
-#: web/views/ModuleCatalogOpDialog.vue
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Trigger Failed"
 msgstr "触发失败"
 
-#: web/views/ModuleCatalogOpDialog.vue
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Triggered"
 msgstr "已触发"
 
-#: web/views/ModuleCatalogOpDialog.vue:124
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:124
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Done"
 msgstr "完成"
 
-#: web/views/ModuleCatalogOpDialog.vue:109
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:109
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Error:"
 msgstr "错误："
 
-#: web/views/ModuleCatalogOpDialog.vue:98
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:98
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Execution Status"
 msgstr "执行状态"
 
-#: web/views/ModuleCatalogOpDialog.vue:248 web/views/ModuleCatalogOpDialog.vue:63
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:248 web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:63
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Failed to get status"
 msgstr "获取状态失败"
 
-#: web/views/ModuleCatalogOpDialog.vue:59
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:59
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Failed to load plan"
 msgstr "获取计划失败"
 
-#: web/views/ModuleCatalogOpDialog.vue:142
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:142
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Install Module"
 msgstr "安装模块"
 
-#: web/views/ModuleCatalogOpDialog.vue:52
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:52
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Installed"
 msgstr "已安装"
 
-#: web/views/ModuleCatalogOpDialog.vue:61
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:61
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Job is still running in the background; refresh later"
 msgstr "任务仍在后台执行，可稍后刷新查看"
 
-#: web/views/ModuleCatalogOpDialog.vue:145
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:145
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Load Demo Data"
 msgstr "加载演示数据"
 
-#: web/views/ModuleCatalogOpDialog.vue:141
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:141
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Module Operation"
 msgstr "模块操作"
 
-#: web/views/ModuleCatalogOpDialog.vue:184
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:184
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Module catalog updated, %s modules"
 msgstr "模块目录已更新，共 %s 个模块"
 
-#: web/views/ModuleCatalogOpDialog.vue:178
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:178
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Module catalog updated, %s modules (%s failed)"
 msgstr "模块目录已更新，共 %s 个模块（%s 处同步失败）"
 
-#: web/views/ModuleCatalogOpDialog.vue:68
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:68
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Module list updated with warnings"
 msgstr "模块列表已更新（有警告）"
 
-#: web/views/ModuleCatalogOpDialog.vue:19
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:19
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Modules that will change"
 msgstr "将变更的模块"
 
-#: web/views/ModuleCatalogOpDialog.vue:32
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:32
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "No module changes required"
 msgstr "无需变更模块"
 
-#: web/views/ModuleCatalogOpDialog.vue:65
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:65
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Operation Failed"
 msgstr "操作失败"
 
-#: web/views/ModuleCatalogOpDialog.vue:67
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:67
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Operation Succeeded"
 msgstr "操作成功"
 
-#: web/views/ModuleCatalogOpDialog.vue:60
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:60
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Operation request failed"
 msgstr "操作请求失败"
 
-#: web/views/ModuleCatalogOpDialog.vue:89
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:89
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Planning for %s…"
 msgstr "正在为 %s 制定计划…"
 
-#: web/views/ModuleCatalogOpDialog.vue:15
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:15
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Resolve blockers before continuing"
 msgstr "存在阻断项，需先处理后再继续"
 
-#: web/views/ModuleCatalogOpDialog.vue:101
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:101
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Result:"
 msgstr "结果："
 
-#: web/views/ModuleCatalogOpDialog.vue:59
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:59
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Risks"
 msgstr "风险提示"
 
-#: web/views/ModuleCatalogOpDialog.vue:89
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:89
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Select a module action to plan an operation."
 msgstr "请选择模块操作以制定计划。"
 
-#: web/views/ModuleCatalogOpDialog.vue:62
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:62
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Service is restarting; status will retry automatically"
 msgstr "服务正在重启，状态查询会自动重试"
 
-#: web/views/ModuleCatalogOpDialog.vue:105
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:105
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Summary:"
 msgstr "摘要："
 
-#: web/views/ModuleCatalogOpDialog.vue:144
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:144
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Uninstall Module"
 msgstr "卸载模块"
 
-#: web/views/ModuleCatalogOpDialog.vue:143
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:143
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Upgrade Module"
 msgstr "升级模块"
 
-#: web/views/ModuleCatalogOpDialog.vue:84
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:84
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Use registry version"
 msgstr "使用仓库版本"
 
-#: web/views/ModuleCatalogOpDialog.vue:83
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:83
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Using registry version"
 msgstr "正在使用仓库版本"
 
-#: web/views/ModuleCatalogOpDialog.vue:97
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:97
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Will install"
 msgstr "将安装"
 
-#: web/views/ModuleCatalogOpDialog.vue:101
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:101
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Will uninstall"
 msgstr "将卸载"
 
-#: web/views/ModuleCatalogOpDialog.vue:99
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:99
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Will upgrade"
 msgstr "将升级"
 
-#: web/views/ModuleCatalogOpDialog.vue:90
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:90
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "local"
 msgstr "本地"
 
-#: web/views/ModuleCatalogOpDialog.vue:89
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:89
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "registry"
 msgstr "仓库"
 
@@ -2743,131 +2743,131 @@ msgstr "升级模块"
 #~ msgid "Upgrade Module"
 #~ msgstr "升级模块"
 
-#~ msgctxt "web/views/ModuleCatalogOpDrawer"
+#~ msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 #~ msgid "Affected Applications"
 #~ msgstr "影响的应用"
 
-#~ msgctxt "web/views/ModuleCatalogOpDrawer"
+#~ msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 #~ msgid "Also %s already installed dependency module(s) that will be skipped"
 #~ msgstr "另有 %s 个已安装的依赖模块，执行时将跳过"
 
-#~ msgctxt "web/views/ModuleCatalogOpDrawer"
+#~ msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 #~ msgid "Closing this drawer keeps the operation running; use View Progress on the card."
 #~ msgstr ""
 
-#~ msgctxt "web/views/ModuleCatalogOpDrawer"
+#~ msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 #~ msgid "Confirm the impact of this operation"
 #~ msgstr "请确认本次操作影响范围"
 
-#~ msgctxt "web/views/ModuleCatalogOpDrawer"
+#~ msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 #~ msgid "Depends on module %s; will be uninstalled together"
 #~ msgstr "依赖模块 %s，将一并卸载"
 
-#~ msgctxt "web/views/ModuleCatalogOpDrawer"
+#~ msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 #~ msgid "Executing %s…"
 #~ msgstr "正在执行 %s…"
 
-#~ msgctxt "web/views/ModuleCatalogOpDrawer"
+#~ msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 #~ msgid "Executing…"
 #~ msgstr "正在执行…"
 
-#~ msgctxt "web/views/ModuleCatalogOpDrawer"
+#~ msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 #~ msgid "Finishing…"
 #~ msgstr "即将完成…"
 
-#~ msgctxt "web/views/ModuleCatalogOpDrawer"
+#~ msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 #~ msgid "Install this dependency first"
 #~ msgstr "需要先安装该模块"
 
-#~ msgctxt "web/views/ModuleCatalogOpDrawer"
+#~ msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 #~ msgid "Module list updated"
 #~ msgstr "模块列表已更新"
 
-#~ msgctxt "web/views/ModuleCatalogOpDrawer"
+#~ msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 #~ msgid "Operation %s"
 #~ msgstr ""
 
-#~ msgctxt "web/views/ModuleCatalogOpDrawer"
+#~ msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 #~ msgid "Operation Progress"
 #~ msgstr ""
 
-#~ msgctxt "web/views/ModuleCatalogOpDrawer"
+#~ msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 #~ msgid "Operation in progress, please wait"
 #~ msgstr "任务执行中，请稍候"
 
-#~ msgctxt "web/views/ModuleCatalogOpDrawer"
+#~ msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 #~ msgid "Phase:"
 #~ msgstr ""
 
-#~ msgctxt "web/views/ModuleCatalogOpDrawer"
+#~ msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 #~ msgid "Please wait for this operation to finish"
 #~ msgstr "请等待操作完成"
 
-#~ msgctxt "web/views/ModuleCatalogOpDrawer"
+#~ msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 #~ msgid "Queued"
 #~ msgstr "排队中"
 
-#~ msgctxt "web/views/ModuleCatalogOpDrawer"
+#~ msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 #~ msgid "Queued…"
 #~ msgstr "正在排队…"
 
-#~ msgctxt "web/views/ModuleCatalogOpDrawer"
+#~ msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 #~ msgid "Refresh page"
 #~ msgstr ""
 
-#~ msgctxt "web/views/ModuleCatalogOpDrawer"
+#~ msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 #~ msgid "Reload"
 #~ msgstr ""
 
-#~ msgctxt "web/views/ModuleCatalogOpDrawer"
+#~ msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 #~ msgid "Reload:"
 #~ msgstr "Reload："
 
-#~ msgctxt "web/views/ModuleCatalogOpDrawer"
+#~ msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 #~ msgid "Reloading service…"
 #~ msgstr "正在重载服务…"
 
-#~ msgctxt "web/views/ModuleCatalogOpDrawer"
+#~ msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 #~ msgid "Required dependency module"
 #~ msgstr "需要先安装该模块"
 
-#~ msgctxt "web/views/ModuleCatalogOpDrawer"
+#~ msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 #~ msgid "Running"
 #~ msgstr ""
 
-#~ msgctxt "web/views/ModuleCatalogOpDrawer"
+#~ msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 #~ msgid "Status:"
 #~ msgstr "状态："
 
-#~ msgctxt "web/views/ModuleCatalogOpDrawer"
+#~ msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 #~ msgid "The web frontend will be rebuilt"
 #~ msgstr "将重建 Web 前端"
 
-#~ msgctxt "web/views/ModuleCatalogOpDrawer"
+#~ msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 #~ msgid "The web frontend will be rebuilt because this change includes web assets."
 #~ msgstr "将重建 Web 前端（本次变更包含前端资源）。"
 
-#~ msgctxt "web/views/ModuleCatalogOpDrawer"
+#~ msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 #~ msgid "These applications will refresh resources with the module changes"
 #~ msgstr "以下应用将随模块变更刷新资源"
 
-#~ msgctxt "web/views/ModuleCatalogOpDrawer"
+#~ msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 #~ msgid "These modules belong to application %s"
 #~ msgstr "以上模块同属应用 %s"
 
-#~ msgctxt "web/views/ModuleCatalogOpDrawer"
+#~ msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 #~ msgid "These modules belong to applications: %s"
 #~ msgstr "以上模块分属应用：%s"
 
-#~ msgctxt "web/views/ModuleCatalogOpDrawer"
+#~ msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 #~ msgid "Triggered"
 #~ msgstr "已触发"
 
-#~ msgctxt "web/views/ModuleCatalogOpDrawer"
+#~ msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 #~ msgid "Update Module List"
 #~ msgstr "更新模块列表"
 
-#~ msgctxt "web/views/ModuleCatalogOpDrawer"
+#~ msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 #~ msgid "app %s"
 #~ msgstr "应用 %s"
 

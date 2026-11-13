@@ -13,49 +13,37 @@ function uniqScopeIds(ids: string[]): string[] {
 }
 
 function buildAllowedCompanyIds(user: any): string[] {
-  return uniqScopeIds([normalizeScopeId((user as any)?.CompanyId), ...(Array.isArray((user as any)?.CompanyIds) ? (user as any).CompanyIds : [])]);
+  return uniqScopeIds([
+    normalizeScopeId((user as any)?.CompanyId),
+    ...(Array.isArray((user as any)?.CompanyIds) ? (user as any).CompanyIds : []),
+  ]);
 }
 
-function normalizeScopePreferences(value: unknown): Record<string, unknown> {
-  if (!value) return {};
-  if (typeof value === 'string') {
-    const s = value.trim();
-    if (!s) return {};
-    try {
-      const parsed = JSON.parse(s);
-      return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? (parsed as Record<string, unknown>) : {};
-    } catch {
-      return {};
-    }
-  }
-  if (typeof value === 'object') {
-    try {
-      const snapshot = JSON.parse(JSON.stringify(value));
-      if (snapshot && typeof snapshot === 'object' && !Array.isArray(snapshot)) return snapshot as Record<string, unknown>;
-    } catch {}
-    return value as Record<string, unknown>;
-  }
-  return {};
+function readStoredEnabledCompanyIds(user: any): string[] {
+  const raw = (user as any)?.EnabledCompanyIds;
+  if (!Array.isArray(raw)) return [];
+  return uniqScopeIds(raw.map(normalizeScopeId).filter(Boolean));
 }
 
 function computeTokenCompanyScope(user: any) {
   const allowedCompanyIds = buildAllowedCompanyIds(user);
-  const prefs: any = normalizeScopePreferences((user as any)?.Preferences);
-  const prefActive = typeof prefs?.activeCompanyId === 'string' ? normalizeScopeId(prefs.activeCompanyId) : '';
-  const prefEnabled = Array.isArray(prefs?.enabledCompanyIds) ? prefs.enabledCompanyIds.map(normalizeScopeId).filter(Boolean) : [];
+  const storedActive = normalizeScopeId((user as any)?.ActiveCompanyId);
+  const storedEnabled = readStoredEnabledCompanyIds(user);
 
   let activeCompanyId = '';
-  if (prefActive && allowedCompanyIds.includes(prefActive)) {
-    activeCompanyId = prefActive;
+  if (storedActive && allowedCompanyIds.includes(storedActive)) {
+    activeCompanyId = storedActive;
   } else {
     const fallback = normalizeScopeId((user as any)?.CompanyId);
     if (fallback && allowedCompanyIds.includes(fallback)) activeCompanyId = fallback;
     else if (allowedCompanyIds.length) activeCompanyId = allowedCompanyIds[0];
   }
 
-  let enabledCompanyIds = prefEnabled.filter((cid: string) => allowedCompanyIds.includes(cid));
+  let enabledCompanyIds = storedEnabled.filter((cid: string) => allowedCompanyIds.includes(cid));
   if (!enabledCompanyIds.length && activeCompanyId) enabledCompanyIds = [activeCompanyId];
-  if (activeCompanyId && !enabledCompanyIds.includes(activeCompanyId)) enabledCompanyIds = [activeCompanyId, ...enabledCompanyIds];
+  if (activeCompanyId && !enabledCompanyIds.includes(activeCompanyId)) {
+    enabledCompanyIds = [activeCompanyId, ...enabledCompanyIds];
+  }
   if (!enabledCompanyIds.length && allowedCompanyIds.length) enabledCompanyIds = [allowedCompanyIds[0]];
 
   return { allowedCompanyIds, activeCompanyId: activeCompanyId || undefined, enabledCompanyIds };
@@ -68,41 +56,40 @@ function normalizeRequestedEnabledCompanyIds(enabledCompanyIds: any): string[] |
 
 function validateSwitchCompanyScopeInput(user: any, activeCompanyId: string, enabledCompanyIds: any) {
   const active = normalizeScopeId(activeCompanyId);
-  const prefs = normalizeScopePreferences((user as any)?.Preferences);
   const allowed = buildAllowedCompanyIds(user);
+  const storedEnabled = readStoredEnabledCompanyIds(user);
 
   if (!active) {
-    return { ok: false, code: 'active_empty', active, enabled: null, allowed, prefs };
+    return { ok: false, code: 'active_empty', active, enabled: null, allowed };
   }
 
-  const prefEnabled = Array.isArray(prefs?.enabledCompanyIds) ? prefs.enabledCompanyIds.map(normalizeScopeId).filter(Boolean) : [];
   let enabled: string[];
 
   if (enabledCompanyIds === undefined || enabledCompanyIds === null) {
-    enabled = prefEnabled.length ? prefEnabled : [active];
+    enabled = storedEnabled.length ? storedEnabled : [active];
   } else if (Array.isArray(enabledCompanyIds)) {
     enabled = enabledCompanyIds.map(normalizeScopeId).filter(Boolean);
   } else {
-    return { ok: false, code: 'enabled_type', active, enabled: null, allowed, prefs };
+    return { ok: false, code: 'enabled_type', active, enabled: null, allowed };
   }
 
   enabled = uniqScopeIds(enabled);
 
   for (const cid of enabled) {
     if (!allowed.includes(cid)) {
-      return { ok: false, code: 'enabled_unauthorized', active, enabled, allowed, prefs, companyId: cid };
+      return { ok: false, code: 'enabled_unauthorized', active, enabled, allowed, companyId: cid };
     }
   }
 
   if (!allowed.includes(active)) {
-    return { ok: false, code: 'active_outside_allowed', active, enabled, allowed, prefs };
+    return { ok: false, code: 'active_outside_allowed', active, enabled, allowed };
   }
 
   if (!enabled.includes(active)) {
-    return { ok: false, code: 'active_not_in_enabled', active, enabled, allowed, prefs };
+    return { ok: false, code: 'active_not_in_enabled', active, enabled, allowed };
   }
 
-  return { ok: true, active, enabled, allowed, prefs };
+  return { ok: true, active, enabled, allowed };
 }
 
 test('buildAllowedCompanyIds: returns deduplicated non-empty ids from CompanyId and CompanyIds', () => {
@@ -125,15 +112,25 @@ test('buildAllowedCompanyIds: filters empty and whitespace ids', () => {
   expect(buildAllowedCompanyIds(user)).toEqual(['C1', 'C2']);
 });
 
-test('computeTokenCompanyScope: picks active from preferences when within allowed scope', () => {
-  const user = { CompanyId: 'C1', CompanyIds: ['C1', 'C2'], Preferences: { activeCompanyId: 'C2', enabledCompanyIds: ['C2'] } };
+test('computeTokenCompanyScope: picks active from stored fields when within allowed scope', () => {
+  const user = {
+    CompanyId: 'C1',
+    CompanyIds: ['C1', 'C2'],
+    ActiveCompanyId: 'C2',
+    EnabledCompanyIds: ['C2'],
+  };
   const scope = computeTokenCompanyScope(user);
   expect(scope.activeCompanyId).toBe('C2');
   expect(scope.enabledCompanyIds).toEqual(['C2']);
 });
 
-test('computeTokenCompanyScope: falls back to CompanyId when pref active is outside allowed', () => {
-  const user = { CompanyId: 'C1', CompanyIds: ['C1'], Preferences: { activeCompanyId: 'C99', enabledCompanyIds: ['C99'] } };
+test('computeTokenCompanyScope: falls back to CompanyId when stored active is outside allowed', () => {
+  const user = {
+    CompanyId: 'C1',
+    CompanyIds: ['C1'],
+    ActiveCompanyId: 'C99',
+    EnabledCompanyIds: ['C99'],
+  };
   const scope = computeTokenCompanyScope(user);
   expect(scope.activeCompanyId).toBe('C1');
 });
@@ -153,7 +150,7 @@ test('normalizeRequestedEnabledCompanyIds: returns normalized and filtered array
   expect(normalizeRequestedEnabledCompanyIds(['  C1  ', '', 'C2'])).toEqual(['C1', 'C2']);
 });
 
-  const baseUser = { CompanyId: 'C1', CompanyIds: ['C1', 'C2'] };
+const baseUser = { CompanyId: 'C1', CompanyIds: ['C1', 'C2'] };
 
 test('validateSwitchCompanyScopeInput: rejects empty active company id', () => {
   const result = validateSwitchCompanyScopeInput(baseUser, '', undefined);
@@ -179,20 +176,18 @@ test('validateSwitchCompanyScopeInput: rejects active outside allowed scope (cau
   if (!result.ok) expect(result.code).toBe('enabled_unauthorized');
 });
 
-test('validateSwitchCompanyScopeInput: rejects active not in enabled', () => {
-  const result = validateSwitchCompanyScopeInput(baseUser, 'C2', ['C1']);
-  expect(result.ok).toBe(false);
-  if (!result.ok) expect(result.code).toBe('active_not_in_enabled');
-});
-
-test('validateSwitchCompanyScopeInput: accepts valid switch with explicit enabled', () => {
-  const result = validateSwitchCompanyScopeInput(baseUser, 'C1', ['C1', 'C2']);
+test('validateSwitchCompanyScopeInput: accepts valid active and enabled', () => {
+  const result = validateSwitchCompanyScopeInput(baseUser, 'C2', ['C1', 'C2']);
   expect(result.ok).toBe(true);
-  if (result.ok) expect(result.enabled).toEqual(['C1', 'C2']);
+  if (result.ok) {
+    expect(result.active).toBe('C2');
+    expect(result.enabled).toEqual(['C1', 'C2']);
+  }
 });
 
-test('validateSwitchCompanyScopeInput: accepts valid switch with omitted enabled', () => {
-  const result = validateSwitchCompanyScopeInput(baseUser, 'C2', undefined);
+test('validateSwitchCompanyScopeInput: omit enabled defaults to stored EnabledCompanyIds', () => {
+  const user = { ...baseUser, EnabledCompanyIds: ['C2'] };
+  const result = validateSwitchCompanyScopeInput(user, 'C2', undefined);
   expect(result.ok).toBe(true);
   if (result.ok) expect(result.enabled).toEqual(['C2']);
 });

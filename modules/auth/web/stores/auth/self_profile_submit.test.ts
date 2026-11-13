@@ -1,9 +1,9 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { normalizePreferenceLanguageId, runPreferencesSubmit } from './preferences_submit';
+import { runSelfProfileSubmit } from './self_profile_submit';
 
-function deps(overrides?: Partial<Parameters<typeof runPreferencesSubmit>[0]>) {
+function deps(overrides?: Partial<Parameters<typeof runSelfProfileSubmit>[0]>) {
   const calls: string[] = [];
   return {
     calls,
@@ -13,14 +13,24 @@ function deps(overrides?: Partial<Parameters<typeof runPreferencesSubmit>[0]>) {
       missingUserMessage: 'missing id',
       defaultSubmit: async () => {
         calls.push('defaultSubmit');
-        return { LanguageId: 'lang-1', Timezone: 'Asia/Shanghai', Theme: 'dark' };
+        return {
+          LanguageId: 'lang-1',
+          Timezone: 'Asia/Shanghai',
+          Theme: 'dark',
+          Density: 'compact',
+        };
       },
-      formData: { LanguageId: 'lang-draft', Timezone: 'UTC', Theme: 'light' } as Record<string, unknown>,
-      patchCurrentUser: (languageId: unknown, timezone: unknown, theme: unknown) => {
-        calls.push(`patch:${String(languageId)}:${String(timezone)}:${String(theme)}`);
+      formData: {
+        LanguageId: 'lang-draft',
+        Timezone: 'UTC',
+        Theme: 'light',
+        Density: 'standard',
+      } as Record<string, unknown>,
+      patchCurrentUser: (languageId: unknown, timezone: unknown, theme: unknown, density: unknown) => {
+        calls.push(`patch:${String(languageId)}:${String(timezone)}:${String(theme)}:${String(density)}`);
       },
-      applyTheme: (theme: unknown) => {
-        calls.push(`theme:${String(theme)}`);
+      applyAppearance: (theme: unknown, density: unknown) => {
+        calls.push(`appearance:${String(theme)}:${String(density)}`);
       },
       applyLanguage: async (languageId: unknown) => {
         calls.push(`apply:${String(languageId)}`);
@@ -43,29 +53,21 @@ function deps(overrides?: Partial<Parameters<typeof runPreferencesSubmit>[0]>) {
   };
 }
 
-test('normalizePreferenceLanguageId: unwraps ManyToOne and scalars', () => {
-  expect(normalizePreferenceLanguageId({ Id: 'lang-1' })).toBe('lang-1');
-  expect(normalizePreferenceLanguageId('lang-2')).toBe('lang-2');
-  expect(normalizePreferenceLanguageId({ Id: '' })).toBe(null);
-  expect(normalizePreferenceLanguageId(null)).toBe(null);
-  expect(normalizePreferenceLanguageId(['lang-tuple'])).toBe(null);
-});
-
-test('runPreferencesSubmit: missing user id errors without Write', async () => {
+test('runSelfProfileSubmit: missing user id errors without Write', async () => {
   const { calls, opts } = deps({ userId: '' });
-  const ok = await runPreferencesSubmit(opts);
+  const ok = await runSelfProfileSubmit(opts);
   expect(ok).toBe(false);
   expect(calls).toEqual(['error:missing id']);
 });
 
-test('runPreferencesSubmit: defaultSubmit then language/token side effects', async () => {
+test('runSelfProfileSubmit: defaultSubmit then language/token side effects', async () => {
   const { calls, opts } = deps();
-  const ok = await runPreferencesSubmit(opts);
+  const ok = await runSelfProfileSubmit(opts);
   expect(ok).toBe(true);
   expect(calls).toEqual([
     'defaultSubmit',
-    'patch:lang-1:Asia/Shanghai:dark',
-    'theme:dark',
+    'patch:lang-1:Asia/Shanghai:dark:compact',
+    'appearance:dark:compact',
     'apply:lang-1',
     'refreshToken',
     'afterLocaleChange',
@@ -73,19 +75,19 @@ test('runPreferencesSubmit: defaultSubmit then language/token side effects', asy
   ]);
 });
 
-test('runPreferencesSubmit: normalizes ManyToOne LanguageId before side effects', async () => {
+test('runSelfProfileSubmit: normalizes ManyToOne LanguageId before side effects', async () => {
   const { calls, opts } = deps({
     defaultSubmit: async () => {
       calls.push('defaultSubmit');
       return { LanguageId: { Id: 'lang-obj' }, Timezone: 'UTC' };
     },
   });
-  const ok = await runPreferencesSubmit(opts);
+  const ok = await runSelfProfileSubmit(opts);
   expect(ok).toBe(true);
   expect(calls).toEqual([
     'defaultSubmit',
-    'patch:lang-obj:UTC:light',
-    'theme:light',
+    'patch:lang-obj:UTC:light:standard',
+    'appearance:light:standard',
     'apply:lang-obj',
     'refreshToken',
     'afterLocaleChange',
@@ -93,44 +95,44 @@ test('runPreferencesSubmit: normalizes ManyToOne LanguageId before side effects'
   ]);
 });
 
-test('runPreferencesSubmit: loadUser when current user id is empty', async () => {
+test('runSelfProfileSubmit: loadUser when current user id is empty', async () => {
   const { calls, opts } = deps({
     hasCurrentUserId: false,
     loadUser: async () => {
       calls.push('loadUser');
     },
   });
-  const ok = await runPreferencesSubmit(opts);
+  const ok = await runSelfProfileSubmit(opts);
   expect(ok).toBe(true);
   expect(calls[0]).toBe('loadUser');
   expect(calls).toContain('defaultSubmit');
 });
 
-test('runPreferencesSubmit: defaultSubmit failure surfaces the error', async () => {
+test('runSelfProfileSubmit: defaultSubmit failure surfaces the error', async () => {
   const { calls, opts } = deps({
     defaultSubmit: async () => {
       calls.push('defaultSubmit');
       throw new Error('write failed');
     },
   });
-  const ok = await runPreferencesSubmit(opts);
+  const ok = await runSelfProfileSubmit(opts);
   expect(ok).toBe(false);
   expect(calls).toEqual(['defaultSubmit', 'error:write failed']);
 });
 
-test('runPreferencesSubmit: applyLanguage failure still refreshes and succeeds', async () => {
+test('runSelfProfileSubmit: applyLanguage failure still refreshes and succeeds', async () => {
   const { calls, opts } = deps({
     applyLanguage: async () => {
       calls.push('apply:lang-1');
       throw new Error('locale failed');
     },
   });
-  const ok = await runPreferencesSubmit(opts);
+  const ok = await runSelfProfileSubmit(opts);
   expect(ok).toBe(true);
   expect(calls).toEqual([
     'defaultSubmit',
-    'patch:lang-1:Asia/Shanghai:dark',
-    'theme:dark',
+    'patch:lang-1:Asia/Shanghai:dark:compact',
+    'appearance:dark:compact',
     'apply:lang-1',
     'refreshToken',
     'afterLocaleChange',
@@ -138,32 +140,32 @@ test('runPreferencesSubmit: applyLanguage failure still refreshes and succeeds',
   ]);
 });
 
-test('runPreferencesSubmit: refreshToken failure after Write still succeeds', async () => {
+test('runSelfProfileSubmit: refreshToken failure after Write still succeeds', async () => {
   const { calls, opts } = deps({
     refreshToken: async () => {
       calls.push('refreshToken');
       throw new Error('token failed');
     },
   });
-  const ok = await runPreferencesSubmit(opts);
+  const ok = await runSelfProfileSubmit(opts);
   expect(ok).toBe(true);
   expect(calls).toEqual([
     'defaultSubmit',
-    'patch:lang-1:Asia/Shanghai:dark',
-    'theme:dark',
+    'patch:lang-1:Asia/Shanghai:dark:compact',
+    'appearance:dark:compact',
     'apply:lang-1',
     'refreshToken',
     'success',
   ]);
 });
 
-test('runPreferencesSubmit: non-Error Write throws keep their string message', async () => {
+test('runSelfProfileSubmit: non-Error Write throws keep their string message', async () => {
   const { calls, opts } = deps({
     defaultSubmit: async () => {
       throw 'plain failure';
     },
   });
-  const ok = await runPreferencesSubmit(opts);
+  const ok = await runSelfProfileSubmit(opts);
   expect(ok).toBe(false);
   expect(calls).toEqual(['error:plain failure']);
 });

@@ -2,21 +2,21 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { createApp, h, nextTick, ref } from 'vue';
-import { PreferenceThemeDraftApplier } from './PreferenceThemeDraftApplier';
+import { ThemeDraftApplier } from './ThemeDraftApplier';
 
 async function flush(): Promise<void> {
   await nextTick();
   await nextTick();
 }
 
-test('PreferenceThemeDraftApplier emits apply when theme draft changes', async () => {
+test('ThemeDraftApplier emits apply when theme draft changes', async () => {
   const theme = ref<unknown>('light');
   const modes: string[] = [];
   const host = document.createElement('div');
   const app = createApp({
     setup() {
       return () =>
-        h(PreferenceThemeDraftApplier, {
+        h(ThemeDraftApplier, {
           theme: theme.value,
           active: true,
           onApply: (mode: string) => {
@@ -36,14 +36,14 @@ test('PreferenceThemeDraftApplier emits apply when theme draft changes', async (
   app.unmount();
 });
 
-test('PreferenceThemeDraftApplier stays quiet when inactive', async () => {
+test('ThemeDraftApplier stays quiet when inactive', async () => {
   const theme = ref<unknown>('light');
   const modes: string[] = [];
   const host = document.createElement('div');
   const app = createApp({
     setup() {
       return () =>
-        h(PreferenceThemeDraftApplier, {
+        h(ThemeDraftApplier, {
           theme: theme.value,
           active: false,
           onApply: (mode: string) => {
