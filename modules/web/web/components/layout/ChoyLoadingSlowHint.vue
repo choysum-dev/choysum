@@ -98,6 +98,10 @@ watch(
     syncStage();
     // Odoo Throbber re-evaluates about once per second; stop once the last stage sticks.
     tickTimer = setInterval(() => {
+      if (!visible.value) {
+        clearTick();
+        return;
+      }
       syncStage();
       if (stageIndex.value >= MESSAGE_STAGE_SECONDS.length - 1) clearTick();
     }, 1000);

@@ -455,6 +455,8 @@ useProvideViewScope({
 const settingsDraftBag = reactive<Record<string, unknown>>({});
 watch(
   // Reference only: setField writes back into props.draft, so deep:true would loop.
+  // Hosts that reload/reset baseline must replace the draft object (new reference),
+  // not mutate the same object in place.
   () => props.draft,
   (next) => {
     if (!isSettingsPresentation.value) return;
