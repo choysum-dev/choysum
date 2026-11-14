@@ -665,6 +665,20 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
         return;
       }
 
+      // setupgate rejects Login/Register/RefreshTokens until Ready. Stale tokens
+      // from a prior DB on the same origin must not call RefreshTokens while
+      // setup is pending — clear locally instead of logging FailedPrecondition.
+      try {
+        const setupComplete = await ensureSetupStateReady();
+        if (!setupComplete) {
+          clearAuth();
+          state.initialized.value = true;
+          return;
+        }
+      } catch {
+        // Probe failed: fall through and attempt token recovery.
+      }
+
       // Recover identity and refresh token if needed. Failures here
       // (malformed tokens, key rotation, DB resets) are expected — clear
       // stale state and mark init complete without re-throwing.
