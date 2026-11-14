@@ -720,6 +720,8 @@ async function onSettingsDiscard() {
 
 async function onSettingsViewSelect(value: string) {
   if (controlsLocked.value) return;
+  // Same view: do not open leave-guard / 1s fallback for a no-op switch.
+  if (value === settingsActiveView.value) return;
   if (!(await confirmDiscardIfDirty())) return;
   // Skip leave-guard while the host pushes the sibling view route.
   await runWhileLeaving(async () => {
