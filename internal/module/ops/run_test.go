@@ -597,6 +597,63 @@ func TestRun_InstallMetaSoftFailsCatalogSync(t *testing.T) {
 	}
 }
 
+func TestRun_InstallMetaHardFailsProjectCatalogInstalled(t *testing.T) {
+	t.Parallel()
+	db := newOpsTestDB(t)
+	runtimeScope := newOpsTestScope(t, db)
+	mod := &pkgmeta.Module{Name: "meta", Version: "1.0.0", ApplicationStr: "meta"}
+	life := &seedLifecycle{stubLifecycle: &stubLifecycle{}, db: db}
+	const blockProject = "ops_block_meta_install_project"
+	o := &Ops{
+		Scope:     runtimeScope,
+		Resolver:  &mapResolver{peek: map[string]*pkgmeta.Module{"meta": mod}},
+		Lifecycle: life,
+		Events:    &recordingBus{},
+		LockerFactory: func(scope.Scope) statepkg.Locker {
+			return testLocker{}
+		},
+		SyncLocalSnapshot: func(context.Context, scope.Scope, statepkg.LockerFactory) (lifecycle.ModuleSourceSnapshotSyncStats, error) {
+			return lifecycle.ModuleSourceSnapshotSyncStats{}, nil
+		},
+		SyncRegistrySnapshot: func(context.Context, scope.Scope, statepkg.LockerFactory) (lifecycle.ModuleSourceSnapshotSyncStats, error) {
+			if err := db.Callback().Query().Before("gorm:query").Register(blockProject, func(tx *gorm.DB) {
+				if tx.Statement != nil && tx.Statement.Table == "meta_module_catalog" {
+					_ = tx.AddError(errors.New("project blocked"))
+				}
+			}); err != nil {
+				t.Fatalf("callback: %v", err)
+			}
+			return lifecycle.ModuleSourceSnapshotSyncStats{}, nil
+		},
+	}
+	t.Cleanup(func() { _ = db.Callback().Query().Remove(blockProject) })
+	if err := db.Create(&modmeta.ModuleSourceSnapshot{
+		ModuleName: "meta", SourceType: originLocal, SourceRef: "local", Available: true,
+		Version: nullString("1.0.0"),
+	}).Error; err != nil {
+		t.Fatalf("seed snapshot: %v", err)
+	}
+	result, err := o.Plan(context.Background(), PlanRequest{ModuleName: "meta", Action: ActionInstall})
+	if err != nil {
+		t.Fatalf("Plan: %v", err)
+	}
+	if err := o.Apply(context.Background(), ApplyRequest{Id: result.Id}); err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+	if err := o.Run(context.Background(), RunRequest{Id: result.Id}); err == nil {
+		t.Fatal("Run should hard-fail project catalog installed")
+	} else if !strings.Contains(err.Error(), "project catalog installed") {
+		t.Fatalf("Run error = %v, want project catalog installed failure", err)
+	}
+	row, err := o.loadOperation(context.Background(), result.Id)
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if row.Status != StatusFailed {
+		t.Fatalf("status=%q want failed", row.Status)
+	}
+}
+
 func TestRun_UpgradeHardFailsProjectCatalogInstalled(t *testing.T) {
 	t.Parallel()
 	db := newOpsTestDB(t)

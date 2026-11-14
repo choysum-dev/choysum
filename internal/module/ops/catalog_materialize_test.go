@@ -5,6 +5,7 @@ package ops
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -12,6 +13,7 @@ import (
 	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	pkgmeta "github.com/choysum-dev/choysum/pkg/meta"
 	"gorm.io/datatypes"
+	"gorm.io/gorm"
 )
 
 func TestFillCatalogFromManifest_ReadsChoysumNestedFields(t *testing.T) {
@@ -335,7 +337,8 @@ func TestStampCatalogLifecycleAt_InstallUpgradeOnly(t *testing.T) {
 	if before.LastInstalledOrUpgradedAt != nil {
 		t.Fatal("uninstall must not stamp lifecycle time")
 	}
-	if err := o.stampCatalogLifecycleAt(context.Background(), []string{"core"}, ActionUpgrade); err != nil {
+	// Nil ctx + duplicate names exercise trim/dedupe and Background fallback.
+	if err := o.stampCatalogLifecycleAt(nil, []string{"core", "core", " "}, ActionUpgrade); err != nil {
 		t.Fatalf("upgrade stamp: %v", err)
 	}
 	var after modmeta.ModuleCatalog
@@ -344,6 +347,19 @@ func TestStampCatalogLifecycleAt_InstallUpgradeOnly(t *testing.T) {
 	}
 	if after.LastInstalledOrUpgradedAt == nil {
 		t.Fatal("expected last_installed_or_upgraded_at after upgrade stamp")
+	}
+
+	const failStamp = "ops_fail_stamp_lifecycle_update"
+	if err := db.Callback().Update().Before("gorm:update").Register(failStamp, func(tx *gorm.DB) {
+		if tx.Statement != nil && tx.Statement.Table == "meta_module_catalog" {
+			_ = tx.AddError(errors.New("stamp blocked"))
+		}
+	}); err != nil {
+		t.Fatalf("callback: %v", err)
+	}
+	t.Cleanup(func() { _ = db.Callback().Update().Remove(failStamp) })
+	if err := o.stampCatalogLifecycleAt(context.Background(), []string{"core"}, ActionInstall); err == nil || !strings.Contains(err.Error(), "stamp catalog lifecycle time") {
+		t.Fatalf("stamp update error = %v", err)
 	}
 }
 
@@ -380,7 +396,7 @@ func TestProjectCatalogInstalled_GuardsAndBranches(t *testing.T) {
 		t.Fatalf("Project with nil ctx: %v", err)
 	}
 
-	// Version bump clears DemoLoaded even when HasDemo stays true.
+	// Version bump clears DemoLoaded even when HasDemo stays true; RegistryVersion feeds update_available.
 	if err := db.Create(&pkgmeta.Module{
 		Name: "auth", Version: "v2.0.0", Status: pkgmeta.Installed, ApplicationStr: "auth",
 		DemoStr: datatypes.JSON(`["demo/a.json"]`),
@@ -389,7 +405,8 @@ func TestProjectCatalogInstalled_GuardsAndBranches(t *testing.T) {
 	}
 	if err := db.Create(&modmeta.ModuleCatalog{
 		ModuleName: "auth", Available: true, Installed: true,
-		InstalledVersion: nullString("1.0.0"), HasDemo: true, DemoLoaded: true,
+		InstalledVersion: nullString("1.0.0"), RegistryVersion: nullString("2.1.0"),
+		HasDemo: true, DemoLoaded: true,
 	}).Error; err != nil {
 		t.Fatalf("seed auth catalog: %v", err)
 	}
@@ -405,15 +422,25 @@ func TestProjectCatalogInstalled_GuardsAndBranches(t *testing.T) {
 	}).Error; err != nil {
 		t.Fatalf("seed core catalog: %v", err)
 	}
+	// Installed module with Path and no catalog row hits minimalCatalogFromInstalled path fill.
+	if err := db.Create(&pkgmeta.Module{
+		Name: "message", Version: "v0.2.0", Status: pkgmeta.Installed, ApplicationStr: "message",
+		Path: "/modules/message",
+	}).Error; err != nil {
+		t.Fatalf("seed message: %v", err)
+	}
 	if err := o.ProjectCatalogInstalled(context.Background()); err != nil {
 		t.Fatalf("Project: %v", err)
 	}
-	var auth, core modmeta.ModuleCatalog
+	var auth, core, message modmeta.ModuleCatalog
 	if err := db.Where("module_name = ?", "auth").Take(&auth).Error; err != nil {
 		t.Fatalf("auth: %v", err)
 	}
 	if auth.DemoLoaded {
 		t.Fatal("expected DemoLoaded cleared on version bump")
+	}
+	if !auth.UpdateAvailable {
+		t.Fatal("expected UpdateAvailable from registry version")
 	}
 	if err := db.Where("module_name = ?", "core").Take(&core).Error; err != nil {
 		t.Fatalf("core: %v", err)
@@ -421,4 +448,92 @@ func TestProjectCatalogInstalled_GuardsAndBranches(t *testing.T) {
 	if core.DemoLoaded {
 		t.Fatal("expected DemoLoaded cleared when HasDemo/DemoStr absent")
 	}
+	if err := db.Where("module_name = ?", "message").Take(&message).Error; err != nil {
+		t.Fatalf("message: %v", err)
+	}
+	if message.LocalPath.String != "/modules/message" {
+		t.Fatalf("message LocalPath=%q", message.LocalPath.String)
+	}
+}
+
+func TestProjectCatalogInstalled_QueryUpdateCreateErrors(t *testing.T) {
+	t.Parallel()
+
+	t.Run("installed_query", func(t *testing.T) {
+		db := newOpsTestDB(t)
+		o := &Ops{Scope: newOpsTestScope(t, db)}
+		const name = "ops_fail_project_module_query"
+		if err := db.Callback().Query().Before("gorm:query").Register(name, func(tx *gorm.DB) {
+			if tx.Statement != nil && tx.Statement.Table == "meta_module" {
+				_ = tx.AddError(errors.New("module query blocked"))
+			}
+		}); err != nil {
+			t.Fatalf("callback: %v", err)
+		}
+		t.Cleanup(func() { _ = db.Callback().Query().Remove(name) })
+		if err := o.ProjectCatalogInstalled(context.Background()); err == nil || !strings.Contains(err.Error(), "module query blocked") {
+			t.Fatalf("Project = %v", err)
+		}
+	})
+
+	t.Run("lifecycle_times_query", func(t *testing.T) {
+		db := newOpsTestDB(t)
+		o := &Ops{Scope: newOpsTestScope(t, db)}
+		const name = "ops_fail_project_op_query"
+		if err := db.Callback().Query().Before("gorm:query").Register(name, func(tx *gorm.DB) {
+			if tx.Statement != nil && tx.Statement.Table == "meta_module_operation" {
+				_ = tx.AddError(errors.New("op query blocked"))
+			}
+		}); err != nil {
+			t.Fatalf("callback: %v", err)
+		}
+		t.Cleanup(func() { _ = db.Callback().Query().Remove(name) })
+		if err := o.ProjectCatalogInstalled(context.Background()); err == nil || !strings.Contains(err.Error(), "op query blocked") {
+			t.Fatalf("Project = %v", err)
+		}
+	})
+
+	t.Run("catalog_update", func(t *testing.T) {
+		db := newOpsTestDB(t)
+		o := &Ops{Scope: newOpsTestScope(t, db)}
+		if err := db.Create(&modmeta.ModuleCatalog{
+			ModuleName: "web", Available: true, Installed: false,
+		}).Error; err != nil {
+			t.Fatalf("seed: %v", err)
+		}
+		const name = "ops_fail_project_catalog_update"
+		if err := db.Callback().Update().Before("gorm:update").Register(name, func(tx *gorm.DB) {
+			if tx.Statement != nil && tx.Statement.Table == "meta_module_catalog" {
+				_ = tx.AddError(errors.New("catalog update blocked"))
+			}
+		}); err != nil {
+			t.Fatalf("callback: %v", err)
+		}
+		t.Cleanup(func() { _ = db.Callback().Update().Remove(name) })
+		if err := o.ProjectCatalogInstalled(context.Background()); err == nil || !strings.Contains(err.Error(), "catalog update blocked") {
+			t.Fatalf("Project = %v", err)
+		}
+	})
+
+	t.Run("catalog_create", func(t *testing.T) {
+		db := newOpsTestDB(t)
+		o := &Ops{Scope: newOpsTestScope(t, db)}
+		if err := db.Create(&pkgmeta.Module{
+			Name: "task", Version: "1.0.0", Status: pkgmeta.Installed, ApplicationStr: "task",
+		}).Error; err != nil {
+			t.Fatalf("seed: %v", err)
+		}
+		const name = "ops_fail_project_catalog_create"
+		if err := db.Callback().Create().Before("gorm:create").Register(name, func(tx *gorm.DB) {
+			if tx.Statement != nil && tx.Statement.Table == "meta_module_catalog" {
+				_ = tx.AddError(errors.New("catalog create blocked"))
+			}
+		}); err != nil {
+			t.Fatalf("callback: %v", err)
+		}
+		t.Cleanup(func() { _ = db.Callback().Create().Remove(name) })
+		if err := o.ProjectCatalogInstalled(context.Background()); err == nil || !strings.Contains(err.Error(), "catalog create blocked") {
+			t.Fatalf("Project = %v", err)
+		}
+	})
 }
