@@ -42,6 +42,8 @@ function buildMockState() {
   const UpdateById = makeFn();
   const GetPermissionState = makeFn();
   const SwitchCompanyScope = makeFn();
+  // Default Ready so initAuth recovery tests do not treat an unset probe as pending.
+  GetInitialSetupState.resolve({ Complete: true });
   return {
     tokens: { value: null as any },
     currentUser: { value: null },
@@ -1394,4 +1396,31 @@ test('initAuth: keeps session when profile Browse fails', async () => {
   } finally {
     console.warn = prevWarn;
   }
+});
+
+test('initAuth: clears stale tokens without RefreshTokens while setup is pending', async () => {
+  const mockState = buildMockState();
+  const mockHelpers = buildMockHelpers();
+  mockState.tokens.value = {
+    accessToken: 'stale-access',
+    refreshToken: 'stale-refresh',
+    expiresAt: Date.now() - 1000,
+  };
+  mockState.shouldRefreshToken.value = true;
+  mockState._recorders.GetInitialSetupState.resolve({ Complete: false });
+  let cleared = false;
+
+  const actions = defineAuthActions(mockState as any, mockHelpers as any, {
+    isClient: true,
+    clearAuthStorage: () => {
+      cleared = true;
+    },
+  });
+
+  await actions.ensureAuthReady();
+
+  expect(mockState.initialized.value).toBe(true);
+  expect(cleared).toBe(true);
+  expect(mockState._recorders.RefreshTokens.calls.length).toBe(0);
+  expect(mockHelpers._recorders.resetAuthState.calls.length).toBeGreaterThan(0);
 });
