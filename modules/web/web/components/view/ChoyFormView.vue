@@ -4,24 +4,54 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <ChoyViewContainer class="gap-5">
+  <ChoyViewContainer
+    class="gap-5"
+    :data-anchor="isSettingsPresentation ? 'choy.settings-view' : undefined"
+    :data-testid="isSettingsPresentation ? 'choy-settings-view' : undefined"
+  >
     <template v-if="resolvedShowHeader" #header>
-      <div data-anchor="choy.form.view-chrome">
+      <div :data-anchor="isSettingsPresentation ? 'choy.settings.view-chrome' : 'choy.form.view-chrome'">
         <ChoyViewActionBar
           layout="thirds"
           class="gap-2 border-b-0 [border-bottom-width:0px]"
           :system-actions-label="_t('System actions')"
           :user-actions-label="_t('User actions')"
         >
-          <template v-if="resolvedShowActions || pageTitle || showTitleOverflow" #system-actions>
+          <template v-if="resolvedShowActions || chromeTitle || showTitleOverflow" #system-actions>
             <!--
               Left chrome contract (List / Kanban / Form):
               [primary] [page title][⋮] [secondary…]
               create/edit: primary=Save/Cancel, Reset in ⋮ (no trailing secondary).
               display: primary=New, secondary=Edit/Copy/Delete after the title cluster.
+              settings: primary=Save/Discard only (no CRUD / Reset overflow).
             -->
+            <!-- Settings chrome: Save/Discard; dirty gates enablement. -->
+            <template v-if="isSettingsPresentation && resolvedShowActions">
+              <ChoyButton
+                type="button"
+                size="default"
+                variant="default"
+                data-testid="settings-save"
+                :disabled="controlsLocked || !settingsDirty"
+                @click="onSettingsSave"
+              >
+                <Check class="size-4" aria-hidden="true" />
+                {{ settingsSaveLabel }}
+              </ChoyButton>
+              <ChoyButton
+                type="button"
+                size="default"
+                variant="outline"
+                data-testid="settings-discard"
+                :disabled="controlsLocked || !settingsDirty"
+                @click="onSettingsDiscard"
+              >
+                <X class="size-4" aria-hidden="true" />
+                {{ settingsDiscardLabel }}
+              </ChoyButton>
+            </template>
             <!-- Primary: Save/Cancel while editing; New (or #system-actions) in display. -->
-            <template v-if="isEditing && resolvedShowActions">
+            <template v-else-if="isEditing && resolvedShowActions">
               <ChoyButton type="button" size="default" variant="default" :disabled="controlsLocked" @click="handleSubmit">
                 <Check class="size-4" aria-hidden="true" />
                 {{ saveLabel }}
@@ -46,12 +76,16 @@ SPDX-License-Identifier: Apache-2.0
             </slot>
 
             <h1
-              v-if="pageTitle"
+              v-if="chromeTitle"
               :id="pageTitleId || undefined"
               data-slot="page-title"
-              class="choy-form-view__page-title min-w-0 max-w-[10rem] truncate text-base font-semibold text-foreground sm:max-w-[14rem]"
+              :class="
+                isSettingsPresentation
+                  ? 'choy-settings-view__page-title min-w-0 max-w-[10rem] truncate text-base font-semibold text-foreground sm:max-w-[14rem]'
+                  : 'choy-form-view__page-title min-w-0 max-w-[10rem] truncate text-base font-semibold text-foreground sm:max-w-[14rem]'
+              "
             >
-              {{ pageTitle }}
+              {{ chromeTitle }}
             </h1>
             <ChoyPageTitleActions
               v-if="showTitleOverflow"
@@ -90,7 +124,7 @@ SPDX-License-Identifier: Apache-2.0
             </ChoyPageTitleActions>
 
             <!-- Secondary (display only): Edit/Copy/Delete after the title cluster. -->
-            <template v-if="resolvedShowActions && viewMode === 'display' && effectiveRecordId">
+            <template v-if="!isSettingsPresentation && resolvedShowActions && viewMode === 'display' && effectiveRecordId">
               <ChoyButton
                 v-if="canEdit"
                 type="button"
@@ -127,7 +161,7 @@ SPDX-License-Identifier: Apache-2.0
             </template>
             <!-- Same tray as title/⋮ (List/Kanban secondary-actions parity) — no ActionBar separator. -->
             <slot
-              v-if="resolvedShowActions && viewMode === 'display'"
+              v-if="!isSettingsPresentation && resolvedShowActions && viewMode === 'display'"
               name="secondary-actions"
             />
           </template>
@@ -140,8 +174,16 @@ SPDX-License-Identifier: Apache-2.0
             <div class="min-w-0" />
           </template>
           <template #header-right>
-            <slot name="statusbar" />
-            <slot name="button-box" />
+            <template v-if="isSettingsPresentation && settingsViewSwitcherOptions.length > 1">
+              <ChoyViewSwitcher
+                :active="settingsActiveView"
+                :options="settingsViewSwitcherOptions"
+                :aria-label="_t('View switcher')"
+                @select="onSettingsViewSelect"
+              />
+            </template>
+            <slot v-else name="statusbar" />
+            <slot v-if="!isSettingsPresentation" name="button-box" />
             <slot name="header-right" />
           </template>
         </ChoyViewActionBar>
@@ -150,21 +192,38 @@ SPDX-License-Identifier: Apache-2.0
 
     <ChoyViewBusyHost
       :busy="overlayBusy"
+      :mode="formBusyMode"
       class="min-h-0 flex-1 overflow-y-auto"
-      data-anchor="choy.form-view"
+      :data-anchor="isSettingsPresentation ? 'choy.settings.sheet' : 'choy.form-view'"
     >
-      <form ref="formRef" :inert="submitting || undefined" @submit.self.prevent="onNativeSubmit">
+      <form
+        ref="formRef"
+        :class="isSettingsPresentation ? 'choy-settings-view__sheet flex min-h-0 min-w-0 flex-1 flex-col gap-8' : undefined"
+        :inert="(isSettingsPresentation ? overlayBusy : submitting) || undefined"
+        @submit.self.prevent="isSettingsPresentation ? onSettingsSave() : onNativeSubmit()"
+      >
         <slot :form-data="exposedFormData" :view-mode="viewMode" :loading="loading" />
       </form>
     </ChoyViewBusyHost>
   </ChoyViewContainer>
 </template>
 
+<style scoped>
+/*
+ * Settings rows often carry longer CJK labels than dense Form columns.
+ * Raise the horizontal label track only under settings presentation.
+ */
+.choy-settings-view__sheet {
+  --choy-field-label-max: 12rem;
+}
+</style>
+
 <script setup lang="ts" generic="T extends BaseModel">
 // =============================
 // Section 1: Imports
 // =============================
-import { ref, computed, provide, inject, watch, toRaw, onMounted, onBeforeUnmount, getCurrentInstance, useSlots } from 'vue';
+import { ref, computed, provide, inject, watch, toRaw, onMounted, onBeforeUnmount, getCurrentInstance, useSlots, reactive } from 'vue';
+import { useControlBusy } from '@/core/web/client/loadingRegistry';
 import { FIELD_CLIENT_VALIDATORS_KEY } from '@/web/web/composables/fieldClientValidation';
 import { FIELD_ERROR_SPACE_KEY } from '@/web/web/composables/fieldErrorSpace';
 import type { ClientModel, BaseModel, Updateable, Insertable } from '@/core/rpc';
@@ -178,6 +237,7 @@ import {
 } from '@/web/web/components/view/actionVisibility';
 import { resolvePageStore, useHostPageTitleInView, useRegisterPageActionTarget } from '@/web/web/composables/usePageContext';
 import { useResolvedCreateAction } from '@/web/web/composables/resolveCreateRoute';
+import { getDraftField, setDraftField } from '@/web/web/composables/listRowEdit';
 
 import { provideOnchange } from '@/web/web/composables/useOnchange';
 import type { ViewMode } from '@/web/web/components/view/viewScopeKeys';
@@ -189,11 +249,13 @@ import { useFormViewLifecycle } from '@/web/web/composables/useFormViewLifecycle
 import { useFormViewSubmit } from '@/web/web/composables/useFormViewSubmit';
 import { nextLocalToken } from '@/web/web/components/view/localToken';
 import { createTranslate } from '@/web/web/i18n';
+import type { LocalFormStore } from '@/web/web/stores/localFormStore';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
 import ChoyPageTitleActions from '@/web/web/components/layout/ChoyPageTitleActions.vue';
 import ChoyViewContainer from '@/web/web/components/view/ChoyViewContainer.vue';
 import ChoyViewActionBar from '@/web/web/components/view/ChoyViewActionBar.vue';
 import ChoyViewBusyHost from '@/web/web/components/view/ChoyViewBusyHost.vue';
+import ChoyViewSwitcher, { type ChoyViewSwitcherOption } from '@/web/web/components/view/ChoyViewSwitcher.vue';
 import DropdownMenuItem from '@/web/web/components/vendor/ui/dropdown-menu/DropdownMenuItem.vue';
 import { Plus, Pencil, RefreshCw, Trash2, Check, X, Copy, RotateCcw } from 'lucide-vue-next';
 import type {
@@ -202,11 +264,14 @@ import type {
   FormChildSubmitApiRegister,
 } from '@/web/web/components/view/formViewTypes';
 
+export type FormPresentation = 'record' | 'settings';
+
 defineOptions({ name: 'ChoyFormView' });
 
 /**
- * Store-only form engine. Requires :store or a page-provided store
- * (resolvePageStore); there is no chrome-only dual-mode path.
+ * Store-backed form engine. Requires :store or a page-provided store
+ * (resolvePageStore). `presentation=settings` adds Settings chrome (Save/Discard,
+ * ViewSwitcher) while reusing form-root / leave / BusyHost / control submit.
  */
 const { _t, _lt } = createTranslate('web', { scope: 'web/components/view/FormView' });
 const detailsTitle = _lt('Details');
@@ -248,6 +313,33 @@ const props = withDefaults(
     resolveRecordIdFromRoute?: boolean;
     /** Opt out of page IO action-target registration (embedded views pass false). */
     registerActionTarget?: boolean;
+    /** `settings` = Settings chrome on this Form engine (Save/Discard, no CRUD). */
+    presentation?: FormPresentation;
+    /**
+     * Settings / wizard draft bag when fields bind via form-root without a LocalFormStore.
+     * Ignored for record presentation.
+     */
+    draft?: Record<string, unknown>;
+    /**
+     * Optional LocalFormStore for settings form-root (curated keys as field names).
+     * When set, takes precedence over `draft` for getField/setField.
+     */
+    localStore?: LocalFormStore | null;
+    /**
+     * Page-level dirty override (Settings). When the prop is passed, leave/Cancel and
+     * Save/Discard enablement use this instead of controller draft vs original.
+     */
+    dirty?: boolean;
+    /** Settings first-load / refresh surface busy (skeleton). */
+    contentLoading?: boolean;
+    /** Settings Save in flight (control); locks chrome without masking the sheet. */
+    controlBusy?: boolean;
+    /** Optional title override (Settings mounts without relying solely on ChoyPage). */
+    pageTitle?: string;
+    saveLabel?: string;
+    discardLabel?: string;
+    activeView?: string;
+    viewSwitcherOptions?: ChoyViewSwitcherOption[];
   }>(),
   {
     createAction: undefined,
@@ -258,6 +350,12 @@ const props = withDefaults(
     cancelHandler: undefined,
     // Keep omitted as undefined (not false) so matching page-store views auto-register.
     registerActionTarget: undefined,
+    presentation: 'record',
+    localStore: null,
+    contentLoading: false,
+    controlBusy: false,
+    activeView: 'settings',
+    viewSwitcherOptions: () => [],
   }
 );
 
@@ -270,6 +368,9 @@ const hasShowHeaderProp = hasExplicitProp('showHeader', 'show-header');
 const hasShowActionsProp = hasExplicitProp('showActions', 'show-actions');
 const hasShowMessagesProp = hasExplicitProp('showMessages', 'show-messages');
 const hasResolveRecordIdFromRouteProp = hasExplicitProp('resolveRecordIdFromRoute', 'resolve-record-id-from-route');
+const hasDirtyProp = hasExplicitProp('dirty');
+
+const isSettingsPresentation = computed(() => props.presentation === 'settings');
 
 // =============================
 // Section 4: View layout notes
@@ -315,6 +416,12 @@ const emit = defineEmits<{
   (e: 'reset', payload: { formData: Partial<ClientModel<T>> }): void;
   (e: 'copy', payload: { formData: Partial<ClientModel<T>> }): void;
   (e: 'action-error', payload: { action: 'load' | 'create' | 'update' | 'delete' | 'refresh'; error: Error }): void;
+  /** Settings presentation: Save clicked (host persists). */
+  (e: 'save'): void;
+  /** Settings presentation: Discard confirmed (host reloads baseline). */
+  (e: 'discard'): void;
+  /** Settings presentation: ViewSwitcher select after dirty confirm. */
+  (e: 'view-select', value: string): void;
 }>();
 
 // =============================
@@ -334,10 +441,70 @@ const canCopy = computed(() => canShowDeclaredAction(props.actionIds?.copy, prop
 const canRefresh = computed(() => canShowAction(props.actionIds?.refresh, props.hasAction));
 // Form controller.
 const controller = createFormController(store as any);
-controller.provideToChildren();
-const viewMode = computed<ViewMode>(() => controller.vm.mode as ViewMode);
+const viewMode = computed<ViewMode>(() => {
+  if (isSettingsPresentation.value) return 'edit';
+  return controller.vm.mode as ViewMode;
+});
 const loading = computed<boolean>(() => !!controller.vm.loading);
-useProvideViewScope({ kind: 'Form', mode: viewMode });
+useProvideViewScope({
+  kind: computed(() => (isSettingsPresentation.value ? 'Settings' : 'Form')),
+  mode: viewMode,
+});
+
+/** Mutable bag used when settings presentation passes a plain `draft` object. */
+const settingsDraftBag = reactive<Record<string, unknown>>({});
+watch(
+  // Reference only: setField writes back into props.draft, so deep:true would loop.
+  () => props.draft,
+  (next) => {
+    if (!isSettingsPresentation.value) return;
+    if (!next || typeof next !== 'object') return;
+    for (const key of Object.keys(settingsDraftBag)) {
+      if (!(key in next)) delete settingsDraftBag[key];
+    }
+    Object.assign(settingsDraftBag, next);
+  },
+  { immediate: true },
+);
+
+/**
+ * Settings chrome: form-root binds LocalFormStore or draft bag so curated Settings
+ * fields share one write path. Record Form keeps controller.provideToChildren().
+ */
+if (isSettingsPresentation.value) {
+  provide('form-root', {
+    get mode() {
+      return 'edit' as const;
+    },
+    get draft() {
+      if (props.localStore) return props.localStore.getValues();
+      if (props.draft && typeof props.draft === 'object') return settingsDraftBag;
+      return controller.vm.draft;
+    },
+    getField(path: string) {
+      if (props.localStore) return props.localStore.getField(path);
+      if (props.draft && typeof props.draft === 'object') return getDraftField(settingsDraftBag, path);
+      return controller.vm.draft ? (controller.vm.draft as any)[path] : undefined;
+    },
+    setField(path: string, value: unknown) {
+      if (props.localStore) {
+        props.localStore.setField(path, value);
+        return;
+      }
+      if (props.draft && typeof props.draft === 'object') {
+        setDraftField(settingsDraftBag, path, value);
+        setDraftField(props.draft, path, value);
+        return;
+      }
+      if (!controller.vm.draft) (controller.vm as any).draft = {};
+      (controller.vm.draft as any)[path] = value;
+    },
+    onChange(_cb: (nextDraft: unknown) => void) {},
+  });
+} else {
+  controller.provideToChildren();
+}
+
 const registerChildSubmitApi = inject<FormChildSubmitApiRegister | null>(FORM_CHILD_SUBMIT_API_REGISTER_KEY, null);
 const embeddedFromHost = inject<boolean | null>(FORM_EMBEDDED_CONTEXT_KEY, null);
 const childSubmitRegistrationToken = nextLocalToken('form-view');
@@ -354,10 +521,15 @@ const resolvedResolveRecordIdFromRoute = computed<boolean>(() =>
   hasResolveRecordIdFromRouteProp ? props.resolveRecordIdFromRoute === true : !isEmbedded.value
 );
 const resolvedCreateAction = useResolvedCreateAction(() => props.createAction, {
-  enabled: () => !isEmbedded.value,
+  enabled: () => !isEmbedded.value && !isSettingsPresentation.value,
 });
 const slots = useSlots();
-const { pageTitle, pageTitleId, pageTitleActionsIo } = useHostPageTitleInView(resolvedShowHeader);
+const { pageTitle: hostedPageTitle, pageTitleId, pageTitleActionsIo } = useHostPageTitleInView(resolvedShowHeader);
+const chromeTitle = computed(() => {
+  const override = String(props.pageTitle || '').trim();
+  if (override) return override;
+  return String(hostedPageTitle.value || '').trim();
+});
 
 // Guard the current submit channel from being captured by deeper nested FormView instances.
 // Deeper nesting should re-provide its own registration entry from the nearest container.
@@ -407,7 +579,15 @@ provide('lastOnchangeResult', lastOnchangeResult);
 // =============================
 // Section 13: Computed exposed form data
 // =============================
-const exposedFormData = computed<Partial<ClientModel<T>>>(() => (controller.vm.draft as any) || {});
+const exposedFormData = computed<Partial<ClientModel<T>>>(() => {
+  if (isSettingsPresentation.value) {
+    if (props.localStore) return props.localStore.getValues() as Partial<ClientModel<T>>;
+    if (props.draft && typeof props.draft === 'object') {
+      return settingsDraftBag as Partial<ClientModel<T>>;
+    }
+  }
+  return (controller.vm.draft as any) || {};
+});
 
 const lifecycleDeps = {
   // Getters keep identity reactive when the host reuses the form without remounting.
@@ -443,6 +623,9 @@ const lifecycleDeps = {
 
 const {
   effectiveRecordId,
+  isFormDirty,
+  confirmDiscardIfDirty,
+  runWhileLeaving,
   handleEdit,
   handleCancel,
   handleReset,
@@ -456,6 +639,8 @@ const {
   get cancelHandler() {
     return props.cancelHandler;
   },
+  externalDirty: () => (hasDirtyProp ? props.dirty === true : undefined),
+  leaveBlocked: () => isSettingsPresentation.value && (props.controlBusy === true || submitting.value),
 });
 
 const { submitting, handleSubmit, onNativeSubmit } = useFormViewSubmit({
@@ -481,23 +666,120 @@ const { submitting, handleSubmit, onNativeSubmit } = useFormViewSubmit({
 /** Binary/Image fields use this to show Attachment state=uploading during Prepare/PUT/Finalize. */
 provide('form-submitting', submitting);
 
-const overlayBusy = computed<boolean>(() => loading.value && !submitting.value);
-const controlsLocked = computed<boolean>(() => loading.value || submitting.value);
+const formBusyTarget = computed(() => `form:${String((store as any)?.storeId ?? (store as any)?.model ?? 'default')}`);
+const formControlBusy = useControlBusy(formBusyTarget);
+const settingsControlBusy = computed(
+  () => props.controlBusy === true || submitting.value || formControlBusy.value.busy,
+);
+/** Surface load only — submit/delete/settings Save are control (no content spinner mask). */
+const overlayBusy = computed<boolean>(() => {
+  if (isSettingsPresentation.value) {
+    return props.contentLoading === true;
+  }
+  return loading.value && !submitting.value && !formControlBusy.value.busy;
+});
+const formBusyMode = computed<'stale' | 'skeleton' | 'block'>(() => {
+  // Prefer block (Loader2) for first paint; stale when a record frame already exists.
+  if (isSettingsPresentation.value) return 'block';
+  return controller.vm.draft || controller.vm.original ? 'stale' : 'block';
+});
+const controlsLocked = computed<boolean>(() => {
+  if (isSettingsPresentation.value) return settingsControlBusy.value;
+  return loading.value || submitting.value || formControlBusy.value.busy;
+});
 const saveLabel = computed(() => (submitting.value ? _t('Saving...') : _t('Save')));
+// Explicit dirty=false stays false; omitted dirty falls back to controller draft dirty.
+const settingsDirty = computed(() => (hasDirtyProp ? props.dirty === true : isFormDirty()));
+const settingsSaveLabel = computed(() => {
+  if (props.saveLabel) return props.saveLabel;
+  return settingsControlBusy.value ? _t('Saving...') : _t('Save');
+});
+const settingsDiscardLabel = computed(() => props.discardLabel || _t('Discard'));
+const settingsActiveView = computed(() => props.activeView || 'settings');
+const settingsViewSwitcherOptions = computed(() => {
+  const opts = props.viewSwitcherOptions || [];
+  if (!controlsLocked.value) return opts;
+  return opts.map((opt) => ({ ...opt, disabled: true }));
+});
+
+function onSettingsSave() {
+  if (controlsLocked.value || !settingsDirty.value) return;
+  emit('save');
+}
+
+async function onSettingsDiscard() {
+  if (controlsLocked.value || !settingsDirty.value) return;
+  // cancelHandler path (ChoySettingsView) emits discard itself — avoid a second emit.
+  if (props.cancelHandler) {
+    await handleCancel();
+    return;
+  }
+  if (!(await confirmDiscardIfDirty())) return;
+  emit('discard');
+}
+
+async function onSettingsViewSelect(value: string) {
+  if (controlsLocked.value) return;
+  // Same view: do not open leave-guard / 1s fallback for a no-op switch.
+  if (value === settingsActiveView.value) return;
+  if (!(await confirmDiscardIfDirty())) return;
+  // Skip leave-guard while the host pushes the sibling view route.
+  await runWhileLeaving(async () => {
+    // No router: do not hold leaving for the 1s fallback with nothing to await.
+    if (!router?.afterEach) {
+      emit('view-select', value);
+      return;
+    }
+    await new Promise<void>((resolve) => {
+      let settled = false;
+      let removeAfter: (() => void) | undefined;
+      let fallbackTimer: ReturnType<typeof setTimeout> | undefined;
+      const finish = () => {
+        if (settled) return;
+        settled = true;
+        removeAfter?.();
+        if (fallbackTimer != null) clearTimeout(fallbackTimer);
+        resolve();
+      };
+      // Attach before emit so a synchronous host navigation still settles leaving.
+      // Ignore failed navigations so an abort does not clear leaving early.
+      // Listener errors are handled by Vue (not rethrown here); the 1s fallback
+      // still clears afterEach/timer if no navigation commits.
+      removeAfter = router.afterEach((_to, _from, failure) => {
+        if (failure) return;
+        finish();
+      });
+      fallbackTimer = setTimeout(finish, 1000);
+      emit('view-select', value);
+    });
+  });
+}
+
 const isEditing = computed(() => viewMode.value === 'edit' || viewMode.value === 'create');
 const showRefreshInOverflow = computed(
-  () => resolvedShowActions.value && resolvedShowHeader.value && canRefresh.value && viewMode.value === 'display' && !!effectiveRecordId.value,
+  () =>
+    !isSettingsPresentation.value &&
+    resolvedShowActions.value &&
+    resolvedShowHeader.value &&
+    canRefresh.value &&
+    viewMode.value === 'display' &&
+    !!effectiveRecordId.value,
 );
 /** Reset lives in ⋮ during create/edit so the left bar stays [Save][Cancel][title][⋮]. */
 const showResetInOverflow = computed(
-  () => resolvedShowActions.value && resolvedShowHeader.value && isEditing.value,
+  () =>
+    !isSettingsPresentation.value &&
+    resolvedShowActions.value &&
+    resolvedShowHeader.value &&
+    isEditing.value,
 );
 const showTitleOverflow = computed(
   () =>
-    !!pageTitleActionsIo.value ||
-    showRefreshInOverflow.value ||
-    showResetInOverflow.value ||
-    !!slots['overflow-actions'],
+    !isSettingsPresentation.value &&
+    (!!pageTitleActionsIo.value ||
+      showRefreshInOverflow.value ||
+      showResetInOverflow.value ||
+      !!slots['overflow-actions']),
 );
 
 useRegisterPageActionTarget({

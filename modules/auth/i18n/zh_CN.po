@@ -1091,22 +1091,22 @@ msgctxt "web/components/layout/SwitchCompany"
 msgid "Workspace"
 msgstr "工作区"
 
-#: web/dialogs/change-password/ChangePasswordDialog.vue:22
+#: web/dialogs/change-password/ChangePasswordDialog.vue:23
 msgctxt "web/dialogs/change-password/ChangePasswordDialog"
 msgid "Cancel"
 msgstr "取消"
 
-#: web/dialogs/change-password/ChangePasswordDialog.vue:90
+#: web/dialogs/change-password/ChangePasswordDialog.vue:91
 msgctxt "web/dialogs/change-password/ChangePasswordDialog"
 msgid "Cannot change password: missing username"
 msgstr "无法更改密码：缺少用户名"
 
-#: web/dialogs/change-password/ChangePasswordDialog.vue:25 web/dialogs/change-password/ChangePasswordDialog.vue:5
+#: web/dialogs/change-password/ChangePasswordDialog.vue:26 web/dialogs/change-password/ChangePasswordDialog.vue:5
 msgctxt "web/dialogs/change-password/ChangePasswordDialog"
 msgid "Change password"
 msgstr "更改密码"
 
-#: web/dialogs/change-password/ChangePasswordDialog.vue:17
+#: web/dialogs/change-password/ChangePasswordDialog.vue:18
 msgctxt "web/dialogs/change-password/ChangePasswordDialog"
 msgid "Confirm new password"
 msgstr "确认新密码"
@@ -1116,7 +1116,7 @@ msgctxt "web/dialogs/change-password/ChangePasswordDialog"
 msgid "Confirm new password is required"
 msgstr "请确认新密码"
 
-#: web/dialogs/change-password/ChangePasswordDialog.vue:15
+#: web/dialogs/change-password/ChangePasswordDialog.vue:16
 msgctxt "web/dialogs/change-password/ChangePasswordDialog"
 msgid "Current password"
 msgstr "当前密码"
@@ -1126,12 +1126,12 @@ msgctxt "web/dialogs/change-password/ChangePasswordDialog"
 msgid "Current password is required"
 msgstr "请输入当前密码"
 
-#: web/dialogs/change-password/ChangePasswordDialog.vue:110
+#: web/dialogs/change-password/ChangePasswordDialog.vue:111
 msgctxt "web/dialogs/change-password/ChangePasswordDialog"
 msgid "Failed to change password"
 msgstr "更改密码失败"
 
-#: web/dialogs/change-password/ChangePasswordDialog.vue:16
+#: web/dialogs/change-password/ChangePasswordDialog.vue:17
 msgctxt "web/dialogs/change-password/ChangePasswordDialog"
 msgid "New password"
 msgstr "新密码"
@@ -1146,7 +1146,7 @@ msgctxt "web/dialogs/change-password/ChangePasswordDialog"
 msgid "New password must differ from the current password"
 msgstr "新密码不能与当前密码相同"
 
-#: web/dialogs/change-password/ChangePasswordDialog.vue:106
+#: web/dialogs/change-password/ChangePasswordDialog.vue:107
 msgctxt "web/dialogs/change-password/ChangePasswordDialog"
 msgid "Password changed"
 msgstr "密码已更改"
@@ -1176,7 +1176,7 @@ msgctxt "web/dialogs/preferences/PreferencesDialog"
 msgid "Cancel"
 msgstr "取消"
 
-#: web/dialogs/preferences/PreferencesDialog.vue:204
+#: web/dialogs/preferences/PreferencesDialog.vue:214
 msgctxt "web/dialogs/preferences/PreferencesDialog"
 msgid "Cannot update preferences: missing user id"
 msgstr "无法更新偏好设置：缺少用户 ID"
@@ -1196,7 +1196,7 @@ msgctxt "web/dialogs/preferences/PreferencesDialog"
 msgid "Display timezone; empty uses browser timezone on first login."
 msgstr "显示时区；为空时首次登录会使用浏览器时区。"
 
-#: web/dialogs/preferences/PreferencesDialog.vue:264
+#: web/dialogs/preferences/PreferencesDialog.vue:277
 msgctxt "web/dialogs/preferences/PreferencesDialog"
 msgid "Failed to update preferences"
 msgstr "更新偏好设置失败"
@@ -1241,7 +1241,7 @@ msgctxt "web/dialogs/preferences/PreferencesDialog"
 msgid "Preferences"
 msgstr "偏好设置"
 
-#: web/dialogs/preferences/PreferencesDialog.vue:258
+#: web/dialogs/preferences/PreferencesDialog.vue:271
 msgctxt "web/dialogs/preferences/PreferencesDialog"
 msgid "Preferences updated"
 msgstr "偏好设置已更新"
@@ -1386,7 +1386,7 @@ msgctxt "web/pages/AuthSettings"
 msgid "Browser timezone"
 msgstr "浏览器时区"
 
-#: web/pages/auth_settings_page.ts:111
+#: web/pages/auth_settings_page.ts:122
 msgctxt "web/pages/AuthSettings"
 msgid "Load failed"
 msgstr "加载失败"
@@ -1401,12 +1401,12 @@ msgctxt "web/pages/AuthSettings"
 msgid "Parameters View"
 msgstr "参数视图"
 
-#: web/pages/auth_settings_page.ts:127
+#: web/pages/auth_settings_page.ts:143
 msgctxt "web/pages/AuthSettings"
 msgid "Save failed"
 msgstr "保存失败"
 
-#: web/pages/auth_settings_page.ts:125
+#: web/pages/auth_settings_page.ts:139
 msgctxt "web/pages/AuthSettings"
 msgid "Saved successfully"
 msgstr "保存成功"
@@ -1426,17 +1426,17 @@ msgctxt "web/pages/Login"
 msgid "Close"
 msgstr "关闭"
 
-#: web/pages/Login.vue:37
+#: web/pages/Login.vue:38
 msgctxt "web/pages/Login"
 msgid "Don't have an account?"
 msgstr "还没有账号？"
 
-#: web/pages/Login.vue:28
+#: web/pages/Login.vue:29
 msgctxt "web/pages/Login"
 msgid "Enter password"
 msgstr "请输入密码"
 
-#: web/pages/Login.vue:25
+#: web/pages/Login.vue:26
 msgctxt "web/pages/Login"
 msgid "Enter username"
 msgstr "请输入用户名"
@@ -1451,7 +1451,7 @@ msgctxt "web/pages/Login"
 msgid "Initial setup is complete. Sign in with your new account."
 msgstr "初始设置已完成，请使用新账号登录。"
 
-#: web/pages/Login.vue:34
+#: web/pages/Login.vue:35
 msgctxt "web/pages/Login"
 msgid "Log In"
 msgstr "登录"
@@ -1461,17 +1461,17 @@ msgctxt "web/pages/Login"
 msgid "Login failed. Please try again later."
 msgstr "登录失败，请稍后重试。"
 
-#: web/pages/Login.vue:28
+#: web/pages/Login.vue:29
 msgctxt "web/pages/Login"
 msgid "Password"
 msgstr "密码"
 
-#: web/pages/Login.vue:30
+#: web/pages/Login.vue:31
 msgctxt "web/pages/Login"
 msgid "Remember me"
 msgstr "记住我"
 
-#: web/pages/Login.vue:39
+#: web/pages/Login.vue:40
 msgctxt "web/pages/Login"
 msgid "Sign up now"
 msgstr "立即注册"
@@ -1481,7 +1481,7 @@ msgctxt "web/pages/Login"
 msgid "User Login"
 msgstr "用户登录"
 
-#: web/pages/Login.vue:25
+#: web/pages/Login.vue:26
 msgctxt "web/pages/Login"
 msgid "Username"
 msgstr "用户名"
@@ -1531,7 +1531,7 @@ msgctxt "web/pages/Logout"
 msgid "Unknown error occurred during logout"
 msgstr "退出时发生未知错误"
 
-#: web/pages/Register.vue:54
+#: web/pages/Register.vue:55
 msgctxt "web/pages/Register"
 msgid "Already have an account?"
 msgstr "已有账号？"
@@ -1541,17 +1541,17 @@ msgctxt "web/pages/Register"
 msgid "Close"
 msgstr "关闭"
 
-#: web/pages/Register.vue:31
+#: web/pages/Register.vue:32
 msgctxt "web/pages/Register"
 msgid "Confirm Password"
 msgstr "确认密码"
 
-#: web/pages/Register.vue:51 web/pages/Register.vue:6
+#: web/pages/Register.vue:52 web/pages/Register.vue:6
 msgctxt "web/pages/Register"
 msgid "Create Account"
 msgstr "创建账户"
 
-#: web/pages/Register.vue:25
+#: web/pages/Register.vue:26
 msgctxt "web/pages/Register"
 msgid "Email"
 msgstr "邮箱"
@@ -1561,17 +1561,17 @@ msgctxt "web/pages/Register"
 msgid "Enter a valid email address"
 msgstr "请输入有效的邮箱地址"
 
-#: web/pages/Register.vue:25 web/pages/register_form.ts:14
+#: web/pages/Register.vue:26 web/pages/register_form.ts:14
 msgctxt "web/pages/Register"
 msgid "Enter email address"
 msgstr "请输入邮箱地址"
 
-#: web/pages/Register.vue:28 web/pages/register_form.ts:16
+#: web/pages/Register.vue:29 web/pages/register_form.ts:16
 msgctxt "web/pages/Register"
 msgid "Enter password"
 msgstr "请输入密码"
 
-#: web/pages/Register.vue:22 web/pages/register_form.ts:11
+#: web/pages/Register.vue:23 web/pages/register_form.ts:11
 msgctxt "web/pages/Register"
 msgid "Enter username"
 msgstr "请输入用户名"
@@ -1581,17 +1581,17 @@ msgctxt "web/pages/Register"
 msgid "Fill in the fields below to register"
 msgstr "填写以下信息以注册"
 
-#: web/pages/Register.vue:37
+#: web/pages/Register.vue:38
 msgctxt "web/pages/Register"
 msgid "I have read and agree to"
 msgstr "我已阅读并同意"
 
-#: web/pages/Register.vue:56
+#: web/pages/Register.vue:57
 msgctxt "web/pages/Register"
 msgid "Log in now"
 msgstr "立即登录"
 
-#: web/pages/Register.vue:28
+#: web/pages/Register.vue:29
 msgctxt "web/pages/Register"
 msgid "Password"
 msgstr "密码"
@@ -1606,12 +1606,12 @@ msgctxt "web/pages/Register"
 msgid "Passwords do not match"
 msgstr "两次输入的密码不一致"
 
-#: web/pages/Register.vue:43
+#: web/pages/Register.vue:44
 msgctxt "web/pages/Register"
 msgid "Privacy Policy"
 msgstr "隐私政策"
 
-#: web/pages/Register.vue:31 web/pages/register_form.ts:18
+#: web/pages/Register.vue:32 web/pages/register_form.ts:18
 msgctxt "web/pages/Register"
 msgid "Re-enter password"
 msgstr "请再次输入密码"
@@ -1621,12 +1621,12 @@ msgctxt "web/pages/Register"
 msgid "Registration failed. Please try again later."
 msgstr "注册失败，请稍后重试。"
 
-#: web/pages/Register.vue:39
+#: web/pages/Register.vue:40
 msgctxt "web/pages/Register"
 msgid "Terms of Service"
 msgstr "服务条款"
 
-#: web/pages/Register.vue:22
+#: web/pages/Register.vue:23
 msgctxt "web/pages/Register"
 msgid "Username"
 msgstr "用户名"
@@ -1651,7 +1651,12 @@ msgctxt "web/pages/Register"
 msgid "Your account was created, but signing in failed. Please log in."
 msgstr "账户已创建，但自动登录失败，请手动登录。"
 
-#: web/pages/Register.vue:41
+#: web/pages/Register.vue:97
+msgctxt "web/pages/Register"
+msgid "Your account was created, but the page could not open. Please log in."
+msgstr "账户已创建，但页面未能打开，请手动登录。"
+
+#: web/pages/Register.vue:42
 msgctxt "web/pages/Register"
 msgid "and"
 msgstr "和"
@@ -1686,7 +1691,7 @@ msgctxt "web/pages/SessionList"
 msgid "Session List"
 msgstr "会话列表"
 
-#: web/pages/Setup.vue:75
+#: web/pages/Setup.vue:76
 msgctxt "web/pages/Setup"
 msgid "Administrator Info"
 msgstr "管理员信息"
@@ -1706,7 +1711,7 @@ msgctxt "web/pages/Setup"
 msgid "Complete Setup"
 msgstr "完成设置"
 
-#: web/pages/Setup.vue:82
+#: web/pages/Setup.vue:83
 msgctxt "web/pages/Setup"
 msgid "Create the administrator account"
 msgstr "创建管理员账号"
@@ -1736,12 +1741,12 @@ msgctxt "web/pages/Setup"
 msgid "Enter username"
 msgstr "请输入用户名"
 
-#: web/pages/Setup.vue:265 web/pages/Setup.vue:48
+#: web/pages/Setup.vue:390 web/pages/Setup.vue:48
 msgctxt "web/pages/Setup"
 msgid "Failed to load demo data. You can retry from Modules later."
 msgstr "演示数据加载失败，可稍后在「模块」中重试。"
 
-#: web/pages/Setup.vue:152
+#: web/pages/Setup.vue:155
 msgctxt "web/pages/Setup"
 msgid "Failed to load setup options. Please try again."
 msgstr "加载设置选项失败，请重试。"
@@ -1751,7 +1756,7 @@ msgctxt "web/pages/Setup"
 msgid "Initial Setup"
 msgstr "初始设置"
 
-#: web/pages/Setup.vue:243 web/pages/Setup.vue:276
+#: web/pages/Setup.vue:363 web/pages/Setup.vue:404
 msgctxt "web/pages/Setup"
 msgid "Initial setup failed. Please try again later."
 msgstr "初始设置失败，请稍后重试。"
@@ -1766,7 +1771,7 @@ msgctxt "web/pages/Setup"
 msgid "Next"
 msgstr "下一步"
 
-#: web/pages/Setup.vue:76
+#: web/pages/Setup.vue:77
 msgctxt "web/pages/Setup"
 msgid "Organization Info"
 msgstr "组织信息"
@@ -1796,12 +1801,12 @@ msgctxt "web/pages/Setup"
 msgid "Retry"
 msgstr "重试"
 
-#: web/pages/Setup.vue:77
+#: web/pages/Setup.vue:78
 msgctxt "web/pages/Setup"
 msgid "Review"
 msgstr "确认"
 
-#: web/pages/Setup.vue:81
+#: web/pages/Setup.vue:82
 msgctxt "web/pages/Setup"
 msgid "Review the settings and finish setup"
 msgstr "确认设置并完成初始化"
@@ -1816,10 +1821,15 @@ msgctxt "web/pages/Setup"
 msgid "Select a business timezone"
 msgstr "请选择业务时区"
 
-#: web/pages/Setup.vue:80
+#: web/pages/Setup.vue:81
 msgctxt "web/pages/Setup"
 msgid "Set up your organization basics"
 msgstr "设置组织基本信息"
+
+#: web/pages/Setup.vue:376 web/pages/Setup.vue:414
+msgctxt "web/pages/Setup"
+msgid "Setup is complete, but the page could not open. Please open login manually."
+msgstr "初始设置已完成，但页面未能打开，请手动打开登录页。"
 
 #: web/pages/setup_form.ts:22
 msgctxt "web/pages/Setup"
@@ -1851,92 +1861,92 @@ msgctxt "web/pages/UserList"
 msgid "User List"
 msgstr "用户列表"
 
-#: web/pages/setup/SetupAdminStep.vue:10
+#: web/pages/setup/SetupAdminStep.vue:11
 msgctxt "web/pages/setup/SetupAdminStep"
 msgid "Confirm Password"
 msgstr "确认密码"
 
-#: web/pages/setup/SetupAdminStep.vue:13
+#: web/pages/setup/SetupAdminStep.vue:14
 msgctxt "web/pages/setup/SetupAdminStep"
 msgid "Email"
 msgstr "邮箱"
 
-#: web/pages/setup/SetupAdminStep.vue:7
+#: web/pages/setup/SetupAdminStep.vue:8
 msgctxt "web/pages/setup/SetupAdminStep"
 msgid "Enter password"
 msgstr "请输入密码"
 
-#: web/pages/setup/SetupAdminStep.vue:4
+#: web/pages/setup/SetupAdminStep.vue:5
 msgctxt "web/pages/setup/SetupAdminStep"
 msgid "Enter username"
 msgstr "请输入用户名"
 
-#: web/pages/setup/SetupAdminStep.vue:13
+#: web/pages/setup/SetupAdminStep.vue:14
 msgctxt "web/pages/setup/SetupAdminStep"
 msgid "Optional"
 msgstr "选填"
 
-#: web/pages/setup/SetupAdminStep.vue:7
+#: web/pages/setup/SetupAdminStep.vue:8
 msgctxt "web/pages/setup/SetupAdminStep"
 msgid "Password"
 msgstr "密码"
 
-#: web/pages/setup/SetupAdminStep.vue:10
+#: web/pages/setup/SetupAdminStep.vue:11
 msgctxt "web/pages/setup/SetupAdminStep"
 msgid "Re-enter password"
 msgstr "请再次输入密码"
 
-#: web/pages/setup/SetupAdminStep.vue:4
+#: web/pages/setup/SetupAdminStep.vue:5
 msgctxt "web/pages/setup/SetupAdminStep"
 msgid "Username"
 msgstr "用户名"
 
-#: web/pages/setup/SetupOrganizationStep.vue:10
+#: web/pages/setup/SetupOrganizationStep.vue:11
 msgctxt "web/pages/setup/SetupOrganizationStep"
 msgid "Base Currency"
 msgstr "本位币"
 
-#: web/pages/setup/SetupOrganizationStep.vue:13
+#: web/pages/setup/SetupOrganizationStep.vue:14
 msgctxt "web/pages/setup/SetupOrganizationStep"
 msgid "Business Timezone"
 msgstr "业务时区"
 
-#: web/pages/setup/SetupOrganizationStep.vue:10
+#: web/pages/setup/SetupOrganizationStep.vue:11
 msgctxt "web/pages/setup/SetupOrganizationStep"
 msgid "Company accounting currency. It cannot be changed once transactions exist."
 msgstr "公司记账币种，产生业务数据后不可更改。"
 
-#: web/pages/setup/SetupOrganizationStep.vue:7
+#: web/pages/setup/SetupOrganizationStep.vue:8
 msgctxt "web/pages/setup/SetupOrganizationStep"
 msgid "Country / Region"
 msgstr "国家/地区"
 
-#: web/pages/setup/SetupOrganizationStep.vue:4
+#: web/pages/setup/SetupOrganizationStep.vue:5
 msgctxt "web/pages/setup/SetupOrganizationStep"
 msgid "Enter organization name"
 msgstr "请输入组织名称"
 
-#: web/pages/setup/SetupOrganizationStep.vue:7
+#: web/pages/setup/SetupOrganizationStep.vue:8
 msgctxt "web/pages/setup/SetupOrganizationStep"
 msgid "Optional"
 msgstr "选填"
 
-#: web/pages/setup/SetupOrganizationStep.vue:4
+#: web/pages/setup/SetupOrganizationStep.vue:5
 msgctxt "web/pages/setup/SetupOrganizationStep"
 msgid "Organization Name"
 msgstr "组织名称"
 
-#: web/pages/setup/SetupOrganizationStep.vue:10
+#: web/pages/setup/SetupOrganizationStep.vue:11
 msgctxt "web/pages/setup/SetupOrganizationStep"
 msgid "Select a base currency"
 msgstr "请选择本位币"
 
-#: web/pages/setup/SetupOrganizationStep.vue:13
+#: web/pages/setup/SetupOrganizationStep.vue:14
 msgctxt "web/pages/setup/SetupOrganizationStep"
 msgid "Select a business timezone"
 msgstr "请选择业务时区"
 
-#: web/pages/setup/SetupOrganizationStep.vue:13
+#: web/pages/setup/SetupOrganizationStep.vue:14
 msgctxt "web/pages/setup/SetupOrganizationStep"
 msgid "Used for business dates and scheduled jobs; independent of personal display timezones."
 msgstr "用于业务日期和定时任务，与个人显示时区无关。"
@@ -2181,7 +2191,7 @@ msgctxt "web/stores/auth/actions"
 msgid "CompleteInitialSetup returned an invalid response"
 msgstr "CompleteInitialSetup 返回了无效响应"
 
-#: web/stores/auth/actions.ts:709
+#: web/stores/auth/actions.ts:723
 msgctxt "web/stores/auth/actions"
 msgid "Failed to initialize auth"
 msgstr "初始化认证失败"
@@ -3272,6 +3282,10 @@ msgstr "启用"
 #~ msgctxt "web/pages/Setup"
 #~ msgid "Select an organization language"
 #~ msgstr "请选择组织语言"
+
+#~ msgctxt "web/pages/Setup"
+#~ msgid "Setup is complete, but the login page could not open. Please open login manually."
+#~ msgstr "初始设置已完成，但无法打开登录页，请手动打开登录页。"
 
 #~ msgctxt "web/pages/Setup"
 #~ msgid "Setup succeeded, but signing in failed. Please log in."

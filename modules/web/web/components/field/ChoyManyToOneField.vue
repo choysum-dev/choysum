@@ -124,6 +124,7 @@ import { ChoyMessage } from '../../composables/useChoyMessage';
 import { RELATION_PICKER_CLOSE_KEY } from '@/web/web/components/field/relationPickerContext';
 import type { RuleItem } from 'async-validator';
 import type { BaseModel, FieldPath, FieldPathType, ClientModel, QueryCondition } from '@/core/rpc';
+import { runWithLoading } from '@/core/web/client/loadingRegistry';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type { WritableComputedRef, Component } from 'vue';
 import ChoyFieldBase, { type FieldStateExpr, type FormItemProps } from './ChoyFieldBase.vue';
@@ -528,13 +529,15 @@ async function relationSearch(query: string, opts: { limit: number }, recordRef?
 
   const final: QueryCondition<any> | [] = parts.length === 0 ? ([] as any) : parts.length === 1 ? parts[0] : ({ And: parts } as any);
 
-  const result = (await relationStore?.NameSearch(String(query ?? '').trim(), final as any, {
-    fields: ['Id', 'DisplayName'],
-    limit: opts.limit ?? props.pageSize ?? 20,
-    ...buildRelationConditionSource(props.store as any, binding.prop),
-  })) as V[] | undefined;
+  const result = await runWithLoading({ silent: true }, async () =>
+    relationStore?.NameSearch(String(query ?? '').trim(), final as any, {
+      fields: ['Id', 'DisplayName'],
+      limit: opts.limit ?? props.pageSize ?? 20,
+      ...buildRelationConditionSource(props.store as any, binding.prop),
+    }),
+  );
 
-  return mapNameSearchRows(result ?? []);
+  return mapNameSearchRows((result as V[] | undefined) ?? []);
 }
 
 function makeRelationSearch(recordRef?: any) {

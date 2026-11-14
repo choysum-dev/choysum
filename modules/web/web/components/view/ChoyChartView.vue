@@ -235,6 +235,7 @@ SPDX-License-Identifier: Apache-2.0
     <ChoyViewBusyHost
       ref="chartBodyRef"
       :busy="boardBusy && !errorText"
+      :mode="chartBusyMode"
       class="relative flex min-h-0 min-w-0 w-full flex-1 flex-col"
       data-region="chart-body"
     >
@@ -427,7 +428,7 @@ SPDX-License-Identifier: Apache-2.0
       </ChartContainer>
 
       <ChoyEmpty
-        v-else-if="!boardBusy && !errorText"
+        v-else-if="controller.vm.hasAppliedOnce && !boardBusy && !errorText"
         class="min-h-[280px] w-full flex-1 border-none"
         :description="resolvedEmptyLabel"
       />
@@ -438,7 +439,7 @@ SPDX-License-Identifier: Apache-2.0
         role="alert"
       >
         <span>{{ errorText }}</span>
-        <ChoyButton size="sm" variant="outline" @click="onRefresh">
+        <ChoyButton size="sm" variant="outline" @click="onRetry">
           {{ _t('Retry') }}
         </ChoyButton>
       </div>
@@ -692,9 +693,17 @@ const localSort = ref<ChoyChartSort>(props.sort);
 const localChartType = ref<ChoyChartKind>(props.chartType);
 const localMetric = ref(props.metricAlias || 'count');
 
-const boardBusy = computed(() => !!controller.vm.loading);
+// True until bootstrap finishes; false when autoBootstrap is off (host owns first load).
+const bootstrapping = ref(props.autoBootstrap !== false);
+/** Prep failure before the first apply (beforeBootstrap / field selection). */
+const prepError = ref<unknown>(null);
+const boardBusy = computed(() => !!controller.vm.loading || bootstrapping.value);
+const chartBusyMode = computed<'stale' | 'block'>(() => {
+  const rows = (controller.vm.result as { rows?: unknown[] } | null)?.rows;
+  return rows && rows.length > 0 ? 'stale' : 'block';
+});
 const errorText = computed(() => {
-  const err = controller.vm.error;
+  const err = prepError.value ?? controller.vm.error;
   if (err == null) return null;
   if (err instanceof Error) return err.message || String(err);
   return String(err);
@@ -779,17 +788,27 @@ async function applyQuery(overrides?: {
 }
 
 async function bootstrap(): Promise<void> {
-  if (props.beforeBootstrap) await props.beforeBootstrap();
-  await awaitFieldSelection(store, { requireNonEmpty: false });
-  initMetricOptions();
-  // Search first-frame protocol: skip empty apply when Search owns the first load.
-  if (shouldDeferToSearchFirstFrame({ gate: firstFrame })) {
-    return;
-  }
+  bootstrapping.value = true;
+  prepError.value = null;
   try {
-    await applyQuery();
+    if (props.beforeBootstrap) await props.beforeBootstrap();
+    await awaitFieldSelection(store, { requireNonEmpty: false });
+    initMetricOptions();
+    // Search first-frame protocol: skip empty apply when Search owns the first load.
+    if (shouldDeferToSearchFirstFrame({ gate: firstFrame })) {
+      return;
+    }
+    try {
+      await applyQuery();
+    } catch (error) {
+      props.onLoadError?.(error);
+    }
   } catch (error) {
+    // Prep failed before apply: keep an on-screen error (Retry re-runs bootstrap).
+    prepError.value = error;
     props.onLoadError?.(error);
+  } finally {
+    bootstrapping.value = false;
   }
 }
 
@@ -803,6 +822,16 @@ async function onRefresh(): Promise<void> {
   } catch (error) {
     props.onLoadError?.(error);
   }
+}
+
+async function onRetry(): Promise<void> {
+  // Ignore overlapping Retry clicks while bootstrap/refresh still owns busy.
+  if (boardBusy.value) return;
+  if (prepError.value != null) {
+    await bootstrap();
+    return;
+  }
+  await onRefresh();
 }
 
 function onSearch(query: ChoySearchQuery): void {
@@ -1803,6 +1832,7 @@ onMounted(() => {
     syncPlotHeight();
   }
   if (!props.autoBootstrap) {
+    bootstrapping.value = false;
     initMetricOptions();
     return;
   }
@@ -1838,6 +1868,7 @@ defineExpose({
   onMetricSelect,
   onSearch,
   onRefresh,
+  onRetry,
   initMetricOptions,
   syncPlotHeight,
   xAccessor,

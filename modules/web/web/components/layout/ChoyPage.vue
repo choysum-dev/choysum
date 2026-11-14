@@ -159,7 +159,7 @@ SPDX-License-Identifier: Apache-2.0
       class="choy-page__loading-mask absolute inset-0 z-10 flex items-center justify-center bg-background/60"
       aria-hidden="true"
     >
-      <ChoySkeleton class="h-control w-32" />
+      <ChoySpinner class="size-6 text-primary" />
     </div>
     <div role="status" class="sr-only">
       {{ loading ? loadingLabel : '' }}
@@ -179,7 +179,7 @@ import {
 import type { WebModelStore } from '../../stores/modelStore';
 import { blurFocusedDescendant } from './choy_page_loading_focus';
 import ChoyPageTitleActions from './ChoyPageTitleActions.vue';
-import ChoySkeleton from './ChoySkeleton.vue';
+import ChoySpinner from './ChoySpinner.vue';
 import type { PageIoMenuListRef } from './ChoyPageIoMenu.vue';
 import { createTranslate, getGlobalComposer } from '../../i18n';
 import { resolveRoutePageTitle } from '../../router/documentTitle';

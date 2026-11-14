@@ -176,7 +176,11 @@ SPDX-License-Identifier: Apache-2.0
       </div>
     </template>
 
-    <ChoyViewBusyHost :busy="listBusy" class="flex min-h-0 min-w-0 flex-1 flex-col">
+    <ChoyViewBusyHost
+      :busy="listBusy"
+      :mode="listBusyMode"
+      class="flex min-h-0 min-w-0 flex-1 flex-col"
+    >
     <div
       ref="tableWrapRef"
       data-anchor="choy.list.table"
@@ -230,17 +234,20 @@ SPDX-License-Identifier: Apache-2.0
           </ChoyTableColumn>
           <slot />
           <template #empty>
-            <slot name="empty">
-              <ChoyEmpty class="w-full !gap-3 !p-4 md:!p-6" :description="_t('No data')">
-                <!-- Toolbar New covers the usual chrome; keep empty-state New only when header is hidden. -->
-                <template v-if="!showHeader && showActions && resolvedCreateAction && canCreate" #actions>
-                  <ChoyButton type="button" size="default" variant="default" @click="handleCreate">
-                    <Plus class="size-4" aria-hidden="true" />
-                    {{ _t('New') }}
-                  </ChoyButton>
-                </template>
-              </ChoyEmpty>
-            </slot>
+            <!-- Gate empty until first apply settles so first paint is not「暂无数据」+ loading. -->
+            <template v-if="showListEmpty">
+              <slot name="empty">
+                <ChoyEmpty class="w-full !gap-3 !p-4 md:!p-6" :description="_t('No data')">
+                  <!-- Toolbar New covers the usual chrome; keep empty-state New only when header is hidden. -->
+                  <template v-if="!showHeader && showActions && resolvedCreateAction && canCreate" #actions>
+                    <ChoyButton type="button" size="default" variant="default" @click="handleCreate">
+                      <Plus class="size-4" aria-hidden="true" />
+                      {{ _t('New') }}
+                    </ChoyButton>
+                  </template>
+                </ChoyEmpty>
+              </slot>
+            </template>
           </template>
         </ChoyTableHost>
       </ListInlineEditScope>
@@ -496,6 +503,16 @@ const showTitleOverflow = computed(
 // List controller
 const controller = createListController(store as any);
 const listBusy = computed(() => !!controller.vm.loading);
+/** With prior rows → stale (keep content); first empty load → block (Loader2). */
+const listBusyMode = computed<'stale' | 'block'>(() => {
+  const nodes = controller.vm.visibleNodes;
+  if (Array.isArray(nodes) && nodes.length > 0) return 'stale';
+  const rows = (controller.vm.result as { rows?: unknown[] } | null)?.rows;
+  if (Array.isArray(rows) && rows.length > 0) return 'stale';
+  return 'block';
+});
+/** Empty copy only after the first apply finished and the table is idle with no rows. */
+const showListEmpty = computed(() => !!controller.vm.hasAppliedOnce && !listBusy.value);
 
 // Whether grouped mode is active, based on the controller result
 const isGroupMode = computed(() => controller.vm.result?.kind === 'group');

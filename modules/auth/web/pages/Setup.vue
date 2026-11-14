@@ -4,7 +4,7 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <ChoyPage :loading="loading" fill-height class="flex min-h-0 w-full flex-1 flex-col">
+  <ChoyPage :loading="submitting" fill-height class="flex min-h-0 w-full flex-1 flex-col">
     <div class="setup-panel flex min-h-0 w-full flex-1 flex-col overflow-y-auto" data-testid="setup-panel">
       <div class="setup-shell w-full px-4 pb-8">
         <header class="setup-header mx-auto w-full text-center">
@@ -25,7 +25,7 @@ SPDX-License-Identifier: Apache-2.0
             </button>
           </div>
           <p v-else class="setup-step-hint mt-2 text-sm text-foreground/60">{{ stepHint }}</p>
-          <ChoyStepper v-model="step" :steps="stepperSteps" :readonly="!!loading" class="setup-stepper mt-8" />
+          <ChoyStepper v-model="step" :steps="stepperSteps" :readonly="submitting" class="setup-stepper mt-8" />
         </header>
         <div class="setup-content mx-auto mt-10 w-full">
           <div v-if="optionsLoading" class="setup-options-loading text-sm text-foreground/60">
@@ -75,7 +75,7 @@ SPDX-License-Identifier: Apache-2.0
                     variant="outline"
                     size="lg"
                     class="setup-back"
-                    :disabled="loading"
+                    :disabled="submitting"
                     @click="goBack"
                   >
                     {{ _t('Back') }}
@@ -85,10 +85,10 @@ SPDX-License-Identifier: Apache-2.0
                     type="submit"
                     size="lg"
                     class="submit-button ml-auto"
-                    :disabled="loading"
+                    :disabled="submitting"
                   >
                     <template v-if="step === 'review'">
-                      {{ loading ? _t('Complete Setup') + '…' : _t('Complete Setup') }}
+                      {{ submitting ? _t('Complete Setup') + '…' : _t('Complete Setup') }}
                     </template>
                     <template v-else>{{ _t('Next') }}</template>
                   </ChoyButton>
@@ -105,8 +105,8 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, reactive, ref, shallowRef, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
-import { storeToRefs } from 'pinia';
 import { X } from 'lucide-vue-next';
+import { beginNavigationLoading, runWithLoading } from '@/core/web/client/loadingRegistry';
 import { useAuthStore, type InitialSetupOptions } from '../stores/auth';
 import SetupFormWatch from './setup/SetupFormWatch.vue';
 import SetupAdminStep from './setup/SetupAdminStep.vue';
@@ -156,7 +156,8 @@ void [
 const router = useRouter();
 const route = useRoute();
 const authStore = useAuthStore();
-const { loading } = storeToRefs(authStore);
+/** Page busy for Complete→Login→(demo); independent of store.loading flicker. */
+const submitting = ref(false);
 
 const formStore = createLocalFormStore({
   fields: [
@@ -240,16 +241,18 @@ async function loadOptions() {
   optionsLoading.value = true;
   optionsError.value = '';
   try {
-    const resp = await authStore.getInitialSetupOptions();
-    applyOptionSelections(resp);
-    const values = resolveSetupInitialValues({
-      options: resp,
-      draft: loadSetupDraft(),
-      browserTimezone: browserTimezone(),
+    await runWithLoading({ silent: true }, async () => {
+      const resp = await authStore.getInitialSetupOptions();
+      applyOptionSelections(resp);
+      const values = resolveSetupInitialValues({
+        options: resp,
+        draft: loadSetupDraft(),
+        browserTimezone: browserTimezone(),
+      });
+      const countryCurrency = values.CountryCode ? countryCurrencies.value[values.CountryCode] : undefined;
+      currencyTouched.value = !!values.CurrencyCode && !!countryCurrency && values.CurrencyCode !== countryCurrency;
+      initialValues.value = values;
     });
-    const countryCurrency = values.CountryCode ? countryCurrencies.value[values.CountryCode] : undefined;
-    currencyTouched.value = !!values.CurrencyCode && !!countryCurrency && values.CurrencyCode !== countryCurrency;
-    initialValues.value = values;
   } catch (err) {
     if (await leaveIfSetupReady()) return;
     optionsError.value =
@@ -265,8 +268,10 @@ async function reloadOptionLabels() {
   if (!options.value) return;
   const seq = ++labelReloadSeq;
   try {
-    const resp = await authStore.getInitialSetupOptions();
-    if (seq === labelReloadSeq) applyOptionSelections(resp);
+    await runWithLoading({ silent: true }, async () => {
+      const resp = await authStore.getInitialSetupOptions();
+      if (seq === labelReloadSeq) applyOptionSelections(resp);
+    });
   } catch {
     // Keep the current labels; values stay valid because codes do not change.
   }
@@ -365,7 +370,7 @@ function onEnterKey(e: KeyboardEvent) {
   if (e.isComposing || e.keyCode === 229) return;
   if (e.key && e.key !== 'Enter') return;
   if (e.shiftKey || e.altKey || e.ctrlKey || e.metaKey) return;
-  if (optionsLoading.value || optionsError.value || loading.value) return;
+  if (optionsLoading.value || optionsError.value || submitting.value) return;
   const target = e.target as HTMLElement | null;
   if (!target) return;
 
@@ -450,45 +455,73 @@ async function onFormSubmit(ctx: { formData: Record<string, unknown> }) {
   const wantsDemo = setupWantsDemo(ctx.formData);
   return runHandledAuthSubmit({
     submit: async () => {
-      const ok = await runSetupSubmit({
-        loading: !!loading.value,
-        req,
-        setupFailedMessage: _t('Initial setup failed. Please try again later.'),
-        completeInitialSetup: input => authStore.completeInitialSetup(input),
-        login: (username, password) => authStore.login(username, password),
-        setError: setPageError,
-        onFieldError: showServerFieldError,
-        onSetupSucceeded: () => clearSetupDraft(),
-        // Marker already written; leave /setup so Ready guard does not bounce the user.
-        onSetupCompleteLoginFailed: () => {
-          void router.replace(setupLoginFallbackTarget(route.query, { setupDone: true }));
-        },
-        // Another tab may have finished setup; leave /setup when the probe says Ready.
-        onSetupFailed: async () => {
-          await leaveIfSetupReady();
-        },
-      });
-      // Setup + login already succeeded; demo failure must not undo that.
-      // Keep the page loading indicator up for the post-login demo request.
-      if (ok && wantsDemo) {
-        loading.value = true;
-        try {
-          await runSetupLoadDemo({
-            requestLoadDemo: requestSetupLoadDemo,
-            failedMessage: _t('Failed to load demo data. You can retry from Modules later.'),
-            onFailure: message => {
-              ChoyMessage.warning(message);
+      if (submitting.value) return false;
+      submitting.value = true;
+      let ok = false;
+      try {
+        // Page mask owns feedback; silent so nested RPCs do not open chrome bar/chef.
+        ok = await runWithLoading({ silent: true }, async () => {
+          const done = await runSetupSubmit({
+            loading: false,
+            req,
+            setupFailedMessage: _t('Initial setup failed. Please try again later.'),
+            completeInitialSetup: input => authStore.completeInitialSetupCore(input),
+            login: (username, password) => authStore.loginCore(username, password),
+            setError: setPageError,
+            onFieldError: showServerFieldError,
+            onSetupSucceeded: () => clearSetupDraft(),
+            // Marker already written; leave /setup so Ready guard does not bounce the user.
+            // Await replace so submitting stays true until the fallback route settles.
+            onSetupCompleteLoginFailed: async () => {
+              try {
+                await router.replace(setupLoginFallbackTarget(route.query, { setupDone: true }));
+              } catch {
+                // Setup already persisted; do not leave a blank enabled form.
+                setPageError(
+                  _t('Setup is complete, but the page could not open. Please open login manually.'),
+                );
+              }
+            },
+            // Another tab may have finished setup; leave /setup when the probe says Ready.
+            onSetupFailed: async () => {
+              await leaveIfSetupReady();
             },
           });
-        } finally {
-          loading.value = false;
-        }
+          // Setup + login already succeeded; demo failure must not undo that.
+          if (done && wantsDemo) {
+            await runSetupLoadDemo({
+              requestLoadDemo: requestSetupLoadDemo,
+              failedMessage: _t('Failed to load demo data. You can retry from Modules later.'),
+              onFailure: message => {
+                ChoyMessage.warning(message);
+              },
+            });
+          }
+          return done;
+        });
+        return ok;
+      } finally {
+        // Keep mask until onSuccess hands off the nav bar; clear on failure only.
+        if (!ok) submitting.value = false;
       }
-      return ok;
     },
     fallbackMessage: _t('Initial setup failed. Please try again later.'),
     setError: setPageError,
-    onSuccess: () => router.replace(resolveLoginRedirect(route.query.redirect?.toString())),
+    onSuccess: async () => {
+      // Open nav chrome first; keep setup mask until replace finishes so the page
+      // never looks idle/clickable between submit end and Guest→App handoff.
+      beginNavigationLoading();
+      try {
+        await router.replace(resolveLoginRedirect(route.query.redirect?.toString()));
+      } catch {
+        // Setup already persisted; do not re-enable a blank completable form.
+        setPageError(
+          _t('Setup is complete, but the page could not open. Please open login manually.'),
+        );
+      } finally {
+        submitting.value = false;
+      }
+    },
   });
 }
 </script>

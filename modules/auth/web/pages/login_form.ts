@@ -230,13 +230,14 @@ export async function runLoginSubmit(opts: {
 /**
  * Run an auth page submit handler and always mark it handled.
  * Redirect/navigation stays outside the submit try so a rejected
- * router.replace is not reported as a credential failure.
+ * router.replace is not reported as a credential failure. `onSuccess` may be
+ * async (awaited) so callers can keep page busy through navigation.
  */
 export async function runHandledAuthSubmit(opts: {
   submit: () => Promise<boolean>;
   fallbackMessage: string;
   setError: (message: string) => void;
-  onSuccess: () => void;
+  onSuccess: () => void | Promise<void>;
 }): Promise<{ handled: true; skipSuccessMessage: true }> {
   let ok = false;
   try {
@@ -245,7 +246,7 @@ export async function runHandledAuthSubmit(opts: {
     opts.setError(err instanceof Error ? err.message : opts.fallbackMessage);
     return { handled: true, skipSuccessMessage: true };
   }
-  if (ok) opts.onSuccess();
+  if (ok) await opts.onSuccess();
   return { handled: true, skipSuccessMessage: true };
 }
 

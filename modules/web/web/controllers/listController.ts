@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { reactive } from 'vue';
+import { runWithLoading } from '@/core/web/client/loadingRegistry';
 import type { QueryCondition } from '@/core/service/api/query';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type { PaginationState, OrderByState } from '@/web/web/query/state';
@@ -28,6 +29,7 @@ export function createListController(store: WebModelStore<any>): IListController
     loading: false,
     error: null,
     result: null,
+    hasAppliedOnce: false,
     visibleNodes: [],
     expandedKeys: new Set<string>(),
   });
@@ -147,6 +149,26 @@ export function createListController(store: WebModelStore<any>): IListController
   }
 
   async function apply(overrides?: {
+    forcedCondition?: QueryCondition<any>;
+    appliedFilters?: ConditionGroup[];
+    keyword?: string;
+    keywordFields?: string[];
+    orderBy?: OrderByState[];
+    pagination?: PaginationState;
+    appliedGroups?: Array<GroupBySpec>;
+    kind?: QueryKind;
+  }) {
+    const target = `list:${String((store as any).storeId ?? (store as any).model ?? 'default')}`;
+    const hasFrame =
+      (vm.visibleNodes?.length ?? 0) > 0 || ((vm.result as { rows?: unknown[] } | null)?.rows?.length ?? 0) > 0;
+    // `return await` so QuickJS adopts rejections (bare `return promise` can unhandle).
+    return await runWithLoading(
+      { layer: 'surface', target, mode: hasFrame ? 'stale' : 'block' },
+      () => applyImpl(overrides),
+    );
+  }
+
+  async function applyImpl(overrides?: {
     forcedCondition?: QueryCondition<any>;
     appliedFilters?: ConditionGroup[];
     keyword?: string;
@@ -350,7 +372,10 @@ export function createListController(store: WebModelStore<any>): IListController
       throw e;
     } finally {
       // Only clear loading if this call is the latest
-      if (seq === applySeq) vm.loading = false;
+      if (seq === applySeq) {
+        vm.loading = false;
+        vm.hasAppliedOnce = true;
+      }
     }
   }
 

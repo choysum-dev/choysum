@@ -317,7 +317,7 @@ export async function runSetupSubmit(opts: {
   /** Fired once CompleteInitialSetup succeeds, before Login. */
   onSetupSucceeded?: () => void;
   /** Fired when setup RPC succeeded but the follow-up Login failed. */
-  onSetupCompleteLoginFailed?: () => void;
+  onSetupCompleteLoginFailed?: () => void | Promise<void>;
   /**
    * After CompleteInitialSetup fails (e.g. already complete elsewhere),
    * re-check Ready and leave /setup when appropriate.
@@ -356,7 +356,11 @@ export async function runSetupSubmit(opts: {
     return true;
   } catch (err) {
     console.error('Login after initial setup failed:', err);
-    opts.onSetupCompleteLoginFailed?.();
+    try {
+      await opts.onSetupCompleteLoginFailed?.();
+    } catch {
+      // Keep setup success; fallback navigation failure must not revive the form.
+    }
     return false;
   }
 }
