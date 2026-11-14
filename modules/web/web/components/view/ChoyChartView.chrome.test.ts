@@ -85,6 +85,12 @@ describe('ChoyChartView chrome', () => {
       error: unknown;
       hasAppliedOnce?: boolean;
     };
+    // Concurrent Retry while busy must be ignored.
+    ctrlVm.loading = true;
+    await nextTick();
+    await exposed.onRetry();
+    expect(applyCalls).toBe(1);
+
     ctrlVm.error = null;
     ctrlVm.hasAppliedOnce = false;
     ctrlVm.loading = true;
