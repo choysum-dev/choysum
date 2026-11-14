@@ -505,6 +505,80 @@ test('Setup.vue: Enter in a text input advances the step, but not during IME com
   wrapper.unmount();
 });
 
+test('Setup.vue: Enter on a closed organization Selection trigger advances to review', async () => {
+  const { wrapper } = await mountSetup();
+  await fillAdmin(wrapper);
+  submitForm(wrapper);
+  await afterSubmit();
+  expect(activeStep(wrapper)).toBe('organization');
+  const tzRoot = wrapper.find('.setup-timezone').element as HTMLElement;
+  const trigger = tzRoot.querySelector('[data-slot="combobox-trigger"]') as HTMLElement | null;
+  expect(!!trigger).toBe(true);
+  trigger!.setAttribute('aria-expanded', 'false');
+  trigger!.setAttribute('data-state', 'closed');
+  const enter = pressEnter(trigger!);
+  await afterSubmit();
+  expect(enter.defaultPrevented).toBe(true);
+  expect(activeStep(wrapper)).toBe('review');
+  wrapper.unmount();
+});
+
+test('Setup.vue: Enter on an open organization Selection trigger does not advance', async () => {
+  const { wrapper } = await mountSetup();
+  await fillAdmin(wrapper);
+  submitForm(wrapper);
+  await afterSubmit();
+  expect(activeStep(wrapper)).toBe('organization');
+  const tzRoot = wrapper.find('.setup-timezone').element as HTMLElement;
+  const trigger = tzRoot.querySelector('[data-slot="combobox-trigger"]') as HTMLElement | null;
+  expect(!!trigger).toBe(true);
+  trigger!.setAttribute('aria-expanded', 'true');
+  trigger!.setAttribute('data-state', 'open');
+  const enter = pressEnter(trigger!);
+  await afterSubmit();
+  expect(enter.defaultPrevented).toBe(false);
+  expect(activeStep(wrapper)).toBe('organization');
+  wrapper.unmount();
+});
+
+test('Setup.vue: after Next, Enter advances without clicking a field first', async () => {
+  const { wrapper } = await mountSetup();
+  await fillAdmin(wrapper);
+  submitForm(wrapper);
+  await afterSubmit();
+  expect(activeStep(wrapper)).toBe('organization');
+  // Autofocus lands on the org name input; Enter must work without an extra click.
+  const active = document.activeElement as HTMLElement | null;
+  expect(!!active).toBe(true);
+  pressEnter(active!);
+  await afterSubmit();
+  expect(activeStep(wrapper)).toBe('review');
+  wrapper.unmount();
+});
+
+test('Setup.vue: Enter with focus on body still advances when admin is filled', async () => {
+  const { wrapper } = await mountSetup();
+  await fillAdmin(wrapper);
+  const active = document.activeElement as HTMLElement | null;
+  if (active && typeof active.blur === 'function') active.blur();
+  pressEnter(document.body);
+  await afterSubmit();
+  expect(activeStep(wrapper)).toBe('organization');
+  wrapper.unmount();
+});
+
+test('Setup.vue: Enter on review demo checkbox completes setup', async () => {
+  const { wrapper, requests } = await mountSetup();
+  await advanceToReview(wrapper);
+  const demo = wrapper.find('.setup-review-demo').element as HTMLElement;
+  const checkbox = demo.querySelector('[data-slot="checkbox"]') as HTMLElement | null;
+  expect(!!checkbox).toBe(true);
+  pressEnter(checkbox!);
+  await afterSubmit();
+  expect(requests.length).toBe(1);
+  wrapper.unmount();
+});
+
 test('Setup.vue: Enter on an empty admin step still validates and stays put', async () => {
   const { wrapper, requests } = await mountSetup();
   const username = fieldInput(wrapper, '.setup-username').element as HTMLInputElement;

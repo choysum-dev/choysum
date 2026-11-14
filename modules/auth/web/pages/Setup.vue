@@ -37,7 +37,7 @@ SPDX-License-Identifier: Apache-2.0
               {{ _t('Retry') }}
             </ChoyButton>
           </div>
-          <div v-else class="setup-form" @keydown.enter="onEnterKey">
+          <div v-else class="setup-form" @keydown.enter.capture="onEnterKey">
             <ChoyFormView
               ref="formRef"
               :store="formStore"
@@ -80,7 +80,13 @@ SPDX-License-Identifier: Apache-2.0
                   >
                     {{ _t('Back') }}
                   </ChoyButton>
-                  <ChoyButton type="submit" size="lg" class="submit-button ml-auto" :disabled="loading">
+                  <ChoyButton
+                    id="setup-submit"
+                    type="submit"
+                    size="lg"
+                    class="submit-button ml-auto"
+                    :disabled="loading"
+                  >
                     <template v-if="step === 'review'">
                       {{ loading ? _t('Complete Setup') + '…' : _t('Complete Setup') }}
                     </template>
@@ -97,7 +103,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, reactive, ref, shallowRef, watch } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, reactive, ref, shallowRef, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { storeToRefs } from 'pinia';
 import { X } from 'lucide-vue-next';
@@ -270,12 +276,11 @@ watch(uiLanguageCode, (next, prev) => {
   if (next && next !== prev) void reloadOptionLabels();
 });
 
-onMounted(() => {
-  void loadOptions();
-});
-
 function onFormReady(data: Record<string, unknown>) {
+  const first = !formData.value;
   formData.value = data;
+  // First paint only — later ready emissions must not steal focus mid-edit.
+  if (first) focusPrimaryControlForStep();
 }
 
 function onFormChange(fields: string[]) {
@@ -286,22 +291,112 @@ function onFormChange(fields: string[]) {
   if (formData.value) saveSetupDraft(formData.value);
 }
 
+function setupWizardForm(): HTMLFormElement | null {
+  const root = document.querySelector('.setup-form') as HTMLElement | null;
+  if (!root || typeof root.querySelector !== 'function') return null;
+  return root.querySelector('form') as HTMLFormElement | null;
+}
+
+function inputIn(rootSel: string): HTMLElement | null {
+  const root = document.querySelector(rootSel) as HTMLElement | null;
+  if (!root || typeof root.querySelector !== 'function') return null;
+  return root.querySelector('input') as HTMLElement | null;
+}
+
+/** Prefer the first empty required control so Enter/typing match the remaining work. */
+function resolvePrimaryControl(): HTMLElement | null {
+  if (step.value === 'review') {
+    return document.querySelector('#setup-submit') as HTMLElement | null;
+  }
+  if (step.value === 'organization') {
+    return inputIn('.setup-org-name');
+  }
+  const username = inputIn('.setup-username');
+  const password = inputIn('.setup-password');
+  const usernameFilled = !!String((username as HTMLInputElement | null)?.value ?? '').trim();
+  if (usernameFilled && password) return password;
+  return username || password;
+}
+
 /**
- * Enter in a text input advances the wizard (or completes it on the last step).
- * Skips IME composition, modified keys, and keys a control already handled.
+ * Focus the step's primary control. Retries while FormView fields finish mounting
+ * after the options gate flips (a single nextTick is often too early).
+ */
+function focusPrimaryControlForStep(attempt = 0) {
+  void nextTick().then(() => {
+    if (optionsLoading.value || optionsError.value) return;
+    const el = resolvePrimaryControl();
+    if (el && typeof el.focus === 'function') {
+      el.focus();
+      return;
+    }
+    if (attempt < 12) {
+      window.setTimeout(() => focusPrimaryControlForStep(attempt + 1), 32);
+    }
+  });
+}
+
+watch(step, () => focusPrimaryControlForStep());
+watch(optionsLoading, (loading, wasLoading) => {
+  if (wasLoading && !loading && !optionsError.value) focusPrimaryControlForStep();
+});
+
+/**
+ * Enter advances / completes the wizard. Capture on the form plus a window
+ * listener cover the common case where focus never left `body` after async
+ * options load. Skips IME, modified keys, open comboboxes, and chrome buttons.
  */
 function onEnterKey(e: KeyboardEvent) {
-  if (e.defaultPrevented || e.isComposing || e.keyCode === 229) return;
+  if (e.defaultPrevented) return;
+  if (e.isComposing || e.keyCode === 229) return;
+  if (e.key && e.key !== 'Enter') return;
   if (e.shiftKey || e.altKey || e.ctrlKey || e.metaKey) return;
+  if (optionsLoading.value || optionsError.value || loading.value) return;
   const target = e.target as HTMLElement | null;
-  if (!target || String(target.tagName || '').toLowerCase() !== 'input') return;
-  if (target.getAttribute('role') === 'combobox') return;
-  const form = target.closest('form');
-  if (!form || loading.value) return;
+  if (!target) return;
+
+  const tag = String(target.tagName || '').toLowerCase();
+  if (tag === 'textarea') return;
+  if (target.closest('[data-testid="choy-selection-clear"]')) return;
+
+  const trigger = target.closest('[data-slot="combobox-trigger"]') as HTMLElement | null;
+  const triggerOpen =
+    !!trigger &&
+    (trigger.getAttribute('aria-expanded') === 'true' || trigger.getAttribute('data-state') === 'open');
+  if (triggerOpen) return;
+  if (tag === 'input' && target.getAttribute('role') === 'combobox' && target.getAttribute('aria-expanded') === 'true') {
+    return;
+  }
+
+  const fromCheckbox = !!target.closest('[data-slot="checkbox"]');
+  const button = (tag === 'button' ? target : target.closest('button')) as HTMLElement | null;
+  // Back / Submit / header chrome: native activation.
+  if (button && !trigger && !fromCheckbox) return;
+
+  const form = (target.closest('form') as HTMLFormElement | null) || setupWizardForm();
+  if (!form) return;
+
   e.preventDefault();
+  e.stopPropagation();
   if (typeof form.requestSubmit === 'function') form.requestSubmit();
   else form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
 }
+
+function onDocumentEnterKey(e: KeyboardEvent) {
+  if (e.key !== 'Enter' && e.keyCode !== 13) return;
+  onEnterKey(e);
+}
+
+onMounted(() => {
+  void loadOptions();
+  // Body capture covers the common post-load case where focus never left `body`
+  // (the form-local listener never sees those events).
+  document.body.addEventListener('keydown', onDocumentEnterKey, true);
+});
+
+onUnmounted(() => {
+  document.body.removeEventListener('keydown', onDocumentEnterKey, true);
+});
 
 function goBack() {
   const idx = SETUP_STEPS.indexOf(step.value);
