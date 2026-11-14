@@ -5,6 +5,7 @@ package ops
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -343,5 +344,81 @@ func TestStampCatalogLifecycleAt_InstallUpgradeOnly(t *testing.T) {
 	}
 	if after.LastInstalledOrUpgradedAt == nil {
 		t.Fatal("expected last_installed_or_upgraded_at after upgrade stamp")
+	}
+}
+
+func TestProjectCatalogInstalled_GuardsAndBranches(t *testing.T) {
+	t.Parallel()
+	if err := (*Ops)(nil).ProjectCatalogInstalled(context.Background()); err == nil || !strings.Contains(err.Error(), "nil host") {
+		t.Fatalf("nil Project: %v", err)
+	}
+	if err := (*Ops)(nil).stampCatalogLifecycleAt(context.Background(), []string{"x"}, ActionInstall); err == nil || !strings.Contains(err.Error(), "nil host") {
+		t.Fatalf("nil stamp: %v", err)
+	}
+	if err := (&Ops{}).ProjectCatalogInstalled(context.Background()); err == nil {
+		t.Fatal("expected session error without scope")
+	}
+	if err := (&Ops{}).stampCatalogLifecycleAt(context.Background(), []string{"x"}, ActionInstall); err == nil {
+		t.Fatal("expected stamp session error without scope")
+	}
+	if err := (&Ops{Scope: newOpsTestScope(t, newOpsTestDB(t))}).stampCatalogLifecycleAt(nil, []string{" ", ""}, ActionInstall); err != nil {
+		t.Fatalf("empty names: %v", err)
+	}
+
+	db := newOpsTestDB(t)
+	o := &Ops{Scope: newOpsTestScope(t, db)}
+	// Empty module name on installed row is skipped; blank catalog ModuleName is skipped.
+	if err := db.Create(&pkgmeta.Module{
+		Name: " ", Version: "1.0.0", Status: pkgmeta.Installed, ApplicationStr: "x",
+	}).Error; err != nil {
+		t.Fatalf("seed blank module: %v", err)
+	}
+	if err := db.Create(&modmeta.ModuleCatalog{ModuleName: " ", Available: true}).Error; err != nil {
+		t.Fatalf("seed blank catalog: %v", err)
+	}
+	if err := o.ProjectCatalogInstalled(nil); err != nil {
+		t.Fatalf("Project with nil ctx: %v", err)
+	}
+
+	// Version bump clears DemoLoaded even when HasDemo stays true.
+	if err := db.Create(&pkgmeta.Module{
+		Name: "auth", Version: "v2.0.0", Status: pkgmeta.Installed, ApplicationStr: "auth",
+		DemoStr: datatypes.JSON(`["demo/a.json"]`),
+	}).Error; err != nil {
+		t.Fatalf("seed auth: %v", err)
+	}
+	if err := db.Create(&modmeta.ModuleCatalog{
+		ModuleName: "auth", Available: true, Installed: true,
+		InstalledVersion: nullString("1.0.0"), HasDemo: true, DemoLoaded: true,
+	}).Error; err != nil {
+		t.Fatalf("seed auth catalog: %v", err)
+	}
+	// No demo payload and HasDemo=false clears DemoLoaded.
+	if err := db.Create(&pkgmeta.Module{
+		Name: "core", Version: "v1.0.0", Status: pkgmeta.Installed, ApplicationStr: "core",
+	}).Error; err != nil {
+		t.Fatalf("seed core: %v", err)
+	}
+	if err := db.Create(&modmeta.ModuleCatalog{
+		ModuleName: "core", Available: true, Installed: true,
+		InstalledVersion: nullString("1.0.0"), HasDemo: false, DemoLoaded: true,
+	}).Error; err != nil {
+		t.Fatalf("seed core catalog: %v", err)
+	}
+	if err := o.ProjectCatalogInstalled(context.Background()); err != nil {
+		t.Fatalf("Project: %v", err)
+	}
+	var auth, core modmeta.ModuleCatalog
+	if err := db.Where("module_name = ?", "auth").Take(&auth).Error; err != nil {
+		t.Fatalf("auth: %v", err)
+	}
+	if auth.DemoLoaded {
+		t.Fatal("expected DemoLoaded cleared on version bump")
+	}
+	if err := db.Where("module_name = ?", "core").Take(&core).Error; err != nil {
+		t.Fatalf("core: %v", err)
+	}
+	if core.DemoLoaded {
+		t.Fatal("expected DemoLoaded cleared when HasDemo/DemoStr absent")
 	}
 }

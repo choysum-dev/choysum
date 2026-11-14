@@ -597,6 +597,60 @@ func TestRun_InstallMetaSoftFailsCatalogSync(t *testing.T) {
 	}
 }
 
+func TestRun_UpgradeHardFailsProjectCatalogInstalled(t *testing.T) {
+	t.Parallel()
+	db := newOpsTestDB(t)
+	runtimeScope := newOpsTestScope(t, db)
+	core := &pkgmeta.Module{Name: "core", Version: "1.0.0", ApplicationStr: "core", Status: pkgmeta.Installed}
+	life := &stubLifecycle{}
+	const blockProject = "ops_block_upgrade_project"
+	o := &Ops{
+		Scope: runtimeScope,
+		Resolver: &mapResolver{
+			peek: map[string]*pkgmeta.Module{"core": core},
+			load: map[string]*pkgmeta.Module{"core": core},
+		},
+		Lifecycle: life,
+		Events:    &recordingBus{},
+		LockerFactory: func(scope.Scope) statepkg.Locker {
+			return testLocker{}
+		},
+	}
+	if err := db.Create(&pkgmeta.Module{
+		Name: "core", Version: "v1.0.0", Status: pkgmeta.Installed, ApplicationStr: "core",
+	}).Error; err != nil {
+		t.Fatalf("seed core: %v", err)
+	}
+	if err := db.Callback().Query().Before("gorm:query").Register(blockProject, func(tx *gorm.DB) {
+		if tx.Statement != nil && tx.Statement.Table == "meta_module_catalog" {
+			_ = tx.AddError(errors.New("project blocked"))
+		}
+	}); err != nil {
+		t.Fatalf("callback: %v", err)
+	}
+	t.Cleanup(func() { _ = db.Callback().Query().Remove(blockProject) })
+
+	result, err := o.Plan(context.Background(), PlanRequest{ModuleName: "core", Action: ActionUpgrade})
+	if err != nil {
+		t.Fatalf("Plan: %v", err)
+	}
+	if err := o.Apply(context.Background(), ApplyRequest{Id: result.Id}); err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+	if err := o.Run(context.Background(), RunRequest{Id: result.Id}); err == nil {
+		t.Fatal("Run should hard-fail project catalog installed")
+	} else if !strings.Contains(err.Error(), "project catalog installed") {
+		t.Fatalf("Run error = %v, want project catalog installed failure", err)
+	}
+	row, err := o.loadOperation(context.Background(), result.Id)
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if row.Status != StatusFailed {
+		t.Fatalf("status=%q want failed", row.Status)
+	}
+}
+
 func TestRun_InstallMetaHardFailsMaterialize(t *testing.T) {
 	t.Parallel()
 	db := newOpsTestDB(t)
