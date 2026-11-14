@@ -136,7 +136,8 @@ export function createChartController(store: WebModelStore<any>): IChartControll
   async function apply(overrides?: Parameters<typeof run>[0]) {
     const target = `chart:${String((store as any).storeId ?? (store as any).model ?? 'default')}`;
     const hasFrame = !!(vm.result as { rows?: unknown[] } | null)?.rows?.length;
-    return runWithLoading(
+    // `return await` so QuickJS adopts rejections (bare `return promise` can unhandle).
+    return await runWithLoading(
       { layer: 'surface', target, mode: hasFrame ? 'stale' : 'block' },
       () => run(overrides),
     );

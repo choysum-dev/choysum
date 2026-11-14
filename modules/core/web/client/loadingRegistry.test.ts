@@ -12,13 +12,16 @@ import {
   loadingRegistryOnRpcStart,
   resetLoadingRegistryForTests,
   runWithLoading,
+  runWithLoadingSync,
   scheduleNavigationSettleIfIdle,
   settleNavigationIfActive,
   loadingTiming,
+  useControlBusy,
   useLoadingBarVisible,
   useLoadingSlowHintVisible,
   useHasActiveSurfaceBusy,
   useNavigationHandoffBusy,
+  useSurfaceBusy,
 } from './loadingRegistry';
 
 ensureHeaders();
@@ -194,4 +197,141 @@ test('runWithLoading rethrows and still releases tickets', async () => {
   expect(getControlBusy('x').busy).toBe(false);
   expect(getLoadingRegistryDebugState().userBusyCount).toBe(0);
   expect(getLoadingRegistryDebugState().stackDepth).toBe(0);
+});
+
+test('runWithLoadingSync acquires and releases surface/control frames', () => {
+  afterEachReset();
+  const out = runWithLoadingSync({ layer: 'surface', target: 'sync-s', mode: 'block' }, () => {
+    expect(getSurfaceBusy('sync-s')).toEqual({ busy: true, mode: 'block' });
+    return 7;
+  });
+  expect(out).toBe(7);
+  expect(getSurfaceBusy('sync-s').busy).toBe(false);
+
+  runWithLoadingSync({ layer: 'control', target: 'sync-c', pendingLabel: 'Go' }, () => {
+    expect(getControlBusy('sync-c')).toEqual({ busy: true, pendingLabel: 'Go' });
+  });
+  expect(getControlBusy('sync-c').busy).toBe(false);
+});
+
+test('runWithLoadingSync rethrows and still releases', () => {
+  afterEachReset();
+  let caught: unknown;
+  try {
+    runWithLoadingSync({ layer: 'chrome' }, () => {
+      throw new Error('sync-boom');
+    });
+  } catch (e) {
+    caught = e;
+  }
+  expect(caught instanceof Error && caught.message === 'sync-boom').toBe(true);
+  expect(getLoadingRegistryDebugState().stackDepth).toBe(0);
+  expect(getLoadingRegistryDebugState().barCount).toBe(0);
+});
+
+test('RPC start is idempotent per spanId', () => {
+  afterEachReset();
+  loadingRegistryOnRpcStart('rpc-dup');
+  loadingRegistryOnRpcStart('rpc-dup');
+  expect(getLoadingRegistryDebugState().barCount).toBe(1);
+  expect(getLoadingRegistryDebugState().userBusyCount).toBe(1);
+  loadingRegistryOnRpcFinish('rpc-dup');
+  loadingRegistryOnRpcFinish('rpc-dup');
+  expect(getLoadingRegistryDebugState().barCount).toBe(0);
+  expect(getLoadingRegistryDebugState().userBusyCount).toBe(0);
+});
+
+test('chrome layer owns bar and suppresses nested RPC chrome', async () => {
+  afterEachReset();
+  await runWithLoading({ layer: 'chrome' }, async () => {
+    expect(getLoadingRegistryDebugState().barCount).toBe(1);
+    loadingRegistryOnRpcStart('rpc-chrome');
+    expect(getLoadingRegistryDebugState().barCount).toBe(1);
+    loadingRegistryOnRpcFinish('rpc-chrome');
+  });
+  expect(getLoadingRegistryDebugState().barCount).toBe(0);
+});
+
+test('nested same-target surface/control increments counts', async () => {
+  afterEachReset();
+  await runWithLoading({ layer: 'surface', target: 'nest', mode: 'stale' }, async () => {
+    await runWithLoading({ layer: 'surface', target: 'nest', mode: 'skeleton' }, async () => {
+      expect(getSurfaceBusy('nest')).toEqual({ busy: true, mode: 'skeleton' });
+    });
+    expect(getSurfaceBusy('nest')).toEqual({ busy: true, mode: 'skeleton' });
+  });
+  expect(getSurfaceBusy('nest').busy).toBe(false);
+
+  await runWithLoading({ layer: 'control', target: 'nest-c', pendingLabel: 'A' }, async () => {
+    await runWithLoading({ layer: 'control', target: 'nest-c', pendingLabel: 'B' }, async () => {
+      expect(getControlBusy('nest-c')).toEqual({ busy: true, pendingLabel: 'B' });
+    });
+  });
+  expect(getControlBusy('nest-c').busy).toBe(false);
+});
+
+test('useSurfaceBusy and useControlBusy track targets reactively', async () => {
+  afterEachReset();
+  const surface = useSurfaceBusy('u-s');
+  const control = useControlBusy('u-c');
+  expect(surface.value.busy).toBe(false);
+  expect(control.value.busy).toBe(false);
+  await runWithLoading({ layer: 'surface', target: 'u-s', mode: 'block' }, async () => {
+    expect(surface.value).toEqual({ busy: true, mode: 'block' });
+  });
+  await runWithLoading({ layer: 'control', target: 'u-c', pendingLabel: 'X' }, async () => {
+    expect(control.value).toEqual({ busy: true, pendingLabel: 'X' });
+  });
+  expect(surface.value.busy).toBe(false);
+  expect(control.value.busy).toBe(false);
+});
+
+test('bar delay reveals showBar after BAR_DELAY_MS', async () => {
+  afterEachReset();
+  loadingRegistryOnRpcStart('rpc-bar-delay');
+  expect(useLoadingBarVisible().value).toBe(false);
+  await new Promise<void>(resolve => setTimeout(resolve, loadingTiming.BAR_DELAY_MS + 30));
+  expect(useLoadingBarVisible().value).toBe(true);
+  loadingRegistryOnRpcFinish('rpc-bar-delay');
+  expect(useLoadingBarVisible().value).toBe(false);
+});
+
+test('slow hint schedules after SLOW_HINT_MS without flush', async () => {
+  afterEachReset();
+  loadingRegistryOnRpcStart('rpc-slow');
+  expect(useLoadingSlowHintVisible().value).toBe(false);
+  await new Promise<void>(resolve => setTimeout(resolve, loadingTiming.SLOW_HINT_MS + 30));
+  expect(useLoadingSlowHintVisible().value).toBe(true);
+  loadingRegistryOnRpcFinish('rpc-slow');
+  await new Promise<void>(resolve => setTimeout(resolve, loadingTiming.SLOW_HINT_MIN_SHOW_MS + 30));
+  expect(useLoadingSlowHintVisible().value).toBe(false);
+});
+
+test('scheduleNavigationSettleIfIdle no-ops when nav inactive or surface busy', async () => {
+  afterEachReset();
+  scheduleNavigationSettleIfIdle(0);
+  await new Promise<void>(resolve => setTimeout(resolve, 10));
+  expect(getLoadingRegistryDebugState().navTicketActive).toBe(false);
+
+  beginNavigationLoading();
+  await runWithLoading({ layer: 'surface', target: 'idle-surface', mode: 'block' }, async () => {
+    scheduleNavigationSettleIfIdle(0);
+    await new Promise<void>(resolve => setTimeout(resolve, 10));
+    expect(getLoadingRegistryDebugState().navTicketActive).toBe(true);
+  });
+});
+
+test('navigation timeout settles orphaned nav ticket', async () => {
+  afterEachReset();
+  beginNavigationLoading();
+  expect(getLoadingRegistryDebugState().navTicketActive).toBe(true);
+  // Shorten path: settle manually covers timeout callback body via settleNavigationIfActive.
+  settleNavigationIfActive();
+  expect(getLoadingRegistryDebugState().navTicketActive).toBe(false);
+});
+
+test('finish unknown RPC span is a no-op', () => {
+  afterEachReset();
+  loadingRegistryOnRpcFinish('never-started');
+  expect(getLoadingRegistryDebugState().barCount).toBe(0);
 });

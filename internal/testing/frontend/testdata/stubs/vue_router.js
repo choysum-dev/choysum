@@ -59,6 +59,7 @@ export function createFeStubRouter(overrides) {
   );
   var afterHooks = [];
   var beforeHooks = [];
+  var errorHandlers = [];
   var router = Object.assign(
     {
       currentRoute: { value: route },
@@ -72,17 +73,28 @@ export function createFeStubRouter(overrides) {
           meta: route.meta,
           matched: route.matched,
         };
-        applyRoute(route, normalizeTo(to));
+        var next = normalizeTo(to);
+        applyRoute(route, next);
         router.currentRoute.value = route;
         var chain = Promise.resolve();
+        var aborted = false;
+        var failure = undefined;
         beforeHooks.forEach(function (fn) {
           chain = chain.then(function () {
-            return fn(route, fromSnapshot);
+            if (aborted) return;
+            return Promise.resolve(fn(route, fromSnapshot)).then(function (result) {
+              if (result === false) {
+                aborted = true;
+                failure = { type: 'aborted' };
+                applyRoute(route, fromSnapshot);
+                router.currentRoute.value = route;
+              }
+            });
           });
         });
         afterHooks.forEach(function (fn) {
           chain = chain.then(function () {
-            return fn(route, fromSnapshot);
+            return fn(route, fromSnapshot, failure);
           });
         });
         return chain.then(function () {
@@ -127,8 +139,19 @@ export function createFeStubRouter(overrides) {
           if (i >= 0) afterHooks.splice(i, 1);
         };
       },
-      onError: function () {
-        return function () {};
+      onError: function (fn) {
+        if (typeof fn !== 'function') return function () {};
+        errorHandlers.push(fn);
+        return function () {
+          var i = errorHandlers.indexOf(fn);
+          if (i >= 0) errorHandlers.splice(i, 1);
+        };
+      },
+      /** Test helper: fire registered onError listeners. */
+      triggerError: function (err) {
+        errorHandlers.forEach(function (fn) {
+          fn(err);
+        });
       },
       install: function (app) {
         app.config.globalProperties.$router = router;
@@ -141,6 +164,48 @@ export function createFeStubRouter(overrides) {
     },
     overrides.router || {}
   );
+  // Keep hook-aware push when overrides only customize resolve/lookup helpers.
+  if (overrides.router && typeof overrides.router.push === 'function') {
+    var overridePush = overrides.router.push;
+    router.push = function (to) {
+      var self = this;
+      var fromSnapshot = {
+        path: route.path,
+        fullPath: route.fullPath,
+        name: route.name,
+        query: route.query,
+        params: route.params,
+        meta: route.meta,
+        matched: route.matched,
+      };
+      return Promise.resolve(overridePush.call(self, to)).then(function (result) {
+        var chain = Promise.resolve();
+        var aborted = false;
+        var failure = undefined;
+        beforeHooks.forEach(function (fn) {
+          chain = chain.then(function () {
+            if (aborted) return;
+            return Promise.resolve(fn(route, fromSnapshot)).then(function (guardResult) {
+              if (guardResult === false) {
+                aborted = true;
+                failure = { type: 'aborted' };
+                applyRoute(route, fromSnapshot);
+                router.currentRoute.value = route;
+              }
+            });
+          });
+        });
+        afterHooks.forEach(function (fn) {
+          chain = chain.then(function () {
+            return fn(route, fromSnapshot, failure);
+          });
+        });
+        return chain.then(function () {
+          return result;
+        });
+      });
+    };
+  }
   router.currentRoute.value = route;
   return { router: router, route: route };
 }

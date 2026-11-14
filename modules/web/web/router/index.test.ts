@@ -4,6 +4,11 @@
 import { computed } from 'vue';
 import { createI18n } from 'vue-i18n';
 import { createTermReference } from '@/core/service/i18n';
+import {
+  beginNavigationLoading,
+  getLoadingRegistryDebugState,
+  resetLoadingRegistryForTests,
+} from '@/core/web/client/loadingRegistry';
 import { projectTerminologyMessages } from '../i18n/terminology';
 import { resolveDocumentTitle, resolveRoutePageTitle } from './documentTitle';
 import { createAppRouter, defaultAppName } from './index';
@@ -30,6 +35,33 @@ describe('createAppRouter', () => {
     await router.push('/').catch(() => undefined);
     await router.isReady().catch(() => undefined);
     expect(typeof router.currentRoute.value.path).toBe('string');
+  });
+
+  test('aborted navigation settles the loading ticket via afterEach failure', async () => {
+    resetLoadingRegistryForTests();
+    const router = createAppRouter('/');
+    await router.isReady().catch(() => undefined);
+    router.beforeEach(to => {
+      if (to.path === '/__abort_nav__') return false;
+      return true;
+    });
+    await router.push('/__abort_nav__').catch(() => undefined);
+    // Failure path must drop the ticket opened in beforeEach.
+    expect(getLoadingRegistryDebugState().navTicketActive).toBe(false);
+    resetLoadingRegistryForTests();
+  });
+
+  test('router onError settles an active navigation ticket', async () => {
+    resetLoadingRegistryForTests();
+    const router = createAppRouter('/');
+    await router.isReady().catch(() => undefined);
+    beginNavigationLoading();
+    expect(getLoadingRegistryDebugState().navTicketActive).toBe(true);
+    const anyRouter = router as { triggerError?: (err: Error) => void };
+    expect(typeof anyRouter.triggerError).toBe('function');
+    anyRouter.triggerError?.(new Error('nav-boom'));
+    expect(getLoadingRegistryDebugState().navTicketActive).toBe(false);
+    resetLoadingRegistryForTests();
   });
 });
 

@@ -277,7 +277,9 @@ async function onRegisterSubmit(ctx: { formData: Record<string, unknown> }) {
       }),
     fallbackMessage: _t('Registration failed. Please try again later.'),
     setError: setPageError,
-    onSuccess: () => router.replace(resolveLoginRedirect(route.query.redirect?.toString())),
+    onSuccess: async () => {
+      await router.replace(resolveLoginRedirect(route.query.redirect?.toString()));
+    },
   });
 }
 </script>

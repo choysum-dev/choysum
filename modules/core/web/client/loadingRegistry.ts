@@ -312,6 +312,9 @@ export async function runWithLoading<T>(opts: LoadingOpts, fn: () => Promise<T>)
 
   try {
     return await fn();
+  } catch (e) {
+    // Explicit catch so QuickJS marks the rejection handled before finally cleanup.
+    throw e;
   } finally {
     stack.pop();
     if (ownsBar) removeBar();
@@ -414,6 +417,8 @@ export function settleNavigationIfActive(): void {
  * do not (outer frame already owns feedback).
  */
 export function loadingRegistryOnRpcStart(spanId: string): void {
+  // Idempotent per span: duplicate start must not double-count bar/userBusy.
+  if (rpcChromeTickets.has(spanId)) return;
   const { silent, underControl, underSurface, underChrome } = stackOwnsRpc();
   if (silent || underControl || underSurface || underChrome) {
     rpcChromeTickets.set(spanId, { bar: false, userBusy: false });

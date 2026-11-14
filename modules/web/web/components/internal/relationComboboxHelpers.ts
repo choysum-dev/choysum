@@ -72,7 +72,8 @@ export async function runRelationNameSearch(
   query: string | null | undefined,
   pageSize = 20,
 ): Promise<RelationOption[]> {
-  return runWithLoading({ silent: true }, async () => {
+  // `return await` so QuickJS adopts rejections (bare `return promise` can unhandle).
+  return await runWithLoading({ silent: true }, async () => {
     const limit = Number.isFinite(pageSize) ? Math.max(1, Math.floor(pageSize)) : 20;
     const keyword = normalizeRelationQuery(query);
     const rows = await search(keyword, { limit });

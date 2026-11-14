@@ -61,7 +61,6 @@ export function createAppRouter(base = '/', composer?: ComposerLike): Router {
 
     try {
       titleRoute.value = to;
-
       return true;
     } catch (error) {
       console.error('Navigation error:', error);
@@ -72,12 +71,19 @@ export function createAppRouter(base = '/', composer?: ComposerLike): Router {
 
   // Guest pages never open surface: settle the nav bar shortly if still idle.
   // List/Form that start surface within the grace keep the ticket until surface ends.
-  router.afterEach(() => {
+  // Failed navigations (redirect/abort) must drop the nav ticket — afterEach still
+  // runs with a failure, but scheduleNavigationSettleIfIdle would leave bar up.
+  router.afterEach((_to, _from, failure) => {
+    if (failure) {
+      settleNavigationIfActive();
+      return;
+    }
     scheduleNavigationSettleIfIdle();
   });
 
   router.onError(error => {
     console.error('Router error:', error);
+    settleNavigationIfActive();
   });
 
   return router;

@@ -15,8 +15,13 @@ SPDX-License-Identifier: Apache-2.0
         class="choy-loading-slow-hint pointer-events-none fixed bottom-4 right-4 z-[100] flex max-w-sm items-start gap-2 rounded-md border border-border/60 bg-background/90 px-2.5 py-1.5 text-sm text-foreground shadow-sm backdrop-blur"
       >
         <ChoySpinner class="mt-0.5 size-3.5 shrink-0 text-primary" />
-        <!-- Trusted product i18n (Odoo 7.0-style <br />); not user HTML. -->
-        <span class="min-w-0 leading-5" v-html="message" />
+        <!-- Trusted product i18n; split on &lt;br /&gt; so we never bind raw HTML. -->
+        <span class="min-w-0 leading-5">
+          <template v-for="(line, i) in messageLines" :key="i">
+            <br v-if="i > 0" />
+            {{ line }}
+          </template>
+        </span>
       </div>
     </Transition>
   </Teleport>
@@ -110,11 +115,14 @@ onBeforeUnmount(() => {
 
 const message = computed(() => _t(MESSAGE_STAGES[stageIndex.value]![1]));
 
-/** Screen-reader label without markup. */
-const plainMessage = computed(() =>
+/** Lines from msgid that uses Odoo-style `<br />` separators (not rendered as HTML). */
+const messageLines = computed(() =>
   String(message.value || '')
-    .replace(/<br\s*\/?>/gi, ' ')
-    .replace(/\s+/g, ' ')
-    .trim(),
+    .split(/<br\s*\/?>/i)
+    .map(s => s.trim())
+    .filter(Boolean),
 );
+
+/** Screen-reader label without markup. */
+const plainMessage = computed(() => messageLines.value.join(' '));
 </script>

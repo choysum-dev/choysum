@@ -161,7 +161,8 @@ export function createListController(store: WebModelStore<any>): IListController
     const target = `list:${String((store as any).storeId ?? (store as any).model ?? 'default')}`;
     const hasFrame =
       (vm.visibleNodes?.length ?? 0) > 0 || ((vm.result as { rows?: unknown[] } | null)?.rows?.length ?? 0) > 0;
-    return runWithLoading(
+    // `return await` so QuickJS adopts rejections (bare `return promise` can unhandle).
+    return await runWithLoading(
       { layer: 'surface', target, mode: hasFrame ? 'stale' : 'block' },
       () => applyImpl(overrides),
     );

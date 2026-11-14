@@ -796,7 +796,8 @@ export function createFormController(store: WebModelStore<any>, deps: FormContro
   async function beginDisplay(recordId: string) {
     // Do not peek handoff via flashRead here — it is one-shot and consumed in beginDisplayImpl.
     const hasFrame = !!(vm.draft || vm.original) || handoffCache.has(String(recordId));
-    return runWithLoading(
+    // `return await` so QuickJS adopts rejections (bare `return promise` can unhandle).
+    return await runWithLoading(
       {
         layer: 'surface',
         target: formLoadingTarget(),
@@ -908,7 +909,7 @@ export function createFormController(store: WebModelStore<any>, deps: FormContro
   }
 
   async function submit(): Promise<any> {
-    return runWithLoading(
+    return await runWithLoading(
       { layer: 'control', target: formLoadingTarget(), pendingLabel: 'Saving…' },
       () => submitImpl(),
     );
@@ -1058,7 +1059,7 @@ export function createFormController(store: WebModelStore<any>, deps: FormContro
   }
 
   async function remove(): Promise<any> {
-    return runWithLoading({ layer: 'control', target: formLoadingTarget() }, () => removeImpl());
+    return await runWithLoading({ layer: 'control', target: formLoadingTarget() }, () => removeImpl());
   }
 
   async function removeImpl(): Promise<any> {
