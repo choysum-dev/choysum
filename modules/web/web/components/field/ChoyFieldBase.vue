@@ -1060,22 +1060,17 @@ const formDescribedBy = computed(() => {
   return parts.length ? parts.join(' ') : undefined;
 });
 const formInvalid = computed(() => !!displayError.value);
-// Keep absolute overlay errors reachable when they extend past the scrollport.
+// Keep absolute overlay errors reachable when they extend past a scrollport.
+// Use nearest (not a window-only rect check) so nested panel scrollers are honored.
 watch(
   () => (showErrorOverlay.value ? ([formErrorId.value, displayError.value ?? ''] as const) : null),
   async key => {
-    if (!key || typeof document === 'undefined' || typeof window === 'undefined') return;
+    if (!key || typeof document === 'undefined') return;
     const [errorId] = key;
     if (!errorId) return;
     await nextTick();
     const el = document.getElementById(errorId);
-    if (!el || typeof el.scrollIntoView !== 'function' || typeof el.getBoundingClientRect !== 'function') {
-      return;
-    }
-    // Skip when already fully visible in the viewport (avoids yanking on re-reveal).
-    const rect = el.getBoundingClientRect();
-    const vh = window.innerHeight || document.documentElement?.clientHeight || 0;
-    if (vh && rect.bottom <= vh && rect.top >= 0) return;
+    if (!el || typeof el.scrollIntoView !== 'function') return;
     try {
       el.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     } catch {
