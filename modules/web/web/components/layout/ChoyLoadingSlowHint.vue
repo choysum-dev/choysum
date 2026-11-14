@@ -96,8 +96,11 @@ watch(
     }
     shownAtMs = Date.now();
     syncStage();
-    // Odoo Throbber re-evaluates about once per second.
-    tickTimer = setInterval(syncStage, 1000);
+    // Odoo Throbber re-evaluates about once per second; stop once the last stage sticks.
+    tickTimer = setInterval(() => {
+      syncStage();
+      if (stageIndex.value >= MESSAGE_STAGE_SECONDS.length - 1) clearTick();
+    }, 1000);
   },
   { immediate: true },
 );
@@ -142,6 +145,7 @@ defineExpose({
   setStageIndexForTests(index: number) {
     // Stop the throbber tick so syncStage cannot overwrite the forced index.
     clearTick();
+    shownAtMs = 0;
     stageIndex.value = index;
   },
   getPlainMessageForTests() {

@@ -742,9 +742,13 @@ async function onSettingsViewSelect(value: string) {
         resolve();
       };
       // Attach before emit so a synchronous host navigation still settles leaving.
+      // Ignore failed navigations so an abort does not clear leaving early.
       // Listener errors are handled by Vue (not rethrown here); the 1s fallback
       // still clears afterEach/timer if no navigation commits.
-      removeAfter = router.afterEach(() => finish());
+      removeAfter = router.afterEach((_to, _from, failure) => {
+        if (failure) return;
+        finish();
+      });
       fallbackTimer = setTimeout(finish, 1000);
       emit('view-select', value);
     });

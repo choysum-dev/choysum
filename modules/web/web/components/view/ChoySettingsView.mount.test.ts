@@ -258,6 +258,83 @@ test('ChoySettingsView view-select no-ops when the active view is re-selected', 
   }
 });
 
+test('ChoyFormView view-select ignores failed navigation when settling leave', async () => {
+  const { default: ChoyFormView } = await import('./ChoyFormView.vue');
+  stubSfc(
+    ChoyViewSwitcher as any,
+    defineComponent({
+      name: 'ChoyViewSwitcherFailNavStub',
+      emits: ['select'],
+      setup(_, { emit }) {
+        return () =>
+          h('button', {
+            type: 'button',
+            'data-testid': 'stub-view-fail-nav',
+            onClick: () => emit('select', 'list'),
+          });
+      },
+    }),
+  );
+  const selected: string[] = [];
+  try {
+    const store = createLocalFormStore({
+      fields: [{ name: 'Note', label: 'Note', type: 'char' }],
+      initialValues: { Note: '' },
+    });
+    const { router } = createFeStubRouter({
+      route: {
+        name: 'FailNavSettings',
+        path: '/fail-nav/settings',
+        fullPath: '/fail-nav/settings',
+        params: {},
+        query: {},
+        meta: {},
+      },
+    });
+    router.beforeEach(to => {
+      if (to.path === '/fail-nav/abort') return false;
+      return true;
+    });
+    const mounted = mountApp(ChoyFormView as any, {
+      props: {
+        presentation: 'settings',
+        store,
+        dirty: false,
+        showHeader: true,
+        showActions: true,
+        showMessages: false,
+        resolveRecordIdFromRoute: false,
+        registerActionTarget: false,
+        viewMode: 'edit',
+        activeView: 'settings',
+        viewSwitcherOptions: [
+          { value: 'settings', label: 'Settings View' },
+          { value: 'list', label: 'Parameters View' },
+        ],
+      },
+      plugins: [createPinia(), router],
+      on: {
+        onViewSelect: (v: string) => {
+          selected.push(v);
+          // Failed nav must not finish leaving; fallback still settles.
+          void router.push('/fail-nav/abort');
+        },
+      },
+    });
+    await flushPromises();
+    const btn = mounted.q('[data-testid=stub-view-fail-nav]') as HTMLButtonElement | null;
+    expect(btn).not.toBeNull();
+    btn!.click();
+    await flushPromises();
+    expect(selected).toEqual(['list']);
+    // Wait past the 1s leave fallback so the test does not leak timers.
+    await new Promise<void>(resolve => setTimeout(resolve, 1100));
+    mounted.unmount();
+  } finally {
+    restoreSfc(ChoyViewSwitcher as any);
+  }
+});
+
 test('ChoyFormView view-select emits immediately when router has no afterEach', async () => {
   const { default: ChoyFormView } = await import('./ChoyFormView.vue');
   stubSfc(
