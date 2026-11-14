@@ -8,6 +8,7 @@ import {
   beginNavigationLoading,
   getLoadingRegistryDebugState,
   resetLoadingRegistryForTests,
+  settleNavigationIfActive,
 } from '@/core/web/client/loadingRegistry';
 import { projectTerminologyMessages } from '../i18n/terminology';
 import { resolveDocumentTitle, resolveRoutePageTitle } from './documentTitle';
@@ -61,6 +62,31 @@ describe('createAppRouter', () => {
     expect(typeof anyRouter.triggerError).toBe('function');
     anyRouter.triggerError?.(new Error('nav-boom'));
     expect(getLoadingRegistryDebugState().navTicketActive).toBe(false);
+    resetLoadingRegistryForTests();
+  });
+
+  test('older cancelled navigation settlement does not clear a newer ticket', async () => {
+    resetLoadingRegistryForTests();
+    const router = createAppRouter('/');
+    await router.isReady().catch(() => undefined);
+
+    let genB = 0;
+    router.beforeEach(to => {
+      if (to.path === '/__nav_b__') {
+        genB = Number((to.meta as { __navLoadingGen?: number }).__navLoadingGen) || 0;
+      }
+      return true;
+    });
+
+    await router.push('/__nav_b__').catch(() => undefined);
+    expect(genB).toBeGreaterThan(0);
+    expect(getLoadingRegistryDebugState().navTicketActive).toBe(true);
+
+    // Failed older navigation must not clear B's generation-scoped ticket.
+    settleNavigationIfActive({ generation: genB - 1 });
+    expect(getLoadingRegistryDebugState().navTicketActive).toBe(true);
+    expect(getLoadingRegistryDebugState().navTicketGeneration).toBe(genB);
+
     resetLoadingRegistryForTests();
   });
 });

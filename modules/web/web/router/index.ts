@@ -57,7 +57,8 @@ export function createAppRouter(base = '/', composer?: ComposerLike): Router {
   useTitle(computed(() => resolveDocumentTitle(titleRoute.value as any, composer, appName)));
 
   router.beforeEach(async to => {
-    beginNavigationLoading();
+    const generation = beginNavigationLoading();
+    (to.meta as { __navLoadingGen?: number }).__navLoadingGen = generation;
     titleRoute.value = to;
     return true;
   });
@@ -66,9 +67,11 @@ export function createAppRouter(base = '/', composer?: ComposerLike): Router {
   // List/Form that start surface within the grace keep the ticket until surface ends.
   // Failed navigations (redirect/abort) must drop the nav ticket — afterEach still
   // runs with a failure, but scheduleNavigationSettleIfIdle would leave bar up.
-  router.afterEach((_to, _from, failure) => {
+  // Settlement is generation-scoped so an older cancelled nav cannot clear a newer ticket.
+  router.afterEach((to, _from, failure) => {
+    const generation = Number((to.meta as { __navLoadingGen?: number }).__navLoadingGen) || 0;
     if (failure) {
-      settleNavigationIfActive();
+      settleNavigationIfActive(generation ? { generation } : undefined);
       return;
     }
     scheduleNavigationSettleIfIdle();

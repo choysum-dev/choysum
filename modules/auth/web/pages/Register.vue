@@ -278,7 +278,14 @@ async function onRegisterSubmit(ctx: { formData: Record<string, unknown> }) {
     fallbackMessage: _t('Registration failed. Please try again later.'),
     setError: setPageError,
     onSuccess: async () => {
-      await router.replace(resolveLoginRedirect(route.query.redirect?.toString()));
+      try {
+        await router.replace(resolveLoginRedirect(route.query.redirect?.toString()));
+      } catch {
+        // Account already exists; do not surface a misleading registration failure.
+        setPageError(
+          _t('Your account was created, but the page could not open. Please log in.'),
+        );
+      }
     },
   });
 }

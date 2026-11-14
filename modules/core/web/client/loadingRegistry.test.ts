@@ -145,6 +145,44 @@ test('beginNavigationLoading is idempotent (handoff before router beforeEach)', 
   expect(useNavigationHandoffBusy().value).toBe(false);
 });
 
+test('older navigation settlement does not clear a newer ticket', async () => {
+  afterEachReset();
+  const genA = beginNavigationLoading();
+  scheduleNavigationSettleIfIdle(30);
+  const genB = beginNavigationLoading();
+  expect(genB).toBeGreaterThan(genA);
+  expect(getLoadingRegistryDebugState().navTicketActive).toBe(true);
+  settleNavigationIfActive({ generation: genA });
+  expect(getLoadingRegistryDebugState().navTicketActive).toBe(true);
+  await new Promise<void>(resolve => setTimeout(resolve, 50));
+  // Prior idle timer must not have cleared B's ticket.
+  expect(getLoadingRegistryDebugState().navTicketActive).toBe(true);
+  settleNavigationIfActive({ generation: genB });
+  expect(getLoadingRegistryDebugState().navTicketActive).toBe(false);
+});
+
+test('overlapping runWithLoading scopes remove their own stack frame', async () => {
+  afterEachReset();
+  let releaseInner!: () => void;
+  const innerGate = new Promise<void>(resolve => {
+    releaseInner = resolve;
+  });
+  const innerDone = runWithLoading({ layer: 'surface', target: 'outer', mode: 'block' }, async () => {
+    const inner = runWithLoading({ silent: true }, async () => {
+      await innerGate;
+    });
+    await Promise.resolve();
+    expect(getLoadingRegistryDebugState().stackDepth).toBe(2);
+    // Do not await inner — outer finishes first so stack.pop-by-identity is required.
+    void inner;
+  });
+  await innerDone;
+  expect(getLoadingRegistryDebugState().stackDepth).toBe(1);
+  releaseInner();
+  await new Promise<void>(resolve => setTimeout(resolve, 0));
+  expect(getLoadingRegistryDebugState().stackDepth).toBe(0);
+});
+
 test('navigation handoff busy clears when surface takes over', async () => {
   afterEachReset();
   beginNavigationLoading();

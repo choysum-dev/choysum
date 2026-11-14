@@ -693,10 +693,13 @@ const localSort = ref<ChoyChartSort>(props.sort);
 const localChartType = ref<ChoyChartKind>(props.chartType);
 const localMetric = ref(props.metricAlias || 'count');
 
-const boardBusy = computed(() => !!controller.vm.loading);
-const chartBusyMode = computed<'stale' | 'block'>(() =>
-  controller.vm.result ? 'stale' : 'block',
-);
+// True until bootstrap finishes; false when autoBootstrap is off (host owns first load).
+const bootstrapping = ref(props.autoBootstrap !== false);
+const boardBusy = computed(() => !!controller.vm.loading || bootstrapping.value);
+const chartBusyMode = computed<'stale' | 'block'>(() => {
+  const rows = (controller.vm.result as { rows?: unknown[] } | null)?.rows;
+  return rows && rows.length > 0 ? 'stale' : 'block';
+});
 const errorText = computed(() => {
   const err = controller.vm.error;
   if (err == null) return null;
@@ -783,17 +786,22 @@ async function applyQuery(overrides?: {
 }
 
 async function bootstrap(): Promise<void> {
-  if (props.beforeBootstrap) await props.beforeBootstrap();
-  await awaitFieldSelection(store, { requireNonEmpty: false });
-  initMetricOptions();
-  // Search first-frame protocol: skip empty apply when Search owns the first load.
-  if (shouldDeferToSearchFirstFrame({ gate: firstFrame })) {
-    return;
-  }
+  bootstrapping.value = true;
   try {
-    await applyQuery();
-  } catch (error) {
-    props.onLoadError?.(error);
+    if (props.beforeBootstrap) await props.beforeBootstrap();
+    await awaitFieldSelection(store, { requireNonEmpty: false });
+    initMetricOptions();
+    // Search first-frame protocol: skip empty apply when Search owns the first load.
+    if (shouldDeferToSearchFirstFrame({ gate: firstFrame })) {
+      return;
+    }
+    try {
+      await applyQuery();
+    } catch (error) {
+      props.onLoadError?.(error);
+    }
+  } finally {
+    bootstrapping.value = false;
   }
 }
 
@@ -1807,6 +1815,7 @@ onMounted(() => {
     syncPlotHeight();
   }
   if (!props.autoBootstrap) {
+    bootstrapping.value = false;
     initMetricOptions();
     return;
   }

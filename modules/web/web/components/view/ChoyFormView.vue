@@ -578,7 +578,15 @@ provide('lastOnchangeResult', lastOnchangeResult);
 // =============================
 // Section 13: Computed exposed form data
 // =============================
-const exposedFormData = computed<Partial<ClientModel<T>>>(() => (controller.vm.draft as any) || {});
+const exposedFormData = computed<Partial<ClientModel<T>>>(() => {
+  if (isSettingsPresentation.value) {
+    if (props.localStore) return props.localStore.getValues() as Partial<ClientModel<T>>;
+    if (props.draft && typeof props.draft === 'object') {
+      return settingsDraftBag as Partial<ClientModel<T>>;
+    }
+  }
+  return (controller.vm.draft as any) || {};
+});
 
 const lifecycleDeps = {
   // Getters keep identity reactive when the host reuses the form without remounting.
@@ -668,9 +676,10 @@ const overlayBusy = computed<boolean>(() => {
   }
   return loading.value && !submitting.value && !formControlBusy.value.busy;
 });
-const formBusyMode = computed<'stale' | 'skeleton'>(() => {
-  if (isSettingsPresentation.value) return 'skeleton';
-  return controller.vm.draft || controller.vm.original ? 'stale' : 'skeleton';
+const formBusyMode = computed<'stale' | 'skeleton' | 'block'>(() => {
+  // Prefer block (Loader2) for first paint; stale when a record frame already exists.
+  if (isSettingsPresentation.value) return 'block';
+  return controller.vm.draft || controller.vm.original ? 'stale' : 'block';
 });
 const controlsLocked = computed<boolean>(() => {
   if (isSettingsPresentation.value) return settingsControlBusy.value;
@@ -697,8 +706,13 @@ function onSettingsSave() {
 
 async function onSettingsDiscard() {
   if (controlsLocked.value || !settingsDirty.value) return;
-  // handleCancel confirms dirty then runs cancelHandler (Settings emits discard there).
-  await handleCancel();
+  // cancelHandler path (ChoySettingsView) emits discard itself — avoid a second emit.
+  if (props.cancelHandler) {
+    await handleCancel();
+    return;
+  }
+  if (!(await confirmDiscardIfDirty())) return;
+  emit('discard');
 }
 
 async function onSettingsViewSelect(value: string) {
@@ -710,14 +724,17 @@ async function onSettingsViewSelect(value: string) {
     await new Promise<void>((resolve) => {
       let settled = false;
       let removeAfter: (() => void) | undefined;
+      let fallbackTimer: ReturnType<typeof setTimeout> | undefined;
       const finish = () => {
         if (settled) return;
         settled = true;
         removeAfter?.();
+        if (fallbackTimer != null) clearTimeout(fallbackTimer);
         resolve();
       };
       removeAfter = router?.afterEach?.(() => finish());
-      setTimeout(finish, 0);
+      // Grace so leaving stays true until the sibling route push can commit.
+      fallbackTimer = setTimeout(finish, 1000);
     });
   });
 }

@@ -113,7 +113,25 @@ onBeforeUnmount(() => {
   clearTick();
 });
 
-const message = computed(() => _t(MESSAGE_STAGES[stageIndex.value]![1]));
+const message = computed(() => {
+  // Literal _t(...) so extract sees live msgids (runtime table lookup alone goes obsolete).
+  switch (stageIndex.value) {
+    case 1:
+      return _t('Still loading...');
+    case 2:
+      return _t('Still loading...<br />Please be patient.');
+    case 3:
+      return _t("Don't leave yet,<br />it's still loading...");
+    case 4:
+      return _t('You may not believe it,<br />but the application is actually loading...');
+    case 5:
+      return _t("Take a minute to get a coffee,<br />because it's loading...");
+    case 6:
+      return _t('Maybe you should consider reloading the application by pressing F5...');
+    default:
+      return _t('Loading...');
+  }
+});
 
 /** Lines from msgid that uses Odoo-style `<br />` separators (not rendered as HTML). */
 const messageLines = computed(() =>

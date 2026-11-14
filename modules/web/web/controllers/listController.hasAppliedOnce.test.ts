@@ -3,7 +3,7 @@
 
 import { createListController } from './listController';
 
-function makeStore() {
+function makeStore(overrides: Record<string, unknown> = {}) {
   return {
     fullModelName: 'base.Company',
     storeId: 'list-applied-once',
@@ -25,6 +25,7 @@ function makeStore() {
     withContext: async (_c: unknown, fn: () => unknown) => fn(),
     Search: async () => [],
     Count: async () => 0,
+    ...overrides,
   } as any;
 }
 
@@ -34,10 +35,21 @@ test('listController: hasAppliedOnce defaults to false', () => {
 });
 
 test('listController: apply finally sets hasAppliedOnce even when the query path fails', async () => {
-  const ctrl = createListController(makeStore());
+  const ctrl = createListController(
+    makeStore({
+      Search: async () => {
+        throw new Error('search boom');
+      },
+    }),
+  );
   expect(ctrl.vm.hasAppliedOnce).toBe(false);
-  // Incomplete FE-unit store may fail inside execute; finally must still settle the gate.
-  await ctrl.apply().catch(() => undefined);
+  let rejected: unknown;
+  try {
+    await ctrl.apply();
+  } catch (e) {
+    rejected = e;
+  }
+  expect(rejected instanceof Error && /search boom/.test(rejected.message)).toBe(true);
   expect(ctrl.vm.hasAppliedOnce).toBe(true);
   expect(ctrl.vm.loading).toBe(false);
 });

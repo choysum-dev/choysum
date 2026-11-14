@@ -1116,23 +1116,23 @@ msgctxt "web/components/layout/SwitchCompany"
 msgid "Workspace"
 msgstr ""
 
-#: web/dialogs/change-password/ChangePasswordDialog.vue:22
+#: web/dialogs/change-password/ChangePasswordDialog.vue:23
 msgctxt "web/dialogs/change-password/ChangePasswordDialog"
 msgid "Cancel"
 msgstr ""
 
-#: web/dialogs/change-password/ChangePasswordDialog.vue:90
+#: web/dialogs/change-password/ChangePasswordDialog.vue:91
 msgctxt "web/dialogs/change-password/ChangePasswordDialog"
 msgid "Cannot change password: missing username"
 msgstr ""
 
-#: web/dialogs/change-password/ChangePasswordDialog.vue:25
+#: web/dialogs/change-password/ChangePasswordDialog.vue:26
 #: web/dialogs/change-password/ChangePasswordDialog.vue:5
 msgctxt "web/dialogs/change-password/ChangePasswordDialog"
 msgid "Change password"
 msgstr ""
 
-#: web/dialogs/change-password/ChangePasswordDialog.vue:17
+#: web/dialogs/change-password/ChangePasswordDialog.vue:18
 msgctxt "web/dialogs/change-password/ChangePasswordDialog"
 msgid "Confirm new password"
 msgstr ""
@@ -1142,7 +1142,7 @@ msgctxt "web/dialogs/change-password/ChangePasswordDialog"
 msgid "Confirm new password is required"
 msgstr ""
 
-#: web/dialogs/change-password/ChangePasswordDialog.vue:15
+#: web/dialogs/change-password/ChangePasswordDialog.vue:16
 msgctxt "web/dialogs/change-password/ChangePasswordDialog"
 msgid "Current password"
 msgstr ""
@@ -1152,12 +1152,12 @@ msgctxt "web/dialogs/change-password/ChangePasswordDialog"
 msgid "Current password is required"
 msgstr ""
 
-#: web/dialogs/change-password/ChangePasswordDialog.vue:110
+#: web/dialogs/change-password/ChangePasswordDialog.vue:111
 msgctxt "web/dialogs/change-password/ChangePasswordDialog"
 msgid "Failed to change password"
 msgstr ""
 
-#: web/dialogs/change-password/ChangePasswordDialog.vue:16
+#: web/dialogs/change-password/ChangePasswordDialog.vue:17
 msgctxt "web/dialogs/change-password/ChangePasswordDialog"
 msgid "New password"
 msgstr ""
@@ -1172,7 +1172,7 @@ msgctxt "web/dialogs/change-password/ChangePasswordDialog"
 msgid "New password must differ from the current password"
 msgstr ""
 
-#: web/dialogs/change-password/ChangePasswordDialog.vue:106
+#: web/dialogs/change-password/ChangePasswordDialog.vue:107
 msgctxt "web/dialogs/change-password/ChangePasswordDialog"
 msgid "Password changed"
 msgstr ""
@@ -1203,7 +1203,7 @@ msgctxt "web/dialogs/preferences/PreferencesDialog"
 msgid "Cancel"
 msgstr ""
 
-#: web/dialogs/preferences/PreferencesDialog.vue:204
+#: web/dialogs/preferences/PreferencesDialog.vue:214
 msgctxt "web/dialogs/preferences/PreferencesDialog"
 msgid "Cannot update preferences: missing user id"
 msgstr ""
@@ -1223,7 +1223,7 @@ msgctxt "web/dialogs/preferences/PreferencesDialog"
 msgid "Display timezone; empty uses browser timezone on first login."
 msgstr ""
 
-#: web/dialogs/preferences/PreferencesDialog.vue:264
+#: web/dialogs/preferences/PreferencesDialog.vue:277
 msgctxt "web/dialogs/preferences/PreferencesDialog"
 msgid "Failed to update preferences"
 msgstr ""
@@ -1268,7 +1268,7 @@ msgctxt "web/dialogs/preferences/PreferencesDialog"
 msgid "Preferences"
 msgstr ""
 
-#: web/dialogs/preferences/PreferencesDialog.vue:258
+#: web/dialogs/preferences/PreferencesDialog.vue:271
 msgctxt "web/dialogs/preferences/PreferencesDialog"
 msgid "Preferences updated"
 msgstr ""
@@ -1414,7 +1414,7 @@ msgctxt "web/pages/AuthSettings"
 msgid "Browser timezone"
 msgstr ""
 
-#: web/pages/auth_settings_page.ts:111
+#: web/pages/auth_settings_page.ts:122
 msgctxt "web/pages/AuthSettings"
 msgid "Load failed"
 msgstr ""
@@ -1429,12 +1429,12 @@ msgctxt "web/pages/AuthSettings"
 msgid "Parameters View"
 msgstr ""
 
-#: web/pages/auth_settings_page.ts:127
+#: web/pages/auth_settings_page.ts:143
 msgctxt "web/pages/AuthSettings"
 msgid "Save failed"
 msgstr ""
 
-#: web/pages/auth_settings_page.ts:125
+#: web/pages/auth_settings_page.ts:139
 msgctxt "web/pages/AuthSettings"
 msgid "Saved successfully"
 msgstr ""
@@ -1454,17 +1454,17 @@ msgctxt "web/pages/Login"
 msgid "Close"
 msgstr ""
 
-#: web/pages/Login.vue:37
+#: web/pages/Login.vue:38
 msgctxt "web/pages/Login"
 msgid "Don't have an account?"
 msgstr ""
 
-#: web/pages/Login.vue:28
+#: web/pages/Login.vue:29
 msgctxt "web/pages/Login"
 msgid "Enter password"
 msgstr ""
 
-#: web/pages/Login.vue:25
+#: web/pages/Login.vue:26
 msgctxt "web/pages/Login"
 msgid "Enter username"
 msgstr ""
@@ -1479,7 +1479,7 @@ msgctxt "web/pages/Login"
 msgid "Initial setup is complete. Sign in with your new account."
 msgstr ""
 
-#: web/pages/Login.vue:34
+#: web/pages/Login.vue:35
 msgctxt "web/pages/Login"
 msgid "Log In"
 msgstr ""
@@ -1489,17 +1489,17 @@ msgctxt "web/pages/Login"
 msgid "Login failed. Please try again later."
 msgstr ""
 
-#: web/pages/Login.vue:28
+#: web/pages/Login.vue:29
 msgctxt "web/pages/Login"
 msgid "Password"
 msgstr ""
 
-#: web/pages/Login.vue:30
+#: web/pages/Login.vue:31
 msgctxt "web/pages/Login"
 msgid "Remember me"
 msgstr ""
 
-#: web/pages/Login.vue:39
+#: web/pages/Login.vue:40
 msgctxt "web/pages/Login"
 msgid "Sign up now"
 msgstr ""
@@ -1509,7 +1509,7 @@ msgctxt "web/pages/Login"
 msgid "User Login"
 msgstr ""
 
-#: web/pages/Login.vue:25
+#: web/pages/Login.vue:26
 msgctxt "web/pages/Login"
 msgid "Username"
 msgstr ""
@@ -1559,7 +1559,7 @@ msgctxt "web/pages/Logout"
 msgid "Unknown error occurred during logout"
 msgstr ""
 
-#: web/pages/Register.vue:54
+#: web/pages/Register.vue:55
 msgctxt "web/pages/Register"
 msgid "Already have an account?"
 msgstr ""
@@ -1569,18 +1569,18 @@ msgctxt "web/pages/Register"
 msgid "Close"
 msgstr ""
 
-#: web/pages/Register.vue:31
+#: web/pages/Register.vue:32
 msgctxt "web/pages/Register"
 msgid "Confirm Password"
 msgstr ""
 
-#: web/pages/Register.vue:51
+#: web/pages/Register.vue:52
 #: web/pages/Register.vue:6
 msgctxt "web/pages/Register"
 msgid "Create Account"
 msgstr ""
 
-#: web/pages/Register.vue:25
+#: web/pages/Register.vue:26
 msgctxt "web/pages/Register"
 msgid "Email"
 msgstr ""
@@ -1590,19 +1590,19 @@ msgctxt "web/pages/Register"
 msgid "Enter a valid email address"
 msgstr ""
 
-#: web/pages/Register.vue:25
+#: web/pages/Register.vue:26
 #: web/pages/register_form.ts:14
 msgctxt "web/pages/Register"
 msgid "Enter email address"
 msgstr ""
 
-#: web/pages/Register.vue:28
+#: web/pages/Register.vue:29
 #: web/pages/register_form.ts:16
 msgctxt "web/pages/Register"
 msgid "Enter password"
 msgstr ""
 
-#: web/pages/Register.vue:22
+#: web/pages/Register.vue:23
 #: web/pages/register_form.ts:11
 msgctxt "web/pages/Register"
 msgid "Enter username"
@@ -1613,17 +1613,17 @@ msgctxt "web/pages/Register"
 msgid "Fill in the fields below to register"
 msgstr ""
 
-#: web/pages/Register.vue:37
+#: web/pages/Register.vue:38
 msgctxt "web/pages/Register"
 msgid "I have read and agree to"
 msgstr ""
 
-#: web/pages/Register.vue:56
+#: web/pages/Register.vue:57
 msgctxt "web/pages/Register"
 msgid "Log in now"
 msgstr ""
 
-#: web/pages/Register.vue:28
+#: web/pages/Register.vue:29
 msgctxt "web/pages/Register"
 msgid "Password"
 msgstr ""
@@ -1638,12 +1638,12 @@ msgctxt "web/pages/Register"
 msgid "Passwords do not match"
 msgstr ""
 
-#: web/pages/Register.vue:43
+#: web/pages/Register.vue:44
 msgctxt "web/pages/Register"
 msgid "Privacy Policy"
 msgstr ""
 
-#: web/pages/Register.vue:31
+#: web/pages/Register.vue:32
 #: web/pages/register_form.ts:18
 msgctxt "web/pages/Register"
 msgid "Re-enter password"
@@ -1655,12 +1655,12 @@ msgctxt "web/pages/Register"
 msgid "Registration failed. Please try again later."
 msgstr ""
 
-#: web/pages/Register.vue:39
+#: web/pages/Register.vue:40
 msgctxt "web/pages/Register"
 msgid "Terms of Service"
 msgstr ""
 
-#: web/pages/Register.vue:22
+#: web/pages/Register.vue:23
 msgctxt "web/pages/Register"
 msgid "Username"
 msgstr ""
@@ -1685,7 +1685,12 @@ msgctxt "web/pages/Register"
 msgid "Your account was created, but signing in failed. Please log in."
 msgstr ""
 
-#: web/pages/Register.vue:41
+#: web/pages/Register.vue:97
+msgctxt "web/pages/Register"
+msgid "Your account was created, but the page could not open. Please log in."
+msgstr ""
+
+#: web/pages/Register.vue:42
 msgctxt "web/pages/Register"
 msgid "and"
 msgstr ""
@@ -1720,7 +1725,7 @@ msgctxt "web/pages/SessionList"
 msgid "Session List"
 msgstr ""
 
-#: web/pages/Setup.vue:75
+#: web/pages/Setup.vue:76
 msgctxt "web/pages/Setup"
 msgid "Administrator Info"
 msgstr ""
@@ -1740,7 +1745,7 @@ msgctxt "web/pages/Setup"
 msgid "Complete Setup"
 msgstr ""
 
-#: web/pages/Setup.vue:82
+#: web/pages/Setup.vue:83
 msgctxt "web/pages/Setup"
 msgid "Create the administrator account"
 msgstr ""
@@ -1770,13 +1775,13 @@ msgctxt "web/pages/Setup"
 msgid "Enter username"
 msgstr ""
 
-#: web/pages/Setup.vue:265
+#: web/pages/Setup.vue:383
 #: web/pages/Setup.vue:48
 msgctxt "web/pages/Setup"
 msgid "Failed to load demo data. You can retry from Modules later."
 msgstr ""
 
-#: web/pages/Setup.vue:152
+#: web/pages/Setup.vue:155
 msgctxt "web/pages/Setup"
 msgid "Failed to load setup options. Please try again."
 msgstr ""
@@ -1786,8 +1791,8 @@ msgctxt "web/pages/Setup"
 msgid "Initial Setup"
 msgstr ""
 
-#: web/pages/Setup.vue:243
-#: web/pages/Setup.vue:276
+#: web/pages/Setup.vue:363
+#: web/pages/Setup.vue:397
 msgctxt "web/pages/Setup"
 msgid "Initial setup failed. Please try again later."
 msgstr ""
@@ -1802,7 +1807,7 @@ msgctxt "web/pages/Setup"
 msgid "Next"
 msgstr ""
 
-#: web/pages/Setup.vue:76
+#: web/pages/Setup.vue:77
 msgctxt "web/pages/Setup"
 msgid "Organization Info"
 msgstr ""
@@ -1832,12 +1837,12 @@ msgctxt "web/pages/Setup"
 msgid "Retry"
 msgstr ""
 
-#: web/pages/Setup.vue:77
+#: web/pages/Setup.vue:78
 msgctxt "web/pages/Setup"
 msgid "Review"
 msgstr ""
 
-#: web/pages/Setup.vue:81
+#: web/pages/Setup.vue:82
 msgctxt "web/pages/Setup"
 msgid "Review the settings and finish setup"
 msgstr ""
@@ -1852,7 +1857,7 @@ msgctxt "web/pages/Setup"
 msgid "Select a business timezone"
 msgstr ""
 
-#: web/pages/Setup.vue:80
+#: web/pages/Setup.vue:81
 msgctxt "web/pages/Setup"
 msgid "Set up your organization basics"
 msgstr ""
@@ -1887,92 +1892,92 @@ msgctxt "web/pages/UserList"
 msgid "User List"
 msgstr ""
 
-#: web/pages/setup/SetupAdminStep.vue:10
+#: web/pages/setup/SetupAdminStep.vue:11
 msgctxt "web/pages/setup/SetupAdminStep"
 msgid "Confirm Password"
 msgstr ""
 
-#: web/pages/setup/SetupAdminStep.vue:13
+#: web/pages/setup/SetupAdminStep.vue:14
 msgctxt "web/pages/setup/SetupAdminStep"
 msgid "Email"
 msgstr ""
 
-#: web/pages/setup/SetupAdminStep.vue:7
+#: web/pages/setup/SetupAdminStep.vue:8
 msgctxt "web/pages/setup/SetupAdminStep"
 msgid "Enter password"
 msgstr ""
 
-#: web/pages/setup/SetupAdminStep.vue:4
+#: web/pages/setup/SetupAdminStep.vue:5
 msgctxt "web/pages/setup/SetupAdminStep"
 msgid "Enter username"
 msgstr ""
 
-#: web/pages/setup/SetupAdminStep.vue:13
+#: web/pages/setup/SetupAdminStep.vue:14
 msgctxt "web/pages/setup/SetupAdminStep"
 msgid "Optional"
 msgstr ""
 
-#: web/pages/setup/SetupAdminStep.vue:7
+#: web/pages/setup/SetupAdminStep.vue:8
 msgctxt "web/pages/setup/SetupAdminStep"
 msgid "Password"
 msgstr ""
 
-#: web/pages/setup/SetupAdminStep.vue:10
+#: web/pages/setup/SetupAdminStep.vue:11
 msgctxt "web/pages/setup/SetupAdminStep"
 msgid "Re-enter password"
 msgstr ""
 
-#: web/pages/setup/SetupAdminStep.vue:4
+#: web/pages/setup/SetupAdminStep.vue:5
 msgctxt "web/pages/setup/SetupAdminStep"
 msgid "Username"
 msgstr ""
 
-#: web/pages/setup/SetupOrganizationStep.vue:10
+#: web/pages/setup/SetupOrganizationStep.vue:11
 msgctxt "web/pages/setup/SetupOrganizationStep"
 msgid "Base Currency"
 msgstr ""
 
-#: web/pages/setup/SetupOrganizationStep.vue:13
+#: web/pages/setup/SetupOrganizationStep.vue:14
 msgctxt "web/pages/setup/SetupOrganizationStep"
 msgid "Business Timezone"
 msgstr ""
 
-#: web/pages/setup/SetupOrganizationStep.vue:10
+#: web/pages/setup/SetupOrganizationStep.vue:11
 msgctxt "web/pages/setup/SetupOrganizationStep"
 msgid "Company accounting currency. It cannot be changed once transactions exist."
 msgstr ""
 
-#: web/pages/setup/SetupOrganizationStep.vue:7
+#: web/pages/setup/SetupOrganizationStep.vue:8
 msgctxt "web/pages/setup/SetupOrganizationStep"
 msgid "Country / Region"
 msgstr ""
 
-#: web/pages/setup/SetupOrganizationStep.vue:4
+#: web/pages/setup/SetupOrganizationStep.vue:5
 msgctxt "web/pages/setup/SetupOrganizationStep"
 msgid "Enter organization name"
 msgstr ""
 
-#: web/pages/setup/SetupOrganizationStep.vue:7
+#: web/pages/setup/SetupOrganizationStep.vue:8
 msgctxt "web/pages/setup/SetupOrganizationStep"
 msgid "Optional"
 msgstr ""
 
-#: web/pages/setup/SetupOrganizationStep.vue:4
+#: web/pages/setup/SetupOrganizationStep.vue:5
 msgctxt "web/pages/setup/SetupOrganizationStep"
 msgid "Organization Name"
 msgstr ""
 
-#: web/pages/setup/SetupOrganizationStep.vue:10
+#: web/pages/setup/SetupOrganizationStep.vue:11
 msgctxt "web/pages/setup/SetupOrganizationStep"
 msgid "Select a base currency"
 msgstr ""
 
-#: web/pages/setup/SetupOrganizationStep.vue:13
+#: web/pages/setup/SetupOrganizationStep.vue:14
 msgctxt "web/pages/setup/SetupOrganizationStep"
 msgid "Select a business timezone"
 msgstr ""
 
-#: web/pages/setup/SetupOrganizationStep.vue:13
+#: web/pages/setup/SetupOrganizationStep.vue:14
 msgctxt "web/pages/setup/SetupOrganizationStep"
 msgid "Used for business dates and scheduled jobs; independent of personal display timezones."
 msgstr ""
@@ -2218,7 +2223,7 @@ msgctxt "web/stores/auth/actions"
 msgid "CompleteInitialSetup returned an invalid response"
 msgstr ""
 
-#: web/stores/auth/actions.ts:709
+#: web/stores/auth/actions.ts:723
 msgctxt "web/stores/auth/actions"
 msgid "Failed to initialize auth"
 msgstr ""

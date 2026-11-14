@@ -58,6 +58,9 @@ const stack: StackFrame[] = [];
 let barCount = 0;
 let userBusyCount = 0;
 let navTicketActive = false;
+/** Monotonic id for the navigation that currently owns the shared ticket. */
+let navTicketGeneration = 0;
+let navGenerationSeq = 0;
 let navTimeoutId: ReturnType<typeof setTimeout> | null = null;
 let navIdleSettleId: ReturnType<typeof setTimeout> | null = null;
 
@@ -284,6 +287,19 @@ function stackOwnsRpc(): { silent: boolean; underControl: boolean; underSurface:
  * Run `fn` under a loading intent. Outer frames cover nested RPCs (no double bar).
  * Does not write W3C baggage — client-only stack.
  */
+function removeStackFrame(frame: StackFrame): void {
+  const index = stack.lastIndexOf(frame);
+  if (index !== -1) stack.splice(index, 1);
+}
+
+function armNavigationTimeout(generation: number): void {
+  clearNavTimeout();
+  navTimeoutId = setTimeout(() => {
+    navTimeoutId = null;
+    settleNavigationIfActive({ generation });
+  }, NAV_TIMEOUT_MS);
+}
+
 export async function runWithLoading<T>(opts: LoadingOpts, fn: () => Promise<T>): Promise<T> {
   const silent = !!opts.silent;
   const layer: LoadingLayer | 'silent' = silent ? 'silent' : opts.layer ?? 'chrome';
@@ -293,6 +309,8 @@ export async function runWithLoading<T>(opts: LoadingOpts, fn: () => Promise<T>)
 
   const ownsBar = !silent && (layer === 'surface' || layer === 'chrome');
   const ownsUserBusy = !silent && (layer === 'surface' || layer === 'control' || layer === 'chrome');
+  // Capture nav ownership at start so a leftover surface cannot clear a newer ticket.
+  const navGeneration = !silent && layer === 'surface' && navTicketActive ? navTicketGeneration : 0;
 
   const frame: StackFrame = {
     silent,
@@ -316,13 +334,13 @@ export async function runWithLoading<T>(opts: LoadingOpts, fn: () => Promise<T>)
     // Explicit catch so QuickJS marks the rejection handled before finally cleanup.
     throw e;
   } finally {
-    stack.pop();
+    removeStackFrame(frame);
     if (ownsBar) removeBar();
     if (ownsUserBusy) removeUserBusy();
     if (!silent && layer === 'surface' && target) {
       releaseSurface(target);
-      // First surface after navigation may settle the nav bar ticket.
-      settleNavigationIfActive();
+      // First surface after navigation may settle the nav bar ticket it belongs to.
+      if (navGeneration) settleNavigationIfActive({ generation: navGeneration });
     }
     if (!silent && layer === 'control' && target) releaseControl(target);
   }
@@ -337,8 +355,9 @@ export function runWithLoadingSync<T>(opts: LoadingOpts, fn: () => T): T {
   const pendingLabel = opts.pendingLabel;
   const ownsBar = !silent && (layer === 'surface' || layer === 'chrome');
   const ownsUserBusy = !silent && (layer === 'surface' || layer === 'control' || layer === 'chrome');
+  const navGeneration = !silent && layer === 'surface' && navTicketActive ? navTicketGeneration : 0;
 
-  stack.push({
+  const frame: StackFrame = {
     silent,
     layer,
     target,
@@ -346,7 +365,8 @@ export function runWithLoadingSync<T>(opts: LoadingOpts, fn: () => T): T {
     pendingLabel,
     ownsBar,
     ownsUserBusy,
-  });
+  };
+  stack.push(frame);
   if (ownsBar) addBar();
   if (ownsUserBusy) addUserBusy();
   if (!silent && layer === 'surface' && target) acquireSurface(target, mode);
@@ -354,12 +374,12 @@ export function runWithLoadingSync<T>(opts: LoadingOpts, fn: () => T): T {
   try {
     return fn();
   } finally {
-    stack.pop();
+    removeStackFrame(frame);
     if (ownsBar) removeBar();
     if (ownsUserBusy) removeUserBusy();
     if (!silent && layer === 'surface' && target) {
       releaseSurface(target);
-      settleNavigationIfActive();
+      if (navGeneration) settleNavigationIfActive({ generation: navGeneration });
     }
     if (!silent && layer === 'control' && target) releaseControl(target);
   }
@@ -369,19 +389,27 @@ export function runWithLoadingSync<T>(opts: LoadingOpts, fn: () => T): T {
  * Router beforeEach: bar + user-busy (slow-hint uses the same time threshold as
  * surface/control — fast nav stays quiet; slow chunk waits can show chef).
  * Kept until first surface ends, idle settle after afterEach, or NAV_TIMEOUT_MS.
+ * Returns the generation that owns the shared ticket after this call.
  */
-export function beginNavigationLoading(): void {
-  if (navTicketActive) return;
+export function beginNavigationLoading(): number {
+  navGenerationSeq += 1;
+  const generation = navGenerationSeq;
+  if (navTicketActive) {
+    // Same shared ticket, new navigation: drop the prior idle timer so it cannot
+    // clear this handoff before the destination surface starts.
+    navTicketGeneration = generation;
+    clearNavIdleSettle();
+    armNavigationTimeout(generation);
+    return generation;
+  }
   navTicketActive = true;
+  navTicketGeneration = generation;
   bumpNav();
   addBar();
   addUserBusy();
   clearNavIdleSettle();
-  clearNavTimeout();
-  navTimeoutId = setTimeout(() => {
-    navTimeoutId = null;
-    settleNavigationIfActive();
-  }, NAV_TIMEOUT_MS);
+  armNavigationTimeout(generation);
+  return generation;
 }
 
 /**
@@ -392,18 +420,26 @@ export function beginNavigationLoading(): void {
  */
 export function scheduleNavigationSettleIfIdle(delayMs: number = NAV_IDLE_SETTLE_MS): void {
   if (!navTicketActive) return;
+  const generation = navTicketGeneration;
   clearNavIdleSettle();
   navIdleSettleId = setTimeout(() => {
     navIdleSettleId = null;
     if (!navTicketActive) return;
+    if (navTicketGeneration !== generation) return;
     if (hasActiveSurfaceBusy()) return;
-    settleNavigationIfActive();
+    settleNavigationIfActive({ generation });
   }, delayMs);
 }
 
+export type SettleNavigationOpts = {
+  /** When set, ignore settlement that belongs to an older superseded navigation. */
+  generation?: number;
+};
+
 /** Call when a surface load finishes after navigation (also auto from runWithLoading surface). */
-export function settleNavigationIfActive(): void {
+export function settleNavigationIfActive(opts?: SettleNavigationOpts): void {
   if (!navTicketActive) return;
+  if (opts?.generation != null && opts.generation !== navTicketGeneration) return;
   navTicketActive = false;
   bumpNav();
   clearNavTimeout();
@@ -518,6 +554,8 @@ export function resetLoadingRegistryForTests(): void {
   barCount = 0;
   userBusyCount = 0;
   navTicketActive = false;
+  navTicketGeneration = 0;
+  navGenerationSeq = 0;
   clearNavTimeout();
   clearNavIdleSettle();
   clearBarDelay();
@@ -549,12 +587,14 @@ export function getLoadingRegistryDebugState(): {
   barCount: number;
   userBusyCount: number;
   navTicketActive: boolean;
+  navTicketGeneration: number;
   stackDepth: number;
 } {
   return {
     barCount,
     userBusyCount,
     navTicketActive,
+    navTicketGeneration,
     stackDepth: stack.length,
   };
 }

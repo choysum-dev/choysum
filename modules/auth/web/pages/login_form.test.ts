@@ -278,6 +278,29 @@ test('runHandledAuthSubmit: redirects after success and skips on failure', async
   expect(errors).toEqual([]);
 });
 
+test('runHandledAuthSubmit: awaits a pending onSuccess before settling', async () => {
+  let resolveSuccess!: () => void;
+  const pending = new Promise<void>(resolve => {
+    resolveSuccess = resolve;
+  });
+  let settled = false;
+  const run = runHandledAuthSubmit({
+    submit: async () => true,
+    fallbackMessage: 'fallback',
+    setError: () => {},
+    onSuccess: () => pending,
+  }).then(result => {
+    settled = true;
+    return result;
+  });
+  await Promise.resolve();
+  expect(settled).toBe(false);
+  resolveSuccess();
+  const ok = await run;
+  expect(settled).toBe(true);
+  expect(ok).toEqual({ handled: true, skipSuccessMessage: true });
+});
+
 test('runHandledAuthSubmit: maps thrown Error and unknown values', async () => {
   const errors: string[] = [];
   let redirected = 0;

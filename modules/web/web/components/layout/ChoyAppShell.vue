@@ -10,7 +10,10 @@ SPDX-License-Identifier: Apache-2.0
     data-testid="choy-shell"
     data-shell-mode="app"
   >
-    <div class="choy-shell__body relative flex min-h-0 flex-1 overflow-hidden">
+    <div
+      class="choy-shell__body relative flex min-h-0 flex-1 overflow-hidden"
+      :inert="navigationHandoffBusy || undefined"
+    >
       <template v-if="showSidebar">
         <ChoySidebarBridge />
         <Sidebar collapsible="icon" side="left">
@@ -125,6 +128,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { KeepAlive, computed } from 'vue'
+import { useNavigationHandoffBusy } from '@/core/web/client/loadingRegistry'
 import { useI18n } from 'vue-i18n'
 import ChoyAppFooter from './ChoyAppFooter.vue'
 import ChoyAppHeader from './ChoyAppHeader.vue'
@@ -148,6 +152,8 @@ import { shellMenuTriggerLabel } from './choyWebShellChrome'
  * App shell: full-height sidebar (company header / L1+L2 / user footer)
  * plus Inset chrome (trigger, breadcrumb, search, notifications) and canvas.
  */
+const navigationHandoffBusy = useNavigationHandoffBusy()
+
 const props = withDefaults(
   defineProps<{
     showHeader?: boolean

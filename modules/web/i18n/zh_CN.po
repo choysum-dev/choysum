@@ -1536,6 +1536,41 @@ msgctxt "web/components/layout/ChoySidebarNav"
 msgid "No menus available"
 msgstr "暂无可用菜单"
 
+#: web/components/layout/ChoyLoadingSlowHint.vue:95
+msgctxt "web/components/layout/LoadingSlowHint"
+msgid "Don't leave yet,<br />it's still loading..."
+msgstr "请不要离开，仍然在加载中..."
+
+#: web/components/layout/ChoyLoadingSlowHint.vue:103
+msgctxt "web/components/layout/LoadingSlowHint"
+msgid "Loading..."
+msgstr "正在加载..."
+
+#: web/components/layout/ChoyLoadingSlowHint.vue:101
+msgctxt "web/components/layout/LoadingSlowHint"
+msgid "Maybe you should consider reloading the application by pressing F5..."
+msgstr "也许您应该考虑按 F5 键重新加载程序..."
+
+#: web/components/layout/ChoyLoadingSlowHint.vue:91
+msgctxt "web/components/layout/LoadingSlowHint"
+msgid "Still loading..."
+msgstr "仍然在加载..."
+
+#: web/components/layout/ChoyLoadingSlowHint.vue:93
+msgctxt "web/components/layout/LoadingSlowHint"
+msgid "Still loading...<br />Please be patient."
+msgstr "仍然在加载中...请稍候...."
+
+#: web/components/layout/ChoyLoadingSlowHint.vue:99
+msgctxt "web/components/layout/LoadingSlowHint"
+msgid "Take a minute to get a coffee,<br />because it's loading..."
+msgstr "稍安勿躁，大菜烹饪中 : )"
+
+#: web/components/layout/ChoyLoadingSlowHint.vue:97
+msgctxt "web/components/layout/LoadingSlowHint"
+msgid "You may not believe it,<br />but the application is actually loading..."
+msgstr "也许你不相信，但是真的还在加载...."
+
 #: web/components/layout/ChoyNavigationHandoff.vue:11
 msgctxt "web/components/layout/NavigationHandoff"
 msgid "Loading..."
@@ -1581,7 +1616,7 @@ msgctxt "web/components/terminology/TerminologyExportMenu"
 msgid "PO download failed"
 msgstr "PO 下载失败"
 
-#: web/components/view/ChoyChartView.vue:643
+#: web/components/view/ChoyChartView.vue:650
 msgctxt "web/components/view/ChartView"
 msgid "Bar"
 msgstr "柱状图"
@@ -1591,7 +1626,7 @@ msgctxt "web/components/view/ChartView"
 msgid "Chart type"
 msgstr "图表类型"
 
-#: web/components/view/ChoyChartView.vue:282
+#: web/components/view/ChoyChartView.vue:284
 msgctxt "web/components/view/ChartView"
 msgid "Count"
 msgstr "计数"
@@ -1601,12 +1636,12 @@ msgctxt "web/components/view/ChartView"
 msgid "Cumulative"
 msgstr "累计"
 
-#: web/components/view/ChoyChartView.vue:644
+#: web/components/view/ChoyChartView.vue:651
 msgctxt "web/components/view/ChartView"
 msgid "Line"
 msgstr "折线图"
 
-#: web/components/view/ChoyChartView.vue:266 web/components/view/ChoyChartView.vue:53
+#: web/components/view/ChoyChartView.vue:268 web/components/view/ChoyChartView.vue:53
 msgctxt "web/components/view/ChartView"
 msgid "Metric"
 msgstr "度量"
@@ -1626,12 +1661,12 @@ msgctxt "web/components/view/ChartView"
 msgid "No data or grouping not configured"
 msgstr "暂无数据或未配置分组"
 
-#: web/components/view/ChoyChartView.vue:649
+#: web/components/view/ChoyChartView.vue:656
 msgctxt "web/components/view/ChartView"
 msgid "No sort"
 msgstr "不排序"
 
-#: web/components/view/ChoyChartView.vue:645
+#: web/components/view/ChoyChartView.vue:652
 msgctxt "web/components/view/ChartView"
 msgid "Pie"
 msgstr "饼图"
@@ -1651,12 +1686,12 @@ msgctxt "web/components/view/ChartView"
 msgid "Sort"
 msgstr "排序"
 
-#: web/components/view/ChoyChartView.vue:650
+#: web/components/view/ChoyChartView.vue:657
 msgctxt "web/components/view/ChartView"
 msgid "Sort ascending"
 msgstr "升序"
 
-#: web/components/view/ChoyChartView.vue:651
+#: web/components/view/ChoyChartView.vue:658
 msgctxt "web/components/view/ChartView"
 msgid "Sort descending"
 msgstr "降序"
@@ -1671,7 +1706,7 @@ msgctxt "web/components/view/ChartView"
 msgid "System actions"
 msgstr "系统操作"
 
-#: web/components/view/ChoyChartView.vue:1209
+#: web/components/view/ChoyChartView.vue:1216
 msgctxt "web/components/view/ChartView"
 msgid "Total"
 msgstr "合计"
@@ -1711,7 +1746,7 @@ msgctxt "web/components/view/FormView"
 msgid "Details"
 msgstr "详情"
 
-#: web/components/view/ChoyFormView.vue:465
+#: web/components/view/ChoyFormView.vue:474
 msgctxt "web/components/view/FormView"
 msgid "Discard"
 msgstr "放弃"
@@ -1736,12 +1771,12 @@ msgctxt "web/components/view/FormView"
 msgid "Reset"
 msgstr "重置"
 
-#: web/components/view/ChoyFormView.vue:459 web/components/view/ChoyFormView.vue:463
+#: web/components/view/ChoyFormView.vue:468 web/components/view/ChoyFormView.vue:472
 msgctxt "web/components/view/FormView"
 msgid "Save"
 msgstr "保存"
 
-#: web/components/view/ChoyFormView.vue:459 web/components/view/ChoyFormView.vue:463
+#: web/components/view/ChoyFormView.vue:468 web/components/view/ChoyFormView.vue:472
 msgctxt "web/components/view/FormView"
 msgid "Saving..."
 msgstr "保存中..."
@@ -3745,34 +3780,6 @@ msgstr "用户"
 #~ msgctxt "web/components/field/TimeField"
 #~ msgid "Invalid time value"
 #~ msgstr "时间无效"
-
-#~ msgctxt "web/components/layout/LoadingSlowHint"
-#~ msgid "Don't leave yet,<br />it's still loading..."
-#~ msgstr "请不要离开，仍然在加载中..."
-
-#~ msgctxt "web/components/layout/LoadingSlowHint"
-#~ msgid "Loading..."
-#~ msgstr "正在加载..."
-
-#~ msgctxt "web/components/layout/LoadingSlowHint"
-#~ msgid "Maybe you should consider reloading the application by pressing F5..."
-#~ msgstr "也许您应该考虑按 F5 键重新加载程序..."
-
-#~ msgctxt "web/components/layout/LoadingSlowHint"
-#~ msgid "Still loading..."
-#~ msgstr "仍然在加载..."
-
-#~ msgctxt "web/components/layout/LoadingSlowHint"
-#~ msgid "Still loading...<br />Please be patient."
-#~ msgstr "仍然在加载中...请稍候...."
-
-#~ msgctxt "web/components/layout/LoadingSlowHint"
-#~ msgid "Take a minute to get a coffee,<br />because it's loading..."
-#~ msgstr "稍安勿躁，大菜烹饪中 : )"
-
-#~ msgctxt "web/components/layout/LoadingSlowHint"
-#~ msgid "You may not believe it,<br />but the application is actually loading..."
-#~ msgstr "也许你不相信，但是真的还在加载...."
 
 #~ msgctxt "web/components/view/ChartView"
 #~ msgid "Loading..."

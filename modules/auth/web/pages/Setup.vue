@@ -471,8 +471,9 @@ async function onFormSubmit(ctx: { formData: Record<string, unknown> }) {
             onFieldError: showServerFieldError,
             onSetupSucceeded: () => clearSetupDraft(),
             // Marker already written; leave /setup so Ready guard does not bounce the user.
-            onSetupCompleteLoginFailed: () => {
-              void router.replace(setupLoginFallbackTarget(route.query, { setupDone: true }));
+            // Await replace so submitting stays true until the fallback route settles.
+            onSetupCompleteLoginFailed: async () => {
+              await router.replace(setupLoginFallbackTarget(route.query, { setupDone: true }));
             },
             // Another tab may have finished setup; leave /setup when the probe says Ready.
             onSetupFailed: async () => {

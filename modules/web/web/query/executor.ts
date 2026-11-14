@@ -520,29 +520,30 @@ async function call(plan: QueryPlan, store: WebModelStore<any>): Promise<any> {
     case 'search': {
       const { condition, fields, orderBy, limit, offset, relationConditionSource } = plan.params || {};
       const options = { fields, orderBy, limit, offset, relationConditionSource };
-      return store.Search!(condition ?? [], options);
+      // `return await` so QuickJS adopts rejections (bare `return promise` can unhandle).
+      return await store.Search!(condition ?? [], options);
     }
     case 'count': {
       const { condition, relationConditionSource } = plan.params || {};
-      return store.Count!(condition ?? [], relationConditionSource ? { relationConditionSource } : undefined);
+      return await store.Count!(condition ?? [], relationConditionSource ? { relationConditionSource } : undefined);
     }
     case 'readGroup': {
       const { groupby, condition, fields, orderBy, limit, offset } = plan.params || {};
       const opts = { fields, orderBy, limit, offset };
       const gbArray: any[] = Array.isArray(groupby) ? groupby : groupby ? [groupby] : [];
       const cond = Array.isArray(condition) || !condition ? (condition ?? []) : condition;
-      return store.ReadGroup!(gbArray, cond, opts);
+      return await store.ReadGroup!(gbArray, cond, opts);
     }
     case 'readGroupCount': {
       const { groupby, condition, fields } = plan.params || {};
       const gbArray: any[] = Array.isArray(groupby) ? groupby : groupby ? [groupby] : [];
       const cond = Array.isArray(condition) || !condition ? (condition ?? []) : condition;
       const opts = { fields };
-      return store.ReadGroupCount!(gbArray, cond, opts);
+      return await store.ReadGroupCount!(gbArray, cond, opts);
     }
     case 'browse': {
       const { id, fields } = plan.params || {};
-      return store.Browse!(id, fields);
+      return await store.Browse!(id, fields);
     }
   }
 }

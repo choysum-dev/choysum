@@ -1580,6 +1580,41 @@ msgctxt "web/components/layout/ChoySidebarNav"
 msgid "No menus available"
 msgstr ""
 
+#: web/components/layout/ChoyLoadingSlowHint.vue:95
+msgctxt "web/components/layout/LoadingSlowHint"
+msgid "Don't leave yet,<br />it's still loading..."
+msgstr ""
+
+#: web/components/layout/ChoyLoadingSlowHint.vue:103
+msgctxt "web/components/layout/LoadingSlowHint"
+msgid "Loading..."
+msgstr ""
+
+#: web/components/layout/ChoyLoadingSlowHint.vue:101
+msgctxt "web/components/layout/LoadingSlowHint"
+msgid "Maybe you should consider reloading the application by pressing F5..."
+msgstr ""
+
+#: web/components/layout/ChoyLoadingSlowHint.vue:91
+msgctxt "web/components/layout/LoadingSlowHint"
+msgid "Still loading..."
+msgstr ""
+
+#: web/components/layout/ChoyLoadingSlowHint.vue:93
+msgctxt "web/components/layout/LoadingSlowHint"
+msgid "Still loading...<br />Please be patient."
+msgstr ""
+
+#: web/components/layout/ChoyLoadingSlowHint.vue:99
+msgctxt "web/components/layout/LoadingSlowHint"
+msgid "Take a minute to get a coffee,<br />because it's loading..."
+msgstr ""
+
+#: web/components/layout/ChoyLoadingSlowHint.vue:97
+msgctxt "web/components/layout/LoadingSlowHint"
+msgid "You may not believe it,<br />but the application is actually loading..."
+msgstr ""
+
 #: web/components/layout/ChoyNavigationHandoff.vue:11
 msgctxt "web/components/layout/NavigationHandoff"
 msgid "Loading..."
@@ -1626,7 +1661,7 @@ msgctxt "web/components/terminology/TerminologyExportMenu"
 msgid "PO download failed"
 msgstr ""
 
-#: web/components/view/ChoyChartView.vue:643
+#: web/components/view/ChoyChartView.vue:650
 msgctxt "web/components/view/ChartView"
 msgid "Bar"
 msgstr ""
@@ -1636,7 +1671,7 @@ msgctxt "web/components/view/ChartView"
 msgid "Chart type"
 msgstr ""
 
-#: web/components/view/ChoyChartView.vue:282
+#: web/components/view/ChoyChartView.vue:284
 msgctxt "web/components/view/ChartView"
 msgid "Count"
 msgstr ""
@@ -1647,12 +1682,12 @@ msgctxt "web/components/view/ChartView"
 msgid "Cumulative"
 msgstr ""
 
-#: web/components/view/ChoyChartView.vue:644
+#: web/components/view/ChoyChartView.vue:651
 msgctxt "web/components/view/ChartView"
 msgid "Line"
 msgstr ""
 
-#: web/components/view/ChoyChartView.vue:266
+#: web/components/view/ChoyChartView.vue:268
 #: web/components/view/ChoyChartView.vue:53
 msgctxt "web/components/view/ChartView"
 msgid "Metric"
@@ -1673,12 +1708,12 @@ msgctxt "web/components/view/ChartView"
 msgid "No data or grouping not configured"
 msgstr ""
 
-#: web/components/view/ChoyChartView.vue:649
+#: web/components/view/ChoyChartView.vue:656
 msgctxt "web/components/view/ChartView"
 msgid "No sort"
 msgstr ""
 
-#: web/components/view/ChoyChartView.vue:645
+#: web/components/view/ChoyChartView.vue:652
 msgctxt "web/components/view/ChartView"
 msgid "Pie"
 msgstr ""
@@ -1698,12 +1733,12 @@ msgctxt "web/components/view/ChartView"
 msgid "Sort"
 msgstr ""
 
-#: web/components/view/ChoyChartView.vue:650
+#: web/components/view/ChoyChartView.vue:657
 msgctxt "web/components/view/ChartView"
 msgid "Sort ascending"
 msgstr ""
 
-#: web/components/view/ChoyChartView.vue:651
+#: web/components/view/ChoyChartView.vue:658
 msgctxt "web/components/view/ChartView"
 msgid "Sort descending"
 msgstr ""
@@ -1719,7 +1754,7 @@ msgctxt "web/components/view/ChartView"
 msgid "System actions"
 msgstr ""
 
-#: web/components/view/ChoyChartView.vue:1209
+#: web/components/view/ChoyChartView.vue:1216
 msgctxt "web/components/view/ChartView"
 msgid "Total"
 msgstr ""
@@ -1759,7 +1794,7 @@ msgctxt "web/components/view/FormView"
 msgid "Details"
 msgstr ""
 
-#: web/components/view/ChoyFormView.vue:465
+#: web/components/view/ChoyFormView.vue:474
 msgctxt "web/components/view/FormView"
 msgid "Discard"
 msgstr ""
@@ -1784,14 +1819,14 @@ msgctxt "web/components/view/FormView"
 msgid "Reset"
 msgstr ""
 
-#: web/components/view/ChoyFormView.vue:459
-#: web/components/view/ChoyFormView.vue:463
+#: web/components/view/ChoyFormView.vue:468
+#: web/components/view/ChoyFormView.vue:472
 msgctxt "web/components/view/FormView"
 msgid "Save"
 msgstr ""
 
-#: web/components/view/ChoyFormView.vue:459
-#: web/components/view/ChoyFormView.vue:463
+#: web/components/view/ChoyFormView.vue:468
+#: web/components/view/ChoyFormView.vue:472
 msgctxt "web/components/view/FormView"
 msgid "Saving..."
 msgstr ""

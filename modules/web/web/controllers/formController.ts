@@ -801,7 +801,7 @@ export function createFormController(store: WebModelStore<any>, deps: FormContro
       {
         layer: 'surface',
         target: formLoadingTarget(),
-        mode: hasFrame ? 'stale' : 'skeleton',
+        mode: hasFrame ? 'stale' : 'block',
       },
       () => beginDisplayImpl(recordId),
     );
