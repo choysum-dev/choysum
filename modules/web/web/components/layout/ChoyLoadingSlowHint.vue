@@ -97,11 +97,9 @@ watch(
     shownAtMs = Date.now();
     syncStage();
     // Odoo Throbber re-evaluates about once per second; stop once the last stage sticks.
+    // Hide path clears this timer in the watch above; do not re-check visible here
+    // (that branch is unreachable after clearTick and breaks patch coverage).
     tickTimer = setInterval(() => {
-      if (!visible.value) {
-        clearTick();
-        return;
-      }
       syncStage();
       if (stageIndex.value >= MESSAGE_STAGE_SECONDS.length - 1) clearTick();
     }, 1000);
