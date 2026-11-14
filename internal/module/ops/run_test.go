@@ -604,6 +604,7 @@ func TestRun_InstallMetaHardFailsMaterialize(t *testing.T) {
 	mod := &pkgmeta.Module{Name: "meta", Version: "1.0.0", ApplicationStr: "meta"}
 	life := &seedLifecycle{stubLifecycle: &stubLifecycle{}, db: db}
 	const blockMaterialize = "ops_block_meta_install_materialize"
+	var catalogQueries int
 	o := &Ops{
 		Scope:     runtimeScope,
 		Resolver:  &mapResolver{peek: map[string]*pkgmeta.Module{"meta": mod}},
@@ -616,10 +617,13 @@ func TestRun_InstallMetaHardFailsMaterialize(t *testing.T) {
 			return lifecycle.ModuleSourceSnapshotSyncStats{}, nil
 		},
 		SyncRegistrySnapshot: func(context.Context, scope.Scope, statepkg.LockerFactory) (lifecycle.ModuleSourceSnapshotSyncStats, error) {
-			// After origin sync succeeds, block catalog reads so MaterializeCatalog fails hard.
+			// Let ProjectCatalogInstalled's catalog Find succeed; fail MaterializeCatalog's.
 			if err := db.Callback().Query().Before("gorm:query").Register(blockMaterialize, func(tx *gorm.DB) {
 				if tx.Statement != nil && tx.Statement.Table == "meta_module_catalog" {
-					_ = tx.AddError(errors.New("materialize blocked"))
+					catalogQueries++
+					if catalogQueries >= 2 {
+						_ = tx.AddError(errors.New("materialize blocked"))
+					}
 				}
 			}); err != nil {
 				t.Fatalf("callback: %v", err)
@@ -643,8 +647,8 @@ func TestRun_InstallMetaHardFailsMaterialize(t *testing.T) {
 	}
 	if err := o.Run(context.Background(), RunRequest{Id: result.Id}); err == nil {
 		t.Fatal("Run should hard-fail materialize")
-	} else if !strings.Contains(err.Error(), "materialize") && !strings.Contains(err.Error(), "project catalog installed") {
-		t.Fatalf("Run error = %v, want materialize/project failure", err)
+	} else if !strings.Contains(err.Error(), "materialize catalog") {
+		t.Fatalf("Run error = %v, want materialize catalog failure", err)
 	}
 	row, err := o.loadOperation(context.Background(), result.Id)
 	if err != nil {
@@ -684,11 +688,11 @@ func TestRun_UpgradeDoesNotLeaveStaleProfileExtra(t *testing.T) {
 		t.Fatalf("seed core module: %v", err)
 	}
 	if err := db.Create(&modmeta.ModuleCatalog{
-		ModuleName:     "document",
-		Available:      true,
-		Installed:      false,
-		LocalVersion:   nullString("1.0.0"),
-		LocalPath:      nullString("/modules/document"),
+		ModuleName:       "document",
+		Available:        true,
+		Installed:        false,
+		LocalVersion:     nullString("1.0.0"),
+		LocalPath:        nullString("/modules/document"),
 		InstalledVersion: nullString(""),
 	}).Error; err != nil {
 		t.Fatalf("seed stale document catalog: %v", err)

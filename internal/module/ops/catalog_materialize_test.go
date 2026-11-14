@@ -248,3 +248,100 @@ func TestProjectCatalogInstalled_HealsStaleFlag(t *testing.T) {
 		t.Fatalf("task catalog installed=%v version=%q summary=%q", task.Installed, task.InstalledVersion.String, task.Summary)
 	}
 }
+
+func TestProjectCatalogInstalled_ToUpgradeStaysInstalled(t *testing.T) {
+	t.Parallel()
+	db := newOpsTestDB(t)
+	o := &Ops{Scope: newOpsTestScope(t, db)}
+
+	if err := db.Create(&pkgmeta.Module{
+		Name: "web", Version: "v2.0.0", Status: pkgmeta.ToUpgrade, ApplicationStr: "web",
+	}).Error; err != nil {
+		t.Fatalf("seed module: %v", err)
+	}
+	if err := db.Create(&modmeta.ModuleCatalog{
+		ModuleName:       "web",
+		Available:        true,
+		Installed:        true,
+		InstalledVersion: nullString("2.0.0"),
+		LocalVersion:     nullString("2.0.0"),
+	}).Error; err != nil {
+		t.Fatalf("seed catalog: %v", err)
+	}
+
+	if err := o.ProjectCatalogInstalled(context.Background()); err != nil {
+		t.Fatalf("ProjectCatalogInstalled: %v", err)
+	}
+	var row modmeta.ModuleCatalog
+	if err := db.Where("module_name = ?", "web").Take(&row).Error; err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if !row.Installed || row.InstalledVersion.String != "2.0.0" {
+		t.Fatalf("to-upgrade web installed=%v version=%q", row.Installed, row.InstalledVersion.String)
+	}
+}
+
+func TestProjectCatalogInstalled_DemoStrPreservesLoaded(t *testing.T) {
+	t.Parallel()
+	db := newOpsTestDB(t)
+	o := &Ops{Scope: newOpsTestScope(t, db)}
+
+	if err := db.Create(&pkgmeta.Module{
+		Name: "base", Version: "v1.0.0", Status: pkgmeta.Installed, ApplicationStr: "base",
+		DemoStr: datatypes.JSON(`["demo/a.json"]`),
+	}).Error; err != nil {
+		t.Fatalf("seed module: %v", err)
+	}
+	if err := db.Create(&modmeta.ModuleCatalog{
+		ModuleName:       "base",
+		Available:        true,
+		Installed:        true,
+		InstalledVersion: nullString("1.0.0"),
+		HasDemo:          false,
+		DemoLoaded:       true,
+	}).Error; err != nil {
+		t.Fatalf("seed catalog: %v", err)
+	}
+
+	if err := o.ProjectCatalogInstalled(context.Background()); err != nil {
+		t.Fatalf("ProjectCatalogInstalled: %v", err)
+	}
+	var row modmeta.ModuleCatalog
+	if err := db.Where("module_name = ?", "base").Take(&row).Error; err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if !row.DemoLoaded {
+		t.Fatal("expected DemoLoaded preserved via installed DemoStr when catalog HasDemo is stale")
+	}
+}
+
+func TestStampCatalogLifecycleAt_InstallUpgradeOnly(t *testing.T) {
+	t.Parallel()
+	db := newOpsTestDB(t)
+	o := &Ops{Scope: newOpsTestScope(t, db)}
+	if err := db.Create(&modmeta.ModuleCatalog{
+		ModuleName: "core", Available: true, Installed: true, InstalledVersion: nullString("1.0.0"),
+	}).Error; err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	if err := o.stampCatalogLifecycleAt(context.Background(), []string{"core", " ", "core"}, ActionUninstall); err != nil {
+		t.Fatalf("uninstall stamp: %v", err)
+	}
+	var before modmeta.ModuleCatalog
+	if err := db.Where("module_name = ?", "core").Take(&before).Error; err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if before.LastInstalledOrUpgradedAt != nil {
+		t.Fatal("uninstall must not stamp lifecycle time")
+	}
+	if err := o.stampCatalogLifecycleAt(context.Background(), []string{"core"}, ActionUpgrade); err != nil {
+		t.Fatalf("upgrade stamp: %v", err)
+	}
+	var after modmeta.ModuleCatalog
+	if err := db.Where("module_name = ?", "core").Take(&after).Error; err != nil {
+		t.Fatalf("load after: %v", err)
+	}
+	if after.LastInstalledOrUpgradedAt == nil {
+		t.Fatal("expected last_installed_or_upgraded_at after upgrade stamp")
+	}
+}

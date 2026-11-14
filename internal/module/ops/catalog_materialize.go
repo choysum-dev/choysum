@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"sort"
 	"strings"
 	"time"
@@ -153,8 +154,12 @@ func (o *Ops) persistSyncResult(ctx context.Context, row *modmeta.ModuleOperatio
 	return o.casSaveOperation(ctx, row, StatusRunning)
 }
 
+// catalogPresentStatuses are meta_module statuses that mean the module is present
+// (installed, or flagged to upgrade while still installed).
+var catalogPresentStatuses = []pkgmeta.Status{pkgmeta.Installed, pkgmeta.ToUpgrade}
+
 // ProjectCatalogInstalled rewrites only installation-related catalog columns
-// from meta_module (status=installed). Does not touch origin snapshot fields.
+// from meta_module (status installed or to-upgrade). Does not touch origin snapshot fields.
 func (o *Ops) ProjectCatalogInstalled(ctx context.Context) error {
 	if o == nil {
 		return errors.New("ops: nil host")
@@ -169,7 +174,7 @@ func (o *Ops) ProjectCatalogInstalled(ctx context.Context) error {
 
 	var installed []pkgmeta.Module
 	if err := sess.WithContext(ctx).Model(&pkgmeta.Module{}).
-		Where("status = ?", pkgmeta.Installed).
+		Where("status IN ?", catalogPresentStatuses).
 		Find(&installed).Error; err != nil {
 		return err
 	}
@@ -240,7 +245,9 @@ func projectInstalledColumnUpdates(row *modmeta.ModuleCatalog, mod *pkgmeta.Modu
 		if row != nil && row.InstalledVersion.Valid {
 			priorVer = strings.TrimSpace(row.InstalledVersion.String)
 		}
-		hasDemo := row != nil && row.HasDemo
+		// Prefer catalog HasDemo; fall back to installed DemoStr when the catalog
+		// row is stale (HasDemo not yet rematerialized from the module).
+		hasDemo := (row != nil && row.HasDemo) || hasDemoPayload(mod.DemoStr)
 		priorDemo := row != nil && row.DemoLoaded
 		switch {
 		case !hasDemo:
@@ -311,6 +318,48 @@ func minimalCatalogFromInstalled(name string, mod *pkgmeta.Module, life catalogL
 	return row
 }
 
+// stampCatalogLifecycleAt writes last_installed_or_upgraded_at for modules just
+// installed or upgraded. Projection/materialize run before succeedOperation, so
+// loadCatalogLifecycleTimes cannot see this op's FinishedAt yet.
+func (o *Ops) stampCatalogLifecycleAt(ctx context.Context, names []string, action string) error {
+	if action != ActionInstall && action != ActionUpgrade {
+		return nil
+	}
+	trimmed := make([]string, 0, len(names))
+	seen := make(map[string]struct{}, len(names))
+	for _, name := range names {
+		name = strings.TrimSpace(name)
+		if name == "" {
+			continue
+		}
+		if _, ok := seen[name]; ok {
+			continue
+		}
+		seen[name] = struct{}{}
+		trimmed = append(trimmed, name)
+	}
+	if len(trimmed) == 0 {
+		return nil
+	}
+	if o == nil {
+		return errors.New("ops: nil host")
+	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	sess, err := o.session(ctx)
+	if err != nil {
+		return err
+	}
+	now := time.Now().UTC()
+	if err := sess.WithContext(ctx).Model(&modmeta.ModuleCatalog{}).
+		Where("module_name IN ?", trimmed).
+		Update("last_installed_or_upgraded_at", now).Error; err != nil {
+		return fmt.Errorf("ops: stamp catalog lifecycle time: %w", err)
+	}
+	return nil
+}
+
 // MaterializeCatalog rewrites meta_module_catalog rows from source snapshots + installed modules.
 // Empty moduleNames means full rewrite of all known names.
 func (o *Ops) MaterializeCatalog(ctx context.Context, moduleNames []string) error {
@@ -350,7 +399,7 @@ func (o *Ops) MaterializeCatalog(ctx context.Context, moduleNames []string) erro
 	}
 
 	var installed []pkgmeta.Module
-	iq := sess.WithContext(ctx).Model(&pkgmeta.Module{}).Where("status = ?", pkgmeta.Installed)
+	iq := sess.WithContext(ctx).Model(&pkgmeta.Module{}).Where("status IN ?", catalogPresentStatuses)
 	if filtered {
 		iq = iq.Where("name IN ?", names)
 	}

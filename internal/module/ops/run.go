@@ -124,7 +124,7 @@ func (o *Ops) executeOperation(ctx context.Context, row *modmeta.ModuleOperation
 			if err := o.MaterializeCatalog(ctx, nil); err != nil {
 				return fmt.Errorf("ops: materialize catalog after %s: %w", row.Action, err)
 			}
-			return nil
+			return o.stampCatalogLifecycleAt(ctx, names, row.Action)
 		}
 		if err := o.ProjectCatalogInstalled(ctx); err != nil {
 			return fmt.Errorf("ops: project catalog installed after %s: %w", row.Action, err)
@@ -132,7 +132,7 @@ func (o *Ops) executeOperation(ctx context.Context, row *modmeta.ModuleOperation
 		if err := o.MaterializeCatalog(ctx, names); err != nil {
 			return fmt.Errorf("ops: materialize catalog after %s: %w", row.Action, err)
 		}
-		return nil
+		return o.stampCatalogLifecycleAt(ctx, names, row.Action)
 	default:
 		return fmt.Errorf("ops: unsupported action %q", row.Action)
 	}
