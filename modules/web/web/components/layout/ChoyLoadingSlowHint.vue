@@ -54,15 +54,8 @@ const visible = computed(
  * slow hint became visible (our hint already waits ~3s of userBusy, like
  * BlockUI).
  */
-const MESSAGE_STAGES: ReadonlyArray<readonly [number, string]> = [
-  [0, 'Loading...'],
-  [20, 'Still loading...'],
-  [60, 'Still loading...<br />Please be patient.'],
-  [120, "Don't leave yet,<br />it's still loading..."],
-  [300, 'You may not believe it,<br />but the application is actually loading...'],
-  [420, "Take a minute to get a coffee,<br />because it's loading..."],
-  [3600, 'Maybe you should consider reloading the application by pressing F5...'],
-];
+/** Seconds since slow-hint became visible → stage index (Odoo Throbber thresholds). */
+const MESSAGE_STAGE_SECONDS: ReadonlyArray<number> = [0, 20, 60, 120, 300, 420, 3600];
 
 const stageIndex = ref(0);
 let shownAtMs = 0;
@@ -77,8 +70,8 @@ function clearTick(): void {
 
 function pickStageIndex(elapsedSec: number): number {
   let idx = 0;
-  for (let i = 0; i < MESSAGE_STAGES.length; i++) {
-    if (elapsedSec >= MESSAGE_STAGES[i]![0]) idx = i;
+  for (let i = 0; i < MESSAGE_STAGE_SECONDS.length; i++) {
+    if (elapsedSec >= MESSAGE_STAGE_SECONDS[i]!) idx = i;
   }
   return idx;
 }
@@ -143,4 +136,11 @@ const messageLines = computed(() =>
 
 /** Screen-reader label without markup. */
 const plainMessage = computed(() => messageLines.value.join(' '));
+
+defineExpose({
+  /** FE coverage: drive literal `_t` stage branches without waiting real wall clocks. */
+  setStageIndexForTests(index: number) {
+    stageIndex.value = index;
+  },
+});
 </script>

@@ -161,6 +161,22 @@ test('older navigation settlement does not clear a newer ticket', async () => {
   expect(getLoadingRegistryDebugState().navTicketActive).toBe(false);
 });
 
+test('idle settle re-arms while an older surface is still busy', async () => {
+  afterEachReset();
+  const surfaceHold = runWithLoading({ layer: 'surface', target: 'leftover', mode: 'block' }, async () => {
+    await new Promise<void>(resolve => setTimeout(resolve, 80));
+  });
+  beginNavigationLoading();
+  scheduleNavigationSettleIfIdle(10);
+  await new Promise<void>(resolve => setTimeout(resolve, 40));
+  // Leftover surface blocked the first idle pass; ticket must still be active.
+  expect(getLoadingRegistryDebugState().navTicketActive).toBe(true);
+  await surfaceHold;
+  await new Promise<void>(resolve => setTimeout(resolve, 40));
+  // After the leftover surface ends, re-armed idle settle clears the ticket.
+  expect(getLoadingRegistryDebugState().navTicketActive).toBe(false);
+});
+
 test('overlapping runWithLoading scopes remove their own stack frame', async () => {
   afterEachReset();
   let releaseInner!: () => void;

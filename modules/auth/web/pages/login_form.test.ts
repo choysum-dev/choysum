@@ -283,17 +283,23 @@ test('runHandledAuthSubmit: awaits a pending onSuccess before settling', async (
   const pending = new Promise<void>(resolve => {
     resolveSuccess = resolve;
   });
+  let enteredSuccess = false;
   let settled = false;
   const run = runHandledAuthSubmit({
     submit: async () => true,
     fallbackMessage: 'fallback',
     setError: () => {},
-    onSuccess: () => pending,
+    onSuccess: () => {
+      enteredSuccess = true;
+      return pending;
+    },
   }).then(result => {
     settled = true;
     return result;
   });
-  await Promise.resolve();
+  // Allow queued microtasks; must still be waiting on the unresolved onSuccess promise.
+  await new Promise<void>(resolve => setTimeout(resolve, 0));
+  expect(enteredSuccess).toBe(true);
   expect(settled).toBe(false);
   resolveSuccess();
   const ok = await run;

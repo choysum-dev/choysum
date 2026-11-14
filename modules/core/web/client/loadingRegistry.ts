@@ -426,7 +426,11 @@ export function scheduleNavigationSettleIfIdle(delayMs: number = NAV_IDLE_SETTLE
     navIdleSettleId = null;
     if (!navTicketActive) return;
     if (navTicketGeneration !== generation) return;
-    if (hasActiveSurfaceBusy()) return;
+    if (hasActiveSurfaceBusy()) {
+      // Older leftover surface: retry idle settle so B can recover without NAV_TIMEOUT.
+      scheduleNavigationSettleIfIdle(delayMs);
+      return;
+    }
     settleNavigationIfActive({ generation });
   }, delayMs);
 }

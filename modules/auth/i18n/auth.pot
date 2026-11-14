@@ -1775,7 +1775,7 @@ msgctxt "web/pages/Setup"
 msgid "Enter username"
 msgstr ""
 
-#: web/pages/Setup.vue:383
+#: web/pages/Setup.vue:390
 #: web/pages/Setup.vue:48
 msgctxt "web/pages/Setup"
 msgid "Failed to load demo data. You can retry from Modules later."
@@ -1792,7 +1792,7 @@ msgid "Initial Setup"
 msgstr ""
 
 #: web/pages/Setup.vue:363
-#: web/pages/Setup.vue:397
+#: web/pages/Setup.vue:404
 msgctxt "web/pages/Setup"
 msgid "Initial setup failed. Please try again later."
 msgstr ""
@@ -1860,6 +1860,11 @@ msgstr ""
 #: web/pages/Setup.vue:81
 msgctxt "web/pages/Setup"
 msgid "Set up your organization basics"
+msgstr ""
+
+#: web/pages/Setup.vue:376
+msgctxt "web/pages/Setup"
+msgid "Setup is complete, but the login page could not open. Please open login manually."
 msgstr ""
 
 #: web/pages/setup_form.ts:22

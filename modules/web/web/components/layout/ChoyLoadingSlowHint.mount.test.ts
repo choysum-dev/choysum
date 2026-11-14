@@ -43,3 +43,32 @@ test('ChoyLoadingSlowHint unmount clears timers while hint is visible', async ()
   flushLoadingDisplayForTests();
   resetLoadingRegistryForTests();
 });
+
+test('ChoyLoadingSlowHint stage switch covers every literal msgid branch', async () => {
+  resetLoadingRegistryForTests();
+  const wrapper = mount(ChoyLoadingSlowHint as any);
+  loadingRegistryOnRpcStart('slow-hint-stages');
+  flushLoadingDisplayForTests();
+  await flushPromises();
+  const exposed = wrapper.vm as { setStageIndexForTests?: (i: number) => void };
+  expect(typeof exposed.setStageIndexForTests).toBe('function');
+  const snippets = [
+    'Loading',
+    'Still loading',
+    'Please be patient',
+    "Don't leave yet",
+    'You may not believe it',
+    'get a coffee',
+    'pressing F5',
+  ];
+  for (let i = 0; i < snippets.length; i++) {
+    exposed.setStageIndexForTests!(i);
+    await flushPromises();
+    const hint = document.querySelector('[data-anchor="choy.loading.slow-hint"]');
+    expect(String(hint?.textContent || '')).toContain(snippets[i]!);
+  }
+  loadingRegistryOnRpcFinish('slow-hint-stages');
+  flushLoadingDisplayForTests();
+  wrapper.unmount();
+  resetLoadingRegistryForTests();
+});

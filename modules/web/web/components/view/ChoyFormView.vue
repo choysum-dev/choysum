@@ -622,6 +622,7 @@ const lifecycleDeps = {
 
 const {
   effectiveRecordId,
+  isFormDirty,
   confirmDiscardIfDirty,
   runWhileLeaving,
   handleEdit,
@@ -686,7 +687,8 @@ const controlsLocked = computed<boolean>(() => {
   return loading.value || submitting.value || formControlBusy.value.busy;
 });
 const saveLabel = computed(() => (submitting.value ? _t('Saving...') : _t('Save')));
-const settingsDirty = computed(() => (hasDirtyProp ? props.dirty === true : false));
+// Explicit dirty=false stays false; omitted dirty falls back to controller draft dirty.
+const settingsDirty = computed(() => (hasDirtyProp ? props.dirty === true : isFormDirty()));
 const settingsSaveLabel = computed(() => {
   if (props.saveLabel) return props.saveLabel;
   return settingsControlBusy.value ? _t('Saving...') : _t('Save');
@@ -732,8 +734,8 @@ async function onSettingsViewSelect(value: string) {
         if (fallbackTimer != null) clearTimeout(fallbackTimer);
         resolve();
       };
+      // Any committed navigation ends leaving; 1s fallback bounds a missed afterEach.
       removeAfter = router?.afterEach?.(() => finish());
-      // Grace so leaving stays true until the sibling route push can commit.
       fallbackTimer = setTimeout(finish, 1000);
     });
   });

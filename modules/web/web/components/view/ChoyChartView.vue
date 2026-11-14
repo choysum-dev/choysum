@@ -439,7 +439,7 @@ SPDX-License-Identifier: Apache-2.0
         role="alert"
       >
         <span>{{ errorText }}</span>
-        <ChoyButton size="sm" variant="outline" @click="onRefresh">
+        <ChoyButton size="sm" variant="outline" @click="onRetry">
           {{ _t('Retry') }}
         </ChoyButton>
       </div>
@@ -695,13 +695,15 @@ const localMetric = ref(props.metricAlias || 'count');
 
 // True until bootstrap finishes; false when autoBootstrap is off (host owns first load).
 const bootstrapping = ref(props.autoBootstrap !== false);
+/** Prep failure before the first apply (beforeBootstrap / field selection). */
+const prepError = ref<unknown>(null);
 const boardBusy = computed(() => !!controller.vm.loading || bootstrapping.value);
 const chartBusyMode = computed<'stale' | 'block'>(() => {
   const rows = (controller.vm.result as { rows?: unknown[] } | null)?.rows;
   return rows && rows.length > 0 ? 'stale' : 'block';
 });
 const errorText = computed(() => {
-  const err = controller.vm.error;
+  const err = prepError.value ?? controller.vm.error;
   if (err == null) return null;
   if (err instanceof Error) return err.message || String(err);
   return String(err);
@@ -787,6 +789,7 @@ async function applyQuery(overrides?: {
 
 async function bootstrap(): Promise<void> {
   bootstrapping.value = true;
+  prepError.value = null;
   try {
     if (props.beforeBootstrap) await props.beforeBootstrap();
     await awaitFieldSelection(store, { requireNonEmpty: false });
@@ -800,6 +803,10 @@ async function bootstrap(): Promise<void> {
     } catch (error) {
       props.onLoadError?.(error);
     }
+  } catch (error) {
+    // Prep failed before apply: keep an on-screen error (Retry re-runs bootstrap).
+    prepError.value = error;
+    props.onLoadError?.(error);
   } finally {
     bootstrapping.value = false;
   }
@@ -815,6 +822,14 @@ async function onRefresh(): Promise<void> {
   } catch (error) {
     props.onLoadError?.(error);
   }
+}
+
+async function onRetry(): Promise<void> {
+  if (prepError.value != null) {
+    await bootstrap();
+    return;
+  }
+  await onRefresh();
 }
 
 function onSearch(query: ChoySearchQuery): void {
@@ -1851,6 +1866,7 @@ defineExpose({
   onMetricSelect,
   onSearch,
   onRefresh,
+  onRetry,
   initMetricOptions,
   syncPlotHeight,
   xAccessor,

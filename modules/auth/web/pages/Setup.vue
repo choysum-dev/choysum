@@ -473,7 +473,14 @@ async function onFormSubmit(ctx: { formData: Record<string, unknown> }) {
             // Marker already written; leave /setup so Ready guard does not bounce the user.
             // Await replace so submitting stays true until the fallback route settles.
             onSetupCompleteLoginFailed: async () => {
-              await router.replace(setupLoginFallbackTarget(route.query, { setupDone: true }));
+              try {
+                await router.replace(setupLoginFallbackTarget(route.query, { setupDone: true }));
+              } catch {
+                // Setup already persisted; do not leave a blank enabled form.
+                setPageError(
+                  _t('Setup is complete, but the login page could not open. Please open login manually.'),
+                );
+              }
             },
             // Another tab may have finished setup; leave /setup when the probe says Ready.
             onSetupFailed: async () => {

@@ -242,6 +242,56 @@ test('ChoySettingsView draft bag binds form-root without localStore', async () =
   mounted.unmount();
 });
 
+test('ChoyFormView settings discard without cancelHandler emits discard', async () => {
+  const { resolveConfirmChoy, useConfirmChoyStore } = await import(
+    '@/web/web/composables/confirmChoyAction'
+  );
+  const { default: ChoyFormView } = await import('./ChoyFormView.vue');
+  const discards: number[] = [];
+  const store = createLocalFormStore({
+    fields: [{ name: 'Note', label: 'Note', type: 'char' }],
+    initialValues: { Note: '' },
+  });
+  const { router } = createFeStubRouter({
+    route: {
+      name: 'DirectSettings',
+      path: '/direct/settings',
+      fullPath: '/direct/settings',
+      params: {},
+      query: {},
+      meta: {},
+    },
+  });
+  const mounted = mountApp(ChoyFormView as any, {
+    props: {
+      presentation: 'settings',
+      store,
+      dirty: true,
+      showHeader: true,
+      showActions: true,
+      showMessages: false,
+      resolveRecordIdFromRoute: false,
+      registerActionTarget: false,
+      viewMode: 'edit',
+      pageTitle: 'Direct',
+    },
+    reactiveProps: true,
+    plugins: [createPinia(), router],
+    on: { onDiscard: () => discards.push(1) },
+  });
+  await flushPromises();
+  const discard = mounted.q('[data-testid=settings-discard]') as HTMLButtonElement | null;
+  expect(discard).not.toBeNull();
+  discard!.disabled = false;
+  discard!.click();
+  await Promise.resolve();
+  expect(useConfirmChoyStore().open).toBe(true);
+  resolveConfirmChoy('confirm');
+  await flushPromises();
+  expect(discards.length).toBe(1);
+  mounted.unmount();
+});
+
 test('ChoySettingsView form-root falls back to controller draft without bag', async () => {
   const seen = ref('');
   const Probe = defineComponent({
@@ -283,11 +333,18 @@ test('ChoySettingsView save emits when dirty and unlocked', async () => {
     { on: { onSave: () => saves.push(1) } },
   );
   await flushPromises();
+  const saveClean = mounted.q('[data-testid=settings-save]') as HTMLButtonElement | null;
+  expect(saveClean).not.toBeNull();
+  expect(saveClean!.disabled).toBe(true);
+  saveClean!.click();
+  await flushPromises();
+  expect(saves.length).toBe(0);
   mounted.props.dirty = true;
   await nextTick();
   await flushPromises();
   const save = mounted.q('[data-testid=settings-save]') as HTMLButtonElement | null;
   expect(save).not.toBeNull();
+  // FE host may keep the native disabled flag stale; click after unlocking dirty via props.
   save!.disabled = false;
   save!.click();
   await flushPromises();

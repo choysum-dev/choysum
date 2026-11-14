@@ -1741,7 +1741,7 @@ msgctxt "web/pages/Setup"
 msgid "Enter username"
 msgstr "请输入用户名"
 
-#: web/pages/Setup.vue:383 web/pages/Setup.vue:48
+#: web/pages/Setup.vue:390 web/pages/Setup.vue:48
 msgctxt "web/pages/Setup"
 msgid "Failed to load demo data. You can retry from Modules later."
 msgstr "演示数据加载失败，可稍后在「模块」中重试。"
@@ -1756,7 +1756,7 @@ msgctxt "web/pages/Setup"
 msgid "Initial Setup"
 msgstr "初始设置"
 
-#: web/pages/Setup.vue:363 web/pages/Setup.vue:397
+#: web/pages/Setup.vue:363 web/pages/Setup.vue:404
 msgctxt "web/pages/Setup"
 msgid "Initial setup failed. Please try again later."
 msgstr "初始设置失败，请稍后重试。"
@@ -1825,6 +1825,11 @@ msgstr "请选择业务时区"
 msgctxt "web/pages/Setup"
 msgid "Set up your organization basics"
 msgstr "设置组织基本信息"
+
+#: web/pages/Setup.vue:376
+msgctxt "web/pages/Setup"
+msgid "Setup is complete, but the login page could not open. Please open login manually."
+msgstr "初始设置已完成，但无法打开登录页，请手动打开登录页。"
 
 #: web/pages/setup_form.ts:22
 msgctxt "web/pages/Setup"
