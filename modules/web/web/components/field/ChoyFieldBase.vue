@@ -1065,7 +1065,7 @@ watch(
   async errorId => {
     if (!errorId || typeof document === 'undefined') return;
     await nextTick();
-    document.getElementById(errorId)?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    document.getElementById(errorId)?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
   },
 );
 const formChromeClass = computed(() =>
