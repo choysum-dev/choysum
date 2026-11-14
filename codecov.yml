@@ -5,17 +5,20 @@ coverage:
   precision: 1
   round: down
   status:
-    # Project: keep overall level from collapsing; allow small noise from
-    # impacted-module / partial uploads (carryforward can tighten later).
+    # Project: ratchet against parent (auto). threshold 0.5% = tolerate tiny
+    # noise from impacted-module / partial uploads while still blocking real drops.
+    # Intent: keep raising total coverage; tighten to 0% once carryforward is solid.
     project:
       default:
         target: auto
-        threshold: 2%
+        threshold: 0.5%
         if_ci_failed: error
-    # Patch: fixed bar on changed lines (not auto). New code should be mostly tested.
+    # Patch: every changed covered line in the PR should be tested (100%).
+    # Escape hatches: existing ignore: globs; rare Codecov ignore comments for
+    # truly unreachable / generated-adjacent lines — do not use to skip product logic.
     patch:
       default:
-        target: 85%
+        target: 100%
         threshold: 0%
         if_ci_failed: error
 
