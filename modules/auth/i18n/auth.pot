@@ -1863,10 +1863,6 @@ msgid "Set up your organization basics"
 msgstr ""
 
 #: web/pages/Setup.vue:376
-msgctxt "web/pages/Setup"
-msgid "Setup is complete, but the login page could not open. Please open login manually."
-msgstr ""
-
 #: web/pages/Setup.vue:414
 msgctxt "web/pages/Setup"
 msgid "Setup is complete, but the page could not open. Please open login manually."

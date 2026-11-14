@@ -744,7 +744,12 @@ async function onSettingsViewSelect(value: string) {
       // Attach before emit so a synchronous host navigation still settles leaving.
       removeAfter = router.afterEach(() => finish());
       fallbackTimer = setTimeout(finish, 1000);
-      emit('view-select', value);
+      try {
+        emit('view-select', value);
+      } catch (e) {
+        finish();
+        throw e;
+      }
     });
   });
 }

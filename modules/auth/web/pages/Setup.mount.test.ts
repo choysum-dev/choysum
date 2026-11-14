@@ -447,7 +447,7 @@ test('Setup.vue: login-fallback navigation failure shows recovery message', asyn
   submitForm(wrapper);
   await afterSubmit();
   expect(replaces.length).toBeGreaterThan(0);
-  expect(wrapper.text()).toContain('Setup is complete, but the login page could not open');
+  expect(wrapper.text()).toContain('Setup is complete, but the page could not open');
   wrapper.unmount();
 });
 

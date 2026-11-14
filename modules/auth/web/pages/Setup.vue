@@ -478,7 +478,7 @@ async function onFormSubmit(ctx: { formData: Record<string, unknown> }) {
               } catch {
                 // Setup already persisted; do not leave a blank enabled form.
                 setPageError(
-                  _t('Setup is complete, but the login page could not open. Please open login manually.'),
+                  _t('Setup is complete, but the page could not open. Please open login manually.'),
                 );
               }
             },

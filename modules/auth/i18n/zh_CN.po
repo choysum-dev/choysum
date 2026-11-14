@@ -1826,12 +1826,7 @@ msgctxt "web/pages/Setup"
 msgid "Set up your organization basics"
 msgstr "设置组织基本信息"
 
-#: web/pages/Setup.vue:376
-msgctxt "web/pages/Setup"
-msgid "Setup is complete, but the login page could not open. Please open login manually."
-msgstr "初始设置已完成，但无法打开登录页，请手动打开登录页。"
-
-#: web/pages/Setup.vue:414
+#: web/pages/Setup.vue:376 web/pages/Setup.vue:414
 msgctxt "web/pages/Setup"
 msgid "Setup is complete, but the page could not open. Please open login manually."
 msgstr "初始设置已完成，但页面未能打开，请手动打开登录页。"
@@ -3287,6 +3282,10 @@ msgstr "启用"
 #~ msgctxt "web/pages/Setup"
 #~ msgid "Select an organization language"
 #~ msgstr "请选择组织语言"
+
+#~ msgctxt "web/pages/Setup"
+#~ msgid "Setup is complete, but the login page could not open. Please open login manually."
+#~ msgstr "初始设置已完成，但无法打开登录页，请手动打开登录页。"
 
 #~ msgctxt "web/pages/Setup"
 #~ msgid "Setup succeeded, but signing in failed. Please log in."

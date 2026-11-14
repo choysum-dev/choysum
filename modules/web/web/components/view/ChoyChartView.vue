@@ -825,6 +825,8 @@ async function onRefresh(): Promise<void> {
 }
 
 async function onRetry(): Promise<void> {
+  // Ignore overlapping Retry clicks while bootstrap/refresh still owns busy.
+  if (boardBusy.value) return;
   if (prepError.value != null) {
     await bootstrap();
     return;
