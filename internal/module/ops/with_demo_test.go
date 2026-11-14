@@ -45,7 +45,7 @@ func TestEnsureMetaAppSettingTableNilDB(t *testing.T) {
 }
 
 func TestEnsureMetaAppSettingTable_CreateRaceTolerated(t *testing.T) {
-	t.Parallel()
+	// Not parallel: stubs package-level metaAppSettingCreateTable.
 	dbPath := filepath.Join(t.TempDir(), "race.db")
 	db, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
 	if err != nil {
