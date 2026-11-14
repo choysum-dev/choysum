@@ -363,6 +363,86 @@ func TestStampCatalogLifecycleAt_InstallUpgradeOnly(t *testing.T) {
 	}
 }
 
+func TestNewerTimeAndAfterLifecycleCommitHelpers(t *testing.T) {
+	t.Parallel()
+	if newerTime(nil, nil) != nil {
+		t.Fatal("newerTime(nil,nil)")
+	}
+	a := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	b := a.Add(time.Hour)
+	if got := newerTime(nil, &b); got == nil || !got.Equal(b) {
+		t.Fatalf("nil,a = %v", got)
+	}
+	if got := newerTime(&a, nil); got == nil || !got.Equal(a) {
+		t.Fatalf("a,nil = %v", got)
+	}
+	if got := newerTime(&a, &b); got == nil || !got.Equal(b) {
+		t.Fatalf("a,b = %v", got)
+	}
+	if got := newerTime(&b, &a); got == nil || !got.Equal(b) {
+		t.Fatalf("b,a = %v", got)
+	}
+	if afterLifecycleCommit(nil) != nil {
+		t.Fatal("afterLifecycleCommit(nil)")
+	}
+	var nilE *errAfterLifecycleCommit
+	if nilE.Error() == "" || nilE.Unwrap() != nil {
+		t.Fatalf("nil receiver: %q %v", nilE.Error(), nilE.Unwrap())
+	}
+	empty := &errAfterLifecycleCommit{}
+	if empty.Error() == "" || empty.Unwrap() != nil {
+		t.Fatalf("empty err: %q %v", empty.Error(), empty.Unwrap())
+	}
+	wrapped := afterLifecycleCommit(errors.New("x"))
+	var committed *errAfterLifecycleCommit
+	if !errors.As(wrapped, &committed) || committed.Error() != "x" {
+		t.Fatalf("wrap = %v", wrapped)
+	}
+}
+
+func TestFailOperationAfterLifecycleCommit_NoReloadAndCASFail(t *testing.T) {
+	t.Parallel()
+	db := newOpsTestDB(t)
+	o := &Ops{Scope: newOpsTestScope(t, db), Events: &recordingBus{}}
+	plan, err := marshalPlanDocument(PlanDocument{
+		ModuleOrder: []ModuleOrderEntry{{ModuleName: "core", Effect: EffectAlreadySatisfied}},
+	})
+	if err != nil {
+		t.Fatalf("plan: %v", err)
+	}
+	row := &modmeta.ModuleOperation{
+		Action: ActionInstall, Status: StatusRunning, Phase: PhaseExecuting, PlanJson: plan,
+	}
+	if err := db.Create(row).Error; err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	if err := o.failOperationAfterLifecycleCommit(context.Background(), row, "ops", "RUN_FAILED", "catalog"); err != nil {
+		t.Fatalf("fail: %v", err)
+	}
+	if row.Status != StatusFailed || row.Phase != PhaseDone || row.ReloadTriggered {
+		t.Fatalf("status/phase/reload=%q/%q/%v", row.Status, row.Phase, row.ReloadTriggered)
+	}
+
+	row2 := &modmeta.ModuleOperation{
+		Action: ActionUpgrade, Status: StatusRunning, Phase: PhaseExecuting, ModuleName: "core",
+	}
+	if err := db.Create(row2).Error; err != nil {
+		t.Fatalf("seed2: %v", err)
+	}
+	const failCAS = "ops_fail_after_lifecycle_cas"
+	if err := db.Callback().Update().Before("gorm:update").Register(failCAS, func(tx *gorm.DB) {
+		if tx.Statement != nil && tx.Statement.Table == "meta_module_operation" {
+			_ = tx.AddError(errors.New("cas blocked"))
+		}
+	}); err != nil {
+		t.Fatalf("callback: %v", err)
+	}
+	t.Cleanup(func() { _ = db.Callback().Update().Remove(failCAS) })
+	if err := o.failOperationAfterLifecycleCommit(context.Background(), row2, "ops", "RUN_FAILED", "catalog"); err == nil {
+		t.Fatal("expected CAS failure")
+	}
+}
+
 func TestProjectCatalogInstalled_PreservesNewerLifecycleStamp(t *testing.T) {
 	t.Parallel()
 	db := newOpsTestDB(t)

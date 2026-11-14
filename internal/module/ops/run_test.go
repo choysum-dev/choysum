@@ -779,6 +779,140 @@ func TestRun_InstallMetaHardFailsMaterialize(t *testing.T) {
 	}
 }
 
+func TestRun_InstallMetaHardFailsStampCatalogLifecycle(t *testing.T) {
+	t.Parallel()
+	db := newOpsTestDB(t)
+	runtimeScope := newOpsTestScope(t, db)
+	mod := &pkgmeta.Module{Name: "meta", Version: "1.0.0", ApplicationStr: "meta"}
+	life := &seedLifecycle{stubLifecycle: &stubLifecycle{}, db: db}
+	const blockStamp = "ops_block_meta_install_stamp"
+	o := &Ops{
+		Scope:     runtimeScope,
+		Resolver:  &mapResolver{peek: map[string]*pkgmeta.Module{"meta": mod}},
+		Lifecycle: life,
+		Events:    &recordingBus{},
+		LockerFactory: func(scope.Scope) statepkg.Locker {
+			return testLocker{}
+		},
+		SyncLocalSnapshot: func(context.Context, scope.Scope, statepkg.LockerFactory) (lifecycle.ModuleSourceSnapshotSyncStats, error) {
+			return lifecycle.ModuleSourceSnapshotSyncStats{}, nil
+		},
+		SyncRegistrySnapshot: func(context.Context, scope.Scope, statepkg.LockerFactory) (lifecycle.ModuleSourceSnapshotSyncStats, error) {
+			if err := db.Callback().Update().Before("gorm:update").Register(blockStamp, func(tx *gorm.DB) {
+				if tx.Statement == nil || tx.Statement.Table != "meta_module_catalog" {
+					return
+				}
+				m, ok := tx.Statement.Dest.(map[string]any)
+				if !ok || len(m) != 1 {
+					return
+				}
+				if _, only := m["last_installed_or_upgraded_at"]; only {
+					_ = tx.AddError(errors.New("stamp blocked"))
+				}
+			}); err != nil {
+				t.Fatalf("callback: %v", err)
+			}
+			return lifecycle.ModuleSourceSnapshotSyncStats{}, nil
+		},
+	}
+	t.Cleanup(func() { _ = db.Callback().Update().Remove(blockStamp) })
+	if err := db.Create(&modmeta.ModuleSourceSnapshot{
+		ModuleName: "meta", SourceType: originLocal, SourceRef: "local", Available: true,
+		Version: nullString("1.0.0"),
+	}).Error; err != nil {
+		t.Fatalf("seed snapshot: %v", err)
+	}
+	result, err := o.Plan(context.Background(), PlanRequest{ModuleName: "meta", Action: ActionInstall})
+	if err != nil {
+		t.Fatalf("Plan: %v", err)
+	}
+	if err := o.Apply(context.Background(), ApplyRequest{Id: result.Id}); err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+	if err := o.Run(context.Background(), RunRequest{Id: result.Id}); err == nil {
+		t.Fatal("Run should hard-fail stamp")
+	} else if !strings.Contains(err.Error(), "stamp catalog lifecycle") {
+		t.Fatalf("Run error = %v, want stamp failure", err)
+	}
+	row, err := o.loadOperation(context.Background(), result.Id)
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if row.Status != StatusFailed || row.Phase != PhaseReloading || !row.ReloadTriggered {
+		t.Fatalf("status/phase/reload=%q/%q/%v", row.Status, row.Phase, row.ReloadTriggered)
+	}
+}
+
+func TestRun_UpgradeHardFailsStampCatalogLifecycle(t *testing.T) {
+	t.Parallel()
+	db := newOpsTestDB(t)
+	runtimeScope := newOpsTestScope(t, db)
+	core := &pkgmeta.Module{Name: "core", Version: "1.0.0", ApplicationStr: "core", Status: pkgmeta.Installed}
+	life := &stubLifecycle{}
+	const blockStamp = "ops_block_upgrade_stamp"
+	o := &Ops{
+		Scope: runtimeScope,
+		Resolver: &mapResolver{
+			peek: map[string]*pkgmeta.Module{"core": core},
+			load: map[string]*pkgmeta.Module{"core": core},
+		},
+		Lifecycle: life,
+		Events:    &recordingBus{},
+		LockerFactory: func(scope.Scope) statepkg.Locker {
+			return testLocker{}
+		},
+	}
+	if err := db.Create(&pkgmeta.Module{
+		Name: "core", Version: "v1.0.0", Status: pkgmeta.Installed, ApplicationStr: "core",
+	}).Error; err != nil {
+		t.Fatalf("seed core: %v", err)
+	}
+	if err := db.Create(&modmeta.ModuleSourceSnapshot{
+		ModuleName: "core", SourceType: originLocal, SourceRef: "local", Available: true,
+		Version: nullString("1.0.0"),
+	}).Error; err != nil {
+		t.Fatalf("seed snapshot: %v", err)
+	}
+	// Let project/materialize finish; fail only stampCatalogLifecycleAt's single-column Update.
+	if err := db.Callback().Update().Before("gorm:update").Register(blockStamp, func(tx *gorm.DB) {
+		if tx.Statement == nil || tx.Statement.Table != "meta_module_catalog" {
+			return
+		}
+		m, ok := tx.Statement.Dest.(map[string]any)
+		if !ok {
+			return
+		}
+		if len(m) == 1 {
+			if _, only := m["last_installed_or_upgraded_at"]; only {
+				_ = tx.AddError(errors.New("stamp blocked"))
+			}
+		}
+	}); err != nil {
+		t.Fatalf("callback: %v", err)
+	}
+	t.Cleanup(func() { _ = db.Callback().Update().Remove(blockStamp) })
+
+	result, err := o.Plan(context.Background(), PlanRequest{ModuleName: "core", Action: ActionUpgrade})
+	if err != nil {
+		t.Fatalf("Plan: %v", err)
+	}
+	if err := o.Apply(context.Background(), ApplyRequest{Id: result.Id}); err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+	if err := o.Run(context.Background(), RunRequest{Id: result.Id}); err == nil {
+		t.Fatal("Run should hard-fail stamp")
+	} else if !strings.Contains(err.Error(), "stamp catalog lifecycle") {
+		t.Fatalf("Run error = %v, want stamp failure", err)
+	}
+	row, err := o.loadOperation(context.Background(), result.Id)
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if row.Status != StatusFailed || row.Phase != PhaseReloading || !row.ReloadTriggered {
+		t.Fatalf("status/phase/reload=%q/%q/%v", row.Status, row.Phase, row.ReloadTriggered)
+	}
+}
+
 func TestRun_UpgradeDoesNotLeaveStaleProfileExtra(t *testing.T) {
 	t.Parallel()
 	db := newOpsTestDB(t)
