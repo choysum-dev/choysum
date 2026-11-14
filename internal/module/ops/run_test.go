@@ -588,15 +588,22 @@ func TestRun_InstallMetaSoftFailsCatalogSync(t *testing.T) {
 	if row.Status != StatusSucceeded {
 		t.Fatalf("status=%q want succeeded", row.Status)
 	}
+	var catalog modmeta.ModuleCatalog
+	if err := db.Where("module_name = ?", "meta").Take(&catalog).Error; err != nil {
+		t.Fatalf("catalog: %v", err)
+	}
+	if !catalog.Installed || catalog.InstalledVersion.String != "1.0.0" {
+		t.Fatalf("catalog installed=%v version=%q after soft-fail origin sync", catalog.Installed, catalog.InstalledVersion.String)
+	}
 }
 
-func TestRun_InstallMetaSoftFailsMaterialize(t *testing.T) {
+func TestRun_InstallMetaHardFailsProjectCatalogInstalled(t *testing.T) {
 	t.Parallel()
 	db := newOpsTestDB(t)
 	runtimeScope := newOpsTestScope(t, db)
 	mod := &pkgmeta.Module{Name: "meta", Version: "1.0.0", ApplicationStr: "meta"}
 	life := &seedLifecycle{stubLifecycle: &stubLifecycle{}, db: db}
-	const blockMaterialize = "ops_block_meta_install_materialize"
+	const blockProject = "ops_block_meta_install_project"
 	o := &Ops{
 		Scope:     runtimeScope,
 		Resolver:  &mapResolver{peek: map[string]*pkgmeta.Module{"meta": mod}},
@@ -609,10 +616,131 @@ func TestRun_InstallMetaSoftFailsMaterialize(t *testing.T) {
 			return lifecycle.ModuleSourceSnapshotSyncStats{}, nil
 		},
 		SyncRegistrySnapshot: func(context.Context, scope.Scope, statepkg.LockerFactory) (lifecycle.ModuleSourceSnapshotSyncStats, error) {
-			// After origin sync succeeds, block catalog reads so MaterializeCatalog soft-fails.
+			if err := db.Callback().Query().Before("gorm:query").Register(blockProject, func(tx *gorm.DB) {
+				if tx.Statement != nil && tx.Statement.Table == "meta_module_catalog" {
+					_ = tx.AddError(errors.New("project blocked"))
+				}
+			}); err != nil {
+				t.Fatalf("callback: %v", err)
+			}
+			return lifecycle.ModuleSourceSnapshotSyncStats{}, nil
+		},
+	}
+	t.Cleanup(func() { _ = db.Callback().Query().Remove(blockProject) })
+	if err := db.Create(&modmeta.ModuleSourceSnapshot{
+		ModuleName: "meta", SourceType: originLocal, SourceRef: "local", Available: true,
+		Version: nullString("1.0.0"),
+	}).Error; err != nil {
+		t.Fatalf("seed snapshot: %v", err)
+	}
+	result, err := o.Plan(context.Background(), PlanRequest{ModuleName: "meta", Action: ActionInstall})
+	if err != nil {
+		t.Fatalf("Plan: %v", err)
+	}
+	if err := o.Apply(context.Background(), ApplyRequest{Id: result.Id}); err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+	if err := o.Run(context.Background(), RunRequest{Id: result.Id}); err == nil {
+		t.Fatal("Run should hard-fail project catalog installed")
+	} else if !strings.Contains(err.Error(), "project catalog installed") {
+		t.Fatalf("Run error = %v, want project catalog installed failure", err)
+	}
+	row, err := o.loadOperation(context.Background(), result.Id)
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if row.Status != StatusFailed {
+		t.Fatalf("status=%q want failed", row.Status)
+	}
+	if row.Phase != PhaseReloading || !row.ReloadTriggered {
+		t.Fatalf("phase/reload = %q/%v, want reloading after lifecycle commit", row.Phase, row.ReloadTriggered)
+	}
+}
+
+func TestRun_UpgradeHardFailsProjectCatalogInstalled(t *testing.T) {
+	t.Parallel()
+	db := newOpsTestDB(t)
+	runtimeScope := newOpsTestScope(t, db)
+	core := &pkgmeta.Module{Name: "core", Version: "1.0.0", ApplicationStr: "core", Status: pkgmeta.Installed}
+	life := &stubLifecycle{}
+	const blockProject = "ops_block_upgrade_project"
+	o := &Ops{
+		Scope: runtimeScope,
+		Resolver: &mapResolver{
+			peek: map[string]*pkgmeta.Module{"core": core},
+			load: map[string]*pkgmeta.Module{"core": core},
+		},
+		Lifecycle: life,
+		Events:    &recordingBus{},
+		LockerFactory: func(scope.Scope) statepkg.Locker {
+			return testLocker{}
+		},
+	}
+	if err := db.Create(&pkgmeta.Module{
+		Name: "core", Version: "v1.0.0", Status: pkgmeta.Installed, ApplicationStr: "core",
+	}).Error; err != nil {
+		t.Fatalf("seed core: %v", err)
+	}
+	if err := db.Callback().Query().Before("gorm:query").Register(blockProject, func(tx *gorm.DB) {
+		if tx.Statement != nil && tx.Statement.Table == "meta_module_catalog" {
+			_ = tx.AddError(errors.New("project blocked"))
+		}
+	}); err != nil {
+		t.Fatalf("callback: %v", err)
+	}
+	t.Cleanup(func() { _ = db.Callback().Query().Remove(blockProject) })
+
+	result, err := o.Plan(context.Background(), PlanRequest{ModuleName: "core", Action: ActionUpgrade})
+	if err != nil {
+		t.Fatalf("Plan: %v", err)
+	}
+	if err := o.Apply(context.Background(), ApplyRequest{Id: result.Id}); err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+	if err := o.Run(context.Background(), RunRequest{Id: result.Id}); err == nil {
+		t.Fatal("Run should hard-fail project catalog installed")
+	} else if !strings.Contains(err.Error(), "project catalog installed") {
+		t.Fatalf("Run error = %v, want project catalog installed failure", err)
+	}
+	row, err := o.loadOperation(context.Background(), result.Id)
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if row.Status != StatusFailed {
+		t.Fatalf("status=%q want failed", row.Status)
+	}
+	if row.Phase != PhaseReloading || !row.ReloadTriggered {
+		t.Fatalf("phase/reload = %q/%v, want reloading after lifecycle commit", row.Phase, row.ReloadTriggered)
+	}
+}
+
+func TestRun_InstallMetaHardFailsMaterialize(t *testing.T) {
+	t.Parallel()
+	db := newOpsTestDB(t)
+	runtimeScope := newOpsTestScope(t, db)
+	mod := &pkgmeta.Module{Name: "meta", Version: "1.0.0", ApplicationStr: "meta"}
+	life := &seedLifecycle{stubLifecycle: &stubLifecycle{}, db: db}
+	const blockMaterialize = "ops_block_meta_install_materialize"
+	var catalogQueries int
+	o := &Ops{
+		Scope:     runtimeScope,
+		Resolver:  &mapResolver{peek: map[string]*pkgmeta.Module{"meta": mod}},
+		Lifecycle: life,
+		Events:    &recordingBus{},
+		LockerFactory: func(scope.Scope) statepkg.Locker {
+			return testLocker{}
+		},
+		SyncLocalSnapshot: func(context.Context, scope.Scope, statepkg.LockerFactory) (lifecycle.ModuleSourceSnapshotSyncStats, error) {
+			return lifecycle.ModuleSourceSnapshotSyncStats{}, nil
+		},
+		SyncRegistrySnapshot: func(context.Context, scope.Scope, statepkg.LockerFactory) (lifecycle.ModuleSourceSnapshotSyncStats, error) {
+			// Let ProjectCatalogInstalled's catalog Find succeed; fail MaterializeCatalog's.
 			if err := db.Callback().Query().Before("gorm:query").Register(blockMaterialize, func(tx *gorm.DB) {
 				if tx.Statement != nil && tx.Statement.Table == "meta_module_catalog" {
-					_ = tx.AddError(errors.New("materialize blocked"))
+					catalogQueries++
+					if catalogQueries >= 2 {
+						_ = tx.AddError(errors.New("materialize blocked"))
+					}
 				}
 			}); err != nil {
 				t.Fatalf("callback: %v", err)
@@ -634,15 +762,236 @@ func TestRun_InstallMetaSoftFailsMaterialize(t *testing.T) {
 	if err := o.Apply(context.Background(), ApplyRequest{Id: result.Id}); err != nil {
 		t.Fatalf("Apply: %v", err)
 	}
-	if err := o.Run(context.Background(), RunRequest{Id: result.Id}); err != nil {
-		t.Fatalf("Run should soft-fail materialize: %v", err)
+	if err := o.Run(context.Background(), RunRequest{Id: result.Id}); err == nil {
+		t.Fatal("Run should hard-fail materialize")
+	} else if !strings.Contains(err.Error(), "materialize catalog") {
+		t.Fatalf("Run error = %v, want materialize catalog failure", err)
 	}
 	row, err := o.loadOperation(context.Background(), result.Id)
 	if err != nil {
 		t.Fatalf("load: %v", err)
 	}
-	if row.Status != StatusSucceeded {
-		t.Fatalf("status=%q want succeeded", row.Status)
+	if row.Status != StatusFailed {
+		t.Fatalf("status=%q want failed", row.Status)
+	}
+	if row.Phase != PhaseReloading || !row.ReloadTriggered {
+		t.Fatalf("phase/reload = %q/%v, want reloading after lifecycle commit", row.Phase, row.ReloadTriggered)
+	}
+}
+
+func TestRun_InstallMetaHardFailsStampCatalogLifecycle(t *testing.T) {
+	t.Parallel()
+	db := newOpsTestDB(t)
+	runtimeScope := newOpsTestScope(t, db)
+	mod := &pkgmeta.Module{Name: "meta", Version: "1.0.0", ApplicationStr: "meta"}
+	life := &seedLifecycle{stubLifecycle: &stubLifecycle{}, db: db}
+	const blockStamp = "ops_block_meta_install_stamp"
+	o := &Ops{
+		Scope:     runtimeScope,
+		Resolver:  &mapResolver{peek: map[string]*pkgmeta.Module{"meta": mod}},
+		Lifecycle: life,
+		Events:    &recordingBus{},
+		LockerFactory: func(scope.Scope) statepkg.Locker {
+			return testLocker{}
+		},
+		SyncLocalSnapshot: func(context.Context, scope.Scope, statepkg.LockerFactory) (lifecycle.ModuleSourceSnapshotSyncStats, error) {
+			return lifecycle.ModuleSourceSnapshotSyncStats{}, nil
+		},
+		SyncRegistrySnapshot: func(context.Context, scope.Scope, statepkg.LockerFactory) (lifecycle.ModuleSourceSnapshotSyncStats, error) {
+			if err := db.Callback().Update().Before("gorm:update").Register(blockStamp, func(tx *gorm.DB) {
+				if tx.Statement == nil || tx.Statement.Table != "meta_module_catalog" {
+					return
+				}
+				m, ok := tx.Statement.Dest.(map[string]any)
+				if !ok || len(m) != 1 {
+					return
+				}
+				if _, only := m["last_installed_or_upgraded_at"]; only {
+					_ = tx.AddError(errors.New("stamp blocked"))
+				}
+			}); err != nil {
+				t.Fatalf("callback: %v", err)
+			}
+			return lifecycle.ModuleSourceSnapshotSyncStats{}, nil
+		},
+	}
+	t.Cleanup(func() { _ = db.Callback().Update().Remove(blockStamp) })
+	if err := db.Create(&modmeta.ModuleSourceSnapshot{
+		ModuleName: "meta", SourceType: originLocal, SourceRef: "local", Available: true,
+		Version: nullString("1.0.0"),
+	}).Error; err != nil {
+		t.Fatalf("seed snapshot: %v", err)
+	}
+	result, err := o.Plan(context.Background(), PlanRequest{ModuleName: "meta", Action: ActionInstall})
+	if err != nil {
+		t.Fatalf("Plan: %v", err)
+	}
+	if err := o.Apply(context.Background(), ApplyRequest{Id: result.Id}); err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+	if err := o.Run(context.Background(), RunRequest{Id: result.Id}); err == nil {
+		t.Fatal("Run should hard-fail stamp")
+	} else if !strings.Contains(err.Error(), "stamp catalog lifecycle") {
+		t.Fatalf("Run error = %v, want stamp failure", err)
+	}
+	row, err := o.loadOperation(context.Background(), result.Id)
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if row.Status != StatusFailed || row.Phase != PhaseReloading || !row.ReloadTriggered {
+		t.Fatalf("status/phase/reload=%q/%q/%v", row.Status, row.Phase, row.ReloadTriggered)
+	}
+}
+
+func TestRun_UpgradeHardFailsStampCatalogLifecycle(t *testing.T) {
+	t.Parallel()
+	db := newOpsTestDB(t)
+	runtimeScope := newOpsTestScope(t, db)
+	core := &pkgmeta.Module{Name: "core", Version: "1.0.0", ApplicationStr: "core", Status: pkgmeta.Installed}
+	life := &stubLifecycle{}
+	const blockStamp = "ops_block_upgrade_stamp"
+	o := &Ops{
+		Scope: runtimeScope,
+		Resolver: &mapResolver{
+			peek: map[string]*pkgmeta.Module{"core": core},
+			load: map[string]*pkgmeta.Module{"core": core},
+		},
+		Lifecycle: life,
+		Events:    &recordingBus{},
+		LockerFactory: func(scope.Scope) statepkg.Locker {
+			return testLocker{}
+		},
+	}
+	if err := db.Create(&pkgmeta.Module{
+		Name: "core", Version: "v1.0.0", Status: pkgmeta.Installed, ApplicationStr: "core",
+	}).Error; err != nil {
+		t.Fatalf("seed core: %v", err)
+	}
+	if err := db.Create(&modmeta.ModuleSourceSnapshot{
+		ModuleName: "core", SourceType: originLocal, SourceRef: "local", Available: true,
+		Version: nullString("1.0.0"),
+	}).Error; err != nil {
+		t.Fatalf("seed snapshot: %v", err)
+	}
+	// Let project/materialize finish; fail only stampCatalogLifecycleAt's single-column Update.
+	if err := db.Callback().Update().Before("gorm:update").Register(blockStamp, func(tx *gorm.DB) {
+		if tx.Statement == nil || tx.Statement.Table != "meta_module_catalog" {
+			return
+		}
+		m, ok := tx.Statement.Dest.(map[string]any)
+		if !ok {
+			return
+		}
+		if len(m) == 1 {
+			if _, only := m["last_installed_or_upgraded_at"]; only {
+				_ = tx.AddError(errors.New("stamp blocked"))
+			}
+		}
+	}); err != nil {
+		t.Fatalf("callback: %v", err)
+	}
+	t.Cleanup(func() { _ = db.Callback().Update().Remove(blockStamp) })
+
+	result, err := o.Plan(context.Background(), PlanRequest{ModuleName: "core", Action: ActionUpgrade})
+	if err != nil {
+		t.Fatalf("Plan: %v", err)
+	}
+	if err := o.Apply(context.Background(), ApplyRequest{Id: result.Id}); err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+	if err := o.Run(context.Background(), RunRequest{Id: result.Id}); err == nil {
+		t.Fatal("Run should hard-fail stamp")
+	} else if !strings.Contains(err.Error(), "stamp catalog lifecycle") {
+		t.Fatalf("Run error = %v, want stamp failure", err)
+	}
+	row, err := o.loadOperation(context.Background(), result.Id)
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if row.Status != StatusFailed || row.Phase != PhaseReloading || !row.ReloadTriggered {
+		t.Fatalf("status/phase/reload=%q/%q/%v", row.Status, row.Phase, row.ReloadTriggered)
+	}
+}
+
+func TestRun_UpgradeDoesNotLeaveStaleProfileExtra(t *testing.T) {
+	t.Parallel()
+	db := newOpsTestDB(t)
+	runtimeScope := newOpsTestScope(t, db)
+	core := &pkgmeta.Module{Name: "core", Version: "1.0.0", ApplicationStr: "core", Status: pkgmeta.Installed}
+	life := &stubLifecycle{}
+	o := &Ops{
+		Scope: runtimeScope,
+		Resolver: &mapResolver{
+			peek: map[string]*pkgmeta.Module{"core": core},
+			load: map[string]*pkgmeta.Module{"core": core},
+		},
+		Lifecycle: life,
+		Events:    &recordingBus{},
+		LockerFactory: func(scope.Scope) statepkg.Locker {
+			return testLocker{}
+		},
+	}
+	if err := db.Create(&pkgmeta.Module{
+		Name: "document", Version: "v1.0.0", Status: pkgmeta.Installed, ApplicationStr: "document",
+	}).Error; err != nil {
+		t.Fatalf("seed document module: %v", err)
+	}
+	if err := db.Create(&pkgmeta.Module{
+		Name: "core", Version: "v1.0.0", Status: pkgmeta.Installed, ApplicationStr: "core",
+	}).Error; err != nil {
+		t.Fatalf("seed core module: %v", err)
+	}
+	if err := db.Create(&modmeta.ModuleCatalog{
+		ModuleName:       "document",
+		Available:        true,
+		Installed:        false,
+		LocalVersion:     nullString("1.0.0"),
+		LocalPath:        nullString("/modules/document"),
+		InstalledVersion: nullString(""),
+	}).Error; err != nil {
+		t.Fatalf("seed stale document catalog: %v", err)
+	}
+	if err := db.Create(&modmeta.ModuleSourceSnapshot{
+		ModuleName: "core", SourceType: originLocal, SourceRef: "local", Available: true,
+		Version: nullString("1.0.0"),
+	}).Error; err != nil {
+		t.Fatalf("seed core snapshot: %v", err)
+	}
+
+	result, err := o.Plan(context.Background(), PlanRequest{
+		ModuleName:   "core",
+		Action:       ActionUpgrade,
+		SkipWebShell: true,
+	})
+	if err != nil {
+		t.Fatalf("Plan: %v", err)
+	}
+	for _, e := range result.ModuleOrder {
+		if e.ModuleName == "document" {
+			t.Fatalf("plan ModuleOrder unexpectedly includes document: %#v", result.ModuleOrder)
+		}
+	}
+	for _, e := range result.EnsureModules {
+		if e.ModuleName == "document" {
+			t.Fatalf("plan EnsureModules unexpectedly includes document: %#v", result.EnsureModules)
+		}
+	}
+	if err := o.Apply(context.Background(), ApplyRequest{Id: result.Id}); err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+	if err := o.Run(context.Background(), RunRequest{Id: result.Id}); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+
+	var catalog modmeta.ModuleCatalog
+	if err := db.Where("module_name = ?", "document").Take(&catalog).Error; err != nil {
+		t.Fatalf("document catalog: %v", err)
+	}
+	if !catalog.Installed || catalog.InstalledVersion.String != "1.0.0" {
+		t.Fatalf("document catalog installed=%v version=%q", catalog.Installed, catalog.InstalledVersion.String)
+	}
+	if catalog.LocalVersion.String != "1.0.0" || catalog.LocalPath.String != "/modules/document" {
+		t.Fatalf("snapshot fields wiped: local=%q path=%q", catalog.LocalVersion.String, catalog.LocalPath.String)
 	}
 }
 

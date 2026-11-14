@@ -400,9 +400,12 @@ export default class MetaModuleOperation extends BaseModel {
     let outPhase = String(row.Phase || '');
     const reloadTriggered = !!row.ReloadTriggered;
     let reloadFailed = !!row.ReloadFailed;
-    // Gate on Phase=reloading so each successful op schedules at most one reload.
-    // Retries (runErr set / Phase already done) must not restart the process again.
-    if (!runErr && phase === 'reloading' && reloadTriggered && !reloadFailed) {
+    // Gate on Phase=reloading so each op schedules at most one reload.
+    // Allow reload when Run failed after lifecycle commit (Status=failed,
+    // Phase=reloading): catalog projection/materialize hard-fail must not leave
+    // the process on pre-mutation module state. Phase=done retries skip reload.
+    const mayReloadAfterCatalogFail = !!runErr && status === 'failed';
+    if ((!runErr || mayReloadAfterCatalogFail) && phase === 'reloading' && reloadTriggered && !reloadFailed) {
       let reloadResult: { triggered?: boolean; failed?: boolean } | null | undefined;
       let reloadThrew = false;
       try {
