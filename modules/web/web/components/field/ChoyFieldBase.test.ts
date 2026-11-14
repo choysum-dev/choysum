@@ -929,6 +929,86 @@ describe('ChoyFieldBase auto renderMode from fieldPresentation', () => {
     m.unmount();
   });
 
+  test('overlay error scrolls into view when clipped below the viewport', async () => {
+    const { FIELD_CLIENT_VALIDATORS_KEY } = await import('@/web/web/composables/fieldClientValidation');
+    const validators = new Map<string, () => Promise<string>>();
+    const binding = makeBinding({ string: 'Name' });
+    binding.__value.value = '';
+    const proto = Element.prototype as any;
+    const prevRect = proto.getBoundingClientRect;
+    const prevScroll = proto.scrollIntoView;
+    let scrollCalls = 0;
+    let rectTop = 10;
+    let rectBottom = 20;
+    proto.getBoundingClientRect = function getBoundingClientRect() {
+      return {
+        top: rectTop,
+        bottom: rectBottom,
+        left: 0,
+        right: 100,
+        width: 100,
+        height: rectBottom - rectTop,
+        x: 0,
+        y: rectTop,
+        toJSON() {
+          return {};
+        },
+      };
+    };
+    proto.scrollIntoView = function scrollIntoView() {
+      scrollCalls += 1;
+    };
+    try {
+      const m = mountBase(
+        {
+          binding,
+          renderMode: 'form',
+          showInlineError: true,
+          inlineErrorSpace: 'overlay',
+          rules: [
+            {
+              validator: (_r: unknown, v: unknown, cb: (e?: Error) => void) => {
+                if (!v) cb(new Error('scroll me'));
+                else cb();
+              },
+            },
+          ],
+        },
+        {
+          provide: { [FIELD_CLIENT_VALIDATORS_KEY as any]: validators },
+          slots: {
+            edit: () => h('input', { class: 'overlay-scroll-probe' }),
+            display: () => h('span'),
+          },
+        },
+      );
+      await flushPromises();
+      // Already visible: watcher should skip scrollIntoView.
+      rectTop = 10;
+      rectBottom = 20;
+      const validate = [...validators.values()][0];
+      expect(await validate()).toBe('scroll me');
+      await flushPromises();
+      await nextTick();
+      expect(scrollCalls).toBe(0);
+
+      // Clipped below the viewport: re-trigger via message change.
+      rectTop = 5000;
+      rectBottom = 5100;
+      binding.__value.value = 'x';
+      await flushPromises();
+      binding.__value.value = '';
+      expect(await validate()).toBe('scroll me');
+      await flushPromises();
+      await nextTick();
+      expect(scrollCalls).toBeGreaterThan(0);
+      m.unmount();
+    } finally {
+      proto.getBoundingClientRect = prevRect;
+      proto.scrollIntoView = prevScroll;
+    }
+  });
+
   test('form mode inherits inject overlay without showInlineError', async () => {
     const { FIELD_CLIENT_VALIDATORS_KEY } = await import('@/web/web/composables/fieldClientValidation');
     const { FIELD_ERROR_SPACE_KEY } = await import('@/web/web/composables/fieldErrorSpace');
