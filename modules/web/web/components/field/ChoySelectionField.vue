@@ -119,6 +119,7 @@ SPDX-License-Identifier: Apache-2.0
 import { computed, inject, onMounted, ref, type Ref } from 'vue';
 import type { RuleItem } from 'async-validator';
 import type { BaseModel, FieldPath, FieldPathType } from '@/core/rpc';
+import { runWithLoading } from '@/core/web/client/loadingRegistry';
 import type { TermReference } from '@/core/service/i18n';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type { WritableComputedRef } from 'vue';
@@ -335,7 +336,9 @@ onMounted(() => {
   if (!store?.ensureFieldsGet || !leaf) return;
 
   // First ensure happens on mount (D14) — not on visible-change.
-  const request = store.ensureFieldsGet([leaf], [...FIELD_PRESENTATION_FIELDS_GET_ATTRS]);
+  const request = runWithLoading({ silent: true }, () =>
+    store.ensureFieldsGet([leaf], [...FIELD_PRESENTATION_FIELDS_GET_ATTRS]),
+  );
   if (binding.env.isEditMode) {
     optionsLoading.value = true;
     void request.finally(() => {

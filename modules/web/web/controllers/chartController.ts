@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { reactive } from 'vue';
+import { runWithLoading } from '@/core/web/client/loadingRegistry';
 import type { GroupBySpec, QueryCondition } from '@/core/service/api/query';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import type { DataSetSnapshot } from '@/web/web/query/types';
@@ -19,6 +20,8 @@ export interface ChartControllerVM {
   loading: boolean;
   error: unknown | null;
   result: DataSetSnapshot | null;
+  /** True after the first apply attempt finishes (success, empty, or error). */
+  hasAppliedOnce: boolean;
 }
 
 /**
@@ -48,7 +51,7 @@ export interface IChartController {
  * Creates a chart controller backed by a web model store.
  */
 export function createChartController(store: WebModelStore<any>): IChartController {
-  const vm = reactive<ChartControllerVM>({ loading: false, error: null, result: null });
+  const vm = reactive<ChartControllerVM>({ loading: false, error: null, result: null, hasAppliedOnce: false });
   const aborts = createAbortableRequests();
   let seq = 0;
 
@@ -92,6 +95,7 @@ export function createChartController(store: WebModelStore<any>): IChartControll
       vm.error = null;
       // Return an empty grouped snapshot when no grouping is available.
       vm.result = { kind: 'group', rows: [], total: 0, ts: Date.now(), uiView: 'chart' } as any;
+      vm.hasAppliedOnce = true;
       return vm.result as DataSetSnapshot;
     }
 
@@ -122,12 +126,20 @@ export function createChartController(store: WebModelStore<any>): IChartControll
       vm.error = e;
       throw e;
     } finally {
-      if (mySeq === seq) vm.loading = false;
+      if (mySeq === seq) {
+        vm.loading = false;
+        vm.hasAppliedOnce = true;
+      }
     }
   }
 
   async function apply(overrides?: Parameters<typeof run>[0]) {
-    return run(overrides);
+    const target = `chart:${String((store as any).storeId ?? (store as any).model ?? 'default')}`;
+    const hasFrame = !!(vm.result as { rows?: unknown[] } | null)?.rows?.length;
+    return runWithLoading(
+      { layer: 'surface', target, mode: hasFrame ? 'stale' : 'block' },
+      () => run(overrides),
+    );
   }
 
   async function sort(orderBy: OrderByState[]) {

@@ -105,6 +105,7 @@ SPDX-License-Identifier: Apache-2.0
 
     <ChoyViewBusyHost
       :busy="boardBusy"
+      :mode="boardBusyMode"
       class="choy-kanban-view__body flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-hidden"
     >
       <div v-if="laneCount > 0 && !isFlatBoard" class="md:hidden">
@@ -501,6 +502,11 @@ const displayLanes = computed({
 
 /** Search / move: drives BusyHost and blocks drag; does not hide New. */
 const boardBusy = computed(() => engine.boardBusy.value);
+const boardBusyMode = computed<'stale' | 'block'>(() => {
+  const lanes = engine.lanes.value;
+  if (Array.isArray(lanes) && lanes.length > 0) return 'stale';
+  return 'block';
+});
 /** Any lane append in flight (blocks drops board-wide so pages are not overwritten). */
 const loadMoreBusy = computed(() => engine.loadMorePending.value);
 /** Lane key currently appending; busy chrome is scoped to this lane only. */

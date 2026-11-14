@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { computed, ref, shallowRef, type ComputedRef, type Ref, type ShallowRef } from 'vue';
+import { runWithLoading } from '@/core/web/client/loadingRegistry';
 import { createLocalFormStore, type LocalFormStore } from '@/web/web/stores/localFormStore';
 import { createStoreByModel } from '@/web/web/stores/registry';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
@@ -23,7 +24,10 @@ export type AuthSettingsPageDeps = {
 
 export type AuthSettingsPageApi = {
   formStore: ShallowRef<LocalFormStore | null>;
+  /** Save in flight (control). */
   loading: Ref<boolean>;
+  /** First load / refresh of the sheet (surface). */
+  contentLoading: Ref<boolean>;
   loadFailed: Ref<boolean>;
   dirty: ComputedRef<boolean>;
   load: () => Promise<void>;
@@ -73,8 +77,10 @@ export function useAuthSettingsPage(deps: AuthSettingsPageDeps): AuthSettingsPag
   const formStore = shallowRef<LocalFormStore | null>(null);
   const baseline = ref('1');
   const loading = ref(false);
+  const contentLoading = ref(false);
   const loadFailed = ref(false);
   const appSettingStore = resolveAppSettingStore(deps);
+  const settingsBusyTarget = 'settings:auth';
 
   const dirty = computed(() => {
     if (!formStore.value || loadFailed.value) return false;
@@ -99,18 +105,23 @@ export function useAuthSettingsPage(deps: AuthSettingsPageDeps): AuthSettingsPag
   }
 
   async function load() {
-    loading.value = true;
+    contentLoading.value = true;
     try {
-      const flag = (await appSettingStore().Get(PERSIST_BROWSER_TIMEZONE_KEY, '1')) ?? '1';
-      // Service treats only exact "1" as enabled; anything else (incl. "") is off.
-      rebuildForm(flag === '1' ? '1' : '0');
-      loadFailed.value = false;
+      await runWithLoading(
+        { layer: 'surface', target: settingsBusyTarget, mode: 'skeleton' },
+        async () => {
+          const flag = (await appSettingStore().Get(PERSIST_BROWSER_TIMEZONE_KEY, '1')) ?? '1';
+          // Service treats only exact "1" as enabled; anything else (incl. "") is off.
+          rebuildForm(flag === '1' ? '1' : '0');
+          loadFailed.value = false;
+        },
+      );
     } catch {
       loadFailed.value = true;
       formStore.value = null;
       ChoyMessage.error(settingsMessage('Load failed'));
     } finally {
-      loading.value = false;
+      contentLoading.value = false;
     }
   }
 
@@ -118,11 +129,16 @@ export function useAuthSettingsPage(deps: AuthSettingsPageDeps): AuthSettingsPag
     if (!formStore.value || loadFailed.value || !dirty.value) return;
     loading.value = true;
     try {
-      const on = formStore.value.getField('PersistBrowserTimezone') === true;
-      const value = on ? '1' : '0';
-      await appSettingStore().Set(PERSIST_BROWSER_TIMEZONE_KEY, value);
-      baseline.value = value;
-      ChoyMessage.success(settingsMessage('Saved successfully'));
+      await runWithLoading(
+        { layer: 'control', target: settingsBusyTarget, pendingLabel: 'Saving…' },
+        async () => {
+          const on = formStore.value!.getField('PersistBrowserTimezone') === true;
+          const value = on ? '1' : '0';
+          await appSettingStore().Set(PERSIST_BROWSER_TIMEZONE_KEY, value);
+          baseline.value = value;
+          ChoyMessage.success(settingsMessage('Saved successfully'));
+        },
+      );
     } catch {
       ChoyMessage.error(settingsMessage('Save failed'));
     } finally {
@@ -135,5 +151,5 @@ export function useAuthSettingsPage(deps: AuthSettingsPageDeps): AuthSettingsPag
     rebuildForm(baseline.value);
   }
 
-  return { formStore, loading, loadFailed, dirty, load, onSave, onDiscard };
+  return { formStore, loading, contentLoading, loadFailed, dirty, load, onSave, onDiscard };
 }

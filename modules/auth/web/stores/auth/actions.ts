@@ -800,6 +800,8 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
   return {
     clearAuth,
     login,
+    /** Login without toggling store.loading (caller owns busy UI). */
+    loginCore: loginImpl,
     logout,
     refreshToken,
     initAuth,
@@ -810,6 +812,8 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
     switchCompanyScope,
     register,
     completeInitialSetup,
+    /** Complete setup without toggling store.loading (caller owns busy UI). */
+    completeInitialSetupCore: completeInitialSetupImpl,
     getInitialSetupOptions,
     getCsrfToken,
     persistLanguagePreference,

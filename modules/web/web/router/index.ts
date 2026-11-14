@@ -6,15 +6,16 @@ import { computed, shallowRef } from 'vue';
 import { createRouter, createWebHistory } from 'vue-router';
 import type { RouteLocationNormalized, Router } from 'vue-router';
 import routes from './routes';
-import NProgress from 'nprogress';
 import 'nprogress/nprogress.css';
+import {
+  beginNavigationLoading,
+  scheduleNavigationSettleIfIdle,
+  settleNavigationIfActive,
+} from '@/core/web/client/loadingRegistry';
 import type { ComposerLike } from '../i18n';
 import { resolveDocumentTitle } from './documentTitle';
 
 export { resolveDocumentTitle, resolveRoutePageTitle } from './documentTitle';
-
-// Configure navigation progress feedback.
-NProgress.configure({ showSpinner: false });
 
 function defaultAppName(env: ImportMetaEnv | undefined = import.meta.env): string {
   const appNameRaw = env?.CHOYSUM_APP_NAME;
@@ -27,6 +28,9 @@ export { defaultAppName };
 
 /**
  * Creates the application router.
+ * Navigation loading (bar + userBusy / slow-hint) is driven by the loading
+ * registry (beginNavigationLoading), not by start/done around afterEach —
+ * so chrome can span chunk fetch and first surface load.
  */
 export function createAppRouter(base = '/', composer?: ComposerLike): Router {
   const router = createRouter({
@@ -53,7 +57,7 @@ export function createAppRouter(base = '/', composer?: ComposerLike): Router {
   useTitle(computed(() => resolveDocumentTitle(titleRoute.value as any, composer, appName)));
 
   router.beforeEach(async to => {
-    NProgress.start();
+    beginNavigationLoading();
 
     try {
       titleRoute.value = to;
@@ -61,13 +65,15 @@ export function createAppRouter(base = '/', composer?: ComposerLike): Router {
       return true;
     } catch (error) {
       console.error('Navigation error:', error);
-      NProgress.done();
+      settleNavigationIfActive();
       return to.path === '/error/500' ? true : '/error/500';
     }
   });
 
-  router.afterEach((_to, _from) => {
-    NProgress.done();
+  // Guest pages never open surface: settle the nav bar shortly if still idle.
+  // List/Form that start surface within the grace keep the ticket until surface ends.
+  router.afterEach(() => {
+    scheduleNavigationSettleIfIdle();
   });
 
   router.onError(error => {

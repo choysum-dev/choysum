@@ -259,7 +259,7 @@ test('runHandledAuthSubmit: redirects after success and skips on failure', async
     submit: async () => true,
     fallbackMessage: 'fallback',
     setError: m => errors.push(m),
-    onSuccess: () => {
+    onSuccess: async () => {
       redirected += 1;
     },
   });

@@ -118,6 +118,8 @@ export interface BaseControllerVM {
   loading: boolean;
   error: unknown | null;
   result: DataSetSnapshot | null;
+  /** True after the first apply/load attempt finishes (success, empty, or error). */
+  hasAppliedOnce: boolean;
 }
 
 // List view model extends base with visible flattened nodes & expanded group keys

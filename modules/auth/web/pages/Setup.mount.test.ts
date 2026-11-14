@@ -10,6 +10,10 @@ import { ChoysumError } from '../error';
 import { clearSetupDraft, saveSetupDraft } from './setup_draft';
 import { ChoyMessage } from '@/web/web/composables/useChoyMessage';
 import { setSetupLoadDemoRequesterForTests } from './setup_form';
+import {
+  getLoadingRegistryDebugState,
+  resetLoadingRegistryForTests,
+} from '@/core/web/client/loadingRegistry';
 
 function setupOptions(): InitialSetupOptions {
   return {
@@ -40,7 +44,9 @@ function setupOptions(): InitialSetupOptions {
 
 type SetupStoreStub = {
   completeInitialSetup: (req: CompleteInitialSetupInput) => Promise<unknown>;
+  completeInitialSetupCore: (req: CompleteInitialSetupInput) => Promise<unknown>;
   login: (username: string, password: string) => Promise<unknown>;
+  loginCore: (username: string, password: string) => Promise<unknown>;
   ensureSetupStateReady: () => Promise<boolean>;
   getInitialSetupOptions: () => Promise<InitialSetupOptions>;
 };
@@ -83,18 +89,22 @@ async function mountSetup(opts?: {
     return resp;
   };
   store.ensureSetupStateReady = async () => !!opts?.setupReady;
-  store.completeInitialSetup = async req => {
+  const completeSetup = async (req: CompleteInitialSetupInput) => {
     requests.push(req);
     if (opts?.failSetup) throw opts.failSetup;
     return { UserId: 'usr_admin' };
   };
-  store.login = async (username, password) => {
+  store.completeInitialSetup = completeSetup;
+  store.completeInitialSetupCore = completeSetup;
+  const login = async (username: string, password: string) => {
     logins.push([username, password]);
     if (opts?.failLogin) {
       throw new ChoysumError({ domain: 'auth', code: 'INVALID_CREDENTIALS', message: opts.failLogin });
     }
     return true;
   };
+  store.login = login;
+  store.loginCore = login;
   const wrapper = mount(Setup as any, { global });
   if (opts?.uiLang) setUiLang(opts.uiLang);
   for (let i = 0; i < 4; i++) await flushPromises();
@@ -258,6 +268,7 @@ test('Setup.vue: Next walks admin → organization → review, Back returns', as
 });
 
 test('Setup.vue: review submit sends sectioned request, logs in, and redirects', async () => {
+  resetLoadingRegistryForTests();
   const { wrapper, replaces, requests, logins } = await mountSetup({ query: { redirect: '/auth/users' } });
   await advanceToReview(wrapper, 'owner@acme.io');
   submitForm(wrapper);
@@ -278,6 +289,10 @@ test('Setup.vue: review submit sends sectioned request, logs in, and redirects',
   expect(['Asia/Shanghai', 'UTC'].includes(req.Organization.Timezone)).toBe(true);
   expect(logins).toEqual([['admin', 'secret1']]);
   expect(replaces).toEqual(['/auth/users']);
+  // Success hands off a nav chrome ticket before leaving /setup.
+  expect(getLoadingRegistryDebugState().navTicketActive).toBe(true);
+  expect(getLoadingRegistryDebugState().barCount).toBe(1);
+  resetLoadingRegistryForTests();
   wrapper.unmount();
 });
 

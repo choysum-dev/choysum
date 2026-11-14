@@ -515,6 +515,17 @@ svg,
   opacity: 0;
 }
 
+/* NProgress: override library default #29d so the top bar follows product primary. */
+#nprogress .bar {
+  background: var(--primary, var(--choy-color-primary));
+}
+
+#nprogress .peg {
+  box-shadow:
+    0 0 10px var(--primary, var(--choy-color-primary)),
+    0 0 5px var(--primary, var(--choy-color-primary));
+}
+
 /* Accessibility */
 [aria-busy='true'] {
   cursor: progress;

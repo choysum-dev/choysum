@@ -181,6 +181,7 @@ import { ChoyMessage } from '../../composables/useChoyMessage';
 import { RELATION_PICKER_CLOSE_KEY } from '@/web/web/components/field/relationPickerContext';
 import type { RuleItem } from 'async-validator';
 import type { BaseModel, FieldPath, FieldPathType, QueryCondition } from '@/core/rpc';
+import { runWithLoading } from '@/core/web/client/loadingRegistry';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import ChoyFieldBase, { type FieldStateExpr, type FormItemProps } from './ChoyFieldBase.vue';
 import { useField } from '@/web/web/composables/useField';
@@ -546,14 +547,12 @@ async function relationSearch(keyword: string, opts: { limit: number }): Promise
 
   loading.value = true;
   try {
-    const records = await store.NameSearch(
-      String(keyword || '').trim(),
-      effectiveConditions.value as any,
-      {
+    const records = await runWithLoading({ silent: true }, () =>
+      store.NameSearch(String(keyword || '').trim(), effectiveConditions.value as any, {
         fields: pickHydrationFields() as any,
         limit: opts.limit ?? props.suggestLimit,
         ...buildRelationConditionSource(props.store as any, binding.prop),
-      } as any
+      } as any),
     );
     const rows = Array.isArray(records) ? records : [];
     searchRows.value = rows.map(x => ({ ...(x || {}) }));

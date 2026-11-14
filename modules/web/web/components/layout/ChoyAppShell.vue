@@ -118,6 +118,8 @@ SPDX-License-Identifier: Apache-2.0
         </footer>
       </SidebarInset>
     </div>
+    <!-- Blocks clicks until first surface owns the nav ticket (Setup/Login → app land). -->
+    <ChoyNavigationHandoff />
   </SidebarProvider>
 </template>
 
@@ -127,6 +129,7 @@ import { useI18n } from 'vue-i18n'
 import ChoyAppFooter from './ChoyAppFooter.vue'
 import ChoyAppHeader from './ChoyAppHeader.vue'
 import ChoyAppRail from './ChoyAppRail.vue'
+import ChoyNavigationHandoff from './ChoyNavigationHandoff.vue'
 import ChoySidebarNav from './ChoySidebarNav.vue'
 import ChoySidebarBridge from './ChoySidebarBridge.vue'
 import {

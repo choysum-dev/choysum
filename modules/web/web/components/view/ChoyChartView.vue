@@ -235,6 +235,7 @@ SPDX-License-Identifier: Apache-2.0
     <ChoyViewBusyHost
       ref="chartBodyRef"
       :busy="boardBusy && !errorText"
+      :mode="chartBusyMode"
       class="relative flex min-h-0 min-w-0 w-full flex-1 flex-col"
       data-region="chart-body"
     >
@@ -427,7 +428,7 @@ SPDX-License-Identifier: Apache-2.0
       </ChartContainer>
 
       <ChoyEmpty
-        v-else-if="!boardBusy && !errorText"
+        v-else-if="controller.vm.hasAppliedOnce && !boardBusy && !errorText"
         class="min-h-[280px] w-full flex-1 border-none"
         :description="resolvedEmptyLabel"
       />
@@ -693,6 +694,9 @@ const localChartType = ref<ChoyChartKind>(props.chartType);
 const localMetric = ref(props.metricAlias || 'count');
 
 const boardBusy = computed(() => !!controller.vm.loading);
+const chartBusyMode = computed<'stale' | 'block'>(() =>
+  controller.vm.result ? 'stale' : 'block',
+);
 const errorText = computed(() => {
   const err = controller.vm.error;
   if (err == null) return null;
