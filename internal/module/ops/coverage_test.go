@@ -121,6 +121,22 @@ func TestCoverage_GuardsAndHelpers(t *testing.T) {
 	if len(names) != 2 {
 		t.Fatalf("affected names = %v", names)
 	}
+	mutated := mutatedInstallUpgradeNames(PlanDocument{
+		ModuleOrder: []ModuleOrderEntry{
+			{ModuleName: "a", Effect: EffectInstall},
+			{ModuleName: "dep", Effect: EffectAlreadySatisfied},
+			{ModuleName: " ", Effect: EffectUpgrade},
+			{ModuleName: "b", Effect: EffectUpgrade},
+			{ModuleName: "b", Effect: EffectInstall},
+		},
+		EnsureModules: []ModuleOrderEntry{
+			{ModuleName: "doc", Effect: EffectInstall},
+			{ModuleName: "skip", Effect: EffectAlreadySatisfied},
+		},
+	})
+	if len(mutated) != 3 || mutated[0] != "a" || mutated[1] != "b" || mutated[2] != "doc" {
+		t.Fatalf("mutatedInstallUpgradeNames = %v", mutated)
+	}
 
 	if _, err := unmarshalPlanDocument(nil); err != nil {
 		t.Fatalf("empty plan: %v", err)

@@ -141,11 +141,28 @@ func (o *Ops) executeOperation(ctx context.Context, row *modmeta.ModuleOperation
 			withDemo = true
 		}
 		names := affectedModuleNames(doc, row.ModuleName)
+		stampNames := mutatedInstallUpgradeNames(doc)
 		if err := o.runLifecycle(ctx, row.Action, row.ModuleName, withDemo, doc); err != nil {
 			return err
 		}
 		// Soft-fail only origin snapshot sync (network). Local installed projection and
 		// MaterializeCatalog read the DB only and must hard-fail after lifecycle success.
+		projectMaterializeStamp := func(matNames []string) error {
+			// Hold module_management while projecting so a concurrent lifecycle
+			// cannot commit between reads and writes (lease released after runLifecycle).
+			return o.withModuleManagementLease(ctx, func(leaseCtx context.Context) error {
+				if err := o.ProjectCatalogInstalled(leaseCtx); err != nil {
+					return fmt.Errorf("ops: project catalog installed after %s: %w", row.Action, err)
+				}
+				if err := o.MaterializeCatalog(leaseCtx, matNames); err != nil {
+					return fmt.Errorf("ops: materialize catalog after %s: %w", row.Action, err)
+				}
+				if err := o.stampCatalogLifecycleAt(leaseCtx, stampNames, row.Action); err != nil {
+					return fmt.Errorf("ops: stamp catalog lifecycle after %s: %w", row.Action, err)
+				}
+				return nil
+			})
+		}
 		if row.Action == ActionInstall && moduleNamesInclude(names, "meta") {
 			// First install that lands meta: full local+registry snapshot sync so Catalog UI
 			// is populated without a page-open auto sync. Offline registry must not fail the op.
@@ -154,25 +171,13 @@ func (o *Ops) executeOperation(ctx context.Context, row *modmeta.ModuleOperation
 					o.Scope.Logger().Warn("ops: catalog sync after meta install failed", "error", originErr)
 				}
 			}
-			if err := o.ProjectCatalogInstalled(ctx); err != nil {
-				return afterLifecycleCommit(fmt.Errorf("ops: project catalog installed after %s: %w", row.Action, err))
-			}
-			if err := o.MaterializeCatalog(ctx, nil); err != nil {
-				return afterLifecycleCommit(fmt.Errorf("ops: materialize catalog after %s: %w", row.Action, err))
-			}
-			if err := o.stampCatalogLifecycleAt(ctx, names, row.Action); err != nil {
-				return afterLifecycleCommit(fmt.Errorf("ops: stamp catalog lifecycle after %s: %w", row.Action, err))
+			if err := projectMaterializeStamp(nil); err != nil {
+				return afterLifecycleCommit(err)
 			}
 			return nil
 		}
-		if err := o.ProjectCatalogInstalled(ctx); err != nil {
-			return afterLifecycleCommit(fmt.Errorf("ops: project catalog installed after %s: %w", row.Action, err))
-		}
-		if err := o.MaterializeCatalog(ctx, names); err != nil {
-			return afterLifecycleCommit(fmt.Errorf("ops: materialize catalog after %s: %w", row.Action, err))
-		}
-		if err := o.stampCatalogLifecycleAt(ctx, names, row.Action); err != nil {
-			return afterLifecycleCommit(fmt.Errorf("ops: stamp catalog lifecycle after %s: %w", row.Action, err))
+		if err := projectMaterializeStamp(names); err != nil {
+			return afterLifecycleCommit(err)
 		}
 		return nil
 	default:
@@ -261,6 +266,36 @@ func affectedModuleNames(doc PlanDocument, root string) []string {
 		add(name)
 	}
 	add(root)
+	return out
+}
+
+// mutatedInstallUpgradeNames lists modules whose plan effect is install or upgrade.
+// Used for last_installed_or_upgraded_at stamps; already_satisfied deps are omitted.
+func mutatedInstallUpgradeNames(doc PlanDocument) []string {
+	seen := map[string]struct{}{}
+	out := make([]string, 0, len(doc.ModuleOrder)+len(doc.EnsureModules))
+	add := func(e ModuleOrderEntry) {
+		switch strings.TrimSpace(e.Effect) {
+		case EffectInstall, EffectUpgrade:
+		default:
+			return
+		}
+		name := strings.TrimSpace(e.ModuleName)
+		if name == "" {
+			return
+		}
+		if _, ok := seen[name]; ok {
+			return
+		}
+		seen[name] = struct{}{}
+		out = append(out, name)
+	}
+	for _, e := range doc.ModuleOrder {
+		add(e)
+	}
+	for _, e := range doc.EnsureModules {
+		add(e)
+	}
 	return out
 }
 
