@@ -513,6 +513,11 @@ async function onFormSubmit(ctx: { formData: Record<string, unknown> }) {
       beginNavigationLoading();
       try {
         await router.replace(resolveLoginRedirect(route.query.redirect?.toString()));
+      } catch {
+        // Setup already persisted; do not re-enable a blank completable form.
+        setPageError(
+          _t('Setup is complete, but the page could not open. Please open login manually.'),
+        );
       } finally {
         submitting.value = false;
       }

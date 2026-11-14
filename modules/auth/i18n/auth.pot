@@ -1867,6 +1867,11 @@ msgctxt "web/pages/Setup"
 msgid "Setup is complete, but the login page could not open. Please open login manually."
 msgstr ""
 
+#: web/pages/Setup.vue:414
+msgctxt "web/pages/Setup"
+msgid "Setup is complete, but the page could not open. Please open login manually."
+msgstr ""
+
 #: web/pages/setup_form.ts:22
 msgctxt "web/pages/Setup"
 msgid "Username can only contain letters, numbers, underscores, hyphens, and dots"

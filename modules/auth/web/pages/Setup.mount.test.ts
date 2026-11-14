@@ -451,6 +451,19 @@ test('Setup.vue: login-fallback navigation failure shows recovery message', asyn
   wrapper.unmount();
 });
 
+test('Setup.vue: success-path navigation failure shows recovery message', async () => {
+  const { wrapper, replaces } = await mountSetup({
+    query: { redirect: '/auth/users' },
+    failReplace: true,
+  });
+  await advanceToReview(wrapper);
+  submitForm(wrapper);
+  await afterSubmit();
+  expect(replaces.length).toBeGreaterThan(0);
+  expect(wrapper.text()).toContain('Setup is complete, but the page could not open');
+  wrapper.unmount();
+});
+
 test('Setup.vue: options failure shows a retry prompt', async () => {
   const failOptions = new ChoysumError({ domain: 'base', code: 'UNKNOWN', message: 'options down' });
   const { wrapper, replaces } = await mountSetup({ failOptions });

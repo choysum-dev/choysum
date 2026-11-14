@@ -454,6 +454,7 @@ useProvideViewScope({
 /** Mutable bag used when settings presentation passes a plain `draft` object. */
 const settingsDraftBag = reactive<Record<string, unknown>>({});
 watch(
+  // Reference only: setField writes back into props.draft, so deep:true would loop.
   () => props.draft,
   (next) => {
     if (!isSettingsPresentation.value) return;
@@ -463,7 +464,7 @@ watch(
     }
     Object.assign(settingsDraftBag, next);
   },
-  { immediate: true, deep: true },
+  { immediate: true },
 );
 
 /**
@@ -723,6 +724,8 @@ async function onSettingsViewSelect(value: string) {
   // Skip leave-guard while the host pushes the sibling view route.
   await runWhileLeaving(async () => {
     emit('view-select', value);
+    // No router: do not hold leaving for the 1s fallback with nothing to await.
+    if (!router?.afterEach) return;
     await new Promise<void>((resolve) => {
       let settled = false;
       let removeAfter: (() => void) | undefined;
@@ -735,7 +738,7 @@ async function onSettingsViewSelect(value: string) {
         resolve();
       };
       // Any committed navigation ends leaving; 1s fallback bounds a missed afterEach.
-      removeAfter = router?.afterEach?.(() => finish());
+      removeAfter = router.afterEach(() => finish());
       fallbackTimer = setTimeout(finish, 1000);
     });
   });

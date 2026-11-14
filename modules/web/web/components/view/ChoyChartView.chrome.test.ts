@@ -71,9 +71,14 @@ describe('ChoyChartView chrome', () => {
     expect(mounted.text()).toContain('chart failed');
     expect(mounted.text()).toContain('Retry');
     // prepError is null here → onRetry falls through to onRefresh.
-    exposed.controller.apply = async () => [];
+    let applyCalls = 0;
+    exposed.controller.apply = async () => {
+      applyCalls += 1;
+      return [];
+    };
     await exposed.onRetry();
     await flushPromises();
+    expect(applyCalls).toBe(1);
 
     const ctrlVm = exposed.controller.vm as {
       loading: boolean;
