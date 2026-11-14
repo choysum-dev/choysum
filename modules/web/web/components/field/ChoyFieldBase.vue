@@ -1062,9 +1062,11 @@ const formDescribedBy = computed(() => {
 const formInvalid = computed(() => !!displayError.value);
 // Keep absolute overlay errors reachable when they extend past the scrollport.
 watch(
-  () => (showErrorOverlay.value ? formErrorId.value : ''),
-  async errorId => {
-    if (!errorId || typeof document === 'undefined' || typeof window === 'undefined') return;
+  () => (showErrorOverlay.value ? ([formErrorId.value, displayError.value ?? ''] as const) : null),
+  async key => {
+    if (!key || typeof document === 'undefined' || typeof window === 'undefined') return;
+    const [errorId] = key;
+    if (!errorId) return;
     await nextTick();
     const el = document.getElementById(errorId);
     if (!el || typeof el.scrollIntoView !== 'function' || typeof el.getBoundingClientRect !== 'function') {
@@ -1072,9 +1074,13 @@ watch(
     }
     // Skip when already fully visible in the viewport (avoids yanking on re-reveal).
     const rect = el.getBoundingClientRect();
-    const vh = window.innerHeight || document.documentElement.clientHeight;
-    if (rect.bottom <= vh && rect.top >= 0) return;
-    el.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    const vh = window.innerHeight || document.documentElement?.clientHeight || 0;
+    if (vh && rect.bottom <= vh && rect.top >= 0) return;
+    try {
+      el.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    } catch {
+      // Headless layout may not implement scrolling.
+    }
   },
 );
 const formChromeClass = computed(() =>
