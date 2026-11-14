@@ -140,7 +140,12 @@ const plainMessage = computed(() => messageLines.value.join(' '));
 defineExpose({
   /** FE coverage: drive literal `_t` stage branches without waiting real wall clocks. */
   setStageIndexForTests(index: number) {
+    // Stop the throbber tick so syncStage cannot overwrite the forced index.
+    clearTick();
     stageIndex.value = index;
+  },
+  getPlainMessageForTests() {
+    return plainMessage.value;
   },
 });
 </script>

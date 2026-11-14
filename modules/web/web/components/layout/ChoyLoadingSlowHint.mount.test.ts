@@ -50,8 +50,12 @@ test('ChoyLoadingSlowHint stage switch covers every literal msgid branch', async
   loadingRegistryOnRpcStart('slow-hint-stages');
   flushLoadingDisplayForTests();
   await flushPromises();
-  const exposed = wrapper.vm as { setStageIndexForTests?: (i: number) => void };
+  const exposed = wrapper.vm as {
+    setStageIndexForTests?: (i: number) => void;
+    getPlainMessageForTests?: () => string;
+  };
   expect(typeof exposed.setStageIndexForTests).toBe('function');
+  expect(typeof exposed.getPlainMessageForTests).toBe('function');
   const snippets = [
     'Loading',
     'Still loading',
@@ -64,8 +68,7 @@ test('ChoyLoadingSlowHint stage switch covers every literal msgid branch', async
   for (let i = 0; i < snippets.length; i++) {
     exposed.setStageIndexForTests!(i);
     await flushPromises();
-    const hint = document.querySelector('[data-anchor="choy.loading.slow-hint"]');
-    expect(String(hint?.textContent || '')).toContain(snippets[i]!);
+    expect(String(exposed.getPlainMessageForTests?.() || '')).toContain(snippets[i]!);
   }
   loadingRegistryOnRpcFinish('slow-hint-stages');
   flushLoadingDisplayForTests();
