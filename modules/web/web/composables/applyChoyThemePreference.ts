@@ -1,10 +1,10 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-/** Theme mode aligned with auth User.Preferences.theme. */
+/** Theme mode aligned with auth User.Theme. */
 export type ChoyThemeMode = 'light' | 'dark' | 'auto';
 
-/** Density aligned with auth User.Preferences.density (`standard` → comfortable). */
+/** Density aligned with auth User.Density (`standard` → comfortable). */
 export type ChoyDensityPreference = 'comfortable' | 'compact' | 'standard';
 
 export type ChoyThemePreference = {
@@ -124,7 +124,7 @@ export function persistChoyThemePreference(
 
 /**
  * Applies dark / density to the document root and optionally persists prefs.
- * Compatible with auth User.Preferences `{ theme, density }` shape.
+ * Compatible with auth User.Theme / User.Density.
  * Omitted fields are filled from storage so a density-only apply cannot clobber theme.
  */
 export function applyChoyThemePreference(

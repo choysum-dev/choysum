@@ -1,0 +1,225 @@
+// SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+// SPDX-License-Identifier: Apache-2.0
+
+import { migratePreferencesCompanyScopeToColumns } from './preferences_company_scope_migrate';
+
+test('migratePreferencesCompanyScopeToColumns: copies Preferences scope into empty columns', async () => {
+  const executes: Array<{ sql: string; params: string }> = [];
+  const prev = (globalThis as any).$choysum;
+  (globalThis as any).$choysum = {
+    ...(prev || {}),
+    db: {
+      query: async () =>
+        JSON.stringify([
+          {
+            id: 'u1',
+            preferences: JSON.stringify({
+              activeCompanyId: 'c_active',
+              enabledCompanyIds: ['c_active', 'c2'],
+            }),
+            active_company_id: null,
+            enabled_company_ids: null,
+            company_id: 'c_active',
+            company_ids: JSON.stringify(['c2']),
+          },
+        ]),
+      execute: async (sql: string, params: string) => {
+        executes.push({ sql, params });
+      },
+    },
+  };
+  try {
+    await migratePreferencesCompanyScopeToColumns();
+  } finally {
+    (globalThis as any).$choysum = prev;
+  }
+  expect(executes).toHaveLength(1);
+  expect(executes[0].sql).toContain('active_company_id');
+  expect(executes[0].sql).toContain('enabled_company_ids');
+  expect(JSON.parse(executes[0].params)).toEqual([
+    'c_active',
+    JSON.stringify(['c_active', 'c2']),
+    'u1',
+  ]);
+});
+
+test('migratePreferencesCompanyScopeToColumns: drops out-of-scope Preferences companies', async () => {
+  const executes: Array<{ sql: string; params: string }> = [];
+  const prev = (globalThis as any).$choysum;
+  (globalThis as any).$choysum = {
+    ...(prev || {}),
+    db: {
+      query: async () =>
+        JSON.stringify([
+          {
+            id: 'u_bad',
+            preferences: JSON.stringify({
+              activeCompanyId: 'c_foreign',
+              enabledCompanyIds: ['c_foreign', 'c1'],
+            }),
+            active_company_id: null,
+            enabled_company_ids: null,
+            company_id: 'c1',
+            company_ids: '[]',
+          },
+        ]),
+      execute: async (sql: string, params: string) => {
+        executes.push({ sql, params });
+      },
+    },
+  };
+  try {
+    await migratePreferencesCompanyScopeToColumns();
+  } finally {
+    (globalThis as any).$choysum = prev;
+  }
+  expect(executes).toHaveLength(1);
+  expect(executes[0].sql).toContain('enabled_company_ids');
+  expect(executes[0].sql).not.toContain('active_company_id');
+  expect(JSON.parse(executes[0].params)).toEqual([JSON.stringify(['c1']), 'u_bad']);
+});
+
+test('migratePreferencesCompanyScopeToColumns: keeps existing EnabledCompanyIds', async () => {
+  const executes: Array<{ sql: string; params: string }> = [];
+  const prev = (globalThis as any).$choysum;
+  (globalThis as any).$choysum = {
+    ...(prev || {}),
+    db: {
+      query: async () =>
+        JSON.stringify([
+          {
+            id: 'u2',
+            preferences: JSON.stringify({
+              activeCompanyId: 'c_new',
+              enabledCompanyIds: ['c_new'],
+            }),
+            active_company_id: '',
+            // Already contains the migrated active — leave the enabled column alone.
+            enabled_company_ids: JSON.stringify(['c_keep', 'c_new']),
+            company_id: 'c_new',
+            company_ids: JSON.stringify(['c_new']),
+          },
+        ]),
+      execute: async (sql: string, params: string) => {
+        executes.push({ sql, params });
+      },
+    },
+  };
+  try {
+    await migratePreferencesCompanyScopeToColumns();
+  } finally {
+    (globalThis as any).$choysum = prev;
+  }
+  expect(executes).toHaveLength(1);
+  expect(executes[0].sql).toContain('active_company_id');
+  expect(executes[0].sql).not.toContain('enabled_company_ids');
+  expect(JSON.parse(executes[0].params)[0]).toBe('c_new');
+});
+
+test('migratePreferencesCompanyScopeToColumns: rewrites enabled when active is outside it', async () => {
+  const executes: Array<{ sql: string; params: string }> = [];
+  const prev = (globalThis as any).$choysum;
+  (globalThis as any).$choysum = {
+    ...(prev || {}),
+    db: {
+      query: async () =>
+        JSON.stringify([
+          {
+            id: 'u3',
+            preferences: JSON.stringify({
+              activeCompanyId: 'c_new',
+              enabledCompanyIds: ['c_new'],
+            }),
+            active_company_id: '',
+            enabled_company_ids: JSON.stringify(['c_keep']),
+            company_id: 'c_new',
+            company_ids: JSON.stringify(['c_keep']),
+          },
+        ]),
+      execute: async (sql: string, params: string) => {
+        executes.push({ sql, params });
+      },
+    },
+  };
+  try {
+    await migratePreferencesCompanyScopeToColumns();
+  } finally {
+    (globalThis as any).$choysum = prev;
+  }
+  expect(executes).toHaveLength(1);
+  expect(executes[0].sql).toContain('active_company_id');
+  expect(executes[0].sql).toContain('enabled_company_ids');
+  expect(JSON.parse(executes[0].params)).toEqual([
+    'c_new',
+    JSON.stringify(['c_new', 'c_keep']),
+    'u3',
+  ]);
+});
+
+test('migratePreferencesCompanyScopeToColumns: ignores out-of-scope stored active', async () => {
+  const executes: Array<{ sql: string; params: string }> = [];
+  const prev = (globalThis as any).$choysum;
+  (globalThis as any).$choysum = {
+    ...(prev || {}),
+    db: {
+      query: async () =>
+        JSON.stringify([
+          {
+            id: 'u_stale_active',
+            preferences: JSON.stringify({
+              activeCompanyId: 'c1',
+              enabledCompanyIds: ['c1'],
+            }),
+            // Stale column outside allowed scope must not be copied into enabled.
+            active_company_id: 'c_foreign',
+            enabled_company_ids: null,
+            company_id: 'c1',
+            company_ids: '[]',
+          },
+        ]),
+      execute: async (sql: string, params: string) => {
+        executes.push({ sql, params });
+      },
+    },
+  };
+  try {
+    await migratePreferencesCompanyScopeToColumns();
+  } finally {
+    (globalThis as any).$choysum = prev;
+  }
+  expect(executes).toHaveLength(1);
+  expect(executes[0].sql).toContain('active_company_id');
+  expect(executes[0].sql).toContain('enabled_company_ids');
+  expect(JSON.parse(executes[0].params)).toEqual([
+    'c1',
+    JSON.stringify(['c1']),
+    'u_stale_active',
+  ]);
+});
+
+test('migratePreferencesCompanyScopeToColumns: no-ops without db or preferences column', async () => {
+  const prev = (globalThis as any).$choysum;
+  (globalThis as any).$choysum = { ...(prev || {}), db: undefined };
+  try {
+    await migratePreferencesCompanyScopeToColumns();
+  } finally {
+    (globalThis as any).$choysum = prev;
+  }
+
+  (globalThis as any).$choysum = {
+    ...(prev || {}),
+    db: {
+      query: async () => {
+        throw new Error('no such column: preferences');
+      },
+      execute: async () => {
+        throw new Error('should not run');
+      },
+    },
+  };
+  try {
+    await migratePreferencesCompanyScopeToColumns();
+  } finally {
+    (globalThis as any).$choysum = prev;
+  }
+});

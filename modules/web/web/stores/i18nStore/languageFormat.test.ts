@@ -3,9 +3,11 @@
 
 import { SUPPORTED_LOCALES } from './locales';
 import {
+  collectActiveLanguageFormats,
   formatCurrencyFromConfig,
   formatNumberFromConfig,
   formatFixedDecimalString,
+  overlayFromActiveLanguageRow,
   parseGrouping,
   resolveFormatConfig,
 } from './languageFormat';
@@ -20,7 +22,7 @@ test('languageFormat (P2): T2.2: formatNumber uses Language separators and Group
     TimeFormat: 'HH:mm',
   };
   const catalog = SUPPORTED_LOCALES['zh-CN'];
-  const resolved = resolveFormatConfig(catalog.numberFormat, catalog.dateTimeFormat, language, null);
+  const resolved = resolveFormatConfig(catalog.numberFormat, catalog.dateTimeFormat, language);
 
   expect(formatNumber(1234567.89, 'zh-CN', resolved.numberFormat, { digits: 2 })).toBe('1.234.567,89');
   expect(formatNumberFromConfig(1234567.89, resolved.numberFormat, { digits: 2 })).toBe('1.234.567,89');
@@ -29,21 +31,25 @@ test('languageFormat (P2): T2.2: formatNumber uses Language separators and Group
   expect(resolved.numberFormat.thousandsSeparator).toBe('.');
 });
 
-test('languageFormat (P2): T2.3: Preferences.display.dateFormat overrides Language; unset keeps Language', () => {
+test('languageFormat (P2): T2.3: Language DateFormat/TimeFormat drive resolveFormatConfig', () => {
   const language = {
-    DateFormat: 'YYYY-MM-DD',
+    DateFormat: 'DD.MM.YYYY',
     TimeFormat: 'HH:mm:ss',
   };
-  const withOverride = resolveFormatConfig(null, null, language, { dateFormat: 'DD.MM.YYYY' });
-  expect(withOverride.dateTimeFormat.shortDate).toBe('DD.MM.YYYY');
-  expect(withOverride.dateTimeFormat.shortTime).toBe('HH:mm:ss');
+  const resolved = resolveFormatConfig(null, null, language);
+  expect(resolved.dateTimeFormat.shortDate).toBe('DD.MM.YYYY');
+  expect(resolved.dateTimeFormat.shortTime).toBe('HH:mm:ss');
 
-  const without = resolveFormatConfig(null, null, language, null);
-  expect(without.dateTimeFormat.shortDate).toBe('YYYY-MM-DD');
+  const withCatalog = resolveFormatConfig(
+    null,
+    { shortDate: 'YYYY-MM-DD', shortTime: 'HH:mm' },
+    null,
+  );
+  expect(withCatalog.dateTimeFormat.shortDate).toBe('YYYY-MM-DD');
 
   const date = new Date(2026, 0, 2, 15, 4, 5);
-  expect(formatDateTime(date, withOverride.dateTimeFormat, { type: 'date' })).toBe('02.01.2026');
-  expect(formatDateTime(date, without.dateTimeFormat, { type: 'date' })).toBe('2026-01-02');
+  expect(formatDateTime(date, resolved.dateTimeFormat, { type: 'date' })).toBe('02.01.2026');
+  expect(formatDateTime(date, withCatalog.dateTimeFormat, { type: 'date' })).toBe('2026-01-02');
 });
 
 test('languageFormat (P2): datetime uses user timezone; date does not shift calendar day', () => {
@@ -69,7 +75,7 @@ test('languageFormat (P2): T2.4: catalog still exposes dayjs package names; miss
   const sparse = SUPPORTED_LOCALES.el;
   expect(sparse.numberFormat).toBeUndefined();
 
-  const resolved = resolveFormatConfig(sparse.numberFormat, sparse.dateTimeFormat, null, null);
+  const resolved = resolveFormatConfig(sparse.numberFormat, sparse.dateTimeFormat, null);
   expect(() => formatNumber(1234.5, 'el', resolved.numberFormat, { digits: 1 })).not.toThrow();
   expect(formatNumber(1234.5, 'el', resolved.numberFormat, { digits: 1 })).toBe('1,234.5');
 });
@@ -230,5 +236,32 @@ test('languageFormat (P2): covers ensureDecimalDigitsString edge cases for curre
       spacing: false,
     })
   ).toBe('$-0.50');
+});
+
+test('overlayFromActiveLanguageRow: prefers PascalCase PersonNameFormat', () => {
+  expect(
+    overlayFromActiveLanguageRow({
+      PersonNameFormat: '{LastName}{FirstName}',
+      personNameFormat: 'ignored',
+    }).PersonNameFormat,
+  ).toBe('{LastName}{FirstName}');
+  expect(
+    overlayFromActiveLanguageRow({
+      personNameFormat: '{FirstName} {LastName}',
+    }).PersonNameFormat,
+  ).toBe('{FirstName} {LastName}');
+  expect(overlayFromActiveLanguageRow({}).PersonNameFormat).toBeUndefined();
+});
+
+test('collectActiveLanguageFormats: maps overlays and filters to supported UI keys', () => {
+  const { formats, uiKeys } = collectActiveLanguageFormats([
+    { Code: 'zh_CN', PersonNameFormat: '{LastName}{FirstName}' },
+    { code: 'en_US', personNameFormat: '{FirstName} {LastName}' },
+    { Code: 'xx_YY', PersonNameFormat: '{FirstName}' },
+  ]);
+  expect(formats.zh_CN?.PersonNameFormat).toBe('{LastName}{FirstName}');
+  expect(formats.en_US?.PersonNameFormat).toBe('{FirstName} {LastName}');
+  expect(uiKeys).toEqual(['zh-CN', 'en']);
+  expect(collectActiveLanguageFormats(null).uiKeys).toEqual([]);
 });
 

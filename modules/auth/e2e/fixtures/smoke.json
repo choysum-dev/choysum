@@ -19,6 +19,17 @@
             "ref": "base.e2e_company_child"
           }
         ],
+        "ActiveCompanyId": {
+          "ref": "base.company_main"
+        },
+        "EnabledCompanyIds": [
+          {
+            "ref": "base.company_main"
+          },
+          {
+            "ref": "base.e2e_company_child"
+          }
+        ],
         "LanguageId": {
           "ref": "base.language_zh_cn"
         },

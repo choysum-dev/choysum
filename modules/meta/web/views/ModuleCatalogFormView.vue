@@ -318,7 +318,7 @@ import {
   resolveModuleCatalogFormPrimaryAction,
 } from './module_catalog_chrome';
 import { moduleUninstallAction } from './module_catalog_actions';
-import ModuleCatalogOpDialog from './ModuleCatalogOpDialog.vue';
+import ModuleCatalogOpDialog from '@/meta/web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue';
 import ModuleCatalogOpProgressStrip from './ModuleCatalogOpProgressStrip.vue';
 import {
   ChoyBadge,

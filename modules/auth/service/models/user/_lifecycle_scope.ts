@@ -2,15 +2,15 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { getJsCtxAndReq } from '@/core/service/api/context';
-import { normalizeScopeId, uniqScopeIds, normalizePreferences as normalizeScopePreferences, buildScopePreferences } from '@/core/service/utils/normalization';
+import { normalizeScopeId, uniqScopeIds } from '@/core/service/utils/normalization';
 
-// Re-export core utilities for backward compat — other auth helpers import these from this module.
-export { normalizeScopeId, uniqScopeIds, normalizeScopePreferences, buildScopePreferences };
+export { normalizeScopeId, uniqScopeIds };
 
 export type UserCompanyScopeSource = {
   CompanyId?: unknown;
   CompanyIds?: unknown;
-  Preferences?: unknown;
+  ActiveCompanyId?: unknown;
+  EnabledCompanyIds?: unknown;
 };
 
 export type TokenCompanyScope = {
@@ -19,7 +19,12 @@ export type TokenCompanyScope = {
   enabledCompanyIds: string[];
 };
 
-export type SwitchScopeValidationErrorCode = 'active_empty' | 'enabled_type' | 'enabled_unauthorized' | 'active_outside_allowed' | 'active_not_in_enabled';
+export type SwitchScopeValidationErrorCode =
+  | 'active_empty'
+  | 'enabled_type'
+  | 'enabled_unauthorized'
+  | 'active_outside_allowed'
+  | 'active_not_in_enabled';
 
 export type SwitchScopeValidationResult =
   | {
@@ -27,7 +32,6 @@ export type SwitchScopeValidationResult =
       active: string;
       enabled: string[];
       allowed: string[];
-      prefs: Record<string, unknown>;
     }
   | {
       ok: false;
@@ -35,9 +39,15 @@ export type SwitchScopeValidationResult =
       active: string;
       enabled: string[] | null;
       allowed: string[];
-      prefs: Record<string, unknown>;
       companyId?: string;
     };
+
+/** Read stored EnabledCompanyIds as normalized id list. */
+export function readStoredEnabledCompanyIds(user: UserCompanyScopeSource): string[] {
+  const raw = user?.EnabledCompanyIds;
+  if (!Array.isArray(raw)) return [];
+  return uniqScopeIds(raw.map(normalizeScopeId).filter(Boolean));
+}
 
 /**
  * Compute allowed company ids from User.CompanyId and User.CompanyIds.
@@ -50,28 +60,27 @@ export function buildAllowedCompanyIds(user: UserCompanyScopeSource): string[] {
 }
 
 /**
- * Build token metadata company scope from user state and preferences.
+ * Build token metadata company scope from User work-context fields.
  */
 export function computeTokenCompanyScope(user: UserCompanyScopeSource): TokenCompanyScope {
   const allowedCompanyIds = buildAllowedCompanyIds(user);
-  const prefs = normalizeScopePreferences(user?.Preferences);
-  const prefActive = typeof prefs.activeCompanyId === 'string' ? normalizeScopeId(prefs.activeCompanyId) : '';
-  const prefEnabled = Array.isArray(prefs.enabledCompanyIds)
-    ? prefs.enabledCompanyIds.map(normalizeScopeId).filter(Boolean)
-    : [];
+  const storedActive = normalizeScopeId(user?.ActiveCompanyId);
+  const storedEnabled = readStoredEnabledCompanyIds(user);
 
   let activeCompanyId = '';
-  if (prefActive && allowedCompanyIds.includes(prefActive)) {
-    activeCompanyId = prefActive;
+  if (storedActive && allowedCompanyIds.includes(storedActive)) {
+    activeCompanyId = storedActive;
   } else {
     const fallback = normalizeScopeId(user?.CompanyId);
     if (fallback && allowedCompanyIds.includes(fallback)) activeCompanyId = fallback;
     else if (allowedCompanyIds.length) activeCompanyId = allowedCompanyIds[0];
   }
 
-  let enabledCompanyIds = prefEnabled.filter((cid: string) => allowedCompanyIds.includes(cid));
+  let enabledCompanyIds = storedEnabled.filter((cid: string) => allowedCompanyIds.includes(cid));
   if (!enabledCompanyIds.length && activeCompanyId) enabledCompanyIds = [activeCompanyId];
-  if (activeCompanyId && !enabledCompanyIds.includes(activeCompanyId)) enabledCompanyIds = [activeCompanyId, ...enabledCompanyIds];
+  if (activeCompanyId && !enabledCompanyIds.includes(activeCompanyId)) {
+    enabledCompanyIds = [activeCompanyId, ...enabledCompanyIds];
+  }
   if (!enabledCompanyIds.length && allowedCompanyIds.length) enabledCompanyIds = [allowedCompanyIds[0]];
 
   return {
@@ -91,6 +100,7 @@ export function normalizeRequestedEnabledCompanyIds(enabledCompanyIds: unknown):
 
 /**
  * Validate switch-company inputs against allowed company scope.
+ * When EnabledCompanyIds is omitted, defaults to stored EnabledCompanyIds or [active].
  */
 export function validateSwitchCompanyScopeInput(
   user: UserCompanyScopeSource,
@@ -98,8 +108,8 @@ export function validateSwitchCompanyScopeInput(
   enabledCompanyIds: unknown
 ): SwitchScopeValidationResult {
   const active = normalizeScopeId(activeCompanyId);
-  const prefs = normalizeScopePreferences(user?.Preferences);
   const allowed = buildAllowedCompanyIds(user);
+  const storedEnabled = readStoredEnabledCompanyIds(user);
 
   if (!active) {
     return {
@@ -108,17 +118,13 @@ export function validateSwitchCompanyScopeInput(
       active,
       enabled: null,
       allowed,
-      prefs,
     };
   }
 
-  const prefEnabled = Array.isArray(prefs.enabledCompanyIds)
-    ? prefs.enabledCompanyIds.map(normalizeScopeId).filter(Boolean)
-    : [];
   let enabled: string[];
 
   if (enabledCompanyIds === undefined || enabledCompanyIds === null) {
-    enabled = prefEnabled.length ? prefEnabled : [active];
+    enabled = storedEnabled.length ? storedEnabled : [active];
   } else if (Array.isArray(enabledCompanyIds)) {
     enabled = enabledCompanyIds.map(normalizeScopeId).filter(Boolean);
   } else {
@@ -128,7 +134,6 @@ export function validateSwitchCompanyScopeInput(
       active,
       enabled: null,
       allowed,
-      prefs,
     };
   }
 
@@ -141,7 +146,6 @@ export function validateSwitchCompanyScopeInput(
       active,
       enabled,
       allowed,
-      prefs,
     };
   }
 
@@ -153,7 +157,6 @@ export function validateSwitchCompanyScopeInput(
         active,
         enabled,
         allowed,
-        prefs,
         companyId: cid,
       };
     }
@@ -166,7 +169,6 @@ export function validateSwitchCompanyScopeInput(
       active,
       enabled,
       allowed,
-      prefs,
     };
   }
 
@@ -175,7 +177,6 @@ export function validateSwitchCompanyScopeInput(
     active,
     enabled,
     allowed,
-    prefs,
   };
 }
 

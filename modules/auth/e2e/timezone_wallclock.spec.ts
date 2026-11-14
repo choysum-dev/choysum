@@ -63,7 +63,7 @@ async function setUserTimezoneViaPreferences(p: Page, iana: string) {
     )
     .toBe(true);
 
-  const save = dialog.getByRole('button', { name: /Update preferences|更新偏好设置/i });
+  const save = dialog.getByRole('button', { name: /^(Save|保存)$/i });
   // Prefer reload after save rather than waitForEvent('load').
   await save.click();
   await p.waitForFunction(() => !document.querySelector('.choy-preferences-dialog'), undefined, { timeout: 45_000 }).catch(() => undefined);

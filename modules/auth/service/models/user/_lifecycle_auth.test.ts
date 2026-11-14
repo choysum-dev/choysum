@@ -21,7 +21,6 @@ function loginStub(overrides: {
     LanguageId: null,
     CompanyId: '',
     CompanyIds: [],
-    Preferences: {},
     UpdatedAt: new Date(0),
     ...overrides,
     async load() {

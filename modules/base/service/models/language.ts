@@ -11,6 +11,7 @@ import {
   formatDateWithLanguage,
   formatNumberWithLanguage,
 } from './_language_format';
+import { DEFAULT_PERSON_NAME_FORMAT, normalizePersonNameFormat } from '@/core/service/utils/person_name';
 
 export type LanguageFormatKind = 'number' | 'date' | 'time' | 'datetime';
 
@@ -38,6 +39,7 @@ export type ActiveLanguage = {
   FirstDayOfWeek?: number;
   CurrencySymbolPosition?: 'before' | 'after';
   CurrencySymbolSpacing?: boolean;
+  PersonNameFormat?: string;
 };
 
 @Model('Language')
@@ -153,6 +155,20 @@ export default class Language extends BaseModel {
   CurrencySymbolSpacing?: boolean | null;
 
   /**
+   * Display template for person names ({FirstName} / {LastName} tokens).
+   */
+  @Field({
+    type: 'varchar',
+    size: 128,
+    default: () => DEFAULT_PERSON_NAME_FORMAT,
+    string: _lt('Person Name Format', { scope: 'base.model.Language.fields' }),
+    help: _lt('Template using {FirstName} and {LastName}; e.g. {LastName}{FirstName} or {FirstName} {LastName}.', {
+      scope: 'base.model.Language.fields',
+    }),
+  })
+  PersonNameFormat?: string;
+
+  /**
    * Active languages for Preferences / guest switcher (POSIX Code + format projection).
    * gRPC: base.Language/GetActiveLanguages
    */
@@ -170,6 +186,7 @@ export default class Language extends BaseModel {
         'FirstDayOfWeek',
         'CurrencySymbolPosition',
         'CurrencySymbolSpacing',
+        'PersonNameFormat',
       ],
       orderBy: { field: 'Name', order: 'asc' },
     });
@@ -185,6 +202,8 @@ export default class Language extends BaseModel {
       FirstDayOfWeek: row.FirstDayOfWeek != null ? Number(row.FirstDayOfWeek) : undefined,
       CurrencySymbolPosition: row.CurrencySymbolPosition === 'after' ? 'after' : row.CurrencySymbolPosition === 'before' ? 'before' : undefined,
       CurrencySymbolSpacing: row.CurrencySymbolSpacing != null ? Boolean(row.CurrencySymbolSpacing) : undefined,
+      PersonNameFormat:
+        row.PersonNameFormat != null ? normalizePersonNameFormat(row.PersonNameFormat) : DEFAULT_PERSON_NAME_FORMAT,
     }));
   }
 
@@ -228,7 +247,7 @@ export default class Language extends BaseModel {
     return formatDateWithLanguage(params.Value, row, kind);
   }
 
-  @Constraint<Language>(['Direction', 'CurrencySymbolPosition', 'CurrencySymbolSpacing', 'IsActive', 'Code'])
+  @Constraint<Language>(['Direction', 'CurrencySymbolPosition', 'CurrencySymbolSpacing', 'PersonNameFormat', 'IsActive', 'Code'])
   async validateLanguageConstraint(): Promise<void> {
     if (this.Direction !== undefined) {
       // Preserve null clears from assertDirection (do not wash to undefined).
@@ -240,6 +259,10 @@ export default class Language extends BaseModel {
     if (this.CurrencySymbolSpacing !== undefined) {
       // Preserve null clears from assertCurrencySymbolSpacing (do not wash to undefined).
       this.CurrencySymbolSpacing = assertCurrencySymbolSpacing(this.CurrencySymbolSpacing);
+    }
+    if (this.PersonNameFormat !== undefined) {
+      // Empty/invalid templates normalize to the default (do not store blanks).
+      this.PersonNameFormat = normalizePersonNameFormat(this.PersonNameFormat);
     }
 
     // Refuse deactivating the last active language (update path only).

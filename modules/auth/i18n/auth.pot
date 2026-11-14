@@ -457,132 +457,167 @@ msgctxt "auth.model.Token.fields"
 msgid "User"
 msgstr ""
 
-#: service/models/user/user.ts:307
+#: service/models/user/user.ts:312
 msgctxt "auth.model.User.fields"
 msgid "Accessible Companies"
 msgstr ""
 
-#: service/models/user/user.ts:321
+#: service/models/user/user.ts:354
 msgctxt "auth.model.User.fields"
 msgid "Active"
 msgstr ""
 
-#: service/models/user/user.ts:216
+#: service/models/user/user.ts:326
+msgctxt "auth.model.User.fields"
+msgid "Active Company"
+msgstr ""
+
+#: service/models/user/user.ts:240
 msgctxt "auth.model.User.fields"
 msgid "Active base.Language row used for terminology."
 msgstr ""
 
-#: service/models/user/user.ts:202
+#: service/models/user/user.ts:226
 msgctxt "auth.model.User.fields"
 msgid "Avatar"
 msgstr ""
 
-#: service/models/user/user.ts:308
+#: service/models/user/user.ts:284
+msgctxt "auth.model.User.fields"
+msgid "Comfortable"
+msgstr ""
+
+#: service/models/user/user.ts:285
+msgctxt "auth.model.User.fields"
+msgid "Compact"
+msgstr ""
+
+#: service/models/user/user.ts:313
 msgctxt "auth.model.User.fields"
 msgid "Companies the user may switch to; must stay within role assignments."
 msgstr ""
 
-#: service/models/user/user.ts:296
+#: service/models/user/user.ts:301
 msgctxt "auth.model.User.fields"
 msgid "Company"
 msgstr ""
 
-#: service/models/user/user.ts:244
+#: service/models/user/user.ts:327
+msgctxt "auth.model.User.fields"
+msgid "Company used for current write operations; switched via SwitchCompanyScope."
+msgstr ""
+
+#: service/models/user/user.ts:268
 msgctxt "auth.model.User.fields"
 msgid "Dark"
 msgstr ""
 
-#: service/models/user/user.ts:230
+#: service/models/user/user.ts:287
+msgctxt "auth.model.User.fields"
+msgid "Density"
+msgstr ""
+
+#: service/models/user/user.ts:254
 msgctxt "auth.model.User.fields"
 msgid "Display timezone; empty uses browser timezone on first login."
 msgstr ""
 
-#: service/models/user/user.ts:130
+#: service/models/user/user.ts:138
 msgctxt "auth.model.User.fields"
 msgid "Email"
 msgstr ""
 
-#: service/models/user/user.ts:164
+#: service/models/user/user.ts:340
+msgctxt "auth.model.User.fields"
+msgid "Enabled Companies"
+msgstr ""
+
+#: service/models/user/user.ts:172
 msgctxt "auth.model.User.fields"
 msgid "First Name"
 msgstr ""
 
-#: service/models/user/user.ts:185
+#: service/models/user/user.ts:193
 msgctxt "auth.model.User.fields"
 msgid "Full Name"
 msgstr ""
 
-#: service/models/user/user.ts:215
+#: service/models/user/user.ts:239
 msgctxt "auth.model.User.fields"
 msgid "Language"
 msgstr ""
 
-#: service/models/user/user.ts:332
+#: service/models/user/user.ts:365
 msgctxt "auth.model.User.fields"
 msgid "Last Login"
 msgstr ""
 
-#: service/models/user/user.ts:175
+#: service/models/user/user.ts:183
 msgctxt "auth.model.User.fields"
 msgid "Last Name"
 msgstr ""
 
-#: service/models/user/user.ts:243
+#: service/models/user/user.ts:267
 msgctxt "auth.model.User.fields"
 msgid "Light"
 msgstr ""
 
-#: service/models/user/user.ts:153
+#: service/models/user/user.ts:161
 msgctxt "auth.model.User.fields"
 msgid "Password Hash"
 msgstr ""
 
-#: service/models/user/user.ts:141
+#: service/models/user/user.ts:149
 msgctxt "auth.model.User.fields"
 msgid "Phone"
 msgstr ""
 
-#: service/models/user/user.ts:260
+#: service/models/user/user.ts:341
 msgctxt "auth.model.User.fields"
-msgid "Preferences"
+msgid "Readable company scope for the current session; switched via SwitchCompanyScope."
 msgstr ""
 
-#: service/models/user/user.ts:370
+#: service/models/user/user.ts:403
 msgctxt "auth.model.User.fields"
 msgid "Roles"
 msgstr ""
 
-#: service/models/user/user.ts:343
+#: service/models/user/user.ts:376
 msgctxt "auth.model.User.fields"
 msgid "Sessions"
 msgstr ""
 
-#: service/models/user/user.ts:245
+#: service/models/user/user.ts:288
+msgctxt "auth.model.User.fields"
+msgid "Spacing density for lists and the app shell."
+msgstr ""
+
+#: service/models/user/user.ts:269
 msgctxt "auth.model.User.fields"
 msgid "System"
 msgstr ""
 
-#: service/models/user/user.ts:247
+#: service/models/user/user.ts:271
 msgctxt "auth.model.User.fields"
 msgid "Theme"
 msgstr ""
 
-#: service/models/user/user.ts:229
+#: service/models/user/user.ts:253
 msgctxt "auth.model.User.fields"
 msgid "Time Zone"
 msgstr ""
 
-#: service/models/user/user.ts:354
+#: service/models/user/user.ts:387
 msgctxt "auth.model.User.fields"
 msgid "Tokens"
 msgstr ""
 
-#: service/models/user/user.ts:248
+#: service/models/user/user.ts:272
 msgctxt "auth.model.User.fields"
 msgid "UI color theme (light, dark, or follow the system)."
 msgstr ""
 
-#: service/models/user/user.ts:119
+#: service/models/user/user.ts:127
 msgctxt "auth.model.User.fields"
 msgid "Username"
 msgstr ""
@@ -662,157 +697,204 @@ msgctxt "service/models/token"
 msgid "userId is required"
 msgstr ""
 
-#: service/models/user/user.ts:92
+#: service/models/user/user.ts:100
 msgctxt "service/models/user"
 msgid "%s requires a payload"
 msgstr ""
 
-#: service/models/user/user.ts:490
+#: service/models/user/user.ts:969
+msgctxt "service/models/user"
+msgid "Account is disabled"
+msgstr ""
+
+#: service/models/user/user.ts:549
 msgctxt "service/models/user"
 msgid "CompleteInitialSetup requires a password string"
 msgstr ""
 
-#: service/models/user/user.ts:482
+#: service/models/user/user.ts:541
 msgctxt "service/models/user"
 msgid "CompleteInitialSetup requires a username"
 msgstr ""
 
-#: service/models/user/user.ts:470
+#: service/models/user/user.ts:529
 msgctxt "service/models/user"
 msgid "CompleteInitialSetup requires an Admin object"
 msgstr ""
 
-#: service/models/user/user.ts:476
+#: service/models/user/user.ts:535
 msgctxt "service/models/user"
 msgid "CompleteInitialSetup requires an Organization object"
 msgstr ""
 
-#: service/models/user/user.ts:1176
+#: service/models/user/_change_password.ts:66
+msgctxt "service/models/user"
+msgid "Current password is incorrect"
+msgstr ""
+
+#: service/models/user/_change_password.ts:23
+msgctxt "service/models/user"
+msgid "Current password is required"
+msgstr ""
+
+#: service/models/user/user.ts:987
+msgctxt "service/models/user"
+msgid "Failed to change password"
+msgstr ""
+
+#: service/models/user/user.ts:1295
 msgctxt "service/models/user"
 msgid "Failed to compute field rule spec"
 msgstr ""
 
-#: service/models/user/user.ts:388
+#: service/models/user/user.ts:421
 msgctxt "service/models/user"
 msgid "Invalid IANA timezone: %s"
 msgstr ""
 
-#: service/models/user/user.ts:1157
+#: service/models/user/user.ts:1276
 msgctxt "service/models/user"
 msgid "Invalid model full name; expected \"<app>.<Model>\""
 msgstr ""
 
-#: service/models/user/user.ts:443
+#: service/models/user/user.ts:502
 msgctxt "service/models/user"
 msgid "Invalid or inactive language: %s"
 msgstr ""
 
-#: service/models/user/user.ts:586
+#: service/models/user/user.ts:645
 msgctxt "service/models/user"
 msgid "Login requires a boolean RememberMe"
 msgstr ""
 
-#: service/models/user/user.ts:598
+#: service/models/user/user.ts:657
 msgctxt "service/models/user"
 msgid "Login requires a string DeviceInfo"
 msgstr ""
 
-#: service/models/user/user.ts:592
+#: service/models/user/user.ts:651
 msgctxt "service/models/user"
 msgid "Login requires a string IpAddress"
 msgstr ""
 
-#: service/models/user/user.ts:580
+#: service/models/user/user.ts:639
 msgctxt "service/models/user"
 msgid "Login requires username and password"
 msgstr ""
 
-#: service/models/user/user.ts:907
+#: service/models/user/user.ts:1026
 msgctxt "service/models/user"
 msgid "Logout failed"
 msgstr ""
 
-#: service/models/user/user.ts:888
+#: service/models/user/user.ts:1007
 msgctxt "service/models/user"
 msgid "Logout requires a boolean AllDevices"
 msgstr ""
 
-#: service/models/user/user.ts:895
+#: service/models/user/user.ts:1014
 msgctxt "service/models/user"
 msgid "Logout requires a string DeviceInfo"
 msgstr ""
 
-#: service/models/user/user.ts:881
+#: service/models/user/user.ts:1000
 msgctxt "service/models/user"
 msgid "Logout requires a token string"
 msgstr ""
 
-#: service/models/user/user.ts:1141
+#: service/models/user/user.ts:1260
 msgctxt "service/models/user"
 msgid "Missing identity information (userId)"
 msgstr ""
 
-#: service/models/user/user.ts:1149
+#: service/models/user/user.ts:1268
 msgctxt "service/models/user"
 msgid "Missing model name (model)"
 msgstr ""
 
-#: service/models/user/user.ts:694
+#: service/models/user/_change_password.ts:37
+msgctxt "service/models/user"
+msgid "New password is not a valid client hash"
+msgstr ""
+
+#: service/models/user/_change_password.ts:29
+msgctxt "service/models/user"
+msgid "New password is required"
+msgstr ""
+
+#: service/models/user/_change_password.ts:49
+#: service/models/user/_change_password.ts:73
+msgctxt "service/models/user"
+msgid "New password must differ from the current password"
+msgstr ""
+
+#: service/models/user/_change_password.ts:43
+msgctxt "service/models/user"
+msgid "Password must be at least 6 characters"
+msgstr ""
+
+#: service/models/user/user.ts:753
 msgctxt "service/models/user"
 msgid "RefreshTokens requires a refresh token"
 msgstr ""
 
-#: service/models/user/user.ts:520
+#: service/models/user/user.ts:579
 msgctxt "service/models/user"
 msgid "Register requires a User object"
 msgstr ""
 
-#: service/models/user/user.ts:526
+#: service/models/user/user.ts:585
 msgctxt "service/models/user"
 msgid "Register requires a password string"
 msgstr ""
 
-#: service/models/user/user.ts:868
+#: service/models/user/user.ts:937
 msgctxt "service/models/user"
 msgid "Switch company scope failed"
 msgstr ""
 
-#: service/models/user/user.ts:725
+#: service/models/user/user.ts:784
 msgctxt "service/models/user"
 msgid "SwitchCompanyScope requires an ActiveCompanyId"
 msgstr ""
 
-#: service/models/user/user.ts:706
+#: service/models/user/user.ts:765
 msgctxt "service/models/user"
 msgid "Token refresh failed"
 msgstr ""
 
-#: service/models/user/user.ts:734
+#: service/models/user/user.ts:793
+#: service/models/user/user.ts:952
 msgctxt "service/models/user"
 msgid "User is not logged in"
 msgstr ""
 
-#: service/models/user/user.ts:751
+#: service/models/user/user.ts:963
+msgctxt "service/models/user"
+msgid "User not found"
+msgstr ""
+
+#: service/models/user/user.ts:810
 msgctxt "service/models/user"
 msgid "activeCompanyId cannot be empty"
 msgstr ""
 
-#: service/models/user/user.ts:802
+#: service/models/user/user.ts:861
 msgctxt "service/models/user"
 msgid "activeCompanyId is outside the allowed company scope"
 msgstr ""
 
-#: service/models/user/user.ts:817
+#: service/models/user/user.ts:876
 msgctxt "service/models/user"
 msgid "activeCompanyId must be included in enabledCompanyIds"
 msgstr ""
 
-#: service/models/user/user.ts:786
+#: service/models/user/user.ts:845
 msgctxt "service/models/user"
 msgid "enabledCompanyIds contains an unauthorized company"
 msgstr ""
 
-#: service/models/user/user.ts:770
+#: service/models/user/user.ts:829
 msgctxt "service/models/user"
 msgid "enabledCompanyIds must be a string[] or omitted"
 msgstr ""
@@ -822,60 +904,60 @@ msgctxt "service/models/user/_field_rule_eval"
 msgid "Model does not exist"
 msgstr ""
 
-#: service/models/user/_lifecycle_auth.ts:270
-#: service/models/user/_lifecycle_auth.ts:360
+#: service/models/user/_lifecycle_auth.ts:264
+#: service/models/user/_lifecycle_auth.ts:354
 msgctxt "service/models/user/_lifecycle_auth"
 msgid "Account is disabled"
 msgstr ""
 
-#: service/models/user/_lifecycle_auth.ts:147
+#: service/models/user/_lifecycle_auth.ts:146
 msgctxt "service/models/user/_lifecycle_auth"
 msgid "Email is already registered"
 msgstr ""
 
-#: service/models/user/_lifecycle_auth.ts:346
-#: service/models/user/_lifecycle_auth.ts:380
+#: service/models/user/_lifecycle_auth.ts:340
+#: service/models/user/_lifecycle_auth.ts:374
 msgctxt "service/models/user/_lifecycle_auth"
 msgid "Invalid token payload: missing user id"
 msgstr ""
 
-#: service/models/user/_lifecycle_auth.ts:189
+#: service/models/user/_lifecycle_auth.ts:188
 msgctxt "service/models/user/_lifecycle_auth"
 msgid "Registration failed: Main Company (Code=MAIN) was not found"
 msgstr ""
 
-#: service/models/user/_lifecycle_auth.ts:214
+#: service/models/user/_lifecycle_auth.ts:208
 msgctxt "service/models/user/_lifecycle_auth"
 msgid "Registration failed: base.user role is not initialized; load auth bootstrap data first"
 msgstr ""
 
-#: service/models/user/_lifecycle_auth.ts:354
+#: service/models/user/_lifecycle_auth.ts:348
 msgctxt "service/models/user/_lifecycle_auth"
 msgid "User not found"
 msgstr ""
 
-#: service/models/user/_lifecycle_auth.ts:254
-#: service/models/user/_lifecycle_auth.ts:261
+#: service/models/user/_lifecycle_auth.ts:248
+#: service/models/user/_lifecycle_auth.ts:255
 msgctxt "service/models/user/_lifecycle_auth"
 msgid "User not found or password is incorrect"
 msgstr ""
 
-#: service/models/user/_lifecycle_auth.ts:163
+#: service/models/user/_lifecycle_auth.ts:162
 msgctxt "service/models/user/_lifecycle_auth"
 msgid "User registration failed: missing user id"
 msgstr ""
 
-#: service/models/user/_lifecycle_auth.ts:108
+#: service/models/user/_lifecycle_auth.ts:107
 msgctxt "service/models/user/_lifecycle_auth"
 msgid "Username and password are required"
 msgstr ""
 
-#: service/models/user/_lifecycle_auth.ts:135
+#: service/models/user/_lifecycle_auth.ts:134
 msgctxt "service/models/user/_lifecycle_auth"
 msgid "Username is already in use"
 msgstr ""
 
-#: service/models/user/_lifecycle_auth.ts:128
+#: service/models/user/_lifecycle_auth.ts:127
 msgctxt "service/models/user/_lifecycle_auth"
 msgid "Username is required"
 msgstr ""
@@ -937,27 +1019,27 @@ msgctxt "service/models/user/_lifecycle_complete_initial_setup"
 msgid "Username is too long"
 msgstr ""
 
-#: service/models/user/user.ts:635
+#: service/models/user/user.ts:694
 msgctxt "service/models/user@Login"
 msgid "Login failed: unable to create token pair"
 msgstr ""
 
-#: service/models/user/user.ts:565
+#: service/models/user/user.ts:624
 msgctxt "service/models/user@Register"
 msgid "User registration failed"
 msgstr ""
 
-#: web/components/layout/ChoyAppShell.vue:72
+#: web/components/layout/ChoyAppShell.vue:99
 msgctxt "web/components/layout/ChoyAppShell"
 msgid "Account"
 msgstr ""
 
-#: web/components/layout/ChoyAppShell.vue:37
+#: web/components/layout/ChoyAppShell.vue:40
 msgctxt "web/components/layout/ChoyAppShell"
 msgid "Log Out"
 msgstr ""
 
-#: web/components/layout/ChoyAppShell.vue:33
+#: web/components/layout/ChoyAppShell.vue:35
 msgctxt "web/components/layout/ChoyAppShell"
 msgid "Preferences"
 msgstr ""
@@ -1034,61 +1116,211 @@ msgctxt "web/components/layout/SwitchCompany"
 msgid "Workspace"
 msgstr ""
 
-#: web/components/preferences/PreferencesDialog.vue:20
-msgctxt "web/components/preferences/PreferencesDialog"
-msgid "Appearance"
-msgstr ""
-
-#: web/components/preferences/PreferencesDialog.vue:37
-#: web/components/preferences/PreferencesDialog.vue:9
-msgctxt "web/components/preferences/PreferencesDialog"
+#: web/dialogs/change-password/ChangePasswordDialog.vue:22
+msgctxt "web/dialogs/change-password/ChangePasswordDialog"
 msgid "Cancel"
 msgstr ""
 
-#: web/components/preferences/PreferencesDialog.vue:194
-#: web/components/preferences/PreferencesDialog.vue:207
-msgctxt "web/components/preferences/PreferencesDialog"
+#: web/dialogs/change-password/ChangePasswordDialog.vue:90
+msgctxt "web/dialogs/change-password/ChangePasswordDialog"
+msgid "Cannot change password: missing username"
+msgstr ""
+
+#: web/dialogs/change-password/ChangePasswordDialog.vue:25
+#: web/dialogs/change-password/ChangePasswordDialog.vue:5
+msgctxt "web/dialogs/change-password/ChangePasswordDialog"
+msgid "Change password"
+msgstr ""
+
+#: web/dialogs/change-password/ChangePasswordDialog.vue:17
+msgctxt "web/dialogs/change-password/ChangePasswordDialog"
+msgid "Confirm new password"
+msgstr ""
+
+#: web/dialogs/change-password/change_password.ts:14
+msgctxt "web/dialogs/change-password/ChangePasswordDialog"
+msgid "Confirm new password is required"
+msgstr ""
+
+#: web/dialogs/change-password/ChangePasswordDialog.vue:15
+msgctxt "web/dialogs/change-password/ChangePasswordDialog"
+msgid "Current password"
+msgstr ""
+
+#: web/dialogs/change-password/change_password.ts:12
+msgctxt "web/dialogs/change-password/ChangePasswordDialog"
+msgid "Current password is required"
+msgstr ""
+
+#: web/dialogs/change-password/ChangePasswordDialog.vue:110
+msgctxt "web/dialogs/change-password/ChangePasswordDialog"
+msgid "Failed to change password"
+msgstr ""
+
+#: web/dialogs/change-password/ChangePasswordDialog.vue:16
+msgctxt "web/dialogs/change-password/ChangePasswordDialog"
+msgid "New password"
+msgstr ""
+
+#: web/dialogs/change-password/change_password.ts:13
+msgctxt "web/dialogs/change-password/ChangePasswordDialog"
+msgid "New password is required"
+msgstr ""
+
+#: web/dialogs/change-password/change_password.ts:17
+msgctxt "web/dialogs/change-password/ChangePasswordDialog"
+msgid "New password must differ from the current password"
+msgstr ""
+
+#: web/dialogs/change-password/ChangePasswordDialog.vue:106
+msgctxt "web/dialogs/change-password/ChangePasswordDialog"
+msgid "Password changed"
+msgstr ""
+
+#: web/dialogs/change-password/change_password.ts:15
+msgctxt "web/dialogs/change-password/ChangePasswordDialog"
+msgid "Password must be at least 6 characters"
+msgstr ""
+
+#: web/dialogs/change-password/change_password.ts:16
+msgctxt "web/dialogs/change-password/ChangePasswordDialog"
+msgid "Passwords do not match"
+msgstr ""
+
+#: web/dialogs/change-password/ChangePasswordDialog.vue:7
+msgctxt "web/dialogs/change-password/ChangePasswordDialog"
+msgid "Update if compromised or rotating credentials."
+msgstr ""
+
+#: web/dialogs/preferences/PreferencesDialog.vue:41
+msgctxt "web/dialogs/preferences/PreferencesDialog"
+msgid "Appearance"
+msgstr ""
+
+#: web/dialogs/preferences/PreferencesDialog.vue:10
+#: web/dialogs/preferences/PreferencesDialog.vue:84
+msgctxt "web/dialogs/preferences/PreferencesDialog"
+msgid "Cancel"
+msgstr ""
+
+#: web/dialogs/preferences/PreferencesDialog.vue:204
+msgctxt "web/dialogs/preferences/PreferencesDialog"
 msgid "Cannot update preferences: missing user id"
 msgstr ""
 
-#: web/components/preferences/PreferencesDialog.vue:240
-msgctxt "web/components/preferences/PreferencesDialog"
+#: web/dialogs/preferences/PreferencesDialog.vue:74
+msgctxt "web/dialogs/preferences/PreferencesDialog"
+msgid "Change password"
+msgstr ""
+
+#: web/dialogs/preferences/PreferencesDialog.vue:46
+msgctxt "web/dialogs/preferences/PreferencesDialog"
+msgid "Density"
+msgstr ""
+
+#: web/dialogs/preferences/PreferencesDialog.vue:59
+msgctxt "web/dialogs/preferences/PreferencesDialog"
+msgid "Display timezone; empty uses browser timezone on first login."
+msgstr ""
+
+#: web/dialogs/preferences/PreferencesDialog.vue:264
+msgctxt "web/dialogs/preferences/PreferencesDialog"
 msgid "Failed to update preferences"
 msgstr ""
 
-#: web/components/preferences/PreferencesDialog.vue:23
-msgctxt "web/components/preferences/PreferencesDialog"
+#: web/dialogs/preferences/PreferencesDialog.vue:27
+msgctxt "web/dialogs/preferences/PreferencesDialog"
+msgid "First name"
+msgstr ""
+
+#: web/dialogs/preferences/PreferencesDialog.vue:37
+msgctxt "web/dialogs/preferences/PreferencesDialog"
+msgid "General"
+msgstr ""
+
+#: web/dialogs/preferences/PreferencesDialog.vue:53
+msgctxt "web/dialogs/preferences/PreferencesDialog"
+msgid "Language"
+msgstr ""
+
+#: web/dialogs/preferences/PreferencesDialog.vue:53
+msgctxt "web/dialogs/preferences/PreferencesDialog"
+msgid "Language for the UI and terminology."
+msgstr ""
+
+#: web/dialogs/preferences/PreferencesDialog.vue:28
+msgctxt "web/dialogs/preferences/PreferencesDialog"
+msgid "Last name"
+msgstr ""
+
+#: web/dialogs/preferences/PreferencesDialog.vue:51
+msgctxt "web/dialogs/preferences/PreferencesDialog"
 msgid "Locale"
 msgstr ""
 
-#: web/components/preferences/PreferencesDialog.vue:5
-msgctxt "web/components/preferences/PreferencesDialog"
+#: web/dialogs/preferences/PreferencesDialog.vue:72
+msgctxt "web/dialogs/preferences/PreferencesDialog"
+msgid "Password"
+msgstr ""
+
+#: web/dialogs/preferences/PreferencesDialog.vue:5
+msgctxt "web/dialogs/preferences/PreferencesDialog"
 msgid "Preferences"
 msgstr ""
 
-#: web/components/preferences/PreferencesDialog.vue:234
-msgctxt "web/components/preferences/PreferencesDialog"
+#: web/dialogs/preferences/PreferencesDialog.vue:258
+msgctxt "web/dialogs/preferences/PreferencesDialog"
 msgid "Preferences updated"
 msgstr ""
 
-#: web/components/preferences/PreferencesDialog.vue:31
-msgctxt "web/components/preferences/PreferencesDialog"
+#: web/dialogs/preferences/PreferencesDialog.vue:11
+#: web/dialogs/preferences/PreferencesDialog.vue:86
+msgctxt "web/dialogs/preferences/PreferencesDialog"
+msgid "Save"
+msgstr ""
+
+#: web/dialogs/preferences/PreferencesDialog.vue:69
+msgctxt "web/dialogs/preferences/PreferencesDialog"
+msgid "Security"
+msgstr ""
+
+#: web/dialogs/preferences/PreferencesDialog.vue:59
+msgctxt "web/dialogs/preferences/PreferencesDialog"
 msgid "Select timezone"
 msgstr ""
 
-#: web/components/preferences/PreferencesDialog.vue:33
-msgctxt "web/components/preferences/PreferencesDialog"
+#: web/dialogs/preferences/PreferencesDialog.vue:46
+msgctxt "web/dialogs/preferences/PreferencesDialog"
+msgid "Spacing density for lists and the app shell."
+msgstr ""
+
+#: web/dialogs/preferences/PreferencesDialog.vue:61
+msgctxt "web/dialogs/preferences/PreferencesDialog"
 msgid "Suggested from your browser"
 msgstr ""
 
-#: web/components/preferences/PreferencesDialog.vue:10
-#: web/components/preferences/PreferencesDialog.vue:38
-msgctxt "web/components/preferences/PreferencesDialog"
-msgid "Update preferences"
+#: web/dialogs/preferences/PreferencesDialog.vue:43
+msgctxt "web/dialogs/preferences/PreferencesDialog"
+msgid "Theme"
 msgstr ""
 
-#: web/components/preferences/PreferencesDialog.vue:27
-msgctxt "web/components/preferences/PreferencesDialog"
+#: web/dialogs/preferences/PreferencesDialog.vue:59
+msgctxt "web/dialogs/preferences/PreferencesDialog"
+msgid "Timezone"
+msgstr ""
+
+#: web/dialogs/preferences/PreferencesDialog.vue:43
+msgctxt "web/dialogs/preferences/PreferencesDialog"
+msgid "UI color theme (light, dark, or follow the system)."
+msgstr ""
+
+#: web/dialogs/preferences/PreferencesDialog.vue:72
+msgctxt "web/dialogs/preferences/PreferencesDialog"
+msgid "Update if compromised or rotating credentials."
+msgstr ""
+
+#: web/dialogs/preferences/PreferencesDialog.vue:55
+msgctxt "web/dialogs/preferences/PreferencesDialog"
 msgid "Using current session language"
 msgstr ""
 
@@ -1976,107 +2208,107 @@ msgctxt "web/route/routes"
 msgid "User List"
 msgstr ""
 
-#: web/stores/auth/actions.ts:586
+#: web/stores/auth/actions.ts:573
 msgctxt "web/stores/auth/actions"
 msgid "Cannot load user details: missing userId"
 msgstr ""
 
-#: web/stores/auth/actions.ts:306
+#: web/stores/auth/actions.ts:293
 msgctxt "web/stores/auth/actions"
 msgid "CompleteInitialSetup returned an invalid response"
 msgstr ""
 
-#: web/stores/auth/actions.ts:713
+#: web/stores/auth/actions.ts:709
 msgctxt "web/stores/auth/actions"
 msgid "Failed to initialize auth"
 msgstr ""
 
-#: web/stores/auth/actions.ts:281
+#: web/stores/auth/actions.ts:268
 msgctxt "web/stores/auth/actions"
 msgid "Failed to load initial setup options"
 msgstr ""
 
-#: web/stores/auth/actions.ts:249
+#: web/stores/auth/actions.ts:236
 msgctxt "web/stores/auth/actions"
 msgid "Failed to load initial setup state"
 msgstr ""
 
-#: web/stores/auth/actions.ts:173
+#: web/stores/auth/actions.ts:160
 msgctxt "web/stores/auth/actions"
 msgid "Failed to load permission state"
 msgstr ""
 
-#: web/stores/auth/actions.ts:647
+#: web/stores/auth/actions.ts:643
 msgctxt "web/stores/auth/actions"
 msgid "Failed to load user details"
 msgstr ""
 
-#: web/stores/auth/actions.ts:566
+#: web/stores/auth/actions.ts:553
 msgctxt "web/stores/auth/actions"
 msgid "Failed to refresh token"
 msgstr ""
 
-#: web/stores/auth/actions.ts:222
+#: web/stores/auth/actions.ts:209
 msgctxt "web/stores/auth/actions"
 msgid "Failed to switch company scope"
 msgstr ""
 
-#: web/stores/auth/actions.ts:273
+#: web/stores/auth/actions.ts:260
 msgctxt "web/stores/auth/actions"
 msgid "GetInitialSetupOptions returned an invalid response"
 msgstr ""
 
-#: web/stores/auth/actions.ts:317
+#: web/stores/auth/actions.ts:304
 msgctxt "web/stores/auth/actions"
 msgid "Initial setup failed"
 msgstr ""
 
-#: web/stores/auth/actions.ts:406
+#: web/stores/auth/actions.ts:393
 msgctxt "web/stores/auth/actions"
 msgid "Invalid login response"
 msgstr ""
 
-#: web/stores/auth/actions.ts:435
+#: web/stores/auth/actions.ts:422
 msgctxt "web/stores/auth/actions"
 msgid "Login failed"
 msgstr ""
 
-#: web/stores/auth/actions.ts:472
+#: web/stores/auth/actions.ts:459
 msgctxt "web/stores/auth/actions"
 msgid "Logout failed, but local state was cleared"
 msgstr ""
 
-#: web/stores/auth/actions.ts:496
+#: web/stores/auth/actions.ts:483
 msgctxt "web/stores/auth/actions"
 msgid "No refresh token is available"
 msgstr ""
 
-#: web/stores/auth/actions.ts:186
+#: web/stores/auth/actions.ts:173
 msgctxt "web/stores/auth/actions"
 msgid "Not authenticated; cannot switch company scope"
 msgstr ""
 
-#: web/stores/auth/actions.ts:524
+#: web/stores/auth/actions.ts:511
 msgctxt "web/stores/auth/actions"
 msgid "RefreshTokens returned an invalid response"
 msgstr ""
 
-#: web/stores/auth/actions.ts:352
+#: web/stores/auth/actions.ts:339
 msgctxt "web/stores/auth/actions"
 msgid "Register returned an invalid response"
 msgstr ""
 
-#: web/stores/auth/actions.ts:359
+#: web/stores/auth/actions.ts:346
 msgctxt "web/stores/auth/actions"
 msgid "Registration failed"
 msgstr ""
 
-#: web/stores/auth/actions.ts:461
+#: web/stores/auth/actions.ts:448
 msgctxt "web/stores/auth/actions"
 msgid "Server-side logout failed, but local state was cleared"
 msgstr ""
 
-#: web/stores/auth/actions.ts:197
+#: web/stores/auth/actions.ts:184
 msgctxt "web/stores/auth/actions"
 msgid "SwitchCompanyScope returned an invalid response"
 msgstr ""
@@ -2842,7 +3074,7 @@ msgctxt "web/views/TokenListView"
 msgid "View switcher"
 msgstr ""
 
-#: web/views/UserFormView.vue:59
+#: web/views/UserFormView.vue:65
 msgctxt "web/views/UserFormView"
 msgid "Accessible Companies"
 msgstr ""
@@ -2872,22 +3104,28 @@ msgctxt "web/views/UserFormView"
 msgid "Edit User"
 msgstr ""
 
+#: web/views/UserFormView.vue:68
+msgctxt "web/views/UserFormView"
+msgid "Enabled Companies"
+msgstr ""
+
 #: web/views/UserFormView.vue:47
 msgctxt "web/views/UserFormView"
 msgid "Required"
 msgstr ""
 
-#: web/views/UserFormView.vue:65
+#: web/views/UserFormView.vue:74
 msgctxt "web/views/UserFormView"
 msgid "Roles"
 msgstr ""
 
-#: web/views/UserFormView.vue:59
+#: web/views/UserFormView.vue:65
+#: web/views/UserFormView.vue:68
 msgctxt "web/views/UserFormView"
 msgid "Select Company"
 msgstr ""
 
-#: web/views/UserFormView.vue:66
+#: web/views/UserFormView.vue:75
 msgctxt "web/views/UserFormView"
 msgid "Select Role"
 msgstr ""
@@ -2897,12 +3135,12 @@ msgctxt "web/views/UserFormView"
 msgid "Select a time zone"
 msgstr ""
 
-#: web/views/UserFormView.vue:73
+#: web/views/UserFormView.vue:82
 msgctxt "web/views/UserFormView"
 msgid "Sessions"
 msgstr ""
 
-#: web/views/UserFormView.vue:82
+#: web/views/UserFormView.vue:91
 msgctxt "web/views/UserFormView"
 msgid "Tokens"
 msgstr ""

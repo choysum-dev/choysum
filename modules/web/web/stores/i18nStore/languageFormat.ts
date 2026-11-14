@@ -2,8 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /**
- * FE number/date formatting driven by Language format fields (+ optional Preferences.display overrides).
+ * FE number/date formatting driven by Language format fields.
  */
+
+import { SUPPORTED_LOCALES } from './locales';
+import { langToUiKey } from './lang';
 
 export type LanguageFormatOverlay = {
   DecimalSeparator?: string;
@@ -14,13 +17,56 @@ export type LanguageFormatOverlay = {
   FirstDayOfWeek?: number;
   CurrencySymbolPosition?: 'before' | 'after';
   CurrencySymbolSpacing?: boolean;
+  /** Language.PersonNameFormat template ({FirstName}/{LastName}). */
+  PersonNameFormat?: string;
 };
 
-export type DisplayFormatOverrides = {
-  dateFormat?: string;
-  timeFormat?: string;
-  currency?: string;
-};
+/**
+ * Build a format overlay from a GetActiveLanguages row (PascalCase or camelCase keys).
+ */
+export function overlayFromActiveLanguageRow(row: Record<string, unknown> | null | undefined): LanguageFormatOverlay {
+  const r = row || {};
+  const thousand = r.ThousandSeparator ?? r.thousandSeparator;
+  const decimal = r.DecimalSeparator ?? r.decimalSeparator;
+  const grouping = r.Grouping ?? r.grouping;
+  const dateFormat = r.DateFormat ?? r.dateFormat;
+  const timeFormat = r.TimeFormat ?? r.timeFormat;
+  const firstDay = r.FirstDayOfWeek ?? r.firstDayOfWeek;
+  const symbolPos = r.CurrencySymbolPosition ?? r.currencySymbolPosition;
+  const symbolSpacing = r.CurrencySymbolSpacing ?? r.currencySymbolSpacing;
+  const personNameFormat = r.PersonNameFormat ?? r.personNameFormat;
+  return {
+    DecimalSeparator: decimal != null ? String(decimal) : undefined,
+    ThousandSeparator: thousand != null ? String(thousand) : undefined,
+    Grouping: grouping != null ? String(grouping) : undefined,
+    DateFormat: dateFormat != null ? String(dateFormat) : undefined,
+    TimeFormat: timeFormat != null ? String(timeFormat) : undefined,
+    FirstDayOfWeek: firstDay != null ? Number(firstDay) : undefined,
+    CurrencySymbolPosition: symbolPos === 'after' ? 'after' : symbolPos === 'before' ? 'before' : undefined,
+    CurrencySymbolSpacing: symbolSpacing != null ? Boolean(symbolSpacing) : undefined,
+    PersonNameFormat: personNameFormat != null ? String(personNameFormat) : undefined,
+  };
+}
+
+/**
+ * Project GetActiveLanguages rows into format overlays and supported UI keys.
+ */
+export function collectActiveLanguageFormats(rows: unknown): {
+  formats: Record<string, LanguageFormatOverlay>;
+  uiKeys: string[];
+} {
+  const formats: Record<string, LanguageFormatOverlay> = {};
+  const uiKeys = (Array.isArray(rows) ? rows : [])
+    .map((row: Record<string, unknown>) => {
+      const posix = String(row?.Code ?? row?.code ?? '').trim();
+      if (posix) {
+        formats[posix] = overlayFromActiveLanguageRow(row);
+      }
+      return langToUiKey(posix);
+    })
+    .filter((code: string) => !!code && code in SUPPORTED_LOCALES);
+  return { formats, uiKeys };
+}
 
 export function parseGrouping(raw: unknown): number[] {
   if (Array.isArray(raw)) {
@@ -87,13 +133,12 @@ export function applyGrouping(integerDigits: string, grouping: number[], thousan
 }
 
 /**
- * Resolve effective number/date config: Preferences.display sparse overrides > Language > catalog fallback.
+ * Resolve effective number/date config: Language > catalog fallback.
  */
 export function resolveFormatConfig(
   catalogNumber?: { thousandsSeparator?: string; decimalSeparator?: string; grouping?: number[]; decimalDigits?: number } | null,
   catalogDate?: { shortDate?: string; longDate?: string; shortTime?: string; longTime?: string; firstDayOfWeek?: number } | null,
   language?: LanguageFormatOverlay | null,
-  display?: DisplayFormatOverrides | null
 ) {
   const decimalDigits = catalogNumber?.decimalDigits ?? 2;
   return {
@@ -104,13 +149,13 @@ export function resolveFormatConfig(
       decimalDigits,
     },
     dateTimeFormat: {
-      shortDate: display?.dateFormat || language?.DateFormat || catalogDate?.shortDate || 'YYYY-MM-DD',
+      shortDate: language?.DateFormat || catalogDate?.shortDate || 'YYYY-MM-DD',
       longDate: language?.DateFormat || catalogDate?.longDate || catalogDate?.shortDate || 'YYYY-MM-DD',
-      shortTime: display?.timeFormat || language?.TimeFormat || catalogDate?.shortTime || 'HH:mm',
+      shortTime: language?.TimeFormat || catalogDate?.shortTime || 'HH:mm',
       longTime: language?.TimeFormat || catalogDate?.longTime || catalogDate?.shortTime || 'HH:mm:ss',
       firstDayOfWeek: language?.FirstDayOfWeek ?? catalogDate?.firstDayOfWeek ?? 1,
     },
-    currencyCodeOverride: display?.currency,
+    currencyCodeOverride: undefined as string | undefined,
     currencySymbolPosition: language?.CurrencySymbolPosition,
     currencySymbolSpacing: language?.CurrencySymbolSpacing,
   };

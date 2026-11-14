@@ -14,18 +14,31 @@ import { uiKeyToLang, langToUiKey } from './lang';
 import { fetchWebTranslations, type TerminologyLoadResult } from './terminologyLoader';
 import { resolveLocaleRemountMode, softLocaleRemount } from './localeRemount';
 import { revalidateTerminologyCatalog } from './terminologyRevalidate';
+import { shouldNoopSetUiKey } from './setUiKeyGuard';
 import { createStoreByModel } from '@/web/web/stores/registry';
 import {
+  collectActiveLanguageFormats,
   resolveFormatConfig,
-  type DisplayFormatOverrides,
   type LanguageFormatOverlay,
 } from './languageFormat';
+
+type CreateStoreByModel = typeof createStoreByModel;
+let createStoreByModelImpl: CreateStoreByModel = createStoreByModel;
+
+/**
+ * Overrides createStoreByModel used by i18n RPC helpers (FE unit tests).
+ * Pass null to restore the default registry lookup.
+ */
+export function setI18nCreateStoreForTests(fn: CreateStoreByModel | null): void {
+  createStoreByModelImpl = fn ?? createStoreByModel;
+}
 
 // Re-export types for external consumers.
 export * from './types';
 export { SUPPORTED_LOCALES } from './locales';
 export { uiKeyToLang, langToUiKey } from './lang';
 export { fetchWebTranslations } from './terminologyLoader';
+export { shouldNoopSetUiKey } from './setUiKeyGuard';
 
 export { componentHintFromScope } from './componentHint';
 export { afterLocaleChange, resolveLocaleRemountMode, softLocaleRemount } from './localeRemount';
@@ -36,7 +49,6 @@ export {
   formatCurrencyFromConfig,
   parseGrouping,
   applyGrouping,
-  type DisplayFormatOverrides,
   type LanguageFormatOverlay,
 } from './languageFormat';
 
@@ -68,15 +80,16 @@ export const useI18nStore = defineStore(
 
     // Bumped by reload/revalidate so a slower older response cannot overwrite newer state.
     let terminologyCatalogGeneration = 0;
+    // Bumped by setUiKey so a slower older switch cannot overwrite the latest locale.
+    let setUiKeyGeneration = 0;
+    // Non-null while a setUiKey that will change localeCode is in flight.
+    let pendingUiKey: string | null = null;
 
     // Language switcher codes (Language.IsActive ∩ format catalog; fallback DEFAULT_ACTIVE_UI_KEYS).
     const activeUiKeys = ref<string[]>([...DEFAULT_ACTIVE_UI_KEYS]);
 
     // Format overlays keyed by POSIX Language.Code (from GetActiveLanguages).
     const languageFormatByCode = ref<Record<string, LanguageFormatOverlay>>({});
-
-    // Sparse Preferences.display overrides (dateFormat / timeFormat / currency).
-    const displayOverrides = ref<DisplayFormatOverrides | null>(null);
 
     // Current locale config, combining the code with its metadata.
     const currentLocale = computed(() => {
@@ -91,7 +104,6 @@ export const useI18nStore = defineStore(
         config.numberFormat,
         config.dateTimeFormat,
         language,
-        displayOverrides.value
       );
 
       return {
@@ -117,6 +129,7 @@ export const useI18nStore = defineStore(
 
     /**
      * Set the application locale (format UI + Gateway terminology).
+     * Same locale after initialize is a no-op (no translations / GetActiveLanguages refetch).
      */
     async function setUiKey(locale: string) {
       // Check whether the locale is supported for format metadata.
@@ -125,6 +138,20 @@ export const useI18nStore = defineStore(
         return false;
       }
 
+      // Skip only when already on this locale and no other switch is pending.
+      if (
+        shouldNoopSetUiKey({
+          locale,
+          currentLocaleCode: localeCode.value,
+          isInitialized: isInitialized.value,
+        }) &&
+        pendingUiKey == null
+      ) {
+        return true;
+      }
+
+      const generation = ++setUiKeyGeneration;
+      pendingUiKey = locale;
       isLoading.value = true;
 
       try {
@@ -144,6 +171,9 @@ export const useI18nStore = defineStore(
         const prevHash = terminologyHashByLang.value[lang] || '';
         try {
           const res = await fetchWebTranslations(lang, prevHash || undefined);
+          if (generation !== setUiKeyGeneration) {
+            return false;
+          }
           if (res.hash) {
             terminologyHashByLang.value = {
               ...terminologyHashByLang.value,
@@ -158,6 +188,9 @@ export const useI18nStore = defineStore(
             messages: res.unchanged ? null : res.messages,
           };
         } catch (error) {
+          if (generation !== setUiKeyGeneration) {
+            return false;
+          }
           console.warn('Failed to load terminology from Gateway; falling back to msgid', error);
           lastTerminologyLoad.value = {
             lang,
@@ -169,9 +202,6 @@ export const useI18nStore = defineStore(
           };
         }
 
-        // Update the active locale.
-        localeCode.value = locale as SupportedLocale;
-
         // Refresh Language format overlays when switching UI key (P2 runtime authority).
         if (isClient) {
           try {
@@ -180,6 +210,15 @@ export const useI18nStore = defineStore(
             // Best-effort; catalog fallbacks remain.
           }
         }
+
+        // Yield so a concurrent setUiKey can win before we mutate localeCode.
+        await Promise.resolve();
+        if (generation !== setUiKeyGeneration) {
+          return false;
+        }
+
+        // Update the active locale.
+        localeCode.value = locale as SupportedLocale;
 
         // Configure the dayjs locale.
         const dayjsLocaleCode = SUPPORTED_LOCALES[locale as SupportedLocale].dayjsLocaleCode;
@@ -195,7 +234,10 @@ export const useI18nStore = defineStore(
         console.error('Failed to set locale:', error);
         return false;
       } finally {
-        isLoading.value = false;
+        if (generation === setUiKeyGeneration) {
+          pendingUiKey = null;
+          isLoading.value = false;
+        }
       }
     }
 
@@ -247,24 +289,6 @@ export const useI18nStore = defineStore(
         },
         currencyCode
       );
-    }
-
-    /**
-     * Apply sparse Preferences.display overrides (or clear with null).
-     */
-    function setDisplayOverrides(overrides: DisplayFormatOverrides | null | undefined) {
-      if (!overrides || typeof overrides !== 'object') {
-        displayOverrides.value = null;
-        return;
-      }
-      displayOverrides.value = {
-        ...(overrides.dateFormat ? { dateFormat: String(overrides.dateFormat) } : {}),
-        ...(overrides.timeFormat ? { timeFormat: String(overrides.timeFormat) } : {}),
-        ...(overrides.currency ? { currency: String(overrides.currency) } : {}),
-      };
-      if (!displayOverrides.value.dateFormat && !displayOverrides.value.timeFormat && !displayOverrides.value.currency) {
-        displayOverrides.value = null;
-      }
     }
 
     /**
@@ -387,37 +411,11 @@ export const useI18nStore = defineStore(
      */
     async function loadActiveUiKeysFromServer() {
       try {
-        const languageStore = createStoreByModel('base.Language');
+        const languageStore = createStoreByModelImpl('base.Language');
         const rows = await (languageStore as any).GetActiveLanguages();
-        const formats: Record<string, LanguageFormatOverlay> = {};
-        const keys = (rows || [])
-          .map((row: any) => {
-            const posix = String(row?.Code || row?.code || '').trim();
-            if (posix) {
-              const thousand = row.ThousandSeparator ?? row.thousandSeparator;
-              const decimal = row.DecimalSeparator ?? row.decimalSeparator;
-              const grouping = row.Grouping ?? row.grouping;
-              const dateFormat = row.DateFormat ?? row.dateFormat;
-              const timeFormat = row.TimeFormat ?? row.timeFormat;
-              const firstDay = row.FirstDayOfWeek ?? row.firstDayOfWeek;
-              const symbolPos = row.CurrencySymbolPosition ?? row.currencySymbolPosition;
-              const symbolSpacing = row.CurrencySymbolSpacing ?? row.currencySymbolSpacing;
-              formats[posix] = {
-                DecimalSeparator: decimal != null ? String(decimal) : undefined,
-                ThousandSeparator: thousand != null ? String(thousand) : undefined,
-                Grouping: grouping != null ? String(grouping) : undefined,
-                DateFormat: dateFormat != null ? String(dateFormat) : undefined,
-                TimeFormat: timeFormat != null ? String(timeFormat) : undefined,
-                FirstDayOfWeek: firstDay != null ? Number(firstDay) : undefined,
-                CurrencySymbolPosition: symbolPos === 'after' ? 'after' : symbolPos === 'before' ? 'before' : undefined,
-                CurrencySymbolSpacing: symbolSpacing != null ? Boolean(symbolSpacing) : undefined,
-              };
-            }
-            return langToUiKey(posix);
-          })
-          .filter((code: string) => !!code && code in SUPPORTED_LOCALES);
+        const { formats, uiKeys } = collectActiveLanguageFormats(rows);
         languageFormatByCode.value = formats;
-        setActiveUiKeys(keys);
+        setActiveUiKeys(uiKeys);
       } catch (error) {
         console.warn('Failed to load active languages; using defaults', error);
         languageFormatByCode.value = {};
@@ -477,13 +475,13 @@ export const useI18nStore = defineStore(
       terminologyHashByLang,
       lastTerminologyLoad,
       activeUiKeys,
+      languageFormatByCode,
       // Locale support information.
       supportedLocales: Object.keys(SUPPORTED_LOCALES) as SupportedLocale[],
 
       // Locale management methods.
       setUiKey,
       setActiveUiKeys,
-      setDisplayOverrides,
       loadActiveUiKeysFromServer,
       reloadTerminology,
       revalidateTerminologyIfStale,
@@ -500,6 +498,12 @@ export const useI18nStore = defineStore(
 
       // Utility methods.
       getFirstDayOfWeek: () => currentLocale.value.dateTimeFormat?.firstDayOfWeek ?? 1,
+      /** PersonNameFormat for a POSIX Language.Code, or the current UI language when omitted. */
+      getPersonNameFormat: (posixCode?: string) => {
+        const code = String(posixCode || '').trim() || uiKeyToLang(currentLocale.value.code);
+        const raw = languageFormatByCode.value[code]?.PersonNameFormat;
+        return raw != null ? String(raw) : undefined;
+      },
     };
   },
   {

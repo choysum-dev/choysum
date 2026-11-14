@@ -1125,14 +1125,15 @@ test('loadUser: applies LanguageId via injected language store', async () => {
     Username: 'ada',
     Email: 'ada@example.com',
     LanguageId: 'lang_zh',
-    Preferences: { display: { dateFormat: 'YYYY-MM-DD' } },
+    Theme: 'dark',
+    Density: 'compact',
+    ActiveCompanyId: 'cmp_main',
+    EnabledCompanyIds: ['cmp_main'],
   });
   const langBrowse = makeFn();
   langBrowse.resolve({ Code: 'zh_CN' });
   const setUiKey = makeFn();
   setUiKey.resolve(undefined);
-  const setDisplayOverrides = makeFn();
-  setDisplayOverrides.returnValue(undefined);
 
   const actions = defineAuthActions(mockState as any, mockHelpers as any, {
     isClient: true,
@@ -1143,7 +1144,6 @@ test('loadUser: applies LanguageId via injected language store', async () => {
     importI18nStore: async () => ({
       useI18nStore: () => ({
         setUiKey: setUiKey.fn,
-        setDisplayOverrides: setDisplayOverrides.fn,
       }),
       langToUiKey: (lang: string) => `ui:${lang}`,
     }),
@@ -1155,15 +1155,20 @@ test('loadUser: applies LanguageId via injected language store', async () => {
     'Id',
     'Username',
     'Email',
+    'FirstName',
+    'LastName',
+    'FullName',
+    'Avatar',
     'LanguageId',
     'Timezone',
     'Theme',
-    'Preferences',
+    'Density',
+    'ActiveCompanyId',
+    'EnabledCompanyIds',
   ]);
   expect((mockState.currentUser.value as any)?.LanguageId).toBe('lang_zh');
   expect(langBrowse.calls.length).toBe(1);
   expect(setUiKey.calls[0].args[0]).toBe('ui:zh_CN');
-  expect(setDisplayOverrides.calls[0].args[0]).toEqual({ dateFormat: 'YYYY-MM-DD' });
 });
 
 test('loadUser: swallows i18n apply failures', async () => {
@@ -1183,7 +1188,6 @@ test('loadUser: swallows i18n apply failures', async () => {
     importI18nStore: async () => ({
       useI18nStore: () => ({
         setUiKey: async () => undefined,
-        setDisplayOverrides: () => undefined,
       }),
       langToUiKey: (lang: string) => lang,
     }),
@@ -1194,17 +1198,16 @@ test('loadUser: swallows i18n apply failures', async () => {
   expect((mockState.currentUser.value as any)?.Id).toBe('usr_1');
 });
 
-test('loadUser: still applies display overrides when the language store is missing', async () => {
+test('loadUser: still applies language when the language store is missing', async () => {
   const mockState = buildMockState();
   const mockHelpers = buildMockHelpers();
   mockState.identity.value = { userId: 'usr_1' } as any;
   mockState._recorders.Browse.resolve({
     Id: 'usr_1',
     LanguageId: 'lang_zh',
-    Preferences: { display: { dateFormat: 'YYYY-MM-DD' } },
   });
-  const setDisplayOverrides = makeFn();
-  setDisplayOverrides.returnValue(undefined);
+  const setUiKey = makeFn();
+  setUiKey.resolve(undefined);
 
   const actions = defineAuthActions(mockState as any, mockHelpers as any, {
     isClient: true,
@@ -1213,16 +1216,15 @@ test('loadUser: still applies display overrides when the language store is missi
     },
     importI18nStore: async () => ({
       useI18nStore: () => ({
-        setUiKey: async () => undefined,
-        setDisplayOverrides: setDisplayOverrides.fn,
+        setUiKey: setUiKey.fn,
       }),
-      langToUiKey: (lang: string) => lang,
+      langToUiKey: (lang: string) => (lang === 'zh_CN' ? 'zh-CN' : lang),
     }),
   });
 
   const ok = await actions.loadUser(true);
   expect(ok).toBe(true);
-  expect(setDisplayOverrides.calls[0].args[0]).toEqual({ dateFormat: 'YYYY-MM-DD' });
+  expect(setUiKey.calls.length).toBe(0);
 });
 
 test('loadUser: exercises default i18nStore and Language registry imports', async () => {
@@ -1233,7 +1235,8 @@ test('loadUser: exercises default i18nStore and Language registry imports', asyn
     Id: 'usr_1',
     Username: 'ada',
     LanguageId: 'lang_zh',
-    Preferences: { display: null },
+    Theme: 'light',
+    Density: 'comfortable',
   });
 
   // No createLanguageStore / importI18nStore — hit the production dynamic-import branches.
@@ -1347,7 +1350,6 @@ test('initAuth: hydrates currentUser from Browse after recovering persisted toke
     importI18nStore: async () => ({
       useI18nStore: () => ({
         setUiKey: async () => undefined,
-        setDisplayOverrides: () => undefined,
       }),
       langToUiKey: (lang: string) => lang,
     }),

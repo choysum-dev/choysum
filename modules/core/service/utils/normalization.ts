@@ -287,48 +287,6 @@ export function uniqScopeIds(ids: string[]): string[] {
 }
 
 /**
- * Normalize a dynamic preferences value into a plain JSON object.
- */
-export function normalizePreferences(value: unknown): Record<string, unknown> {
-  if (!value) return {};
-
-  if (typeof value === 'string') {
-    const s = value.trim();
-    if (!s) return {};
-    try {
-      const parsed = JSON.parse(s);
-      return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? (parsed as Record<string, unknown>) : {};
-    } catch {
-      return {};
-    }
-  }
-
-  if (typeof value === 'object') {
-    try {
-      const snapshot = JSON.parse(JSON.stringify(value));
-      if (snapshot && typeof snapshot === 'object' && !Array.isArray(snapshot)) return snapshot as Record<string, unknown>;
-    } catch {
-      // fallthrough
-    }
-    return value as Record<string, unknown>;
-  }
-
-  return {};
-}
-
-/**
- * Merge company scope preferences while preserving unrelated preference fields.
- */
-export function buildScopePreferences(basePrefs: Record<string, unknown>, active: string, enabled: string[]): Record<string, unknown> {
-  const base = basePrefs && typeof basePrefs === 'object' && !Array.isArray(basePrefs) ? basePrefs : {};
-  return {
-    ...base,
-    activeCompanyId: active,
-    enabledCompanyIds: enabled,
-  };
-}
-
-/**
  * Coerce a value to a BigInt with lenient defaults.
  * Returns 0n for empty/falsy values (suitable for reading existing DB values).
  */

@@ -2102,229 +2102,229 @@ msgctxt "web/views/ModuleCatalogListView"
 msgid "Wrapping up…"
 msgstr ""
 
-#: web/views/ModuleCatalogOpDialog.vue:40
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:40
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Also %s dependencies with no changes"
 msgstr ""
 
-#: web/views/ModuleCatalogOpDialog.vue:69
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:69
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Blockers"
 msgstr ""
 
-#: web/views/ModuleCatalogOpDialog.vue:118
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:118
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Cancel"
 msgstr ""
 
-#: web/views/ModuleCatalogOpDialog.vue:118
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:118
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Close"
 msgstr ""
 
-#: web/views/ModuleCatalogOpDialog.vue:64
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:64
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Completed"
 msgstr ""
 
-#: web/views/ModuleCatalogOpDialog.vue:121
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:121
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Confirm"
 msgstr ""
 
-#: web/views/ModuleCatalogOpDialog.vue:66
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:66
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Data written; page did not refresh"
 msgstr ""
 
-#: web/views/ModuleCatalogOpDialog.vue
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Reload:"
 msgstr ""
 
-#: web/views/ModuleCatalogOpDialog.vue
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Retry page refresh"
 msgstr ""
 
-#: web/views/ModuleCatalogOpDialog.vue
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Trigger Failed"
 msgstr ""
 
-#: web/views/ModuleCatalogOpDialog.vue
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Triggered"
 msgstr ""
 
-#: web/views/ModuleCatalogOpDialog.vue:124
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:124
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Done"
 msgstr ""
 
-#: web/views/ModuleCatalogOpDialog.vue:109
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:109
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Error:"
 msgstr ""
 
-#: web/views/ModuleCatalogOpDialog.vue:98
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:98
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Execution Status"
 msgstr ""
 
-#: web/views/ModuleCatalogOpDialog.vue:248
-#: web/views/ModuleCatalogOpDialog.vue:63
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:248
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:63
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Failed to get status"
 msgstr ""
 
-#: web/views/ModuleCatalogOpDialog.vue:59
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:59
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Failed to load plan"
 msgstr ""
 
-#: web/views/ModuleCatalogOpDialog.vue:142
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:142
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Install Module"
 msgstr ""
 
-#: web/views/ModuleCatalogOpDialog.vue:52
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:52
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Installed"
 msgstr ""
 
-#: web/views/ModuleCatalogOpDialog.vue:61
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:61
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Job is still running in the background; refresh later"
 msgstr ""
 
-#: web/views/ModuleCatalogOpDialog.vue:145
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:145
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Load Demo Data"
 msgstr ""
 
-#: web/views/ModuleCatalogOpDialog.vue:141
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:141
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Module Operation"
 msgstr ""
 
-#: web/views/ModuleCatalogOpDialog.vue:184
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:184
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Module catalog updated, %s modules"
 msgstr ""
 
-#: web/views/ModuleCatalogOpDialog.vue:178
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:178
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Module catalog updated, %s modules (%s failed)"
 msgstr ""
 
-#: web/views/ModuleCatalogOpDialog.vue:68
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:68
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Module list updated with warnings"
 msgstr ""
 
-#: web/views/ModuleCatalogOpDialog.vue:19
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:19
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Modules that will change"
 msgstr ""
 
-#: web/views/ModuleCatalogOpDialog.vue:32
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:32
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "No module changes required"
 msgstr ""
 
-#: web/views/ModuleCatalogOpDialog.vue:65
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:65
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Operation Failed"
 msgstr ""
 
-#: web/views/ModuleCatalogOpDialog.vue:67
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:67
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Operation Succeeded"
 msgstr ""
 
-#: web/views/ModuleCatalogOpDialog.vue:60
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:60
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Operation request failed"
 msgstr ""
 
-#: web/views/ModuleCatalogOpDialog.vue:89
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:89
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Planning for %s…"
 msgstr ""
 
-#: web/views/ModuleCatalogOpDialog.vue:15
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:15
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Resolve blockers before continuing"
 msgstr ""
 
-#: web/views/ModuleCatalogOpDialog.vue:101
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:101
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Result:"
 msgstr ""
 
-#: web/views/ModuleCatalogOpDialog.vue:59
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:59
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Risks"
 msgstr ""
 
-#: web/views/ModuleCatalogOpDialog.vue:89
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:89
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Select a module action to plan an operation."
 msgstr ""
 
-#: web/views/ModuleCatalogOpDialog.vue:62
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:62
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Service is restarting; status will retry automatically"
 msgstr ""
 
-#: web/views/ModuleCatalogOpDialog.vue:105
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:105
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Summary:"
 msgstr ""
 
-#: web/views/ModuleCatalogOpDialog.vue:144
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:144
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Uninstall Module"
 msgstr ""
 
-#: web/views/ModuleCatalogOpDialog.vue:143
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:143
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Upgrade Module"
 msgstr ""
 
-#: web/views/ModuleCatalogOpDialog.vue:84
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:84
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Use registry version"
 msgstr ""
 
-#: web/views/ModuleCatalogOpDialog.vue:83
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:83
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Using registry version"
 msgstr ""
 
-#: web/views/ModuleCatalogOpDialog.vue:97
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:97
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Will install"
 msgstr ""
 
-#: web/views/ModuleCatalogOpDialog.vue:101
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:101
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Will uninstall"
 msgstr ""
 
-#: web/views/ModuleCatalogOpDialog.vue:99
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:99
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "Will upgrade"
 msgstr ""
 
-#: web/views/ModuleCatalogOpDialog.vue:90
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:90
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "local"
 msgstr ""
 
-#: web/views/ModuleCatalogOpDialog.vue:89
-msgctxt "web/views/ModuleCatalogOpDrawer"
+#: web/dialogs/module-catalog-op/ModuleCatalogOpDialog.vue:89
+msgctxt "web/dialogs/module-catalog-op/ModuleCatalogOpDialog"
 msgid "registry"
 msgstr ""
 

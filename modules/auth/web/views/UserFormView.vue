@@ -53,7 +53,13 @@ SPDX-License-Identifier: Apache-2.0
             <ChoyManyToOneRefField :store="store" prop="CompanyId" @value-click="onCompanyValueClick" />
           </ChoyCol>
           <ChoyCol :span="6">
-            <ChoyJsonField :store="store" prop="Preferences" />
+            <ChoySelectionField :store="store" prop="Theme" />
+          </ChoyCol>
+          <ChoyCol :span="6">
+            <ChoySelectionField :store="store" prop="Density" />
+          </ChoyCol>
+          <ChoyCol :span="6">
+            <ChoyManyToOneRefField :store="store" prop="ActiveCompanyId" @value-click="onCompanyValueClick" />
           </ChoyCol>
         </ChoyGrid>
 
@@ -75,6 +81,17 @@ SPDX-License-Identifier: Apache-2.0
               :store="store"
               prop="CompanyIds"
               :label="_t('Accessible Companies')"
+              :search-list="CompanyListView"
+              :search-view-title="_t('Select Company')"
+              :tag-label-field="['Name', 'DisplayName', 'Code', 'Id']"
+              @tag-click="onCompanyTagClick as any"
+            />
+          </ChoyCol>
+          <ChoyCol :span="12">
+            <ChoyManyToManyRefTagsField
+              :store="store"
+              prop="EnabledCompanyIds"
+              :label="_t('Enabled Companies')"
               :search-list="CompanyListView"
               :search-view-title="_t('Select Company')"
               :tag-label-field="['Name', 'DisplayName', 'Code', 'Id']"
@@ -131,7 +148,7 @@ import type { TagClickPayload as RefTagClickPayload } from '@/web/web/components
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
-import { ChoyBooleanField, ChoyChatter, ChoyCol, ChoyDatetimeField, ChoyFormView, ChoyGrid, ChoyImageField, ChoyJsonField, ChoyManyToManyField, ChoyManyToOneField, ChoyOneToManyField, ChoySection, ChoySelectionField, ChoyTab, ChoyTabs, ChoyVarcharField, ChoyManyToOneRefField, ChoyManyToManyRefTagsField} from '@/web';
+import { ChoyBooleanField, ChoyChatter, ChoyCol, ChoyDatetimeField, ChoyFormView, ChoyGrid, ChoyImageField, ChoyManyToManyField, ChoyManyToOneField, ChoyOneToManyField, ChoySection, ChoySelectionField, ChoyTab, ChoyTabs, ChoyVarcharField, ChoyManyToOneRefField, ChoyManyToManyRefTagsField} from '@/web';
 import type { ChoyViewMode as ViewMode } from '@/web';
 import { createTranslate } from '@/web/web/i18n';
 import { useReactiveCollaborationCaps } from '@/web/web/platform/collaborationCaps';

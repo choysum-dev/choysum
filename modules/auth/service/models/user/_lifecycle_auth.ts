@@ -15,7 +15,6 @@ import Token from '../token';
 import UserRole from '../user_role';
 import { hashPassword, verifyPassword, withPermissionGraphBypass } from './_authz_shared';
 import { withRecordRuleAndFieldRuleBypass } from '@/core/service/api/authz_bypass';
-import { buildScopePreferences } from './_lifecycle_scope';
 import {
   PERSIST_BROWSER_TIMEZONE_KEY,
 } from './persist_browser_timezone_key';
@@ -171,12 +170,12 @@ export function ensureCreatedUserIdOrThrow(createdUserId: unknown): string {
  */
 export async function provisionRegisteredUserBaseline(
   userId: string,
-  rawPreferences: unknown,
   deps: {
     updateUserCompanyContext: (values: {
       CompanyId: string;
       CompanyIds: string[];
-      Preferences: Record<string, unknown>;
+      ActiveCompanyId: string;
+      EnabledCompanyIds: string[];
     }) => Promise<void>;
   }
 ): Promise<void> {
@@ -191,16 +190,11 @@ export async function provisionRegisteredUserBaseline(
     }
 
     await withContext({ activeCompanyId: mainCompanyId, enabledCompanyIds: [mainCompanyId] }, async () => {
-      const basePrefs: Record<string, unknown> =
-        rawPreferences && typeof rawPreferences === 'object' && !Array.isArray(rawPreferences)
-          ? (rawPreferences as Record<string, unknown>)
-          : {};
-      const nextPrefs = buildScopePreferences(basePrefs, mainCompanyId, [mainCompanyId]);
-
       await deps.updateUserCompanyContext({
         CompanyId: mainCompanyId,
         CompanyIds: [mainCompanyId],
-        Preferences: nextPrefs,
+        ActiveCompanyId: mainCompanyId,
+        EnabledCompanyIds: [mainCompanyId],
       });
 
       const baseRole = await Role.Search(['Code', '=', 'base.user'], {
@@ -291,7 +285,7 @@ export async function issueLoginTokensAndSession(
     rememberMe?: boolean;
   } = {}
 ): Promise<TokenPair> {
-  await user.load(['CompanyIds']);
+  await user.load(['CompanyIds', 'EnabledCompanyIds']);
   const metadata = await deps.extractUserMetadata(user);
   const tokens = await Token.createTokenPair(user.Id, metadata);
   if (!tokens || !tokens.accessToken) {
@@ -362,7 +356,7 @@ export async function refreshTokensWithLatestMetadata(
       .withGrpcCode(GrpcCode.PermissionDenied)
       .withMetadata({ userId: user.Id, username: user.Username });
   }
-  await user.load(['CompanyIds']);
+  await user.load(['CompanyIds', 'EnabledCompanyIds']);
   const metadata = await deps.extractUserMetadata(user);
 
   return await Token.refreshTokens(refreshToken, metadata);

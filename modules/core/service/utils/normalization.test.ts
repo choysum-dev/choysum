@@ -22,8 +22,6 @@ import {
   parseJsonStringArray,
   normalizeScopeId,
   uniqScopeIds,
-  normalizePreferences,
-  buildScopePreferences,
   asBigInt,
   toDateOnlyString,
   NormalizationError,
@@ -285,34 +283,6 @@ test('uniqScopeIds preserves first-seen order', () => {
   expect(uniqScopeIds([])).toEqual([]);
   expect(uniqScopeIds(['C1', 'C2', 'C1', '', '  C3  '])).toEqual(['C1', 'C2', 'C3']);
   expect(uniqScopeIds(['  ', null as any, undefined as any, 'valid'])).toEqual(['valid']);
-});
-
-test('normalizePreferences normalizes various shapes to plain object', () => {
-  expect(normalizePreferences(null)).toEqual({});
-  expect(normalizePreferences(undefined)).toEqual({});
-  expect(normalizePreferences('')).toEqual({});
-  expect(normalizePreferences('{"key":"val"}')).toEqual({ key: 'val' });
-  expect(normalizePreferences({ a: 1 })).toEqual({ a: 1 });
-  expect(normalizePreferences([1, 2])).toEqual([1, 2] as any); // arrays pass through
-  expect(normalizePreferences('   ')).toEqual({});
-  // non-JSON string returns empty
-  expect(normalizePreferences('not-json')).toEqual({});
-});
-
-test('buildScopePreferences merges active/enabled into base', () => {
-  expect(buildScopePreferences({}, 'C1', ['C1', 'C2'])).toEqual({
-    activeCompanyId: 'C1',
-    enabledCompanyIds: ['C1', 'C2'],
-  });
-  expect(buildScopePreferences({ theme: 'dark' }, 'C1', ['C1'])).toEqual({
-    theme: 'dark',
-    activeCompanyId: 'C1',
-    enabledCompanyIds: ['C1'],
-  });
-  expect(buildScopePreferences(null as any, 'X', [])).toEqual({
-    activeCompanyId: 'X',
-    enabledCompanyIds: [],
-  });
 });
 
 // ---------------------------------------------------------------------------
