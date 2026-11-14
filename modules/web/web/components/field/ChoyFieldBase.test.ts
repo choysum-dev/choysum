@@ -576,6 +576,40 @@ describe('ChoyFieldBase list-editing-row-id gate', () => {
     m.unmount();
   });
 
+  test('table overlay paints visible cell error under the control', async () => {
+    const { FIELD_ERROR_SPACE_KEY } = await import('@/web/web/composables/fieldErrorSpace');
+    const errMap = ref(new Map<string, string>([['Lines(id=row-1).Name', 'bad cell']]));
+    installUiStubs();
+    installDialogStubs();
+    installOvColumnStub({ Id: 'row-1' });
+    const binding = makeBinding({ string: 'Name' }, { fieldPrefix: 'Lines' });
+    (binding as any).prop = 'Lines.Name';
+    const m = mountApp(ChoyFieldBase as any, {
+      props: {
+        binding,
+        renderMode: 'table',
+        inlineErrorSpace: 'overlay',
+      },
+      provide: {
+        'field-errors': errMap,
+        [FIELD_ERROR_SPACE_KEY as any]: 'overlay',
+      },
+      slots: {
+        edit: () => h(EditStub),
+        display: () => h(DisplayStub),
+      },
+    });
+    await flushPromises();
+    const item = m.q('.choy-field-base__cell-item') as HTMLElement | null;
+    expect(String(item?.className || '')).toContain('relative');
+    const err = m.q('[data-slot="field-error"]') as HTMLElement | null;
+    expect(err?.textContent).toContain('bad cell');
+    expect(String(err?.className || '')).toContain('choy-field-base__error--overlay');
+    expect(String(err?.className || '')).toContain('absolute');
+    expect(m.q('.sr-only')).toBeFalsy();
+    m.unmount();
+  });
+
   test('evaluates client rules and registers with form validators', async () => {
     installUiStubs();
     installDialogStubs();

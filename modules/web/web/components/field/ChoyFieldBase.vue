@@ -241,11 +241,17 @@ SPDX-License-Identifier: Apache-2.0
     >
       <div
         class="choy-field-base__cell-item flex min-w-0 w-full items-center leading-none"
-        :class="[{ 'choy-field-base__cell-item--error': !!serverErrorForRow(row, $index) }, cellJustifyClass]"
+        :class="[
+          { 'choy-field-base__cell-item--error': !!serverErrorForRow(row, $index) },
+          cellJustifyClass,
+          inlineErrorSpace === 'overlay' ? 'relative' : undefined,
+        ]"
         :data-error="serverErrorForRow(row, $index) || undefined"
+        :title="inlineErrorSpace === 'overlay' ? undefined : serverErrorForRow(row, $index) || undefined"
       >
+        <!-- collapse/reserve: keep message out of the row; expose via title + sr-only. -->
         <span
-          v-if="serverErrorForRow(row, $index)"
+          v-if="serverErrorForRow(row, $index) && inlineErrorSpace !== 'overlay'"
           :id="`${inputIdForRow(row)}-error`"
           class="sr-only"
         >{{ serverErrorForRow(row, $index) }}</span>
@@ -283,6 +289,14 @@ SPDX-License-Identifier: Apache-2.0
             :onchangeRunning="onchangeHandlers.running?.value"
           />
         </template>
+        <!-- overlay: paint under the cell so ListView row height stays stable. -->
+        <FieldError
+          v-if="serverErrorForRow(row, $index) && inlineErrorSpace === 'overlay'"
+          :id="`${inputIdForRow(row)}-error`"
+          class="choy-field-base__error--overlay absolute left-0 top-full z-10 mt-0.5 w-full whitespace-normal"
+        >
+          {{ serverErrorForRow(row, $index) }}
+        </FieldError>
       </div>
     </div>
   </ChoyTableColumn>
@@ -434,7 +448,7 @@ import type { TermReference } from '@/core/service/i18n';
 import ChoyTableColumn from '@/web/web/components/table/ChoyTableColumn.vue';
 import type { UseField, FieldEnv } from '@/web/web/composables/useField';
 import type { ComputedRef, WritableComputedRef, Ref } from 'vue';
-import { computed, inject, onMounted, onBeforeUnmount, ref, watch, getCurrentInstance } from 'vue';
+import { computed, inject, nextTick, onMounted, onBeforeUnmount, ref, watch, getCurrentInstance } from 'vue';
 import { useProvidedOnchange, getOnchangeController } from '@/web/web/composables/useOnchange';
 import {
   FIELD_CLIENT_VALIDATORS_KEY,
@@ -866,7 +880,7 @@ const inputIdForm = computed(() => {
 /** Stable id on FieldLabel for aria-labelledby when `for` is omitted. */
 const formLabelId = computed(() => `${inputIdForm.value}-label`);
 const inputIdForRow = (row: T) => `${inputIdForm.value}-${guessRowKey(row)}`;
-/** Table edit: wire control to the cell sr-only error node when present. */
+/** Table edit: wire control to the cell error node (sr-only or overlay) when present. */
 function describedByForRow(row: T, rowIndex?: number): string | undefined {
   if (!serverErrorForRow(row, rowIndex)) return undefined;
   return `${inputIdForRow(row)}-error`;
@@ -1045,6 +1059,15 @@ const formDescribedBy = computed(() => {
   return parts.length ? parts.join(' ') : undefined;
 });
 const formInvalid = computed(() => !!displayError.value);
+// Keep absolute overlay errors reachable when they extend past the scrollport.
+watch(
+  () => (showErrorOverlay.value ? formErrorId.value : ''),
+  async errorId => {
+    if (!errorId || typeof document === 'undefined') return;
+    await nextTick();
+    document.getElementById(errorId)?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  },
+);
 const formChromeClass = computed(() =>
   cn('choy-field-base w-full p-0', props.formItemProps?.class),
 );
