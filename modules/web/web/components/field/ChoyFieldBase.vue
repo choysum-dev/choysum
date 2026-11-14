@@ -1066,7 +1066,13 @@ watch(
   async errorId => {
     if (!errorId || typeof document === 'undefined') return;
     await nextTick();
-    document.getElementById(errorId)?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
+    const el = document.getElementById(errorId);
+    if (!el || typeof el.scrollIntoView !== 'function') return;
+    // Skip when already fully visible in the viewport (avoids yanking on re-reveal).
+    const rect = el.getBoundingClientRect();
+    const vh = window.innerHeight || document.documentElement.clientHeight;
+    if (rect.bottom <= vh && rect.top >= 0) return;
+    el.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   },
 );
 const formChromeClass = computed(() =>
