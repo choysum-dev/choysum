@@ -325,9 +325,20 @@ test('navigation timeout settles orphaned nav ticket', async () => {
   afterEachReset();
   beginNavigationLoading();
   expect(getLoadingRegistryDebugState().navTicketActive).toBe(true);
-  // Shorten path: settle manually covers timeout callback body via settleNavigationIfActive.
-  settleNavigationIfActive();
+  await new Promise<void>(resolve => setTimeout(resolve, loadingTiming.NAV_TIMEOUT_MS + 30));
   expect(getLoadingRegistryDebugState().navTicketActive).toBe(false);
+  expect(getLoadingRegistryDebugState().barCount).toBe(0);
+});
+
+test('slow hint hides immediately when min-show already elapsed', async () => {
+  afterEachReset();
+  loadingRegistryOnRpcStart('rpc-min-elapsed');
+  flushLoadingDisplayForTests();
+  expect(useLoadingSlowHintVisible().value).toBe(true);
+  // Backdate shown-at so remain === 0 on the next removeUserBusy.
+  await new Promise<void>(resolve => setTimeout(resolve, loadingTiming.SLOW_HINT_MIN_SHOW_MS + 30));
+  loadingRegistryOnRpcFinish('rpc-min-elapsed');
+  expect(useLoadingSlowHintVisible().value).toBe(false);
 });
 
 test('finish unknown RPC span is a no-op', () => {

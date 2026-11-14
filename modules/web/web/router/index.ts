@@ -58,15 +58,8 @@ export function createAppRouter(base = '/', composer?: ComposerLike): Router {
 
   router.beforeEach(async to => {
     beginNavigationLoading();
-
-    try {
-      titleRoute.value = to;
-      return true;
-    } catch (error) {
-      console.error('Navigation error:', error);
-      settleNavigationIfActive();
-      return to.path === '/error/500' ? true : '/error/500';
-    }
+    titleRoute.value = to;
+    return true;
   });
 
   // Guest pages never open surface: settle the nav bar shortly if still idle.

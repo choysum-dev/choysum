@@ -98,7 +98,7 @@ watch(
     clearTick();
     if (!show) {
       shownAtMs = 0;
-      stageIndex.value = 0;
+      syncStage();
       return;
     }
     shownAtMs = Date.now();

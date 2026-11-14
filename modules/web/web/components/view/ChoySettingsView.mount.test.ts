@@ -1,10 +1,11 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { defineComponent, h, inject, nextTick } from 'vue';
+import { defineComponent, h, inject, nextTick, ref } from 'vue';
 import { createPinia } from 'pinia';
 import * as VueRouter from 'vue-router';
 import { flushPromises, mountApp, stubSfc, restoreSfc } from '@/web/web/__tests__/mountApp';
+import { resetLoadingRegistryForTests } from '@/core/web/client/loadingRegistry';
 import { createLocalFormStore } from '@/web/web/stores/localFormStore';
 import { useField } from '@/web/web/composables/useField';
 import ChoySettingsView from './ChoySettingsView.vue';
@@ -239,6 +240,60 @@ test('ChoySettingsView draft bag binds form-root without localStore', async () =
   await nextTick();
   expect(draft.DemoFlag).toBe(true);
   mounted.unmount();
+});
+
+test('ChoySettingsView form-root falls back to controller draft without bag', async () => {
+  const seen = ref('');
+  const Probe = defineComponent({
+    name: 'ControllerDraftProbe',
+    setup() {
+      const root = inject<{
+        draft: Record<string, unknown> | null;
+        getField: (path: string) => unknown;
+        setField: (path: string, value: unknown) => void;
+      }>('form-root')!;
+      return () =>
+        h('button', {
+          type: 'button',
+          'data-testid': 'set-via-root',
+          onClick: () => {
+            void root.draft;
+            root.setField('Note', 'hi');
+            seen.value = String(root.getField('Note') ?? '');
+          },
+        }, () => seen.value);
+    },
+  });
+  const mounted = mountSettings(
+    { dirty: false, pageTitle: 'NoBag' },
+    { slots: { default: () => h(Probe) } },
+  );
+  await flushPromises();
+  (mounted.q('[data-testid=set-via-root]') as HTMLElement).click();
+  await nextTick();
+  expect(seen.value).toBe('hi');
+  mounted.unmount();
+});
+
+test('ChoySettingsView save emits when dirty and unlocked', async () => {
+  resetLoadingRegistryForTests();
+  const saves: number[] = [];
+  const mounted = mountSettings(
+    { dirty: false, pageTitle: 'Settings' },
+    { on: { onSave: () => saves.push(1) } },
+  );
+  await flushPromises();
+  mounted.props.dirty = true;
+  await nextTick();
+  await flushPromises();
+  const save = mounted.q('[data-testid=settings-save]') as HTMLButtonElement | null;
+  expect(save).not.toBeNull();
+  save!.disabled = false;
+  save!.click();
+  await flushPromises();
+  expect(saves.length).toBe(1);
+  mounted.unmount();
+  resetLoadingRegistryForTests();
 });
 
 test('ChoySettingsView custom labels, hidden header, and draft key prune', async () => {
