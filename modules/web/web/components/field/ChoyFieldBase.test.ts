@@ -283,6 +283,36 @@ describe('ChoyFieldBase label and help', () => {
     );
     expect(edit.q('[data-slot="field-label"]')?.textContent).toContain('*');
     edit.unmount();
+
+    const optionalDisplay = mountBase(
+      {
+        binding: makeBinding({ string: 'Nickname', notNull: false }, { isEditMode: false }),
+        renderMode: 'form',
+      },
+      {
+        slots: {
+          edit: () => h('input'),
+          display: () => h('span', { class: 'optional-display' }, 'nick'),
+        },
+      },
+    );
+    expect(optionalDisplay.q('[data-slot="field-label"]')?.textContent).not.toContain('*');
+    optionalDisplay.unmount();
+
+    const optionalEdit = mountBase(
+      {
+        binding: makeBinding({ string: 'Nickname', notNull: false }, { isEditMode: true }),
+        renderMode: 'form',
+      },
+      {
+        slots: {
+          edit: () => h('input', { class: 'optional-edit' }),
+          display: () => h('span'),
+        },
+      },
+    );
+    expect(optionalEdit.q('[data-slot="field-label"]')?.textContent).not.toContain('*');
+    optionalEdit.unmount();
   });
 
   test('lets explicit label override metadata', () => {
@@ -857,6 +887,9 @@ describe('ChoyFieldBase auto renderMode from fieldPresentation', () => {
     expect(err?.textContent).toContain('need value');
     expect(String(err?.className || '')).toContain('choy-field-base__error--overlay');
     expect(String(err?.className || '')).toContain('absolute');
+    const body = m.q('.choy-field-base__body') as HTMLElement | null;
+    expect(String(body?.className || '')).toContain('relative');
+    expect(body?.querySelector('[data-slot="field-error"]')).toBe(err);
     m.unmount();
   });
 
@@ -904,15 +937,30 @@ describe('ChoyFieldBase auto renderMode from fieldPresentation', () => {
   });
 
   test('prop reserve overrides inject overlay', async () => {
+    const { FIELD_CLIENT_VALIDATORS_KEY } = await import('@/web/web/composables/fieldClientValidation');
     const { FIELD_ERROR_SPACE_KEY } = await import('@/web/web/composables/fieldErrorSpace');
+    const validators = new Map<string, () => Promise<string>>();
+    const binding = makeBinding({ string: 'Name' });
+    binding.__value.value = '';
     const m = mountBase(
       {
-        binding: makeBinding({ string: 'Name' }),
+        binding,
         renderMode: 'form',
         inlineErrorSpace: 'reserve',
+        rules: [
+          {
+            validator: (_r: unknown, v: unknown, cb: (e?: Error) => void) => {
+              if (!v) cb(new Error('need reserve'));
+              else cb();
+            },
+          },
+        ],
       },
       {
-        provide: { [FIELD_ERROR_SPACE_KEY as any]: 'overlay' },
+        provide: {
+          [FIELD_CLIENT_VALIDATORS_KEY as any]: validators,
+          [FIELD_ERROR_SPACE_KEY as any]: 'overlay',
+        },
         slots: {
           edit: () => h('input', { class: 'override-probe' }),
           display: () => h('span'),
@@ -923,6 +971,14 @@ describe('ChoyFieldBase auto renderMode from fieldPresentation', () => {
     const root = m.q('[data-anchor="choy.field-base"]') as HTMLElement | null;
     expect(root?.getAttribute('data-inline-error-space')).toBe('reserve');
     expect(m.q('.choy-field-base__error-reserve')).toBeTruthy();
+    const validate = [...validators.values()][0];
+    expect(await validate()).toBe('need reserve');
+    await flushPromises();
+    const err = m.q('[data-slot="field-error"]') as HTMLElement | null;
+    expect(err?.textContent).toContain('need reserve');
+    expect(String(err?.className || '')).not.toContain('choy-field-base__error--overlay');
+    expect(String(err?.className || '')).not.toContain('absolute');
+    expect(m.q('.choy-field-base__error-reserve')).toBeFalsy();
     m.unmount();
   });
 

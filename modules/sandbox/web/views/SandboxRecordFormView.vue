@@ -36,7 +36,7 @@ SPDX-License-Identifier: Apache-2.0
 
       <!-- divided for title trailing rule; mt-0 so tip mb-8 is not doubled. -->
       <ChoySection :title="_t('Identity')" divided class="mt-0">
-        <ChoyGrid :cols="12" gap="none" class="gap-x-6 gap-y-2">
+        <ChoyGrid :cols="12" gap="none" class="gap-x-6 gap-y-5">
           <ChoyCol :span="3">
             <ChoyCharField :store="store" prop="NameChar" :rules="requiredRules" />
           </ChoyCol>
@@ -62,7 +62,7 @@ SPDX-License-Identifier: Apache-2.0
       </ChoySection>
 
       <ChoySection :title="_t('Numbers')" divided>
-        <ChoyGrid :cols="12" gap="none" class="gap-x-6 gap-y-2">
+        <ChoyGrid :cols="12" gap="none" class="gap-x-6 gap-y-5">
           <ChoyCol :span="3">
             <ChoyIntField :store="store" prop="IntValue" />
           </ChoyCol>
@@ -90,7 +90,7 @@ SPDX-License-Identifier: Apache-2.0
       </ChoySection>
 
       <ChoySection :title="_t('Temporal')" divided>
-        <ChoyGrid :cols="12" gap="none" class="gap-x-6 gap-y-2">
+        <ChoyGrid :cols="12" gap="none" class="gap-x-6 gap-y-5">
           <ChoyCol :span="4">
             <ChoyDateField :store="store" prop="DateValue" />
           </ChoyCol>
@@ -104,7 +104,7 @@ SPDX-License-Identifier: Apache-2.0
       </ChoySection>
 
       <ChoySection :title="_t('Rich Content')" divided>
-        <ChoyGrid :cols="12" gap="none" class="gap-x-6 gap-y-2">
+        <ChoyGrid :cols="12" gap="none" class="gap-x-6 gap-y-5">
           <ChoyCol :span="12">
             <ChoyHtmlField :store="store" prop="BodyHtml" orientation="vertical" />
           </ChoyCol>
@@ -124,7 +124,7 @@ SPDX-License-Identifier: Apache-2.0
       </ChoySection>
 
       <ChoySection :title="_t('Depth')" divided>
-        <ChoyGrid :cols="12" gap="none" class="gap-x-6 gap-y-2">
+        <ChoyGrid :cols="12" gap="none" class="gap-x-6 gap-y-5">
           <ChoyCol :span="6">
             <ChoyVarcharField :store="store" prop="CompanyNote" />
           </ChoyCol>
@@ -151,7 +151,7 @@ SPDX-License-Identifier: Apache-2.0
       </ChoySection>
 
       <ChoySection :title="_t('Relations')" divided>
-        <ChoyGrid :cols="12" gap="none" class="gap-x-6 gap-y-2">
+        <ChoyGrid :cols="12" gap="none" class="gap-x-6 gap-y-5">
           <ChoyCol :span="6">
             <ChoyManyToOneField
               :store="store"

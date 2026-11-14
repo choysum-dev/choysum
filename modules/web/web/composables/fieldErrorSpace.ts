@@ -9,6 +9,12 @@
 
 import type { InjectionKey } from 'vue';
 
+/**
+ * Vertical space policy for inline field errors under the control:
+ * - `collapse`: no reserved slot; error appears in flow when present
+ * - `reserve`: keep a fixed empty slot so layout does not jump
+ * - `overlay`: absolute under the control; does not grow row height
+ */
 export type ChoyInlineErrorSpace = 'collapse' | 'reserve' | 'overlay';
 
 export const FIELD_ERROR_SPACE_KEY: InjectionKey<ChoyInlineErrorSpace> = Symbol(
