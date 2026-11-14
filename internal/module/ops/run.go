@@ -147,21 +147,19 @@ func (o *Ops) executeOperation(ctx context.Context, row *modmeta.ModuleOperation
 		}
 		// Soft-fail only origin snapshot sync (network). Local installed projection and
 		// MaterializeCatalog read the DB only and must hard-fail after lifecycle success.
+		// Do not re-acquire module_management here: Materialize was never leased on this
+		// path, and test/runtime scopes often lack RequiresNew for lease.New.
 		projectMaterializeStamp := func(matNames []string) error {
-			// Hold module_management while projecting so a concurrent lifecycle
-			// cannot commit between reads and writes (lease released after runLifecycle).
-			return o.withModuleManagementLease(ctx, func(leaseCtx context.Context) error {
-				if err := o.ProjectCatalogInstalled(leaseCtx); err != nil {
-					return fmt.Errorf("ops: project catalog installed after %s: %w", row.Action, err)
-				}
-				if err := o.MaterializeCatalog(leaseCtx, matNames); err != nil {
-					return fmt.Errorf("ops: materialize catalog after %s: %w", row.Action, err)
-				}
-				if err := o.stampCatalogLifecycleAt(leaseCtx, stampNames, row.Action); err != nil {
-					return fmt.Errorf("ops: stamp catalog lifecycle after %s: %w", row.Action, err)
-				}
-				return nil
-			})
+			if err := o.ProjectCatalogInstalled(ctx); err != nil {
+				return fmt.Errorf("ops: project catalog installed after %s: %w", row.Action, err)
+			}
+			if err := o.MaterializeCatalog(ctx, matNames); err != nil {
+				return fmt.Errorf("ops: materialize catalog after %s: %w", row.Action, err)
+			}
+			if err := o.stampCatalogLifecycleAt(ctx, stampNames, row.Action); err != nil {
+				return fmt.Errorf("ops: stamp catalog lifecycle after %s: %w", row.Action, err)
+			}
+			return nil
 		}
 		if row.Action == ActionInstall && moduleNamesInclude(names, "meta") {
 			// First install that lands meta: full local+registry snapshot sync so Catalog UI
