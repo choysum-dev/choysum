@@ -70,7 +70,20 @@ test('ChoyLoadingSlowHint stage switch covers every literal msgid branch', async
     await flushPromises();
     expect(String(exposed.getPlainMessageForTests?.() || '')).toContain(snippets[i]!);
   }
+  // Restart the tick (setStageIndexForTests clears it), then jump past the final stage.
   loadingRegistryOnRpcFinish('slow-hint-stages');
+  flushLoadingDisplayForTests();
+  await flushPromises();
+  loadingRegistryOnRpcStart('slow-hint-stages-final');
+  flushLoadingDisplayForTests();
+  await flushPromises();
+  const realNow = Date.now;
+  const base = realNow();
+  Date.now = () => base + 4000_000;
+  await new Promise<void>(resolve => setTimeout(resolve, 1100));
+  Date.now = realNow;
+  expect(String(exposed.getPlainMessageForTests?.() || '')).toContain('pressing F5');
+  loadingRegistryOnRpcFinish('slow-hint-stages-final');
   flushLoadingDisplayForTests();
   wrapper.unmount();
   resetLoadingRegistryForTests();

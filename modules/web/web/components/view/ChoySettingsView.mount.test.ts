@@ -291,7 +291,7 @@ test('ChoyFormView view-select ignores failed navigation when settling leave', a
         meta: {},
       },
     });
-    router.beforeEach(to => {
+    router.beforeEach((to: { path: string }) => {
       if (to.path === '/fail-nav/abort') return false;
       return true;
     });
@@ -316,8 +316,10 @@ test('ChoyFormView view-select ignores failed navigation when settling leave', a
       on: {
         onViewSelect: (v: string) => {
           selected.push(v);
-          // Failed nav must not finish leaving; fallback still settles.
-          void router.push('/fail-nav/abort');
+          // Failed nav must not finish leaving; a later success settles via afterEach.
+          void router.push('/fail-nav/abort').finally(() => {
+            void router.push('/fail-nav/ok');
+          });
         },
       },
     });
@@ -327,8 +329,7 @@ test('ChoyFormView view-select ignores failed navigation when settling leave', a
     btn!.click();
     await flushPromises();
     expect(selected).toEqual(['list']);
-    // Wait past the 1s leave fallback so the test does not leak timers.
-    await new Promise<void>(resolve => setTimeout(resolve, 1100));
+    await new Promise<void>(resolve => setTimeout(resolve, 50));
     mounted.unmount();
   } finally {
     restoreSfc(ChoyViewSwitcher as any);
