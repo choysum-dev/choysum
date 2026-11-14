@@ -258,6 +258,73 @@ test('ChoySettingsView view-select no-ops when the active view is re-selected', 
   }
 });
 
+test('ChoyFormView view-select emits immediately when router has no afterEach', async () => {
+  const { default: ChoyFormView } = await import('./ChoyFormView.vue');
+  stubSfc(
+    ChoyViewSwitcher as any,
+    defineComponent({
+      name: 'ChoyViewSwitcherNoAfterStub',
+      emits: ['select'],
+      setup(_, { emit }) {
+        return () =>
+          h('button', {
+            type: 'button',
+            'data-testid': 'stub-view-no-after',
+            onClick: () => emit('select', 'list'),
+          });
+      },
+    }),
+  );
+  const selected: string[] = [];
+  try {
+    const store = createLocalFormStore({
+      fields: [{ name: 'Note', label: 'Note', type: 'char' }],
+      initialValues: { Note: '' },
+    });
+    const { router } = createFeStubRouter({
+      route: {
+        name: 'NoAfterSettings',
+        path: '/no-after/settings',
+        fullPath: '/no-after/settings',
+        params: {},
+        query: {},
+        meta: {},
+      },
+    });
+    // Cover the no-afterEach early emit path (no 1s leave hold).
+    delete (router as { afterEach?: unknown }).afterEach;
+    const mounted = mountApp(ChoyFormView as any, {
+      props: {
+        presentation: 'settings',
+        store,
+        dirty: false,
+        showHeader: true,
+        showActions: true,
+        showMessages: false,
+        resolveRecordIdFromRoute: false,
+        registerActionTarget: false,
+        viewMode: 'edit',
+        activeView: 'settings',
+        viewSwitcherOptions: [
+          { value: 'settings', label: 'Settings View' },
+          { value: 'list', label: 'Parameters View' },
+        ],
+      },
+      plugins: [createPinia(), router],
+      on: { onViewSelect: (v: string) => selected.push(v) },
+    });
+    await flushPromises();
+    const btn = mounted.q('[data-testid=stub-view-no-after]') as HTMLButtonElement | null;
+    expect(btn).not.toBeNull();
+    btn!.click();
+    await flushPromises();
+    expect(selected).toEqual(['list']);
+    mounted.unmount();
+  } finally {
+    restoreSfc(ChoyViewSwitcher as any);
+  }
+});
+
 test('ChoySettingsView draft bag binds form-root without localStore', async () => {
   const draft = { DemoFlag: false };
   const Probe = defineComponent({
