@@ -215,6 +215,49 @@ test('ChoySettingsView view-select confirms dirty then emits after navigation se
   }
 });
 
+test('ChoySettingsView view-select no-ops when the active view is re-selected', async () => {
+  const { useConfirmChoyStore } = await import('@/web/web/composables/confirmChoyAction');
+  stubSfc(
+    ChoyViewSwitcher as any,
+    defineComponent({
+      name: 'ChoyViewSwitcherSameStub',
+      emits: ['select'],
+      setup(_, { emit }) {
+        return () =>
+          h('button', {
+            type: 'button',
+            'data-testid': 'stub-view-same',
+            onClick: () => emit('select', 'settings'),
+          });
+      },
+    }),
+  );
+  const selected: string[] = [];
+  try {
+    const mounted = mountSettings(
+      {
+        dirty: true,
+        viewSwitcherOptions: [
+          { value: 'settings', label: 'Settings View' },
+          { value: 'list', label: 'Parameters View' },
+        ],
+        activeView: 'settings',
+      },
+      { on: { onViewSelect: (v: string) => selected.push(v) } },
+    );
+    await flushPromises();
+    const btn = mounted.q('[data-testid=stub-view-same]') as HTMLButtonElement | null;
+    expect(btn).not.toBeNull();
+    btn!.click();
+    await flushPromises();
+    expect(useConfirmChoyStore().open).toBe(false);
+    expect(selected).toEqual([]);
+    mounted.unmount();
+  } finally {
+    restoreSfc(ChoyViewSwitcher as any);
+  }
+});
+
 test('ChoySettingsView draft bag binds form-root without localStore', async () => {
   const draft = { DemoFlag: false };
   const Probe = defineComponent({
