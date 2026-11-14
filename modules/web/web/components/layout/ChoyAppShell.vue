@@ -372,6 +372,17 @@ html.dark .choy-shell[data-shell-mode='app'],
   padding-inline: var(--choy-layout-content-padding) !important;
 }
 
+/*
+ * Collapsed icon rail: drop the start gutter so chrome is one column.
+ * Otherwise the 0.5rem seam next to a 3rem rail shifts perceived icon center.
+ * data-collapsible=icon is only set while the kit peer is collapsed.
+ */
+.choy-shell[data-shell-mode='app']
+  [data-slot='sidebar'][data-collapsible='icon']
+  ~ [data-slot='sidebar-inset'] {
+  margin-inline-start: 0 !important;
+}
+
 .choy-shell[data-shell-mode='app'] [data-testid='choy-shell-canvas'] {
   background-color: transparent !important;
 }

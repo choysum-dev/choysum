@@ -49,7 +49,8 @@ SPDX-License-Identifier: Apache-2.0
               :has-error="!!error"
               @clear="error = ''"
             />
-            <ChoyFieldGroup class="login-fields" :style="{ gap: '0' }">
+            <!-- Reserve owns inter-field rhythm; gap-0 avoids stacking group gap on error slots. -->
+            <ChoyFieldGroup class="login-fields !gap-0">
               <div class="login-username">
                 <ChoyVarcharField
                   :store="formStore"
@@ -64,6 +65,7 @@ SPDX-License-Identifier: Apache-2.0
                   :nullable="false"
                   :show-word-limit="false"
                   show-inline-error
+                  inline-error-space="reserve"
                   :rules="usernameRules"
                 />
               </div>
@@ -82,6 +84,7 @@ SPDX-License-Identifier: Apache-2.0
                   :nullable="false"
                   :show-word-limit="false"
                   show-inline-error
+                  inline-error-space="reserve"
                   :rules="passwordRules"
                 />
               </div>
@@ -94,10 +97,9 @@ SPDX-License-Identifier: Apache-2.0
                 :checkbox-label="_t('Remember me')"
                 render-mode="inline"
                 buffer-strategy="live"
-                show-inline-error
               />
 
-              <ChoyField>
+              <ChoyField class="mt-3">
                 <ChoyButton type="submit" class="submit-button w-full" :disabled="loading">
                   {{ loading ? _t('Log In') + '…' : _t('Log In') }}
                 </ChoyButton>

@@ -26,6 +26,7 @@ function makeBinding(
     translate?: boolean;
     companyDependent?: boolean;
     isReadonly?: boolean;
+    notNull?: boolean;
     type?: string;
   },
   opts?: {
@@ -250,6 +251,68 @@ describe('ChoyFieldBase label and help', () => {
     );
     expect(m.q('[data-slot="field-label"]')?.getAttribute('for')).toBeFalsy();
     m.unmount();
+  });
+
+  test('shows required asterisk on form label in display and edit', () => {
+    const display = mountBase(
+      {
+        binding: makeBinding({ string: 'NameChar', notNull: true }, { isEditMode: false }),
+        renderMode: 'form',
+      },
+      {
+        slots: {
+          edit: () => h('input'),
+          display: () => h('span', { class: 'display-probe' }, 'Virt Lines'),
+        },
+      },
+    );
+    expect(display.q('[data-slot="field-label"]')?.textContent).toContain('*');
+    display.unmount();
+
+    const edit = mountBase(
+      {
+        binding: makeBinding({ string: 'NameChar', notNull: true }, { isEditMode: true }),
+        renderMode: 'form',
+      },
+      {
+        slots: {
+          edit: () => h('input', { class: 'edit-probe' }),
+          display: () => h('span'),
+        },
+      },
+    );
+    expect(edit.q('[data-slot="field-label"]')?.textContent).toContain('*');
+    edit.unmount();
+
+    const optionalDisplay = mountBase(
+      {
+        binding: makeBinding({ string: 'Nickname', notNull: false }, { isEditMode: false }),
+        renderMode: 'form',
+      },
+      {
+        slots: {
+          edit: () => h('input'),
+          display: () => h('span', { class: 'optional-display' }, 'nick'),
+        },
+      },
+    );
+    expect(optionalDisplay.q('[data-slot="field-label"]')?.textContent).not.toContain('*');
+    optionalDisplay.unmount();
+
+    const optionalEdit = mountBase(
+      {
+        binding: makeBinding({ string: 'Nickname', notNull: false }, { isEditMode: true }),
+        renderMode: 'form',
+      },
+      {
+        slots: {
+          edit: () => h('input', { class: 'optional-edit' }),
+          display: () => h('span'),
+        },
+      },
+    );
+    expect(optionalEdit.q('[data-slot="field-label"]')?.textContent).not.toContain('*');
+    optionalEdit.unmount();
   });
 
   test('lets explicit label override metadata', () => {
@@ -510,6 +573,42 @@ describe('ChoyFieldBase list-editing-row-id gate', () => {
   test('skips list-editing-row-id gate for nested relation tables with fieldPrefix', () => {
     const m = mountTableCell({ Id: 'child-1' }, 'other-row', 'Lines');
     expect(m.q('.edit-stub')).toBeTruthy();
+    m.unmount();
+  });
+
+  test('table overlay paints visible cell error under the control', async () => {
+    const { FIELD_ERROR_SPACE_KEY } = await import('@/web/web/composables/fieldErrorSpace');
+    const errMap = ref(new Map<string, string>([['Lines(id=row-1).Name', 'bad cell']]));
+    installUiStubs();
+    installDialogStubs();
+    installOvColumnStub({ Id: 'row-1' });
+    const binding = makeBinding({ string: 'Name' }, { fieldPrefix: 'Lines' });
+    (binding as any).prop = 'Lines.Name';
+    const m = mountApp(ChoyFieldBase as any, {
+      props: {
+        binding,
+        renderMode: 'table',
+        inlineErrorSpace: 'overlay',
+      },
+      provide: {
+        'field-errors': errMap,
+        [FIELD_ERROR_SPACE_KEY as any]: 'overlay',
+      },
+      slots: {
+        edit: () => h(EditStub),
+        display: () => h(DisplayStub),
+      },
+    });
+    await flushPromises();
+    const item = m.q('.choy-field-base__cell-item') as HTMLElement | null;
+    expect(String(item?.className || '')).toContain('relative');
+    expect(item?.getAttribute('title')).toBe('bad cell');
+    expect(item?.getAttribute('data-error')).toBe('bad cell');
+    const err = m.q('[data-slot="field-error"]') as HTMLElement | null;
+    expect(err?.textContent).toContain('bad cell');
+    expect(String(err?.className || '')).toContain('choy-field-base__error--overlay');
+    expect(String(err?.className || '')).toContain('absolute');
+    expect(m.q('.sr-only')).toBeFalsy();
     m.unmount();
   });
 
@@ -813,13 +912,196 @@ describe('ChoyFieldBase auto renderMode from fieldPresentation', () => {
     await flushPromises();
     expect(m.q('.choy-field-base__error-reserve')).toBeFalsy();
     expect(m.q('[data-slot="field-error"]')).toBeFalsy();
+    const contentBefore = m.q('[data-slot="field-content"]') as HTMLElement | null;
+    expect(String(contentBefore?.className || '')).not.toContain('pb-5');
     const validate = [...validators.values()][0];
     expect(await validate()).toBe('need value');
     await flushPromises();
+    const contentAfter = m.q('[data-slot="field-content"]') as HTMLElement | null;
+    expect(String(contentAfter?.className || '')).not.toContain('pb-5');
     const err = m.q('[data-slot="field-error"]') as HTMLElement | null;
     expect(err?.textContent).toContain('need value');
     expect(String(err?.className || '')).toContain('choy-field-base__error--overlay');
     expect(String(err?.className || '')).toContain('absolute');
+    const body = m.q('.choy-field-base__body') as HTMLElement | null;
+    expect(String(body?.className || '')).toContain('relative');
+    expect(body?.querySelector('[data-slot="field-error"]')).toBe(err);
+    m.unmount();
+  });
+
+  test('overlay error uses nearest scrollIntoView so nested scrollports are honored', async () => {
+    const { FIELD_CLIENT_VALIDATORS_KEY } = await import('@/web/web/composables/fieldClientValidation');
+    const validators = new Map<string, () => Promise<string>>();
+    const binding = makeBinding({ string: 'Name' });
+    binding.__value.value = '';
+    const proto = Element.prototype as any;
+    const prevScroll = proto.scrollIntoView;
+    const scrollCalls: Array<{ block?: string; inline?: string }> = [];
+    proto.scrollIntoView = function scrollIntoView(arg?: ScrollIntoViewOptions | boolean) {
+      if (arg && typeof arg === 'object') scrollCalls.push({ block: arg.block, inline: arg.inline });
+      else scrollCalls.push({});
+    };
+    try {
+      const m = mountBase(
+        {
+          binding,
+          renderMode: 'form',
+          showInlineError: true,
+          inlineErrorSpace: 'overlay',
+          rules: [
+            {
+              validator: (_r: unknown, v: unknown, cb: (e?: Error) => void) => {
+                if (!v) cb(new Error('scroll me'));
+                else cb();
+              },
+            },
+          ],
+        },
+        {
+          provide: { [FIELD_CLIENT_VALIDATORS_KEY as any]: validators },
+          slots: {
+            edit: () => h('input', { class: 'overlay-scroll-probe' }),
+            display: () => h('span'),
+          },
+        },
+      );
+      await flushPromises();
+      const validate = [...validators.values()][0];
+      expect(await validate()).toBe('scroll me');
+      await flushPromises();
+      await nextTick();
+      expect(scrollCalls.length).toBeGreaterThan(0);
+      expect(scrollCalls[scrollCalls.length - 1]).toEqual({ block: 'nearest', inline: 'nearest' });
+      m.unmount();
+    } finally {
+      proto.scrollIntoView = prevScroll;
+    }
+  });
+
+  test('form mode inherits inject overlay without showInlineError', async () => {
+    const { FIELD_CLIENT_VALIDATORS_KEY } = await import('@/web/web/composables/fieldClientValidation');
+    const { FIELD_ERROR_SPACE_KEY } = await import('@/web/web/composables/fieldErrorSpace');
+    const validators = new Map<string, () => Promise<string>>();
+    const binding = makeBinding({ string: 'Code' });
+    binding.__value.value = '';
+    const m = mountBase(
+      {
+        binding,
+        renderMode: 'form',
+        rules: [
+          {
+            validator: (_r: unknown, v: unknown, cb: (e?: Error) => void) => {
+              if (!v) cb(new Error('Required'));
+              else cb();
+            },
+          },
+        ],
+      },
+      {
+        provide: {
+          [FIELD_CLIENT_VALIDATORS_KEY as any]: validators,
+          [FIELD_ERROR_SPACE_KEY as any]: 'overlay',
+        },
+        slots: {
+          edit: () => h('input', { class: 'inject-overlay-probe' }),
+          display: () => h('span'),
+        },
+      },
+    );
+    await flushPromises();
+    const root = m.q('[data-anchor="choy.field-base"]') as HTMLElement | null;
+    expect(root?.getAttribute('data-inline-error-space')).toBe('overlay');
+    expect(m.q('.choy-field-base__error-reserve')).toBeFalsy();
+    const validate = [...validators.values()][0];
+    expect(await validate()).toBe('Required');
+    await flushPromises();
+    const err = m.q('[data-slot="field-error"]') as HTMLElement | null;
+    expect(err?.textContent).toContain('Required');
+    expect(String(err?.className || '')).toContain('choy-field-base__error--overlay');
+    m.unmount();
+  });
+
+  test('prop reserve overrides inject overlay', async () => {
+    const { FIELD_CLIENT_VALIDATORS_KEY } = await import('@/web/web/composables/fieldClientValidation');
+    const { FIELD_ERROR_SPACE_KEY } = await import('@/web/web/composables/fieldErrorSpace');
+    const validators = new Map<string, () => Promise<string>>();
+    const binding = makeBinding({ string: 'Name' });
+    binding.__value.value = '';
+    const m = mountBase(
+      {
+        binding,
+        renderMode: 'form',
+        inlineErrorSpace: 'reserve',
+        rules: [
+          {
+            validator: (_r: unknown, v: unknown, cb: (e?: Error) => void) => {
+              if (!v) cb(new Error('need reserve'));
+              else cb();
+            },
+          },
+        ],
+      },
+      {
+        provide: {
+          [FIELD_CLIENT_VALIDATORS_KEY as any]: validators,
+          [FIELD_ERROR_SPACE_KEY as any]: 'overlay',
+        },
+        slots: {
+          edit: () => h('input', { class: 'override-probe' }),
+          display: () => h('span'),
+        },
+      },
+    );
+    await flushPromises();
+    const root = m.q('[data-anchor="choy.field-base"]') as HTMLElement | null;
+    expect(root?.getAttribute('data-inline-error-space')).toBe('reserve');
+    expect(m.q('.choy-field-base__error-reserve')).toBeTruthy();
+    const validate = [...validators.values()][0];
+    expect(await validate()).toBe('need reserve');
+    await flushPromises();
+    const err = m.q('[data-slot="field-error"]') as HTMLElement | null;
+    expect(err?.textContent).toContain('need reserve');
+    expect(String(err?.className || '')).not.toContain('choy-field-base__error--overlay');
+    expect(String(err?.className || '')).not.toContain('absolute');
+    expect(m.q('.choy-field-base__error-reserve')).toBeFalsy();
+    m.unmount();
+  });
+
+  test('inline mode without showInlineError still hides field errors', async () => {
+    const { FIELD_CLIENT_VALIDATORS_KEY } = await import('@/web/web/composables/fieldClientValidation');
+    const { FIELD_ERROR_SPACE_KEY } = await import('@/web/web/composables/fieldErrorSpace');
+    const validators = new Map<string, () => Promise<string>>();
+    const binding = makeBinding({ string: 'Name' }, { fieldPresentation: 'none' });
+    binding.__value.value = '';
+    const m = mountBase(
+      {
+        binding,
+        renderMode: 'inline',
+        rules: [
+          {
+            validator: (_r: unknown, v: unknown, cb: (e?: Error) => void) => {
+              if (!v) cb(new Error('need value'));
+              else cb();
+            },
+          },
+        ],
+      },
+      {
+        provide: {
+          [FIELD_CLIENT_VALIDATORS_KEY as any]: validators,
+          [FIELD_ERROR_SPACE_KEY as any]: 'overlay',
+        },
+        slots: {
+          edit: () => h('input', { class: 'inline-silent-probe' }),
+          display: () => h('span'),
+        },
+      },
+    );
+    await flushPromises();
+    const validate = [...validators.values()][0];
+    expect(await validate()).toBe('need value');
+    await flushPromises();
+    expect(m.q('[data-slot="field-error"]')).toBeFalsy();
     m.unmount();
   });
 

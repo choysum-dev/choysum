@@ -86,6 +86,7 @@ import { useHostPageTitleInView } from '@/web/web/composables/usePageContext';
 import { getDraftField, setDraftField } from '@/web/web/composables/listRowEdit';
 import { confirmChoyAction, resolveConfirmChoy } from '@/web/web/composables/confirmChoyAction';
 import { shouldSkipFormDirtyLeavePrompt } from '@/web/web/composables/formDirtyLeaveGuard';
+import { FIELD_ERROR_SPACE_KEY } from '@/web/web/composables/fieldErrorSpace';
 import type { LocalFormStore } from '@/web/web/stores/localFormStore';
 import ChoyButton from '../layout/ChoyButton.vue';
 import ChoyViewActionBar from './ChoyViewActionBar.vue';
@@ -196,6 +197,7 @@ const formRoot = {
 };
 
 provide('form-root', formRoot);
+provide(FIELD_ERROR_SPACE_KEY, 'overlay');
 
 let leaveConfirmPending = false;
 let leaving = false;
