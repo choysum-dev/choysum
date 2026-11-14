@@ -541,16 +541,34 @@ test('Setup.vue: Enter on an open organization Selection trigger does not advanc
   wrapper.unmount();
 });
 
+test('Setup.vue: Enter on an open combobox search input does not advance', async () => {
+  const { wrapper } = await mountSetup();
+  await fillAdmin(wrapper);
+  submitForm(wrapper);
+  await afterSubmit();
+  expect(activeStep(wrapper)).toBe('organization');
+  const form = wrapper.find('form').element as HTMLFormElement;
+  const search = document.createElement('input');
+  search.setAttribute('role', 'combobox');
+  search.setAttribute('aria-expanded', 'true');
+  form.appendChild(search);
+  const enter = pressEnter(search);
+  await afterSubmit();
+  expect(enter.defaultPrevented).toBe(false);
+  expect(activeStep(wrapper)).toBe('organization');
+  search.remove();
+  wrapper.unmount();
+});
+
 test('Setup.vue: after Next, Enter advances without clicking a field first', async () => {
   const { wrapper } = await mountSetup();
   await fillAdmin(wrapper);
   submitForm(wrapper);
   await afterSubmit();
   expect(activeStep(wrapper)).toBe('organization');
-  // Autofocus lands on the org name input; Enter must work without an extra click.
-  const active = document.activeElement as HTMLElement | null;
-  expect(!!active).toBe(true);
-  pressEnter(active!);
+  const orgInput = fieldInput(wrapper, '.setup-org-name').element as HTMLElement;
+  expect(document.activeElement).toBe(orgInput);
+  pressEnter(orgInput);
   await afterSubmit();
   expect(activeStep(wrapper)).toBe('review');
   wrapper.unmount();
@@ -564,6 +582,20 @@ test('Setup.vue: Enter with focus on body still advances when admin is filled', 
   pressEnter(document.body);
   await afterSubmit();
   expect(activeStep(wrapper)).toBe('organization');
+  wrapper.unmount();
+});
+
+test('Setup.vue: Enter outside the setup panel does not submit the wizard', async () => {
+  const { wrapper, requests } = await mountSetup();
+  await advanceToReview(wrapper);
+  const outsider = document.createElement('div');
+  outsider.setAttribute('data-testid', 'outside-setup');
+  document.body.appendChild(outsider);
+  pressEnter(outsider);
+  await afterSubmit();
+  expect(requests).toEqual([]);
+  expect(activeStep(wrapper)).toBe('review');
+  outsider.remove();
   wrapper.unmount();
 });
 

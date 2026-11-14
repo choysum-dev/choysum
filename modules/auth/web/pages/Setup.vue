@@ -37,7 +37,7 @@ SPDX-License-Identifier: Apache-2.0
               {{ _t('Retry') }}
             </ChoyButton>
           </div>
-          <div v-else class="setup-form" @keydown.enter.capture="onEnterKey">
+          <div v-else class="setup-form">
             <ChoyFormView
               ref="formRef"
               :store="formStore"
@@ -318,12 +318,26 @@ function resolvePrimaryControl(): HTMLElement | null {
   return username || password;
 }
 
+/** Invalidates in-flight focus retries on step change / unmount. */
+let focusGen = 0;
+let focusTimer: ReturnType<typeof setTimeout> | null = null;
+
+function clearFocusRetry() {
+  if (focusTimer != null) {
+    clearTimeout(focusTimer);
+    focusTimer = null;
+  }
+}
+
 /**
  * Focus the step's primary control. Retries while FormView fields finish mounting
  * after the options gate flips (a single nextTick is often too early).
  */
 function focusPrimaryControlForStep(attempt = 0) {
+  const gen = attempt === 0 ? ++focusGen : focusGen;
+  if (attempt === 0) clearFocusRetry();
   void nextTick().then(() => {
+    if (gen !== focusGen) return;
     if (optionsLoading.value || optionsError.value) return;
     const el = resolvePrimaryControl();
     if (el && typeof el.focus === 'function') {
@@ -331,7 +345,7 @@ function focusPrimaryControlForStep(attempt = 0) {
       return;
     }
     if (attempt < 12) {
-      window.setTimeout(() => focusPrimaryControlForStep(attempt + 1), 32);
+      focusTimer = setTimeout(() => focusPrimaryControlForStep(attempt + 1), 32);
     }
   });
 }
@@ -342,9 +356,9 @@ watch(optionsLoading, (loading, wasLoading) => {
 });
 
 /**
- * Enter advances / completes the wizard. Capture on the form plus a window
- * listener cover the common case where focus never left `body` after async
- * options load. Skips IME, modified keys, open comboboxes, and chrome buttons.
+ * Enter advances / completes the wizard. A single body capture listener covers
+ * field controls and the post-load case where focus never left `body`. Skips
+ * IME, modified keys, open comboboxes, chrome buttons, and Enter outside setup.
  */
 function onEnterKey(e: KeyboardEvent) {
   if (e.defaultPrevented) return;
@@ -356,6 +370,11 @@ function onEnterKey(e: KeyboardEvent) {
   if (!target) return;
 
   const tag = String(target.tagName || '').toLowerCase();
+  const inSetup = !!target.closest('[data-testid="setup-panel"]');
+  const onPageChrome = tag === 'body' || tag === 'html';
+  // Ignore Enter from dialogs / menus outside the setup panel.
+  if (!inSetup && !onPageChrome) return;
+
   if (tag === 'textarea') return;
   if (target.closest('[data-testid="choy-selection-clear"]')) return;
 
@@ -364,6 +383,7 @@ function onEnterKey(e: KeyboardEvent) {
     !!trigger &&
     (trigger.getAttribute('aria-expanded') === 'true' || trigger.getAttribute('data-state') === 'open');
   if (triggerOpen) return;
+  // Portaled Selection search input (role=combobox) while the list is open.
   if (tag === 'input' && target.getAttribute('role') === 'combobox' && target.getAttribute('aria-expanded') === 'true') {
     return;
   }
@@ -389,12 +409,12 @@ function onDocumentEnterKey(e: KeyboardEvent) {
 
 onMounted(() => {
   void loadOptions();
-  // Body capture covers the common post-load case where focus never left `body`
-  // (the form-local listener never sees those events).
   document.body.addEventListener('keydown', onDocumentEnterKey, true);
 });
 
 onUnmounted(() => {
+  focusGen++;
+  clearFocusRetry();
   document.body.removeEventListener('keydown', onDocumentEnterKey, true);
 });
 
