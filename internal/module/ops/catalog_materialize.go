@@ -21,8 +21,23 @@ import (
 )
 
 type catalogDemoState struct {
-	DemoLoaded       bool
-	InstalledVersion string
+	DemoLoaded                bool
+	InstalledVersion          string
+	LastInstalledOrUpgradedAt *time.Time
+}
+
+// newerTime returns the later non-nil instant (UTC preference does not matter for ordering).
+func newerTime(a, b *time.Time) *time.Time {
+	if a == nil {
+		return b
+	}
+	if b == nil {
+		return a
+	}
+	if b.After(*a) {
+		return b
+	}
+	return a
 }
 
 type catalogAggregate struct {
@@ -241,6 +256,11 @@ func projectInstalledColumnUpdates(row *modmeta.ModuleCatalog, mod *pkgmeta.Modu
 			createdAt = &t
 		}
 		lastAt = life.lastInstalledOrUpgradedAt(createdAt)
+		// Keep a newer stamp from stampCatalogLifecycleAt (e.g. dependency
+		// upgraded under another module's operation ModuleName).
+		if row != nil {
+			lastAt = newerTime(lastAt, row.LastInstalledOrUpgradedAt)
+		}
 		priorVer := ""
 		if row != nil && row.InstalledVersion.Valid {
 			priorVer = strings.TrimSpace(row.InstalledVersion.String)
@@ -448,7 +468,7 @@ func (o *Ops) MaterializeCatalog(ctx context.Context, moduleNames []string) erro
 	{
 		var prior []modmeta.ModuleCatalog
 		pq := sess.WithContext(ctx).Model(&modmeta.ModuleCatalog{}).
-			Select("module_name", "demo_loaded", "installed_version")
+			Select("module_name", "demo_loaded", "installed_version", "last_installed_or_upgraded_at")
 		if filtered {
 			pq = pq.Where("module_name IN ?", names)
 		}
@@ -456,9 +476,15 @@ func (o *Ops) MaterializeCatalog(ctx context.Context, moduleNames []string) erro
 			return err
 		}
 		for _, p := range prior {
+			var lastAt *time.Time
+			if p.LastInstalledOrUpgradedAt != nil {
+				t := p.LastInstalledOrUpgradedAt.UTC()
+				lastAt = &t
+			}
 			existingDemo[p.ModuleName] = catalogDemoState{
-				DemoLoaded:       p.DemoLoaded,
-				InstalledVersion: strings.TrimSpace(p.InstalledVersion.String),
+				DemoLoaded:                p.DemoLoaded,
+				InstalledVersion:          strings.TrimSpace(p.InstalledVersion.String),
+				LastInstalledOrUpgradedAt: lastAt,
 			}
 		}
 	}
@@ -591,7 +617,7 @@ func materializeOne(name string, a *catalogAggregate, now time.Time, prior catal
 			t := a.installed.CreatedAt.UTC()
 			createdAt = &t
 		}
-		row.LastInstalledOrUpgradedAt = life.lastInstalledOrUpgradedAt(createdAt)
+		row.LastInstalledOrUpgradedAt = newerTime(life.lastInstalledOrUpgradedAt(createdAt), prior.LastInstalledOrUpgradedAt)
 		if row.Summary == "" {
 			row.Summary = a.installed.Summary
 		}

@@ -79,12 +79,48 @@ func (o *Ops) Run(ctx context.Context, req RunRequest) error {
 	runErr := o.executeOperation(ctx, row, req.WithDemo, planDoc)
 	finishCtx := context.WithoutCancel(ctx)
 	if runErr != nil {
-		if saveErr := o.failOperation(finishCtx, row, "ops", "RUN_FAILED", runErr.Error()); saveErr != nil {
+		var saveErr error
+		var committed *errAfterLifecycleCommit
+		if errors.As(runErr, &committed) {
+			// Lifecycle already committed; keep catalog failure visible but still
+			// request process reload so the running binary picks up mutations.
+			saveErr = o.failOperationAfterLifecycleCommit(finishCtx, row, "ops", "RUN_FAILED", runErr.Error())
+		} else {
+			saveErr = o.failOperation(finishCtx, row, "ops", "RUN_FAILED", runErr.Error())
+		}
+		if saveErr != nil {
 			return errors.Join(runErr, saveErr)
 		}
 		return runErr
 	}
 	return o.succeedOperation(finishCtx, row)
+}
+
+// errAfterLifecycleCommit marks a failure after install/upgrade/uninstall already
+// committed module mutations. Run fails the operation but still requests reload.
+type errAfterLifecycleCommit struct {
+	err error
+}
+
+func (e *errAfterLifecycleCommit) Error() string {
+	if e == nil || e.err == nil {
+		return "ops: catalog update failed after lifecycle commit"
+	}
+	return e.err.Error()
+}
+
+func (e *errAfterLifecycleCommit) Unwrap() error {
+	if e == nil {
+		return nil
+	}
+	return e.err
+}
+
+func afterLifecycleCommit(err error) error {
+	if err == nil {
+		return nil
+	}
+	return &errAfterLifecycleCommit{err: err}
 }
 
 func (o *Ops) executeOperation(ctx context.Context, row *modmeta.ModuleOperation, requestWithDemo bool, doc PlanDocument) error {
@@ -119,20 +155,26 @@ func (o *Ops) executeOperation(ctx context.Context, row *modmeta.ModuleOperation
 				}
 			}
 			if err := o.ProjectCatalogInstalled(ctx); err != nil {
-				return fmt.Errorf("ops: project catalog installed after %s: %w", row.Action, err)
+				return afterLifecycleCommit(fmt.Errorf("ops: project catalog installed after %s: %w", row.Action, err))
 			}
 			if err := o.MaterializeCatalog(ctx, nil); err != nil {
-				return fmt.Errorf("ops: materialize catalog after %s: %w", row.Action, err)
+				return afterLifecycleCommit(fmt.Errorf("ops: materialize catalog after %s: %w", row.Action, err))
 			}
-			return o.stampCatalogLifecycleAt(ctx, names, row.Action)
+			if err := o.stampCatalogLifecycleAt(ctx, names, row.Action); err != nil {
+				return afterLifecycleCommit(fmt.Errorf("ops: stamp catalog lifecycle after %s: %w", row.Action, err))
+			}
+			return nil
 		}
 		if err := o.ProjectCatalogInstalled(ctx); err != nil {
-			return fmt.Errorf("ops: project catalog installed after %s: %w", row.Action, err)
+			return afterLifecycleCommit(fmt.Errorf("ops: project catalog installed after %s: %w", row.Action, err))
 		}
 		if err := o.MaterializeCatalog(ctx, names); err != nil {
-			return fmt.Errorf("ops: materialize catalog after %s: %w", row.Action, err)
+			return afterLifecycleCommit(fmt.Errorf("ops: materialize catalog after %s: %w", row.Action, err))
 		}
-		return o.stampCatalogLifecycleAt(ctx, names, row.Action)
+		if err := o.stampCatalogLifecycleAt(ctx, names, row.Action); err != nil {
+			return afterLifecycleCommit(fmt.Errorf("ops: stamp catalog lifecycle after %s: %w", row.Action, err))
+		}
+		return nil
 	default:
 		return fmt.Errorf("ops: unsupported action %q", row.Action)
 	}
@@ -248,6 +290,33 @@ func (o *Ops) failOperation(ctx context.Context, row *modmeta.ModuleOperation, d
 		return err
 	}
 	// Terminal status is already persisted; do not fail the caller on a clear glitch.
+	o.clearCatalogActiveOpBestEffort(ctx, row.Id.String)
+	o.publishOperationChanged(ctx, row)
+	return nil
+}
+
+// failOperationAfterLifecycleCommit marks the op failed while still requesting a
+// process reload when the plan already committed mutating install/upgrade/uninstall.
+func (o *Ops) failOperationAfterLifecycleCommit(ctx context.Context, row *modmeta.ModuleOperation, domain, code, message string) error {
+	expect := row.Status
+	now := time.Now().UTC()
+	row.Status = StatusFailed
+	row.ErrorDomain = domain
+	row.ErrorCode = code
+	row.ErrorMessage = message
+	row.FinishedAt = &now
+	if operationRequiresProcessReload(row) {
+		row.Phase = PhaseReloading
+		row.ReloadTriggered = true
+		row.ReloadFailed = false
+	} else {
+		row.Phase = PhaseDone
+		row.ReloadTriggered = false
+		row.ReloadFailed = false
+	}
+	if err := o.casSaveOperation(ctx, row, expect); err != nil {
+		return err
+	}
 	o.clearCatalogActiveOpBestEffort(ctx, row.Id.String)
 	o.publishOperationChanged(ctx, row)
 	return nil

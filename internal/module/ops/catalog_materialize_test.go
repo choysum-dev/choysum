@@ -363,6 +363,40 @@ func TestStampCatalogLifecycleAt_InstallUpgradeOnly(t *testing.T) {
 	}
 }
 
+func TestProjectCatalogInstalled_PreservesNewerLifecycleStamp(t *testing.T) {
+	t.Parallel()
+	db := newOpsTestDB(t)
+	o := &Ops{Scope: newOpsTestScope(t, db)}
+	stamped := time.Date(2026, 11, 14, 12, 0, 0, 0, time.UTC)
+	olderCreated := time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)
+	if err := db.Create(&pkgmeta.Module{
+		Name: "dep", Version: "v1.0.0", Status: pkgmeta.Installed, ApplicationStr: "dep",
+	}).Error; err != nil {
+		t.Fatalf("seed module: %v", err)
+	}
+	// Force an old CreatedAt so life fallback cannot beat the stamp.
+	if err := db.Model(&pkgmeta.Module{}).Where("name = ?", "dep").Update("created_at", olderCreated).Error; err != nil {
+		t.Fatalf("set created_at: %v", err)
+	}
+	if err := db.Create(&modmeta.ModuleCatalog{
+		ModuleName: "dep", Available: true, Installed: true,
+		InstalledVersion:          nullString("1.0.0"),
+		LastInstalledOrUpgradedAt: &stamped,
+	}).Error; err != nil {
+		t.Fatalf("seed catalog: %v", err)
+	}
+	if err := o.ProjectCatalogInstalled(context.Background()); err != nil {
+		t.Fatalf("Project: %v", err)
+	}
+	var row modmeta.ModuleCatalog
+	if err := db.Where("module_name = ?", "dep").Take(&row).Error; err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if row.LastInstalledOrUpgradedAt == nil || !row.LastInstalledOrUpgradedAt.Equal(stamped) {
+		t.Fatalf("LastInstalledOrUpgradedAt=%v want stamped %v", row.LastInstalledOrUpgradedAt, stamped)
+	}
+}
+
 func TestProjectCatalogInstalled_GuardsAndBranches(t *testing.T) {
 	t.Parallel()
 	if err := (*Ops)(nil).ProjectCatalogInstalled(context.Background()); err == nil || !strings.Contains(err.Error(), "nil host") {

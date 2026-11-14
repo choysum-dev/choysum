@@ -652,6 +652,9 @@ func TestRun_InstallMetaHardFailsProjectCatalogInstalled(t *testing.T) {
 	if row.Status != StatusFailed {
 		t.Fatalf("status=%q want failed", row.Status)
 	}
+	if row.Phase != PhaseReloading || !row.ReloadTriggered {
+		t.Fatalf("phase/reload = %q/%v, want reloading after lifecycle commit", row.Phase, row.ReloadTriggered)
+	}
 }
 
 func TestRun_UpgradeHardFailsProjectCatalogInstalled(t *testing.T) {
@@ -705,6 +708,9 @@ func TestRun_UpgradeHardFailsProjectCatalogInstalled(t *testing.T) {
 	}
 	if row.Status != StatusFailed {
 		t.Fatalf("status=%q want failed", row.Status)
+	}
+	if row.Phase != PhaseReloading || !row.ReloadTriggered {
+		t.Fatalf("phase/reload = %q/%v, want reloading after lifecycle commit", row.Phase, row.ReloadTriggered)
 	}
 }
 
@@ -767,6 +773,9 @@ func TestRun_InstallMetaHardFailsMaterialize(t *testing.T) {
 	}
 	if row.Status != StatusFailed {
 		t.Fatalf("status=%q want failed", row.Status)
+	}
+	if row.Phase != PhaseReloading || !row.ReloadTriggered {
+		t.Fatalf("phase/reload = %q/%v, want reloading after lifecycle commit", row.Phase, row.ReloadTriggered)
 	}
 }
 

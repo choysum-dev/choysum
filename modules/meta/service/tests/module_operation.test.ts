@@ -301,6 +301,43 @@ test('meta.MetaModuleOperation Execute calls bridge.run and returns operation ro
   }
 });
 
+test('meta.MetaModuleOperation Execute reloads when Run failed after lifecycle commit', async () => {
+  OP_STORE.set('op-catalog-fail', {
+    Id: 'op-catalog-fail',
+    Action: 'install',
+    ModuleName: 'core',
+    Status: 'failed',
+    Phase: 'reloading',
+    ReloadTriggered: true,
+    ReloadFailed: false,
+    ErrorMessage: 'ops: materialize catalog after install: blocked',
+  });
+  let reloaded = false;
+  const restore = installBridge({
+    run: async () => {
+      throw new Error('ops: materialize catalog after install: blocked');
+    },
+    reload: async () => {
+      reloaded = true;
+      return { triggered: true, failed: false };
+    },
+  });
+  try {
+    const resp = await MetaModuleOperation.Execute({ Id: 'op-catalog-fail' });
+    expect(reloaded).toBe(true);
+    expect(resp).toMatchObject({
+      Id: 'op-catalog-fail',
+      Status: 'failed',
+      Phase: 'done',
+      ReloadTriggered: true,
+      ReloadFailed: false,
+    });
+    expect(OP_STORE.get('op-catalog-fail').Phase).toBe('done');
+  } finally {
+    restore();
+  }
+});
+
 test('meta.MetaModuleOperation Execute skips reload when ReloadFailed is set', async () => {
   OP_STORE.set('op-reload-failed', {
     Id: 'op-reload-failed',
