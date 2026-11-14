@@ -950,6 +950,7 @@ function onRowKeydown(event: KeyboardEvent, row: (typeof rows.value)[number] | u
 
 /* Field overlay errors sit under the control; unclip those cells so the message is readable. */
 .choy-data-table__body [role='gridcell']:has(> .choy-field-base__cell-item[data-error]) {
+  position: relative;
   overflow: visible;
   z-index: 2;
 }

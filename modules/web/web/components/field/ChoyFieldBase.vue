@@ -1064,10 +1064,12 @@ const formInvalid = computed(() => !!displayError.value);
 watch(
   () => (showErrorOverlay.value ? formErrorId.value : ''),
   async errorId => {
-    if (!errorId || typeof document === 'undefined') return;
+    if (!errorId || typeof document === 'undefined' || typeof window === 'undefined') return;
     await nextTick();
     const el = document.getElementById(errorId);
-    if (!el || typeof el.scrollIntoView !== 'function') return;
+    if (!el || typeof el.scrollIntoView !== 'function' || typeof el.getBoundingClientRect !== 'function') {
+      return;
+    }
     // Skip when already fully visible in the viewport (avoids yanking on re-reveal).
     const rect = el.getBoundingClientRect();
     const vh = window.innerHeight || document.documentElement.clientHeight;
