@@ -63,12 +63,17 @@ describe('ChoyChartView chrome', () => {
     expect(String(body?.className || '')).toContain('flex-1');
 
     const exposed = mounted.root as {
-      controller: { vm: { loading: boolean; error: unknown } };
+      controller: { vm: { loading: boolean; error: unknown }; apply: () => Promise<unknown> };
+      onRetry: () => Promise<void>;
     };
     exposed.controller.vm.error = new Error('chart failed');
     await nextTick();
     expect(mounted.text()).toContain('chart failed');
     expect(mounted.text()).toContain('Retry');
+    // prepError is null here → onRetry falls through to onRefresh.
+    exposed.controller.apply = async () => [];
+    await exposed.onRetry();
+    await flushPromises();
 
     const ctrlVm = exposed.controller.vm as {
       loading: boolean;

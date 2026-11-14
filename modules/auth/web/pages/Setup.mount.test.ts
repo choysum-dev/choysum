@@ -57,6 +57,8 @@ async function mountSetup(opts?: {
   query?: Record<string, string>;
   failSetup?: ChoysumError;
   failLogin?: string;
+  /** When true, router.replace rejects (covers login-fallback recovery messaging). */
+  failReplace?: boolean;
   failOptions?: ChoysumError;
   setupReady?: boolean;
   draft?: Record<string, unknown>;
@@ -73,6 +75,7 @@ async function mountSetup(opts?: {
     router: {
       replace: (to: unknown) => {
         replaces.push(to);
+        if (opts?.failReplace) return Promise.reject(new Error('nav boom'));
         return Promise.resolve(to);
       },
     },
@@ -431,6 +434,20 @@ test('Setup.vue: login failure after setup goes to login with setup=done', async
     name: 'login',
     query: { redirect: '/auth/users', setup: 'done' },
   });
+  wrapper.unmount();
+});
+
+test('Setup.vue: login-fallback navigation failure shows recovery message', async () => {
+  const { wrapper, replaces } = await mountSetup({
+    query: { redirect: '/auth/users' },
+    failLogin: 'bad login',
+    failReplace: true,
+  });
+  await advanceToReview(wrapper);
+  submitForm(wrapper);
+  await afterSubmit();
+  expect(replaces.length).toBeGreaterThan(0);
+  expect(wrapper.text()).toContain('Setup is complete, but the login page could not open');
   wrapper.unmount();
 });
 
