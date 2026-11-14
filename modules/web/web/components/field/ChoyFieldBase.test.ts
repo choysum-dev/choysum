@@ -602,6 +602,8 @@ describe('ChoyFieldBase list-editing-row-id gate', () => {
     await flushPromises();
     const item = m.q('.choy-field-base__cell-item') as HTMLElement | null;
     expect(String(item?.className || '')).toContain('relative');
+    expect(item?.getAttribute('title')).toBe('bad cell');
+    expect(item?.getAttribute('data-error')).toBe('bad cell');
     const err = m.q('[data-slot="field-error"]') as HTMLElement | null;
     expect(err?.textContent).toContain('bad cell');
     expect(String(err?.className || '')).toContain('choy-field-base__error--overlay');

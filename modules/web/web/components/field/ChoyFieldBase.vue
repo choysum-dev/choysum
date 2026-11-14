@@ -247,9 +247,10 @@ SPDX-License-Identifier: Apache-2.0
           inlineErrorSpace === 'overlay' ? 'relative' : undefined,
         ]"
         :data-error="serverErrorForRow(row, $index) || undefined"
-        :title="inlineErrorSpace === 'overlay' ? undefined : serverErrorForRow(row, $index) || undefined"
+        :title="serverErrorForRow(row, $index) || undefined"
       >
-        <!-- collapse/reserve: keep message out of the row; expose via title + sr-only. -->
+        <!-- collapse/reserve: keep message out of the row; expose via title + sr-only.
+             overlay: still set title so clipped gridcells keep a hover fallback. -->
         <span
           v-if="serverErrorForRow(row, $index) && inlineErrorSpace !== 'overlay'"
           :id="`${inputIdForRow(row)}-error`"

@@ -947,4 +947,10 @@ function onRowKeydown(event: KeyboardEvent, row: (typeof rows.value)[number] | u
 .choy-data-table__body [role='row']:hover > [data-col-hover] {
   background-color: color-mix(in oklab, var(--muted) 55%, transparent);
 }
+
+/* Field overlay errors sit under the control; unclip those cells so the message is readable. */
+.choy-data-table__body [role='gridcell']:has([data-error]) {
+  overflow: visible;
+  z-index: 2;
+}
 </style>
