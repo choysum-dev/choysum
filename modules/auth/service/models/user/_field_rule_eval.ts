@@ -58,6 +58,17 @@ type FieldRuleDecision = {
   permWrite: 'allow' | 'deny' | null;
 };
 
+/** Projected RoleFieldRule.Search row used by field-rule evaluation. */
+type RoleFieldRuleEvalRow = {
+  Id?: unknown;
+  MetaApplicationId?: unknown;
+  MetaModelId?: unknown;
+  MetaFieldId?: unknown;
+  LogicalModelName?: unknown;
+  PermRead?: unknown;
+  PermWrite?: unknown;
+};
+
 type FieldRuleEvalMaterial = {
   applicationId: string;
   modelId: string;
@@ -65,7 +76,7 @@ type FieldRuleEvalMaterial = {
   fieldNames: string[];
   fieldNameById: Map<string, string>;
   fieldIdSet: Set<string>;
-  rules: Awaited<ReturnType<typeof RoleFieldRule.Search>>;
+  rules: RoleFieldRuleEvalRow[];
 };
 
 function getFieldRuleReqState(): Record<string, unknown> | undefined {
@@ -221,7 +232,7 @@ async function loadFieldRuleEvalMaterial(
     }
   );
 
-  const rules = await RoleFieldRule.Search(
+  const rules = (await RoleFieldRule.Search(
     condition({
       And: [['RoleId', 'in', input.roleIds], { Or: scopeOr }],
     }),
@@ -229,7 +240,7 @@ async function loadFieldRuleEvalMaterial(
       fields: ['Id', 'MetaApplicationId', 'MetaModelId', 'MetaFieldId', 'LogicalModelName', 'PermRead', 'PermWrite'],
       limit: 5000,
     }
-  );
+  )) as RoleFieldRuleEvalRow[] | null | undefined;
 
   if (!rules || rules.length === 0) {
     return { kind: 'early', result: denyAllNonSystemFields(fieldNames, 'no_field_rules_deny_by_default') };
