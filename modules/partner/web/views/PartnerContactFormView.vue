@@ -71,7 +71,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { useRouter } from 'vue-router';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import type Address from '@/base/service/models/address';
 import type { ValueClickPayload as ManyToOneValueClickPayload } from '@/web/web/components/field/manyToOneTypes';
 import AddressListView from '@/base/web/views/AddressListView.vue';
@@ -95,7 +95,7 @@ const { _t } = createTranslate('partner', { scope: 'web/views/PartnerContactForm
  */
 const props = withDefaults(
   defineProps<{
-    store: WebModelStore<any>;
+    store: ModelStore<any>;
     recordId?: string;
     initialValues?: Record<string, any>;
     viewMode?: ViewMode;

@@ -3,9 +3,9 @@
 
 import { computed, shallowRef, watch, type Ref } from 'vue';
 import type { RouteLocationNormalizedLoaded } from 'vue-router';
-import { createStoreByModel } from '@/web/web/stores/registry';
+import { createModelStore } from '@/web/web/stores/registry';
 import { createTranslate } from '@/web/web/i18n';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import { resolvePropertyDefinitionListApplication } from './property_definition_page_bind';
 
 const { _t: defaultTranslate } = createTranslate('web', {
@@ -15,7 +15,7 @@ const { _t: defaultTranslate } = createTranslate('web', {
 export type PropertyDefinitionListPageDeps = {
   route: RouteLocationNormalizedLoaded;
   scopeManager: unknown;
-  createStore?: typeof createStoreByModel;
+  createStore?: typeof createModelStore;
   translate?: (msgid: string, ...args: unknown[]) => string;
 };
 
@@ -25,9 +25,9 @@ export type PropertyDefinitionListPageDeps = {
 export function usePropertyDefinitionListPage(deps: PropertyDefinitionListPageDeps): {
   application: Ref<string>;
   pageTitle: Ref<string>;
-  definitionStore: Ref<WebModelStore<any> | null>;
+  definitionStore: Ref<ModelStore<any> | null>;
 } {
-  const createStore = deps.createStore ?? createStoreByModel;
+  const createStore = deps.createStore ?? createModelStore;
 
   const application = computed(() => resolvePropertyDefinitionListApplication(deps.route));
   const pageTitle = computed(() => {
@@ -37,7 +37,7 @@ export function usePropertyDefinitionListPage(deps: PropertyDefinitionListPageDe
     }
     return String(defaultTranslate('Property Definitions: %s', appLabel));
   });
-  const definitionStore = shallowRef<WebModelStore<any> | null>(null);
+  const definitionStore = shallowRef<ModelStore<any> | null>(null);
 
   function bindStore(app: string) {
     if (!app) {
@@ -47,7 +47,7 @@ export function usePropertyDefinitionListPage(deps: PropertyDefinitionListPageDe
     definitionStore.value = createStore(`${app}.PropertyDefinition`, {
       storeId: `PropertyDefinition_${app}`,
       scopeManager: deps.scopeManager,
-    }) as WebModelStore<any>;
+    }) as ModelStore<any>;
   }
 
   watch(application, (app) => bindStore(app), { immediate: true });

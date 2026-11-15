@@ -68,7 +68,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts" generic="T extends BaseModel, P extends FieldPath<T, Record<string, any> | any[] | null | undefined>, V = FieldPathType<T, P>">
 import type { BaseModel, FieldPath, FieldPathType } from '@/core/rpc';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import type { RuleItem } from 'async-validator';
 import { ref, watch, computed, defineComponent, h, onBeforeUnmount, nextTick } from 'vue';
 import VueJsonPretty from 'vue-json-pretty';
@@ -101,7 +101,7 @@ type JsonVal = Record<string, any> | any[] | null;
 
 const props = withDefaults(
   defineProps<{
-    store?: WebModelStore<T>;
+    store?: ModelStore<T>;
     prop?: P | (IsAny<T> extends true ? string : never);
     binding?: UseField<T, V>;
 
@@ -161,7 +161,7 @@ const props = withDefaults(
 const effectivePlaceholder = computed(() => props.placeholder || _t('Enter a JSON object'));
 
 const binding = (props.binding ??
-  useField<T, P, V>({ store: props.store as WebModelStore<T>, prop: props.prop as P })) as UseField<T, V>;
+  useField<T, P, V>({ store: props.store as ModelStore<T>, prop: props.prop as P })) as UseField<T, V>;
 
 const isTableLike = computed(() => {
   const mode = props.renderMode;

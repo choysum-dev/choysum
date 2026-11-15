@@ -70,7 +70,7 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts">
 import { useRouter } from 'vue-router';
 import type { RouteLocationRaw } from 'vue-router';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import type RoleRecordRule from '@/auth/service/models/role_record_rule';
 import type Role from '@/auth/service/models/role';
 
@@ -90,7 +90,7 @@ const { _t, _lt } = createTranslate('auth', { scope: 'web/views/RoleRecordRuleFo
 
 const props = withDefaults(
   defineProps<{
-    store?: WebModelStore<RoleRecordRule>;
+    store?: ModelStore<RoleRecordRule>;
     recordId?: string;
     viewMode?: ViewMode;
     showHeader?: boolean;

@@ -6,7 +6,7 @@ import { createPinia } from 'pinia';
 import * as VueRouter from 'vue-router';
 import { flushPromises, mountApp, stubSfc, restoreSfc } from '@/web/web/__tests__/mountApp';
 import { resetLoadingRegistryForTests } from '@/core/web/client/loadingRegistry';
-import { createLocalFormStore } from '@/web/web/stores/localFormStore';
+import { createUiModelStore } from '@/web/web/stores/uiModelStore';
 import { useField } from '@/web/web/composables/useField';
 import ChoySettingsView from './ChoySettingsView.vue';
 import ChoyViewSwitcher from './ChoyViewSwitcher.vue';
@@ -48,7 +48,7 @@ test('Settings view kind is registered with form presentation', () => {
 });
 
 test('ChoySettingsView chrome and form-root field binding', async () => {
-  const store = createLocalFormStore({
+  const store = createUiModelStore({
     fields: [{ name: 'DemoFlag', label: 'Demo', type: 'boolean' }],
     initialValues: { DemoFlag: false },
   });
@@ -277,7 +277,7 @@ test('ChoyFormView view-select ignores failed navigation when settling leave', a
   );
   const selected: string[] = [];
   try {
-    const store = createLocalFormStore({
+    const store = createUiModelStore({
       fields: [{ name: 'Note', label: 'Note', type: 'char' }],
       initialValues: { Note: '' },
     });
@@ -355,7 +355,7 @@ test('ChoyFormView view-select emits immediately when router has no afterEach', 
   );
   const selected: string[] = [];
   try {
-    const store = createLocalFormStore({
+    const store = createUiModelStore({
       fields: [{ name: 'Note', label: 'Note', type: 'char' }],
       initialValues: { Note: '' },
     });
@@ -436,7 +436,7 @@ test('ChoyFormView settings discard without cancelHandler emits discard', async 
   );
   const { default: ChoyFormView } = await import('./ChoyFormView.vue');
   const discards: number[] = [];
-  const store = createLocalFormStore({
+  const store = createUiModelStore({
     fields: [{ name: 'Note', label: 'Note', type: 'char' }],
     initialValues: { Note: '' },
   });
@@ -723,7 +723,7 @@ test('ChoySettingsView form-root mode/draft/getField cover localStore and draft 
     },
   });
 
-  const store = createLocalFormStore({
+  const store = createUiModelStore({
     fields: [{ name: 'DemoFlag', label: 'Demo', type: 'boolean' }],
     initialValues: { DemoFlag: true },
   });

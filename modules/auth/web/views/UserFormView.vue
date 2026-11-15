@@ -138,7 +138,7 @@ import { computed, defineAsyncComponent, defineComponent, h, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import type { RouteLocationRaw } from 'vue-router';
 import type { ClientModel, BaseModel } from '@/core/rpc';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 
 import type User from '@/auth/service/models/user/user';
 import type Company from '@/base/service/models/company';
@@ -183,7 +183,7 @@ const requiredRules = computed(() => [{ required: true, message: _t('Required') 
 
 const props = withDefaults(
   defineProps<{
-    store?: WebModelStore<User>;
+    store?: ModelStore<User>;
     recordId?: string;
     viewMode?: ViewMode;
     showHeader?: boolean;

@@ -29,7 +29,7 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { RouteLocationRaw } from 'vue-router';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import type UoM from '@/base/service/models/uom';
 import UoMCategoryListView from './UoMCategoryListView.vue';
 import { defineModelActions } from '@/core/web/resource';
@@ -43,7 +43,7 @@ defineOptions({ name: 'UoMFormView', inheritAttrs: true });
 const { _t, _lt } = createTranslate('base', { scope: 'web/views/UoMFormView' });
 const requiredRules = computed(() => [{ required: true, message: _t('Required') }]);
 const props = withDefaults(
-  defineProps<{ store?: WebModelStore<UoM>; recordId?: string; viewMode?: ViewMode; showHeader?: boolean; createAction?: string | RouteLocationRaw }>(),
+  defineProps<{ store?: ModelStore<UoM>; recordId?: string; viewMode?: ViewMode; showHeader?: boolean; createAction?: string | RouteLocationRaw }>(),
   { showHeader: true, createAction: undefined }
 );
 const uomActions = defineModelActions('base.UoM', { entityTitle: _lt('Unit of Measure') });

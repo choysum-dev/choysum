@@ -550,7 +550,7 @@ describe('ChoyManyToManyField mount coverage', () => {
     m.unmount();
   });
 
-  test('relationStore falls back to createStoreByModel via targetModel', async () => {
+  test('relationStore falls back to createModelStore via targetModel', async () => {
     restoreFactory = replaceStoreFactory('demo.FallbackTag', () => ({
       fullModelName: 'demo.FallbackTag',
       NameSearch: fnRecorder(async () => []),
@@ -572,7 +572,7 @@ describe('ChoyManyToManyField mount coverage', () => {
     m.unmount();
   });
 
-  test('createStoreByModel failure warns and leaves picker closed', async () => {
+  test('createModelStore failure warns and leaves picker closed', async () => {
     const warn = console.warn;
     console.warn = () => {};
     try {

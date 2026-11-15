@@ -168,7 +168,7 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { ConditionGroup, Condition } from '@/web/web/query/types';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import SearchFilterCondition from './SearchFilterCondition.vue';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
 import ToggleGroup from '@/web/web/components/vendor/ui/toggle-group/ToggleGroup.vue';
@@ -193,7 +193,7 @@ const props = defineProps<{
   group: GroupLike;
   isRoot?: boolean;
   fields: FieldOption[];
-  store: WebModelStore<any>;
+  store: ModelStore<any>;
 
   onSetLogic: (logic: Logic, groupId?: string) => void;
   onAddGroup: (parentGroupId?: string) => void;

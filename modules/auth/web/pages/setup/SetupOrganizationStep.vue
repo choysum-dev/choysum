@@ -71,7 +71,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { computed, watch } from 'vue';
-import { ChoyFieldGroup, ChoySelectionField, ChoyVarcharField, type LocalFormStore } from '@/web';
+import { ChoyFieldGroup, ChoySelectionField, ChoyVarcharField, type UiModelStore } from '@/web';
 import { createTranslate } from '@/web/web/i18n';
 import {
   setupCurrencyRules,
@@ -89,7 +89,7 @@ const { _t } = createTranslate('auth', { scope: 'web/pages/setup/SetupOrganizati
  * currency until the user chooses a currency explicitly (`currencyTouched`).
  */
 const props = defineProps<{
-  store: LocalFormStore;
+  store: UiModelStore;
   formData: Record<string, unknown>;
   /** Server field errors keyed by local field name. */
   serverErrors: Record<string, string>;

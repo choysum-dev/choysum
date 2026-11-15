@@ -16,7 +16,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { useRoute } from 'vue-router';
-import { createStoreByModel } from '@/web/web/stores/registry';
+import { createModelStore } from '@/web/web/stores/registry';
 import SessionListView from '@/auth/web/views/SessionListView.vue';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
 import { createTranslate } from '@/web/web/i18n';
@@ -27,7 +27,7 @@ const { _t } = createTranslate('auth', { scope: 'web/pages/SessionList' });
 const pageTitle = _t('Session List');
 
 const route = useRoute();
-const sessionStore = createStoreByModel<typeof Session>('auth.Session', {
+const sessionStore = createModelStore<typeof Session>('auth.Session', {
   storeId: `Session_${route.fullPath}`,
   scopeManager: useScopeManager().menuScopeManager,
 });

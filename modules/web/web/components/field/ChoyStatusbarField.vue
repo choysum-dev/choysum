@@ -91,7 +91,7 @@ SPDX-License-Identifier: Apache-2.0
 import { computed, inject, onMounted, ref, type Ref } from 'vue';
 import type { RuleItem } from 'async-validator';
 import type { BaseModel, FieldPath, FieldPathType } from '@/core/rpc';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import type { WritableComputedRef } from 'vue';
 import { cn } from '@/web/web/lib/utils';
 import ChoyFieldBase, { type FieldStateExpr, type FormItemProps } from './ChoyFieldBase.vue';
@@ -127,7 +127,7 @@ type StatusbarEdge = 'first' | 'middle' | 'last';
 
 const props = withDefaults(
   defineProps<{
-    store?: WebModelStore<T>;
+    store?: ModelStore<T>;
     prop?: P | (IsAny<T> extends true ? string : never);
     binding?: UseField<T, V>;
 
@@ -181,7 +181,7 @@ const props = withDefaults(
 );
 
 const binding = (props.binding ??
-  useField<T, P, V>({ store: props.store as WebModelStore<T>, prop: props.prop as P, agg: props.agg })) as UseField<T, V>;
+  useField<T, P, V>({ store: props.store as ModelStore<T>, prop: props.prop as P, agg: props.agg })) as UseField<T, V>;
 
 const toView = (raw: any): string | null => toStatusbarView(raw);
 const fromView = (v: string | null) => fromStatusbarView(v) as unknown as V;
@@ -195,7 +195,7 @@ const leafKey = computed(() => {
   return segs.length > 0 ? segs[segs.length - 1]! : '';
 });
 
-const modelStore = computed(() => (binding.store ?? props.store) as WebModelStore<T> | undefined);
+const modelStore = computed(() => (binding.store ?? props.store) as ModelStore<T> | undefined);
 
 const metaOptions = computed<StatusbarMetaOption[]>(() => {
   const leaf = leafKey.value;

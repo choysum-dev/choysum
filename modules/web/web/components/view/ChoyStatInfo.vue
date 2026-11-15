@@ -27,7 +27,7 @@ SPDX-License-Identifier: Apache-2.0
 import { computed, markRaw, toRaw, type Component } from 'vue';
 import { useRouter, type RouteLocationRaw } from 'vue-router';
 import type { BaseModel, FieldPath } from '@/core/rpc';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import { useField } from '@/web/web/composables/useField';
 import { resolveStatDisplayValue } from '@/web/web/components/view/statInfoHelpers';
 
@@ -39,7 +39,7 @@ const props = withDefaults(
   defineProps<{
     /** Explicit value; preferred over relation length (D7). */
     value?: number | string | null;
-    store?: WebModelStore<T>;
+    store?: ModelStore<T>;
     prop?: P | (IsAny<T> extends true ? string : never);
     /** Button caption (i18n-ready). */
     label: string;

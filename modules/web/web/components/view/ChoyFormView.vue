@@ -227,7 +227,7 @@ import { useControlBusy } from '@/core/web/client/loadingRegistry';
 import { FIELD_CLIENT_VALIDATORS_KEY } from '@/web/web/composables/fieldClientValidation';
 import { FIELD_ERROR_SPACE_KEY } from '@/web/web/composables/fieldErrorSpace';
 import type { ClientModel, BaseModel, Updateable, Insertable } from '@/core/rpc';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import type { RouteLocationRaw } from 'vue-router';
 import { useRoute, useRouter } from 'vue-router';
 import {
@@ -249,7 +249,7 @@ import { useFormViewLifecycle } from '@/web/web/composables/useFormViewLifecycle
 import { useFormViewSubmit } from '@/web/web/composables/useFormViewSubmit';
 import { nextLocalToken } from '@/web/web/components/view/localToken';
 import { createTranslate } from '@/web/web/i18n';
-import type { LocalFormStore } from '@/web/web/stores/localFormStore';
+import type { UiModelStore } from '@/web/web/stores/uiModelStore';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
 import ChoyPageTitleActions from '@/web/web/components/layout/ChoyPageTitleActions.vue';
 import ChoyViewContainer from '@/web/web/components/view/ChoyViewContainer.vue';
@@ -290,7 +290,7 @@ const route = useRoute();
 // =============================
 const props = withDefaults(
   defineProps<{
-    store?: WebModelStore<T>;
+    store?: ModelStore<T>;
     recordId?: string;
     initialValues?: Partial<T>;
     viewMode?: ViewMode;
@@ -316,15 +316,15 @@ const props = withDefaults(
     /** `settings` = Settings chrome on this Form engine (Save/Discard, no CRUD). */
     presentation?: FormPresentation;
     /**
-     * Settings / wizard draft bag when fields bind via form-root without a LocalFormStore.
+     * Settings / wizard draft bag when fields bind via form-root without a UiModelStore.
      * Ignored for record presentation.
      */
     draft?: Record<string, unknown>;
     /**
-     * Optional LocalFormStore for settings form-root (curated keys as field names).
+     * Optional UiModelStore for settings form-root (curated keys as field names).
      * When set, takes precedence over `draft` for getField/setField.
      */
-    localStore?: LocalFormStore | null;
+    localStore?: UiModelStore | null;
     /**
      * Page-level dirty override (Settings). When the prop is passed, leave/Cancel and
      * Save/Discard enablement use this instead of controller draft vs original.
@@ -470,7 +470,7 @@ watch(
 );
 
 /**
- * Settings chrome: form-root binds LocalFormStore or draft bag so curated Settings
+ * Settings chrome: form-root binds UiModelStore or draft bag so curated Settings
  * fields share one write path. Record Form keeps controller.provideToChildren().
  */
 if (isSettingsPresentation.value) {

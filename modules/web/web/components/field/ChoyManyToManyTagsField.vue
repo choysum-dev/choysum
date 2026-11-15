@@ -182,14 +182,14 @@ import { RELATION_PICKER_CLOSE_KEY } from '@/web/web/components/field/relationPi
 import type { RuleItem } from 'async-validator';
 import type { BaseModel, ClientModel, FieldPath, FieldPathType, QueryCondition } from '@/core/rpc';
 import { runWithLoading } from '@/core/web/client/loadingRegistry';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import ChoyFieldBase, { type FieldStateExpr, type FormItemProps } from './ChoyFieldBase.vue';
 import { useField } from '@/web/web/composables/useField';
 import type { UseField } from '@/web/web/composables/useField';
 import { buildRelationConditionSource } from '@/web/web/composables/relationalForField';
 import ChoyViewScope from '@/web/web/components/view/ChoyViewScope.vue';
 import type { SelectionExpose } from '@/web/web/components/view/listViewTypes';
-import { createStoreByModel } from '@/web/web/stores/registry';
+import { createModelStore } from '@/web/web/stores/registry';
 import { registerFieldPath, unregisterFieldPath, pathsToFieldSelection, ensureRootId } from '@/web/web/query/utils/registry/field';
 import { createTranslate } from '@/web/web/i18n';
 import { controlFocusWithinRing } from '@/web/web/lib/utils';
@@ -226,7 +226,7 @@ const emit = defineEmits<{
 
 const props = withDefaults(
   defineProps<{
-    store?: WebModelStore<T>;
+    store?: ModelStore<T>;
     prop?: P | (IsAny<T> extends true ? string : never);
     binding?: UseField<T, V>;
 
@@ -294,15 +294,15 @@ const props = withDefaults(
 const effectivePlaceholder = computed(() => props.placeholder || _t('Please select...'));
 const effectiveSearchViewTitle = computed(() => props.searchViewTitle || _t('Select related items'));
 
-const binding = (props.binding ?? useField<T, P, V>({ store: props.store as WebModelStore<T>, prop: props.prop as P })) as UseField<T, V>;
+const binding = (props.binding ?? useField<T, P, V>({ store: props.store as ModelStore<T>, prop: props.prop as P })) as UseField<T, V>;
 const { getItems, insertItem, clearItems } = binding.asMutableArray<any>();
 
-const relationStore = computed<WebModelStore<any> | undefined>(() => {
-  if (binding.relationStore) return binding.relationStore as WebModelStore<any>;
+const relationStore = computed<ModelStore<any> | undefined>(() => {
+  if (binding.relationStore) return binding.relationStore as ModelStore<any>;
   const target = props.targetModel || binding.meta?.relationModel;
   if (!target) return undefined;
   try {
-    return createStoreByModel(target);
+    return createModelStore(target);
   } catch (e) {
     console.warn(`[ChoyManyToManyTagsField] Failed to create store for model '${target}'`, e);
     return undefined;
@@ -666,7 +666,7 @@ function handleKeydown(event: KeyboardEvent) {
 let registeredStoreId: string | null = null;
 const registeredRefFields = ref<Set<string>>(new Set());
 
-function syncRemoteFieldRegistration(store?: WebModelStore<any> | null, fields?: string[]) {
+function syncRemoteFieldRegistration(store?: ModelStore<any> | null, fields?: string[]) {
   const nextStoreId = store?.storeId ?? null;
   const nextSet = new Set(fields || []);
   const unchanged =

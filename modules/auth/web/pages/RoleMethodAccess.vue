@@ -12,14 +12,14 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { useRoute } from 'vue-router';
-import { createStoreByModel } from '@/web/web/stores/registry';
+import { createModelStore } from '@/web/web/stores/registry';
 import RoleMethodAccessFormView from '@/auth/web/views/RoleMethodAccessFormView.vue';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
 import type RoleMethodAccess from '@/auth/service/models/role_method_access';
 import { ChoyPage } from '@/web';
 
 const route = useRoute();
-const methodAccessStore = createStoreByModel<typeof RoleMethodAccess>('auth.RoleMethodAccess', {
+const methodAccessStore = createModelStore<typeof RoleMethodAccess>('auth.RoleMethodAccess', {
   storeId: `RoleMethodAccess_${route.fullPath}`,
   scopeManager: useScopeManager().menuScopeManager,
 });

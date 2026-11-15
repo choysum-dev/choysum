@@ -3,8 +3,8 @@
 
 import { computed, ref, shallowRef, type ComputedRef, type Ref, type ShallowRef } from 'vue';
 import { runWithLoading } from '@/core/web/client/loadingRegistry';
-import { createLocalFormStore, type LocalFormStore } from '@/web/web/stores/localFormStore';
-import { createStoreByModel } from '@/web/web/stores/registry';
+import { createUiModelStore, type UiModelStore } from '@/web/web/stores/uiModelStore';
+import { createModelStore } from '@/web/web/stores/registry';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
 import { ChoyMessage } from '@/web/web/composables/useChoyMessage';
 import { createTranslate } from '@/web/web/i18n';
@@ -23,7 +23,7 @@ export type AuthSettingsPageDeps = {
 };
 
 export type AuthSettingsPageApi = {
-  formStore: ShallowRef<LocalFormStore | null>;
+  formStore: ShallowRef<UiModelStore | null>;
   /** Save in flight (control). */
   loading: Ref<boolean>;
   /** First load / refresh of the sheet (surface). */
@@ -44,13 +44,13 @@ export function setAuthSettingsAppSettingStoreForTests(factory: (() => AuthAppSe
 }
 
 export type CreateAuthAppSettingStoreOpts = {
-  createStore?: typeof createStoreByModel;
+  createStore?: typeof createModelStore;
   scopeManager?: unknown;
 };
 
 /** Default auth.AppSetting Get/Set adapter used by the Settings page. */
 export function createAuthAppSettingStore(opts: CreateAuthAppSettingStoreOpts = {}): AuthAppSettingKv {
-  const createStore = opts.createStore ?? createStoreByModel;
+  const createStore = opts.createStore ?? createModelStore;
   const scopeManager = opts.scopeManager ?? useScopeManager().menuScopeManager;
   const raw = createStore('auth.AppSetting', {
     storeId: 'AppSetting_auth_settings',
@@ -74,7 +74,7 @@ function resolveAppSettingStore(deps: AuthSettingsPageDeps): () => AuthAppSettin
 
 /** Curated auth Settings: persist-browser-timezone flag via AppSetting Get/Set. */
 export function useAuthSettingsPage(deps: AuthSettingsPageDeps): AuthSettingsPageApi {
-  const formStore = shallowRef<LocalFormStore | null>(null);
+  const formStore = shallowRef<UiModelStore | null>(null);
   const baseline = ref('1');
   const loading = ref(false);
   const contentLoading = ref(false);
@@ -90,8 +90,8 @@ export function useAuthSettingsPage(deps: AuthSettingsPageDeps): AuthSettingsPag
 
   function rebuildForm(flag: string) {
     const on = flag === '1';
-    formStore.value = createLocalFormStore({
-      storeId: `local-form:auth-settings:${Date.now()}`,
+    formStore.value = createUiModelStore({
+      storeId: `ui-model:auth-settings:${Date.now()}`,
       fields: [
         {
           name: 'PersistBrowserTimezone',

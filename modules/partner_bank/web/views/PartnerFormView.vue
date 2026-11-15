@@ -81,7 +81,7 @@ import { defineComponent } from 'vue';
 import { Xpath } from '@/core/web';
 import PartnerFormView from '@/partner/web/views/PartnerFormView.vue';
 import type Partner from '@/partner_bank/service/models/partner';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import {
   ChoyBadge,
   ChoyButton,
@@ -116,7 +116,7 @@ export default defineComponent({
    */
   setup(props, ctx) {
     const baseSetup = PartnerFormView?.setup?.(props, ctx) || {};
-    const store = (baseSetup as { store: WebModelStore<Partner> }).store;
+    const store = (baseSetup as { store: ModelStore<Partner> }).store;
     const { _t } = createTranslate('partner_bank', { scope: 'web/views/PartnerFormView' });
     const { hasAction } = usePermission();
 

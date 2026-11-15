@@ -27,7 +27,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import type Company from '@/base/service/models/company';
 import { useRouter } from 'vue-router';
 
@@ -43,7 +43,7 @@ defineOptions({ name: 'CompanyListView', inheritAttrs: true });
 const { _t, _lt } = createTranslate('base', { scope: 'web/views/CompanyListView' });
 
 const props = defineProps<{
-  store?: WebModelStore<Company>;
+  store?: ModelStore<Company>;
 }>();
 const store = resolvePageStore(props.store, 'CompanyListView');
 

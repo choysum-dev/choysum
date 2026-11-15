@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { inject, type InjectionKey } from 'vue';
-import { createStoreByModel as defaultCreateStoreByModel } from '@/web/web/stores/registry';
+import { createModelStore as defaultCreateModelStore } from '@/web/web/stores/registry';
 import type { PostMessageReq } from '@/message/service/models/message';
 import type { FollowRecordReq, UnfollowRecordReq } from '@/message/service/models/follower';
 import type { SearchInboxOptions } from '@/message/service/models/notification';
@@ -12,10 +12,10 @@ import type {
   InboxNotificationRow,
 } from './chatterTypes';
 
-type CreateStoreByModel = typeof defaultCreateStoreByModel;
+type CreateModelStore = typeof defaultCreateModelStore;
 
 export type ChatterStoreDeps = {
-  createStoreByModel?: CreateStoreByModel;
+  createModelStore?: CreateModelStore;
 };
 
 type MessageStoreLike = {
@@ -40,7 +40,7 @@ type NotificationStoreLike = {
 };
 
 function createStore(modelName: string, deps?: ChatterStoreDeps) {
-  const create = deps?.createStoreByModel ?? defaultCreateStoreByModel;
+  const create = deps?.createModelStore ?? defaultCreateModelStore;
   return create(modelName);
 }
 

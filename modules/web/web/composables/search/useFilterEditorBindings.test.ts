@@ -126,8 +126,8 @@ describe('useFilterEditorBindings static meta', () => {
     const app = createApp(
       defineComponent({
         setup() {
-          // Force the getRelationStore path (FE host may stub createStoreByModel).
-          api = useFilterEditorBindings(store, { createStoreByModel: (() => undefined) as any });
+          // Force the getRelationStore path (FE host may stub createModelStore).
+          api = useFilterEditorBindings(store, { createModelStore: (() => undefined) as any });
           return () => h('div');
         },
       })

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { computed, onMounted, ref, toValue, watch, type MaybeRefOrGetter, type Ref } from 'vue';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import { createKanbanController } from '@/web/web/controllers/kanbanController';
 import { awaitFieldSelection } from '@/web/web/query/utils/registry/fieldReady';
 import type { ChoySearchQuery } from '@/web/web/components/view/searchViewHelpers';
@@ -26,7 +26,7 @@ import { finishInitialSearchBoundLoad } from '@/web/web/components/view/viewFirs
 import type { SearchFirstFrameGate } from '@/web/web/components/view/search/searchFirstFrame';
 
 export type ChoyKanbanStoreEngineOptions = {
-  store: WebModelStore<any>;
+  store: ModelStore<any>;
   keywordFields?: MaybeRefOrGetter<string[] | undefined>;
   titleField?: MaybeRefOrGetter<string | undefined>;
   flatLaneLabel?: MaybeRefOrGetter<string | undefined>;

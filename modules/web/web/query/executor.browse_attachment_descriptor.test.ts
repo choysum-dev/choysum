@@ -22,7 +22,7 @@ describe('query executor browse attachment descriptor regression', () => {
   });
 
   test('browse path decodes and enriches image descriptor from binding id', async () => {
-    const createStoreByModel = (modelName: string) => {
+    const createModelStore = (modelName: string) => {
       if (modelName === 'base.Company') {
         return {
           Search: async () => [
@@ -80,7 +80,7 @@ describe('query executor browse attachment descriptor regression', () => {
       } as any,
       store,
       undefined,
-      { createStoreByModel }
+      { createModelStore }
     );
 
     const row = snapshot.rows[0] as any;
@@ -102,7 +102,7 @@ describe('query executor browse attachment descriptor regression', () => {
   });
 
   test('browse path decodes and enriches binary descriptor without preview for non-image mime', async () => {
-    const createStoreByModel = (modelName: string) => {
+    const createModelStore = (modelName: string) => {
       if (modelName === 'document.AttachmentBinding') {
         return {
           BatchDescribe: async () => ({
@@ -147,7 +147,7 @@ describe('query executor browse attachment descriptor regression', () => {
       } as any,
       store,
       undefined,
-      { createStoreByModel }
+      { createModelStore }
     );
 
     const row = snapshot.rows[0] as any;

@@ -52,7 +52,7 @@ SPDX-License-Identifier: Apache-2.0
 import { ref, computed, watch, defineComponent, h, onMounted } from 'vue';
 import type { RuleItem } from 'async-validator';
 import type { BaseModel, FieldPath, FieldPathType } from '@/core/rpc';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import { useField } from '@/web/web/composables/useField';
 import type { UseField, AggProp } from '@/web/web/composables/useField';
 import ChoyFieldBase, { type FieldStateExpr, type FormItemProps } from './ChoyFieldBase.vue';
@@ -79,7 +79,7 @@ type ViewType = string | null;
 
 const props = withDefaults(
   defineProps<{
-    store?: WebModelStore<T>;
+    store?: ModelStore<T>;
     prop?: P | (IsAny<T> extends true ? string : never);
     binding?: UseField<T, V>;
     label?: string;
@@ -135,7 +135,7 @@ const props = withDefaults(
 );
 
 // Binding, passing agg through to useField for aggregate registration
-const binding = (props.binding ?? useField<T, P, V>({ store: props.store as WebModelStore<T>, prop: props.prop as P, agg: props.agg })) as UseField<T, V>;
+const binding = (props.binding ?? useField<T, P, V>({ store: props.store as ModelStore<T>, prop: props.prop as P, agg: props.agg })) as UseField<T, V>;
 
 const showFormEmptyPlaceholder = computed(() =>
   isFormEmptyPlaceholderMode(props.renderMode, binding.env?.isForm)

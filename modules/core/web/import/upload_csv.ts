@@ -3,7 +3,7 @@
 
 import { getCurrentRequestContext } from '@/core/rpc/context';
 import { getCSRFProvider, getTokenProvider } from '@/core/web/rpc/providers';
-import { createStoreByModel } from '@/core/web/stores/registry';
+import { createModelStore } from '@/core/web/stores/registry';
 import { normalizeOptionalString } from '@/core/service/utils/normalization';
 
 type PrepareUploadReq = {
@@ -64,7 +64,7 @@ async function sha256Hex(blob: Blob): Promise<string | undefined> {
 }
 
 function resolveAttachmentContentService(): AttachmentContentServiceLike {
-  const service = createStoreByModel('document.AttachmentContent') as unknown as AttachmentContentServiceLike;
+  const service = createModelStore('document.AttachmentContent') as unknown as AttachmentContentServiceLike;
   if (!service || typeof service.PrepareUpload !== 'function' || typeof service.FinalizeUpload !== 'function') {
     throw new Error('document.AttachmentContent service is unavailable');
   }

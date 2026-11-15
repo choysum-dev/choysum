@@ -49,7 +49,7 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts">
 import { computed, provide } from 'vue';
 import type { ConditionGroup, Condition } from '@/web/web/query/types';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
 import SearchFilterGroup from './SearchFilterGroup.vue';
 import { valueToPreview } from '@/web/web/query/utils/condition/like';
@@ -73,7 +73,7 @@ interface DraftFilterCompat {
 }
 
 const props = defineProps<{
-  store: WebModelStore<any>;
+  store: ModelStore<any>;
   draft: DraftFilterCompat;
   fields: FieldOption[];
 }>();

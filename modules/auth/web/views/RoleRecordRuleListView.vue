@@ -30,7 +30,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { useRouter } from 'vue-router';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import type RoleRecordRule from '@/auth/service/models/role_record_rule';
 import { useListViewExpose } from '@/web/web/composables/useListView';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
@@ -48,7 +48,7 @@ const router = useRouter();
 
 const props = withDefaults(
   defineProps<{
-    store?: WebModelStore<RoleRecordRule>;
+    store?: ModelStore<RoleRecordRule>;
     showHeader?: boolean;
   }>(),
   {

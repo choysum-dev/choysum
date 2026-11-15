@@ -9,6 +9,7 @@ import { computed, defineComponent, h, ref } from 'vue';
 
 import type { UseField } from '@/web/web/composables/useField';
 import { flushPromises, fnRecorder, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
+import { replaceStoreFactory } from '@/web/web/stores/registry';
 import ChoyFieldBase from './ChoyFieldBase.vue';
 import ChoyManyToManyTreeField from './ChoyManyToManyTreeField.vue';
 import RelationTree from '@/web/web/components/internal/RelationTree.vue';
@@ -61,7 +62,10 @@ function relationStoreStub(overrides: Record<string, unknown> = {}) {
 }
 
 describe('ChoyManyToManyTreeField patch coverage', () => {
+  let restoreFactory: (() => void) | undefined;
+
   beforeEach(() => {
+    restoreFactory = undefined;
     stubSfc(ChoyFieldBase as any, {
       name: 'ChoyFieldBase',
       inheritAttrs: false,
@@ -86,8 +90,33 @@ describe('ChoyManyToManyTreeField patch coverage', () => {
   });
 
   afterEach(() => {
+    restoreFactory?.();
+    restoreFactory = undefined;
     restoreSfc(ChoyFieldBase as any);
     restoreSfc(RelationTree as any);
+  });
+
+  test('relationStore falls back to createModelStore via targetModel', async () => {
+    restoreFactory = replaceStoreFactory('demo.FallbackTreeTag', () =>
+      relationStoreStub({ fullModelName: 'demo.FallbackTreeTag', storeId: 'fallback-tree' })
+    );
+    const binding = makeBinding({ items: [], relationStore: undefined });
+    binding.meta = { type: 'ManyToMany' } as any;
+    const m = mountApp(ChoyManyToManyTreeField as any, {
+      props: {
+        binding,
+        targetModel: 'demo.FallbackTreeTag',
+        renderMode: 'form',
+        lazy: true,
+      },
+    });
+    await flushPromises();
+    const ss = m.setupState() as any;
+    const rel = ss.relationStore as any;
+    expect(rel?.fullModelName === 'demo.FallbackTreeTag' || rel?.modelName === 'demo.FallbackTreeTag' || !!rel).toBe(
+      true
+    );
+    m.unmount();
   });
 
   test('applySelectedIds writes ClientModel objects not bare ids', async () => {

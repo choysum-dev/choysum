@@ -45,7 +45,7 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import { useListViewExpose } from '@/web/web/composables/useListView';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { usePermission } from '@/auth/web/composables/usePermission';
@@ -71,7 +71,7 @@ const router = useRouter();
 const route = useRoute();
 
 const props = defineProps<{
-  store?: WebModelStore<any>;
+  store?: ModelStore<any>;
   application: string;
 }>();
 

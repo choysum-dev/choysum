@@ -16,7 +16,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { useRoute } from 'vue-router';
-import { createStoreByModel } from '@/web/web/stores/registry';
+import { createModelStore } from '@/web/web/stores/registry';
 import RoleListView from '@/auth/web/views/RoleListView.vue';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
 import { createTranslate } from '@/web/web/i18n';
@@ -27,7 +27,7 @@ const { _t } = createTranslate('auth', { scope: 'web/pages/RoleList' });
 const pageTitle = _t('Role List');
 
 const route = useRoute();
-const roleStore = createStoreByModel<typeof Role>('auth.Role', {
+const roleStore = createModelStore<typeof Role>('auth.Role', {
   storeId: `Role_${route.fullPath}`,
   scopeManager: useScopeManager().menuScopeManager,
 });

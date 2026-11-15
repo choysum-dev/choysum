@@ -16,7 +16,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { useRoute } from 'vue-router';
-import { createStoreByModel } from '@/web/web/stores/registry';
+import { createModelStore } from '@/web/web/stores/registry';
 import LanguageListView from '../views/LanguageListView.vue';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
 import { createTranslate } from '@/web/web/i18n';
@@ -29,7 +29,7 @@ const { _t } = createTranslate('base', { scope: 'web/pages/LanguageList' });
 const pageTitle = _t('Language List');
 
 const route = useRoute();
-const languageStore = createStoreByModel<typeof Language>('base.Language', {
+const languageStore = createModelStore<typeof Language>('base.Language', {
   storeId: `Language_${route.fullPath}`,
   scopeManager: useScopeManager().menuScopeManager,
 });

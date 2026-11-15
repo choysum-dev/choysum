@@ -16,7 +16,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { useRoute } from 'vue-router';
-import { createStoreByModel } from '@/web/web/stores/registry';
+import { createModelStore } from '@/web/web/stores/registry';
 import CountryListView from '../views/CountryListView.vue';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
 import { createTranslate } from '@/web/web/i18n';
@@ -29,7 +29,7 @@ const { _t } = createTranslate('base', { scope: 'web/pages/CountryList' });
 const pageTitle = _t('Country List');
 
 const route = useRoute();
-const countryStore = createStoreByModel<typeof Country>('base.Country', {
+const countryStore = createModelStore<typeof Country>('base.Country', {
   storeId: `Country_${route.fullPath}`,
   scopeManager: useScopeManager().menuScopeManager,
 });

@@ -211,7 +211,7 @@ describe('formController attachment protocol', () => {
       getContext: () => ({}),
       fieldsMetadata: { Avatar: { type: 'image' } },
     } as any;
-    const deps = { createStoreByModel: createStoreForNormalize(service) as any };
+    const deps = { createModelStore: createStoreForNormalize(service) as any };
 
     const withDisposition = await __normalizeAttachmentFieldsInPayloadForTest(
       store,
@@ -340,7 +340,7 @@ describe('formController attachment protocol', () => {
       getContext: () => ({}),
       fieldsMetadata: { Avatar: { type: 'image' } },
     } as any;
-    const deps = { createStoreByModel: createStoreForNormalize(service) as any };
+    const deps = { createModelStore: createStoreForNormalize(service) as any };
 
     for (const [key, value] of [
       ['fileName', 'from-file-name'],
@@ -420,7 +420,7 @@ describe('formController attachment protocol', () => {
       { Avatar: { kind: 'noop' }, Name: 'x' },
       { operation: 'update', ownerModel: 'demo.Asset', ownerRecordId: 'r1', fields: ['Avatar'] },
       {
-        createStoreByModel: () => {
+        createModelStore: () => {
           throw new Error('document.AttachmentContent must not be dialed');
         },
       }
@@ -441,7 +441,7 @@ describe('formController attachment protocol', () => {
         { Avatar: new Blob([new Uint8Array([1])]) },
         { operation: 'create', ownerModel: 'demo.Asset', fields: ['Avatar'] },
         {
-          createStoreByModel: () => {
+          createModelStore: () => {
             throw new Error("Store factory for model 'document.AttachmentContent' not found");
           },
         }
@@ -479,7 +479,7 @@ describe('formController attachment protocol', () => {
       { Avatar: { kind: 'noop' }, Name: 'x' },
       { ownerModel: 'demo.Asset', ownerRecordId: 'r1', fields: ['Avatar'] },
       {
-        createStoreByModel: () => {
+        createModelStore: () => {
           throw new Error('document.AttachmentContent must not be dialed for noop');
         },
       }

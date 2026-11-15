@@ -32,7 +32,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import type SandboxRecord from '@/sandbox/service/models/sandbox_record';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
 import { useField } from '@/web/web/composables/useField';
@@ -45,7 +45,7 @@ defineOptions({ name: 'SandboxLinesVirtTools' });
 const { _t } = createTranslate('sandbox', { scope: 'web/views/SandboxLinesVirtTools' });
 
 const props = defineProps<{
-  store: WebModelStore<SandboxRecord>;
+  store: ModelStore<SandboxRecord>;
 }>();
 
 const binding = useField<SandboxRecord, 'Lines'>({ store: props.store, prop: 'Lines' });

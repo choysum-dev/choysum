@@ -3,14 +3,14 @@
 
 /**
  * Provides unified field access, view mapping, array helpers, and field/metric registration.
- * - Depends only on WebModelStore identifiers and metadata.
+ * - Depends only on ModelStore identifiers and metadata.
  * - Registers field paths and metrics on mount and unregisters them on unmount.
  * - Prefers the injected form root and falls back to a read-only empty record outside forms.
  */
 
 import { computed, inject, onMounted, onUnmounted, ref, watch, watchEffect, type ComputedRef, type Ref, type WritableComputedRef } from 'vue';
-import { createStoreByModel, getStoreFactoryRegistryVersion } from '@/web/web/stores/registry';
-import { getFieldMetadataView, type WebModelStore, type WebFieldMetadata } from '@/web/web/stores/modelStore';
+import { createModelStore, getStoreFactoryRegistryVersion } from '@/web/web/stores/registry';
+import { getFieldMetadataView, type ModelStore, type WebFieldMetadata } from '@/web/web/stores/modelStore';
 import { registerFieldPath, unregisterFieldPath } from '@/web/web/query/utils/registry/field';
 import { registerMetric, unregisterMetric } from '@/web/web/query/utils/registry/metric';
 import type { MetricSpec } from '@/web/web/query/utils/registry/metric';
@@ -74,10 +74,10 @@ export interface UseField<T = any, V = any> {
   registerFields(paths: string | string[]): void;
 
   // Relation model store when the field resolves to a relation.
-  relationStore?: WebModelStore<any>;
+  relationStore?: ModelStore<any>;
 
   // Read-only store passthrough for callers that need the store reference.
-  store?: WebModelStore<any>;
+  store?: ModelStore<any>;
 
   // View mapping helpers.
   asView<View = V, From = View>(opts?: {
@@ -137,7 +137,7 @@ function metricAliasOf(field: string, agg?: AggProp): string | null {
  * Creates field helpers for a store-backed field path.
  */
 export function useField<T = any, P extends string = string, V = any>(opts: {
-  store?: WebModelStore<any>;
+  store?: ModelStore<any>;
   prop: P;
   autoRegister?: boolean;
   agg?: AggProp | AggProp[];
@@ -189,11 +189,11 @@ export function useField<T = any, P extends string = string, V = any>(opts: {
   const segs = String(prop).split('.').filter(Boolean);
   const relationScope = new ComponentScopeManager();
   const leafMetaRef = ref<WebFieldMetadata | undefined>(undefined);
-  const relationStoreRef = ref<WebModelStore<any> | undefined>(undefined);
+  const relationStoreRef = ref<ModelStore<any> | undefined>(undefined);
   const storeFactoryRegistryVersion = getStoreFactoryRegistryVersion();
 
   const resolveLeafMetaAndRelationStore = () => {
-    let owningStore: WebModelStore<any> | undefined = store;
+    let owningStore: ModelStore<any> | undefined = store;
     let leafMeta: WebFieldMetadata | undefined;
 
     for (let i = 0; i < segs.length; i++) {
@@ -204,7 +204,7 @@ export function useField<T = any, P extends string = string, V = any>(opts: {
       const isLeaf = i === segs.length - 1;
       if (!isLeaf && view.isRelation && view.relationModel) {
         try {
-          owningStore = createStoreByModel(view.relationModel, { scopeManager: relationScope });
+          owningStore = createModelStore(view.relationModel, { scopeManager: relationScope });
         } catch {
           // Stop current attempt; watchEffect will retry after factory registry updates.
           leafMeta = undefined;
@@ -213,11 +213,11 @@ export function useField<T = any, P extends string = string, V = any>(opts: {
       }
     }
 
-    let relationStore: WebModelStore<any> | undefined;
+    let relationStore: ModelStore<any> | undefined;
     const leafView = getFieldMetadataView(leafMeta);
     if (leafView.isRelation && leafView.relationModel) {
       try {
-        relationStore = createStoreByModel(leafView.relationModel, { scopeManager: relationScope });
+        relationStore = createModelStore(leafView.relationModel, { scopeManager: relationScope });
       } catch {
         relationStore = undefined;
       }

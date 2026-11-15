@@ -80,7 +80,7 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts" generic="T extends BaseModel, P extends FieldPath<T, string | null | undefined>, V = FieldPathType<T, P>">
 import type { RuleItem } from 'async-validator';
 import type { BaseModel, FieldPath, FieldPathType } from '@/core/rpc';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import { computed, defineComponent, h } from 'vue';
 import { Copy } from 'lucide-vue-next';
 import { useField } from '@/web/web/composables/useField';
@@ -105,7 +105,7 @@ type VarcharWidget = 'text' | 'password' | 'email' | 'url';
 
 const props = withDefaults(
   defineProps<{
-    store?: WebModelStore<T>;
+    store?: ModelStore<T>;
     prop?: P | (IsAny<T> extends true ? string : never);
     binding?: UseField<T, V>;
 
@@ -181,7 +181,7 @@ const props = withDefaults(
   }
 );
 
-const binding = (props.binding ?? useField<T, P, V>({ store: props.store as WebModelStore<T>, prop: props.prop as P, agg: props.agg })) as UseField<T, V>;
+const binding = (props.binding ?? useField<T, P, V>({ store: props.store as ModelStore<T>, prop: props.prop as P, agg: props.agg })) as UseField<T, V>;
 const metaSize = computed<number | undefined>(() => binding.meta?.size as any);
 const effectiveMaxLength = computed(() => props.maxLength ?? metaSize.value ?? undefined);
 

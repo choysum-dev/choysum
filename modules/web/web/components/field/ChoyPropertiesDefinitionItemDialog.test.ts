@@ -18,7 +18,7 @@ import ChoyPropertyLabelTranslationsDialog from './ChoyPropertyLabelTranslations
 import ChoyPropertiesDefinitionSelectionEditor from './ChoyPropertiesDefinitionSelectionEditor.vue';
 import ItemDialog from './ChoyPropertiesDefinitionItemDialog.vue';
 import type { DefinitionEditorDraftItem } from './propertiesDefinitionHelpers';
-import type { LocalFormStore } from '@/web/web/stores/localFormStore';
+import type { UiModelStore } from '@/web/web/stores/uiModelStore';
 
 function draft(partial: Partial<DefinitionEditorDraftItem> = {}): DefinitionEditorDraftItem {
   return {
@@ -105,7 +105,7 @@ describe('ChoyPropertiesDefinitionItemDialog', () => {
         const formData = reactive({ ...(props.initialValues || {}) });
         const syncStoreField = (path: string, value: unknown) => {
           (formData as any)[path] = value;
-          const store = props.store as LocalFormStore | null | undefined;
+          const store = props.store as UiModelStore | null | undefined;
           store?.setField?.(path, value);
         };
         provide('form-root', {
@@ -496,7 +496,7 @@ describe('ChoyPropertiesDefinitionItemDialog', () => {
           },
           setField(path: string, value: unknown) {
             (formData as any)[path] = value;
-            (props.store as LocalFormStore | undefined)?.setField?.(path, value);
+            (props.store as UiModelStore | undefined)?.setField?.(path, value);
           },
           getField(path: string) {
             return (formData as any)[path];
@@ -741,8 +741,8 @@ describe('ChoyPropertiesDefinitionItemDialog', () => {
       { onSaved },
     );
     await flushPromises();
-    // setupState unwraps refs — formStore is the LocalFormStore instance.
-    const store = m.setupState().formStore as LocalFormStore | null;
+    // setupState unwraps refs — formStore is the UiModelStore instance.
+    const store = m.setupState().formStore as UiModelStore | null;
     m.click('[data-testid="choy-properties-definition-translate-string"]');
     await flushPromises();
     m.click('[data-testid="stub-translate-save-string"]');

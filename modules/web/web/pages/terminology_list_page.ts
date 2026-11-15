@@ -3,9 +3,9 @@
 
 import { computed, shallowRef, watch, type Ref } from 'vue';
 import type { RouteLocationNormalizedLoaded } from 'vue-router';
-import { createStoreByModel } from '@/web/web/stores/registry';
+import { createModelStore } from '@/web/web/stores/registry';
 import { createTranslate } from '@/web/web/i18n';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import { resolveTerminologyListApplication } from './terminology_page_bind';
 
 const { _t: defaultTranslate } = createTranslate('web', { scope: 'web/pages/TranslationTermList' });
@@ -13,7 +13,7 @@ const { _t: defaultTranslate } = createTranslate('web', { scope: 'web/pages/Tran
 export type TerminologyListPageDeps = {
   route: RouteLocationNormalizedLoaded;
   scopeManager: unknown;
-  createStore?: typeof createStoreByModel;
+  createStore?: typeof createModelStore;
   translate?: (msgid: string, ...args: unknown[]) => string;
 };
 
@@ -23,9 +23,9 @@ export type TerminologyListPageDeps = {
 export function useTerminologyListPage(deps: TerminologyListPageDeps): {
   application: Ref<string>;
   pageTitle: Ref<string>;
-  termStore: Ref<WebModelStore<any> | null>;
+  termStore: Ref<ModelStore<any> | null>;
 } {
-  const createStore = deps.createStore ?? createStoreByModel;
+  const createStore = deps.createStore ?? createModelStore;
 
   const application = computed(() => resolveTerminologyListApplication(deps.route));
   const pageTitle = computed(() => {
@@ -35,7 +35,7 @@ export function useTerminologyListPage(deps: TerminologyListPageDeps): {
     }
     return String(defaultTranslate('Translations: %s', appLabel));
   });
-  const termStore = shallowRef<WebModelStore<any> | null>(null);
+  const termStore = shallowRef<ModelStore<any> | null>(null);
 
   function bindStore(app: string) {
     if (!app) {
@@ -45,7 +45,7 @@ export function useTerminologyListPage(deps: TerminologyListPageDeps): {
     termStore.value = createStore(`${app}.TranslationTerm`, {
       storeId: `TranslationTerm_${app}`,
       scopeManager: deps.scopeManager,
-    }) as WebModelStore<any>;
+    }) as ModelStore<any>;
   }
 
   watch(application, (app) => bindStore(app), { immediate: true });

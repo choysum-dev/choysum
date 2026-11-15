@@ -117,7 +117,7 @@ import {
   ChoyButton,
   ChoyFormView,
   ChoyStepper,
-  createLocalFormStore,
+  createUiModelStore,
   type ChoyStepperStep,
 } from '@/web';
 import { createTranslate } from '@/web/web/i18n';
@@ -159,7 +159,7 @@ const authStore = useAuthStore();
 /** Page busy for Complete→Login→(demo); independent of store.loading flicker. */
 const submitting = ref(false);
 
-const formStore = createLocalFormStore({
+const formStore = createUiModelStore({
   fields: [
     { name: 'Username', label: 'Username', type: 'varchar' },
     { name: 'Password', label: 'Password', type: 'varchar' },

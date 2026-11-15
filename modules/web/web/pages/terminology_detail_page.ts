@@ -3,14 +3,14 @@
 
 import { computed, shallowRef, watch, type Ref } from 'vue';
 import type { RouteLocationNormalizedLoaded } from 'vue-router';
-import { createStoreByModel } from '@/web/web/stores/registry';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import { createModelStore } from '@/web/web/stores/registry';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import { resolveTerminologyDetailApplication } from './terminology_page_bind';
 
 export type TerminologyDetailPageDeps = {
   route: RouteLocationNormalizedLoaded;
   scopeManager: unknown;
-  createStore?: typeof createStoreByModel;
+  createStore?: typeof createModelStore;
 };
 
 /**
@@ -18,11 +18,11 @@ export type TerminologyDetailPageDeps = {
  */
 export function useTerminologyDetailPage(deps: TerminologyDetailPageDeps): {
   application: Ref<string>;
-  termStore: Ref<WebModelStore<any> | null>;
+  termStore: Ref<ModelStore<any> | null>;
 } {
-  const createStore = deps.createStore ?? createStoreByModel;
+  const createStore = deps.createStore ?? createModelStore;
   const application = computed(() => resolveTerminologyDetailApplication(deps.route));
-  const termStore = shallowRef<WebModelStore<any> | null>(null);
+  const termStore = shallowRef<ModelStore<any> | null>(null);
 
   watch(
     application,
@@ -34,7 +34,7 @@ export function useTerminologyDetailPage(deps: TerminologyDetailPageDeps): {
       termStore.value = createStore(`${app}.TranslationTerm`, {
         storeId: `TranslationTerm_${app}`,
         scopeManager: deps.scopeManager,
-      }) as WebModelStore<any>;
+      }) as ModelStore<any>;
     },
     { immediate: true }
   );

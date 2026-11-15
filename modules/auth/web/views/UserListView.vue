@@ -33,7 +33,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import type User from '@/auth/service/models/user/user';
 import { useRouter } from 'vue-router';
 import { useListViewExpose } from '@/web/web/composables/useListView';
@@ -54,7 +54,7 @@ const collaborationCaps = useReactiveCollaborationCaps();
 
 const props = withDefaults(
   defineProps<{
-    store?: WebModelStore<User>;
+    store?: ModelStore<User>;
     showHeader?: boolean;
   }>(),
   { showHeader: true }

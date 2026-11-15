@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /**
- * Patch-focused coverage for ChoyManyToManyRefTagsField (createStoreByModel fallback,
+ * Patch-focused coverage for ChoyManyToManyRefTagsField (createModelStore fallback,
  * display tag click/keydown, remote search, highlight, keydown, picker confirm).
  */
 
@@ -353,7 +353,7 @@ describe('ChoyManyToManyRefTagsField patch coverage', () => {
     m2.unmount();
   });
 
-  test('relationStore falls back to createStoreByModel via targetModel', async () => {
+  test('relationStore falls back to createModelStore via targetModel', async () => {
     restoreFactory = replaceStoreFactory('demo.FallbackTag', () =>
       relationStoreStub({
         fullModelName: 'demo.FallbackTag',
@@ -379,7 +379,7 @@ describe('ChoyManyToManyRefTagsField patch coverage', () => {
     m.unmount();
   });
 
-  test('createStoreByModel failure warns and leaves relationStore undefined', async () => {
+  test('createModelStore failure warns and leaves relationStore undefined', async () => {
     const binding = makeBinding({
       items: [],
       relationStore: undefined,

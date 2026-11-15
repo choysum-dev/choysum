@@ -3,7 +3,7 @@
 
 // Note: no implicit store side-effects; pure local composable aggregating state+editor.
 import { toValue, watch, type MaybeRefOrGetter } from 'vue';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import type { ConditionGroup, NamedFilter } from '@/web/web/query/types';
 import { filtersToQuery } from '@/web/web/query/utils/condition/builder';
 import { deepCloneFilter, isGroup, normalizeFilters } from '@/web/web/query/utils/filter/structures';
@@ -15,7 +15,7 @@ import { resolveSearchFieldLabel } from './useSearchFieldOptions';
 const { _t } = createTranslate('web', { scope: 'web/composables/search/useSearch' });
 
 export interface UseSearchOptions extends Omit<UseSearchStateOptions, 'initialFilters'> {
-  attachStore?: WebModelStore<any>; // Optional source of field metadata used while building query conditions.
+  attachStore?: ModelStore<any>; // Optional source of field metadata used while building query conditions.
   onTrigger?: (ctx: { keyword: string; filters: ConditionGroup[] }) => void; // Optional unified trigger callback.
   allowDuplicateNamedFilter?: boolean; // Whether named presets can be added more than once.
   initialFilters?: MaybeRefOrGetter<ConditionGroup[] | undefined>;

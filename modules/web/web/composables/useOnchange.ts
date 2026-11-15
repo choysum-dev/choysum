@@ -14,7 +14,7 @@
 
 import { ref, watch, nextTick, provide, inject, getCurrentInstance, type Ref } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
-import { getFieldMetadataView, isRelationFieldType, type WebModelStore, type WebFieldMetadata } from '@/web/web/stores/modelStore';
+import { getFieldMetadataView, isRelationFieldType, type ModelStore, type WebFieldMetadata } from '@/web/web/stores/modelStore';
 import { collectChangedPaths } from '@/core/utils/diff';
 import type { RelationType } from '@/core/utils/diff';
 import { deepClonePreserve as deepClone } from '@/core/utils/clone';
@@ -92,14 +92,14 @@ export function normalizeDiffRelation(type: string | undefined): RelationType | 
 type DiffFieldsMeta = Record<string, { relation?: RelationType; type?: string; isReadonly?: boolean }>;
 
 const diffFieldsMetaCache = new WeakMap<
-  WebModelStore<any>,
+  ModelStore<any>,
   {
     source: Record<string, WebFieldMetadata | undefined>;
     normalized: DiffFieldsMeta;
   }
 >();
 
-export function buildDiffFieldsMeta(store: WebModelStore<any>): DiffFieldsMeta {
+export function buildDiffFieldsMeta(store: ModelStore<any>): DiffFieldsMeta {
   const raw = ((store as any).fieldsMetadata || {}) as Record<string, WebFieldMetadata | undefined>;
   const cached = diffFieldsMetaCache.get(store);
   if (cached && cached.source === raw) {
@@ -128,7 +128,7 @@ export function buildDiffFieldsMeta(store: WebModelStore<any>): DiffFieldsMeta {
   return normalized;
 }
 
-export function buildRelationFieldSet(store: WebModelStore<any>): Set<string> {
+export function buildRelationFieldSet(store: ModelStore<any>): Set<string> {
   const rel = new Set<string>();
   const fields: Record<string, WebFieldMetadata | undefined> = store.fieldsMetadata || {};
   for (const [fieldName, meta] of Object.entries(fields)) {
@@ -137,7 +137,7 @@ export function buildRelationFieldSet(store: WebModelStore<any>): Set<string> {
   return rel;
 }
 
-export function relationAwareMinimize(paths: string[], store: WebModelStore<any>, collapseRelationChildren: boolean): string[] {
+export function relationAwareMinimize(paths: string[], store: ModelStore<any>, collapseRelationChildren: boolean): string[] {
   if (!paths.length) return [];
   const relationFields = collapseRelationChildren ? buildRelationFieldSet(store) : new Set<string>();
 
@@ -436,7 +436,7 @@ export function toSelectorPath(rootObj: any, leafPath: string): string | null {
  * Detects whether a top-level relation changed structurally.
  * Structural changes include different lengths or different Id sequences.
  */
-export function detectStructuralChangedRelations(collapsed: Set<string>, baseline: any, current: any, store: WebModelStore<any>): Set<string> {
+export function detectStructuralChangedRelations(collapsed: Set<string>, baseline: any, current: any, store: ModelStore<any>): Set<string> {
   const structural = new Set<string>();
   if (!collapsed.size) return structural;
   const meta = (store as any).fieldsMetadata || {};
@@ -478,7 +478,7 @@ export function detectStructuralChangedRelations(collapsed: Set<string>, baselin
 
 /* ====================== Core controller ====================== */
 
-function createAutoOnchangeController(store: WebModelStore<any>, opts?: CreateOnchangeOptions): OnchangeController {
+function createAutoOnchangeController(store: ModelStore<any>, opts?: CreateOnchangeOptions): OnchangeController {
   // Mutable so remounted providers can rebind getRoot/onPatch without orphaning closures.
   let options = opts;
   // Getter so rebindOptions can update debounce without rebuilding useDebounceFn.
@@ -953,10 +953,10 @@ function createAutoOnchangeController(store: WebModelStore<any>, opts?: CreateOn
 
 /* ====================== Controller cache (session) ====================== */
 
-const SINGLETON = new WeakMap<WebModelStore<any>, OnchangeController>();
-const PER_SESSION = new WeakMap<WebModelStore<any>, Map<string, OnchangeController>>();
+const SINGLETON = new WeakMap<ModelStore<any>, OnchangeController>();
+const PER_SESSION = new WeakMap<ModelStore<any>, Map<string, OnchangeController>>();
 
-export function getOnchangeController(store: WebModelStore<any>, sessionId?: string, opts?: CreateOnchangeOptions): OnchangeController {
+export function getOnchangeController(store: ModelStore<any>, sessionId?: string, opts?: CreateOnchangeOptions): OnchangeController {
   if (!sessionId) {
     let c = SINGLETON.get(store);
     if (!c) {
@@ -986,7 +986,7 @@ export function getOnchangeController(store: WebModelStore<any>, sessionId?: str
 
 export const OnchangeControllerKey: unique symbol = Symbol('OnchangeController');
 
-export function provideOnchange(store: WebModelStore<any>, sessionId?: string, opts?: CreateOnchangeOptions): OnchangeController {
+export function provideOnchange(store: ModelStore<any>, sessionId?: string, opts?: CreateOnchangeOptions): OnchangeController {
   const ctrl = getOnchangeController(store, sessionId, opts);
   provide(OnchangeControllerKey, ctrl);
   return ctrl;
@@ -996,7 +996,7 @@ export function useProvidedOnchange(): OnchangeController | null {
   return inject<OnchangeController | null>(OnchangeControllerKey, null);
 }
 
-export function useOrCreateOnchangeController(store: WebModelStore<any>, sessionId?: string, opts?: CreateOnchangeOptions): OnchangeController {
+export function useOrCreateOnchangeController(store: ModelStore<any>, sessionId?: string, opts?: CreateOnchangeOptions): OnchangeController {
   const injected = useProvidedOnchange();
   if (injected) return injected;
   return getOnchangeController(store, sessionId, opts);
@@ -1004,7 +1004,7 @@ export function useOrCreateOnchangeController(store: WebModelStore<any>, session
 
 /* ====================== Cleanup helpers ====================== */
 
-export function disposeOnchange(store: WebModelStore<any>) {
+export function disposeOnchange(store: ModelStore<any>) {
   const single = SINGLETON.get(store);
   if (single) {
     try {

@@ -17,7 +17,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { useRoute } from 'vue-router';
-import { createStoreByModel } from '@/web/web/stores/registry';
+import { createModelStore } from '@/web/web/stores/registry';
 import { ChoyPage } from '@/web';
 import PartnerListView from '../views/PartnerListView.vue';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
@@ -31,7 +31,7 @@ const pageTitle = _t('Partner List');
 
 const route = useRoute();
 
-const partnerStore = createStoreByModel<typeof Partner>('partner.Partner', {
+const partnerStore = createModelStore<typeof Partner>('partner.Partner', {
   storeId: `Partner_${route.fullPath}`,
   scopeManager: useScopeManager().menuScopeManager,
 });

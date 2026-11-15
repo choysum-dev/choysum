@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import {
-  createStoreByModel,
+  createModelStore,
   getStoreFactory,
   getStoreFactoryRegistryVersion,
   listRegisteredModelNames,
@@ -17,7 +17,7 @@ test('core/web/stores/registry: registers and creates stores by model name', () 
   registerStoreFactory(modelName, () => store);
 
   expect(typeof getStoreFactory(modelName)).toBe('function');
-  expect(createStoreByModel(modelName)).toBe(store);
+  expect(createModelStore(modelName)).toBe(store);
   expect(listRegisteredModelNames()).toContain(modelName);
 });
 
@@ -29,7 +29,7 @@ test('core/web/stores/registry: bumps registry version on register', () => {
 });
 
 test('core/web/stores/registry: throws when model factory is missing', () => {
-  expect(() => createStoreByModel('missing.model.name')).toThrow(
+  expect(() => createModelStore('missing.model.name')).toThrow(
     "Store factory for model 'missing.model.name' not found"
   );
 });
@@ -42,11 +42,11 @@ test('core/web/stores/registry: replaceStoreFactory restores the previous factor
   const before = version.value;
 
   const restore = replaceStoreFactory(modelName, () => ({ id: 'override' }));
-  expect(createStoreByModel(modelName)).toEqual({ id: 'override' });
+  expect(createModelStore(modelName)).toEqual({ id: 'override' });
   expect(version.value).toBeGreaterThan(before);
 
   restore();
-  expect(createStoreByModel(modelName)).toBe(original);
+  expect(createModelStore(modelName)).toBe(original);
 });
 
 test('core/web/stores/registry: replaceStoreFactory unregisters when no previous factory', () => {
@@ -55,7 +55,7 @@ test('core/web/stores/registry: replaceStoreFactory unregisters when no previous
   expect(getStoreFactory(modelName)).toBeTruthy();
   restore();
   expect(getStoreFactory(modelName)).toBeUndefined();
-  expect(() => createStoreByModel(modelName)).toThrow(`Store factory for model '${modelName}' not found`);
+  expect(() => createModelStore(modelName)).toThrow(`Store factory for model '${modelName}' not found`);
 });
 
 test('core/web/stores/registry: unregisterStoreFactory removes a registered factory', () => {

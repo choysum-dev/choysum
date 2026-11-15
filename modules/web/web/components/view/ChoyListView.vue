@@ -274,7 +274,7 @@ import {
 import { useRouter } from 'vue-router';
 import type { RouteLocationRaw } from 'vue-router';
 import type { ClientModel, BaseModel, QueryCondition, OrderBy } from '@/core/rpc';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import ChoyTableHost from '@/web/web/components/internal/ChoyTableHost.vue';
 import ChoyPagination from './ChoyPagination.vue';
 import ChoyEmpty from '../layout/ChoyEmpty.vue';
@@ -349,7 +349,7 @@ const { _t } = createTranslate('web', { scope: 'web/components/view/ListView' })
 
 const props = withDefaults(
   defineProps<{
-    store?: WebModelStore<T>;
+    store?: ModelStore<T>;
     keywordFields?: string[];
     showHeader?: boolean;
     showActions?: boolean;

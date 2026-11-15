@@ -178,7 +178,7 @@ import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
 import { RELATION_PICKER_CLOSE_KEY } from '@/web/web/components/field/relationPickerContext';
 import type { RuleItem } from 'async-validator';
 import type { BaseModel, FieldPath, FieldPathType, ClientModel, QueryCondition } from '@/core/rpc';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import ChoyFieldBase, { type FieldStateExpr, type FormItemProps } from './ChoyFieldBase.vue';
 import ChoyTableHost from '@/web/web/components/internal/ChoyTableHost.vue';
 import ChoyTableColumn from '@/web/web/components/table/ChoyTableColumn.vue';
@@ -186,7 +186,7 @@ import { useField } from '@/web/web/composables/useField';
 import type { UseField } from '@/web/web/composables/useField';
 import ChoyViewScope from '@/web/web/components/view/ChoyViewScope.vue';
 import type { RowEventHandlerParams, SelectionExpose } from '@/web/web/components/view/listViewTypes';
-import { createStoreByModel } from '@/web/web/stores/registry';
+import { createModelStore } from '@/web/web/stores/registry';
 import { useProvidedOnchange } from '@/web/web/composables/useOnchange';
 import { createTranslate } from '@/web/web/i18n';
 import { formatRelationCountSummary } from './relationCountSummary';
@@ -210,7 +210,7 @@ type IsAny<T> = 0 extends 1 & T ? true : false;
 
 const props = withDefaults(
   defineProps<{
-    store?: WebModelStore<T>;
+    store?: ModelStore<T>;
     prop?: P | (IsAny<T> extends true ? string : never);
     binding?: UseField<T, V>;
 
@@ -290,15 +290,15 @@ const effectiveSearchViewTitle = computed(() => props.searchViewTitle || _t('Sel
 const addLineFooterHeight = 36;
 
 // Field binding.
-const binding = (props.binding ?? useField<T, P, V>({ store: props.store as WebModelStore<T>, prop: props.prop as P })) as UseField<T, V>;
+const binding = (props.binding ?? useField<T, P, V>({ store: props.store as ModelStore<T>, prop: props.prop as P })) as UseField<T, V>;
 binding.registerFields(`${binding.prop}.DisplayName`);
 
-const relationStore = computed<WebModelStore<any> | undefined>(() => {
-  if (binding.relationStore) return binding.relationStore as WebModelStore<any>;
+const relationStore = computed<ModelStore<any> | undefined>(() => {
+  if (binding.relationStore) return binding.relationStore as ModelStore<any>;
   const target = props.targetModel || binding.meta?.relationModel;
   if (!target) return undefined;
   try {
-    return createStoreByModel(target);
+    return createModelStore(target);
   } catch (e) {
     console.warn(`[ChoyManyToManyField] Failed to create store for model '${target}'`, e);
     return undefined;

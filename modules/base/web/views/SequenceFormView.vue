@@ -32,7 +32,7 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { RouteLocationRaw } from 'vue-router';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import type Sequence from '@/base/service/models/sequence';
 import CompanyListView from './CompanyListView.vue';
 import { defineModelActions } from '@/core/web/resource';
@@ -46,7 +46,7 @@ defineOptions({ name: 'SequenceFormView', inheritAttrs: true });
 const { _t, _lt } = createTranslate('base', { scope: 'web/views/SequenceFormView' });
 const requiredRules = computed(() => [{ required: true, message: _t('Required') }]);
 const props = withDefaults(
-  defineProps<{ store?: WebModelStore<Sequence>; recordId?: string; viewMode?: ViewMode; showHeader?: boolean; createAction?: string | RouteLocationRaw }>(),
+  defineProps<{ store?: ModelStore<Sequence>; recordId?: string; viewMode?: ViewMode; showHeader?: boolean; createAction?: string | RouteLocationRaw }>(),
   { showHeader: true, createAction: undefined }
 );
 const sequenceActions = defineModelActions('base.Sequence', { entityTitle: _lt('Sequence') });

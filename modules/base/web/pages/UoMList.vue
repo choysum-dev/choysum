@@ -16,7 +16,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { useRoute } from 'vue-router';
-import { createStoreByModel } from '@/web/web/stores/registry';
+import { createModelStore } from '@/web/web/stores/registry';
 import UoMListView from '../views/UoMListView.vue';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
 import { createTranslate } from '@/web/web/i18n';
@@ -29,7 +29,7 @@ const { _t } = createTranslate('base', { scope: 'web/pages/UoMList' });
 const pageTitle = _t('Unit of Measure List');
 
 const route = useRoute();
-const uomStore = createStoreByModel<typeof UoM>('base.UoM', {
+const uomStore = createModelStore<typeof UoM>('base.UoM', {
   storeId: `UoM_${route.fullPath}`,
   scopeManager: useScopeManager().menuScopeManager,
 });

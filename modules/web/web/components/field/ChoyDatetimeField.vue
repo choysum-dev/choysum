@@ -37,7 +37,7 @@ SPDX-License-Identifier: Apache-2.0
 import { computed, defineComponent, h, type PropType } from 'vue';
 import type { RuleItem } from 'async-validator';
 import type { BaseModel, FieldPath, FieldPathType } from '@/core/rpc';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import { useField } from '@/web/web/composables/useField';
 import type { UseField } from '@/web/web/composables/useField';
 // Narrow aggregation types to count_distinct only.
@@ -67,7 +67,7 @@ type FieldType = Date | null;
 
 const props = withDefaults(
   defineProps<{
-    store?: WebModelStore<T>;
+    store?: ModelStore<T>;
     prop?: P | (IsAny<T> extends true ? string : never);
     binding?: UseField<T, V>;
     label?: string;
@@ -118,7 +118,7 @@ const props = withDefaults(
   }
 );
 
-const binding = (props.binding ?? useField<T, P, V>({ store: props.store as WebModelStore<T>, prop: props.prop as P, agg: props.agg })) as UseField<T, V>;
+const binding = (props.binding ?? useField<T, P, V>({ store: props.store as ModelStore<T>, prop: props.prop as P, agg: props.agg })) as UseField<T, V>;
 
 const displayFormat = computed(() => props.displayFormat || 'YYYY-MM-DD HH:mm:ss');
 const storageFormat = computed(() => props.valueFormat || 'YYYY-MM-DD[T]HH:mm:ss.SSSZ');

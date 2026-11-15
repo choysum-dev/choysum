@@ -25,7 +25,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import type Language from '@/base/service/models/language';
 import { useRouter } from 'vue-router';
 import { useListViewExpose } from '@/web/web/composables/useListView';
@@ -38,7 +38,7 @@ import type { RowEventPayload } from '@/web';
 
 defineOptions({ name: 'LanguageListView', inheritAttrs: true });
 const { _t, _lt } = createTranslate('base', { scope: 'web/views/LanguageListView' });
-const props = defineProps<{ store?: WebModelStore<Language> }>();
+const props = defineProps<{ store?: ModelStore<Language> }>();
 const store = resolvePageStore(props.store, 'LanguageListView');
 const languageActions = defineModelActions('base.Language', { entityTitle: _lt('Language') });
 const { hasAction } = usePermission();

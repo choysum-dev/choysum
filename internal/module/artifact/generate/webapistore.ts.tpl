@@ -6,13 +6,13 @@ import { defineStore } from 'pinia';
 import { computed, reactive } from 'vue';
 import type {{.Model.Name}} from '{{ConvertPathNoExt .Model.Path}}';
 import type { IStoreScopeManager } from '@/web/web/stores/storeScopeManager/types';
-import type { WebModelStore, PlanCacheEntry } from '@/web/web/stores/modelStore';
+import type { ModelStore, PlanCacheEntry } from '@/web/web/stores/modelStore';
 import { createFieldsGetHelpers } from '@/web/web/stores/fieldsGet';
 import { createEmptyQueryState } from '@/web/web/query/state';
 import type { DataSetSnapshot } from '@/web/web/query/types';
 import { clearFieldsByStore } from '@/web/web/query/utils/registry/field';
 import { clearMetricsByStore } from '@/web/web/query/utils/registry/metric';
-import { registerStoreFactory, createStoreByModel } from '@/web/web/stores/registry';
+import { registerStoreFactory } from '@/web/web/stores/registry';
 import { webApiService } from '@/core/web/client';
 import { {{.Model.Name}}Service } from '../service';
 import { useI18nStore } from '@/web/web/stores/i18nStore';
@@ -68,8 +68,8 @@ export const {{.Model.Name}}FieldsMetadata = {
 {{- end}}
 } as const;
 
-// Do not redeclare base service methods from WebModelStore; only append custom services.
-export interface {{.Model.Name}}Store extends WebModelStore<{{.Model.Name}}> {
+// Do not redeclare base service methods from ModelStore; only append custom services.
+export interface {{.Model.Name}}Store extends ModelStore<{{.Model.Name}}> {
   {{- range $service := .Model.Services}}
   {{- if not (IsBaseService $service.Name) }}
   {{$service.Name}}: (...args: Parameters<typeof {{$.Model.Name}}Api.{{$service.Name}}>) => ReturnType<typeof {{$.Model.Name}}Api.{{$service.Name}}>;

@@ -239,7 +239,7 @@ import {
 import { createTranslate } from '@/web/web/i18n';
 import { useAuthStore } from '@/auth/web/stores/auth';
 import { useI18nStore, langToUiKey, afterLocaleChange, softLocaleRemount } from '@/web/web/stores/i18nStore';
-import { createStoreByModel } from '@/web/web/stores/registry';
+import { createModelStore } from '@/web/web/stores/registry';
 import {
   applyUserLanguagePreference,
   normalizeLanguageId,
@@ -275,8 +275,8 @@ const { _t } = createTranslate('auth', { scope: 'web/dialogs/preferences/Prefere
 const authStore = useAuthStore();
 const i18nStore = useI18nStore();
 const collaborationCaps = useReactiveCollaborationCaps();
-const userStore = createStoreByModel('auth.User');
-const languageStore = createStoreByModel('base.Language');
+const userStore = createModelStore('auth.User');
+const languageStore = createModelStore('base.Language');
 
 /** Last Theme/Density applied to the shell from this dialog (avoids re-apply loops). */
 let lastAppliedTheme = '';

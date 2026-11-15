@@ -207,7 +207,7 @@ import {
   resolveCompanyLogoUrl,
 } from '@/web';
 import { useAuthStore } from '@/auth/web/stores/auth';
-import { createStoreByModel } from '@/web/web/stores/registry';
+import { createModelStore } from '@/web/web/stores/registry';
 import type Company from '@/base/service/models/company';
 import { createTranslate } from '@/web/web/i18n';
 import { collapsedIdentityTooltip } from './collapsed_identity_tooltip';
@@ -251,7 +251,7 @@ let globalCompanyStore: any | null = null;
  */
 function getGlobalCompanyStore(): any {
   if (globalCompanyStore) return globalCompanyStore;
-  globalCompanyStore = createStoreByModel<typeof Company>('base.Company');
+  globalCompanyStore = createModelStore<typeof Company>('base.Company');
   return globalCompanyStore;
 }
 
@@ -421,7 +421,7 @@ async function syncAllowedCompaniesFromUser(): Promise<void> {
   }
   const gen = ++allowlistBrowseGeneration;
   try {
-    const userStore = createStoreByModel('auth.User');
+    const userStore = createModelStore('auth.User');
     const user = (await userStore.Browse(userId, ['Id', 'CompanyId', 'CompanyIds'] as any)) as any;
     // Discard superseded or post-logout Browse results.
     if (gen !== allowlistBrowseGeneration) return;

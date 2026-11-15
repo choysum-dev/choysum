@@ -52,8 +52,8 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
 
   async function getLanguageStore() {
     if (deps?.createLanguageStore) return deps.createLanguageStore();
-    const { createStoreByModel } = await import('@/web/web/stores/registry');
-    return createStoreByModel('base.Language') as {
+    const { createModelStore } = await import('@/web/web/stores/registry');
+    return createModelStore('base.Language') as {
       Browse: (id: string, fields?: string[]) => Promise<{ Code?: string } | null | undefined>;
       Search: (domain: unknown, opts?: unknown) => Promise<Array<{ Id?: string }>>;
     };
@@ -240,8 +240,8 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
 
   async function getCompanyStore() {
     if (deps?.createCompanyStore) return deps.createCompanyStore();
-    const { createStoreByModel } = await import('@/web/web/stores/registry');
-    return createStoreByModel('base.Company') as unknown as {
+    const { createModelStore } = await import('@/web/web/stores/registry');
+    return createModelStore('base.Company') as unknown as {
       GetInitialSetupOptions: (req: Record<string, never>) => Promise<InitialSetupOptions>;
     };
   }

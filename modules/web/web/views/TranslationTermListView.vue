@@ -27,7 +27,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useListViewExpose } from '@/web/web/composables/useListView';
@@ -45,7 +45,7 @@ import TerminologyExportMenu from '../components/terminology/TerminologyExportMe
 defineOptions({ name: 'TranslationTermListView', inheritAttrs: true });
 
 const props = defineProps<{
-  store?: WebModelStore<any>;
+  store?: ModelStore<any>;
   application: string;
 }>();
 

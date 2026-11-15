@@ -500,7 +500,7 @@ describe('ChoyManyToManyRefField mount coverage', () => {
     m.unmount();
   });
 
-  test('relationStore falls back to createStoreByModel via targetModel', async () => {
+  test('relationStore falls back to createModelStore via targetModel', async () => {
     restoreFactory = replaceStoreFactory('demo.FallbackTag', () => ({
       fullModelName: 'demo.FallbackTag',
       storeId: 'fallback-tag',

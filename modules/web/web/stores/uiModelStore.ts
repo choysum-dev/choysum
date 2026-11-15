@@ -2,10 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /**
- * In-memory form store for pages with no ORM model (login/register drafts,
- * PropertyDefinition item dialogs, and similar pure-scalar wizards).
- * Satisfies the WebModelStore slice that useField / ChoyFieldBase / ChoyFormView
- * read (storeId, fieldsMetadata, getFieldMeta). Does not call gRPC.
+ * Frontend-only ModelStore stand-in for pages with no ORM model (login/register,
+ * settings sheets, PropertyDefinition dialogs, and similar pure-scalar UIs).
+ * Satisfies the ModelStore slice that useField / ChoyFieldBase / ChoyFormView
+ * read (storeId, fieldsMetadata, getFieldMeta). Values are in-memory; does not
+ * call gRPC.
  *
  * Pure scalars only. Relation / monetary / binary / properties / statusbar and
  * pluggable adapters belong in a follow-up wizard store design.
@@ -13,9 +14,9 @@
 
 import { reactive } from 'vue';
 import { createEmptyQueryState } from '@/web/web/query/state';
-import type { SelectionItem, WebFieldMetadata, WebModelStore } from '@/web/web/stores/modelStore';
+import type { SelectionItem, WebFieldMetadata, ModelStore } from '@/web/web/stores/modelStore';
 
-export type LocalFormFieldType =
+export type UiModelFieldType =
   | 'varchar'
   | 'char'
   | 'text'
@@ -30,10 +31,10 @@ export type LocalFormFieldType =
   | 'html'
   | 'jsonobject';
 
-export type LocalFormFieldDef = {
+export type UiModelFieldDef = {
   name: string;
   label: string;
-  type: LocalFormFieldType;
+  type: UiModelFieldType;
   help?: string;
   /**
    * Required when type is selection (static options for ChoySelectionField).
@@ -44,13 +45,13 @@ export type LocalFormFieldDef = {
   size?: number;
 };
 
-export type CreateLocalFormStoreOptions = {
-  fields: readonly LocalFormFieldDef[];
+export type CreateUiModelStoreOptions = {
+  fields: readonly UiModelFieldDef[];
   initialValues?: Record<string, unknown>;
   storeId?: string;
 };
 
-const LOCAL_FIELD_TYPES = new Set<LocalFormFieldType>([
+const LOCAL_FIELD_TYPES = new Set<UiModelFieldType>([
   'varchar',
   'char',
   'text',
@@ -66,9 +67,9 @@ const LOCAL_FIELD_TYPES = new Set<LocalFormFieldType>([
   'jsonobject',
 ]);
 
-let localFormStoreSeq = 0;
+let uiModelStoreSeq = 0;
 
-function defaultValueForType(type: LocalFormFieldType): unknown {
+function defaultValueForType(type: UiModelFieldType): unknown {
   switch (type) {
     case 'boolean':
       return false;
@@ -87,7 +88,7 @@ function defaultValueForType(type: LocalFormFieldType): unknown {
   }
 }
 
-function typeAnnotationFor(type: LocalFormFieldType): string {
+function typeAnnotationFor(type: UiModelFieldType): string {
   switch (type) {
     case 'boolean':
       return 'boolean';
@@ -105,7 +106,7 @@ function typeAnnotationFor(type: LocalFormFieldType): string {
 
 function unsupported(method: string): () => never {
   return () => {
-    throw new Error(`createLocalFormStore does not support ${method}`);
+    throw new Error(`createUiModelStore does not support ${method}`);
   };
 }
 
@@ -120,26 +121,26 @@ function normalizeSelection(items: readonly SelectionItem[]): SelectionItem[] {
   }));
 }
 
-function buildFieldsMetadata(fields: readonly LocalFormFieldDef[]): Record<string, WebFieldMetadata> {
+function buildFieldsMetadata(fields: readonly UiModelFieldDef[]): Record<string, WebFieldMetadata> {
   const names = new Set<string>();
   const meta = emptyDict<WebFieldMetadata>();
   for (const field of fields) {
     if (!field || typeof field !== 'object') {
-      throw new Error('createLocalFormStore field definition must be an object');
+      throw new Error('createUiModelStore field definition must be an object');
     }
     const name = String(field.name || '').trim();
     if (!name) {
-      throw new Error('createLocalFormStore field name must be non-empty');
+      throw new Error('createUiModelStore field name must be non-empty');
     }
     if (names.has(name)) {
-      throw new Error(`createLocalFormStore duplicate field "${name}"`);
+      throw new Error(`createUiModelStore duplicate field "${name}"`);
     }
     if (!LOCAL_FIELD_TYPES.has(field.type)) {
-      throw new Error(`createLocalFormStore unsupported field type "${String(field.type)}"`);
+      throw new Error(`createUiModelStore unsupported field type "${String(field.type)}"`);
     }
     if (field.type === 'selection') {
       if (!Array.isArray(field.selection)) {
-        throw new Error(`createLocalFormStore selection field "${name}" requires a selection array`);
+        throw new Error(`createUiModelStore selection field "${name}" requires a selection array`);
       }
     }
     names.add(name);
@@ -167,7 +168,7 @@ function buildFieldsMetadata(fields: readonly LocalFormFieldDef[]): Record<strin
   return meta;
 }
 
-export type LocalFormStore = WebModelStore<any> & {
+export type UiModelStore = ModelStore<any> & {
   readonly fieldNames: readonly string[];
   getField(name: string): unknown;
   setField(name: string, value: unknown): void;
@@ -177,16 +178,16 @@ export type LocalFormStore = WebModelStore<any> & {
 };
 
 /**
- * Builds a store-only create draft. Not registered with createStoreByModel.
+ * Builds a frontend-only ModelStore. Not registered with createModelStore.
  */
-export function createLocalFormStore(options: CreateLocalFormStoreOptions): LocalFormStore {
+export function createUiModelStore(options: CreateUiModelStoreOptions): UiModelStore {
   const fieldsMetadata = reactive(buildFieldsMetadata(options.fields || []));
   const fieldNames = Object.freeze(Object.keys(fieldsMetadata));
   const allowed = new Set(fieldNames);
 
   const values = reactive(emptyDict<unknown>());
   for (const name of fieldNames) {
-    const type = fieldsMetadata[name]!.type as LocalFormFieldType;
+    const type = fieldsMetadata[name]!.type as UiModelFieldType;
     const initialValues = options.initialValues;
     const candidate =
       initialValues && Object.prototype.hasOwnProperty.call(initialValues, name)
@@ -195,7 +196,7 @@ export function createLocalFormStore(options: CreateLocalFormStoreOptions): Loca
     values[name] = candidate ?? defaultValueForType(type);
   }
 
-  const storeId = String(options.storeId || '').trim() || `local-form:${++localFormStoreSeq}`;
+  const storeId = String(options.storeId || '').trim() || `ui-model:${++uiModelStoreSeq}`;
 
   let context: Record<string, string> = {};
 
@@ -268,7 +269,7 @@ export function createLocalFormStore(options: CreateLocalFormStoreOptions): Loca
     setFieldSelection(name: string, items: readonly SelectionItem[]): void {
       const meta = fieldsMetadata[String(name || '').trim()];
       if (!meta || meta.type !== 'selection') {
-        throw new Error(`createLocalFormStore field "${String(name)}" is not a selection field`);
+        throw new Error(`createUiModelStore field "${String(name)}" is not a selection field`);
       }
       meta.selection = normalizeSelection(Array.isArray(items) ? items : []);
     },
@@ -301,5 +302,5 @@ export function createLocalFormStore(options: CreateLocalFormStoreOptions): Loca
     ResolveProperties: unsupported('ResolveProperties'),
   };
 
-  return store as unknown as LocalFormStore;
+  return store as unknown as UiModelStore;
 }

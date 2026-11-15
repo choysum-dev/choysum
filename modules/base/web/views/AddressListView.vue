@@ -27,7 +27,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import type Address from '@/base/service/models/address';
 import { useRouter } from 'vue-router';
 import { useListViewExpose } from '@/web/web/composables/useListView';
@@ -40,7 +40,7 @@ import type { RowEventPayload } from '@/web';
 
 defineOptions({ name: 'AddressListView', inheritAttrs: true });
 const { _t, _lt } = createTranslate('base', { scope: 'web/views/AddressListView' });
-const props = defineProps<{ store?: WebModelStore<Address> }>();
+const props = defineProps<{ store?: ModelStore<Address> }>();
 const store = resolvePageStore(props.store, 'AddressListView');
 const addressActions = defineModelActions('base.Address', { entityTitle: _lt('Address') });
 const { hasAction } = usePermission();

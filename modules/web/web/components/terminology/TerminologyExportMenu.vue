@@ -79,7 +79,7 @@ import { useI18nStore } from '@/web/web/stores/i18nStore';
 import { downloadTerminologyPo } from '@/web/web/stores/i18nStore/poDownload';
 import { useAuthStore } from '@/auth/web/stores/auth';
 import { ChoyMessage } from '@/web/web/composables/useChoyMessage';
-import { createStoreByModel } from '@/web/web/stores/registry';
+import { createModelStore } from '@/web/web/stores/registry';
 import {
   collectModuleNamesFromMetaModuleRows,
   installedModulesSearchCondition,
@@ -133,7 +133,7 @@ async function loadModules() {
   const generation = ++loadGeneration;
   loadingModules.value = true;
   try {
-    const metaModuleStore = createStoreByModel('meta.MetaModule');
+    const metaModuleStore = createModelStore('meta.MetaModule');
     if (!metaModuleStore || typeof metaModuleStore.Search !== 'function') {
       throw new Error('meta.MetaModule store not available');
     }

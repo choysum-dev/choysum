@@ -355,7 +355,7 @@ describe('ChoyManyToManyTagsField patch coverage', () => {
     m2.unmount();
   });
 
-  test('relationStore falls back to createStoreByModel via targetModel', async () => {
+  test('relationStore falls back to createModelStore via targetModel', async () => {
     restoreFactory = replaceStoreFactory('demo.FallbackTag', () =>
       relationStoreStub({
         fullModelName: 'demo.FallbackTag',
@@ -381,7 +381,7 @@ describe('ChoyManyToManyTagsField patch coverage', () => {
     m.unmount();
   });
 
-  test('createStoreByModel failure warns and leaves relationStore undefined', async () => {
+  test('createModelStore failure warns and leaves relationStore undefined', async () => {
     const binding = makeBinding({
       items: [],
       relationStore: undefined,

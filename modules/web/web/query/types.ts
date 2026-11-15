@@ -99,7 +99,7 @@ export interface DataSetSnapshot {
 
 import type { PaginationState, OrderByState } from '@/web/web/query/state';
 import type { ComputedRef, Ref } from 'vue';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import type { BaseModel } from '@/core/rpc';
 
 // Note: legacy QueryDriver-related types and APIs have been removed.
@@ -161,7 +161,7 @@ export interface QueryUpdatePayload<T = any> {
 
 // SearchViewComponent constrains the searchView prop without relying on DefineComponent invariance.
 export type SearchViewComponent<T extends BaseModel = any> = new (...args: any[]) => {
-  $props: { store: WebModelStore<T> } & Record<string, any>;
+  $props: { store: ModelStore<T> } & Record<string, any>;
   $emit: (e: 'query-update', payload: QueryUpdatePayload<T>) => void;
 };
 

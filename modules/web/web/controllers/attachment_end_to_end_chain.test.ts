@@ -57,7 +57,7 @@ describe('attachment end-to-end chain regression', () => {
       })),
     };
 
-    const createStoreByModel = (modelName: string) => {
+    const createModelStore = (modelName: string) => {
       if (modelName === 'document.AttachmentBinding') {
         return {
           BatchDescribe: async () => ({
@@ -88,7 +88,7 @@ describe('attachment end-to-end chain regression', () => {
       },
       getContext: () => ({}),
     } as any;
-    const normalizeDeps = { createStoreByModel };
+    const normalizeDeps = { createModelStore };
 
     const createBlobPayload = await __normalizeAttachmentFieldsInPayloadForTest(
       store,
@@ -165,7 +165,7 @@ describe('attachment end-to-end chain regression', () => {
       } as any,
       readStore,
       undefined,
-      { createStoreByModel }
+      { createModelStore }
     );
 
     const readRow = (readSnapshot.rows[0] as any)?.payload;

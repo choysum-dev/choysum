@@ -21,14 +21,14 @@ import {
   detectStructuralChangedRelations,
   looksLikeRelation,
 } from './useOnchange';
-import type { WebModelStore, WebFieldMetadata } from '@/web/web/stores/modelStore';
+import type { ModelStore, WebFieldMetadata } from '@/web/web/stores/modelStore';
 
 // --------------- minimal store stub ---------------
 
-function stubStore(overrides?: Partial<Record<string, WebFieldMetadata>>): WebModelStore<any> {
+function stubStore(overrides?: Partial<Record<string, WebFieldMetadata>>): ModelStore<any> {
   return {
     fieldsMetadata: overrides ?? {},
-  } as unknown as WebModelStore<any>;
+  } as unknown as ModelStore<any>;
 }
 
 // --------------- normalizeDiffRelation ---------------

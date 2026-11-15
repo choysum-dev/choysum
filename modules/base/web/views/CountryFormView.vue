@@ -36,7 +36,7 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { RouteLocationRaw } from 'vue-router';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import type Country from '@/base/service/models/country';
 import CurrencyListView from './CurrencyListView.vue';
 import { defineModelActions } from '@/core/web/resource';
@@ -50,7 +50,7 @@ defineOptions({ name: 'CountryFormView', inheritAttrs: true });
 const { _t, _lt } = createTranslate('base', { scope: 'web/views/CountryFormView' });
 const requiredRules = computed(() => [{ required: true, message: _t('Required') }]);
 const props = withDefaults(
-  defineProps<{ store?: WebModelStore<Country>; recordId?: string; viewMode?: ViewMode; showHeader?: boolean; createAction?: string | RouteLocationRaw }>(),
+  defineProps<{ store?: ModelStore<Country>; recordId?: string; viewMode?: ViewMode; showHeader?: boolean; createAction?: string | RouteLocationRaw }>(),
   { showHeader: true, createAction: undefined }
 );
 const countryActions = defineModelActions('base.Country', { entityTitle: _lt('Country') });

@@ -4,7 +4,7 @@
 import { computed, defineComponent, h, ref } from 'vue';
 import type { UseField } from '@/web/web/composables/useField';
 import { flushPromises, mountApp } from '@/web/web/__tests__/mountApp';
-import { createLocalFormStore } from '@/web/web/stores/localFormStore';
+import { createUiModelStore } from '@/web/web/stores/uiModelStore';
 import * as tiptapVue from '@tiptap/vue-3';
 import ChoyHtmlField from './ChoyHtmlField.vue';
 
@@ -103,7 +103,7 @@ describe('ChoyHtmlField', () => {
   });
 
   test('store and prop resolve a binding without an explicit one', async () => {
-    const store = createLocalFormStore({
+    const store = createUiModelStore({
       fields: [{ name: 'Body', label: 'Body', type: 'varchar' }],
       initialValues: { Body: '<p>Stored</p>' },
     });

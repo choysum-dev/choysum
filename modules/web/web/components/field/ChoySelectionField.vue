@@ -121,7 +121,7 @@ import type { RuleItem } from 'async-validator';
 import type { BaseModel, FieldPath, FieldPathType } from '@/core/rpc';
 import { runWithLoading } from '@/core/web/client/loadingRegistry';
 import type { TermReference } from '@/core/service/i18n';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import type { WritableComputedRef } from 'vue';
 import { ChevronsUpDown, Search, X } from 'lucide-vue-next';
 import { getGlobalComposer } from '@/web/web/i18n/translate';
@@ -152,7 +152,7 @@ type EffectiveOption = { value: string; label: string; disabled: boolean };
 
 const props = withDefaults(
   defineProps<{
-    store?: WebModelStore<T>;
+    store?: ModelStore<T>;
     prop?: P | (IsAny<T> extends true ? string : never);
     binding?: UseField<T, V>;
 
@@ -244,7 +244,7 @@ const callerNamesTrigger = computed(
 /** Fallback name when `labelId` does not resolve (table / inline modes render no label element). */
 const triggerAriaLabel = computed(() => props.label || _t('Show options'));
 
-const binding = (props.binding ?? useField<T, P, V>({ store: props.store as WebModelStore<T>, prop: props.prop as P, agg: props.agg })) as UseField<T, V>;
+const binding = (props.binding ?? useField<T, P, V>({ store: props.store as ModelStore<T>, prop: props.prop as P, agg: props.agg })) as UseField<T, V>;
 
 const toView = (raw: any): string | null => (raw == null ? null : String(raw));
 const fromView = (v: string | null) => (v ?? null) as unknown as V;
@@ -258,7 +258,7 @@ const pathSegs = computed(() => baseField.value.split('.').filter(Boolean));
 const leafKey = computed(() => pathSegs.value[pathSegs.value.length - 1] || '');
 const parentChain = computed(() => pathSegs.value.slice(0, pathSegs.value.length - 1));
 
-const modelStore = computed(() => (binding.store || props.store) as WebModelStore<T> | undefined);
+const modelStore = computed(() => (binding.store || props.store) as ModelStore<T> | undefined);
 
 /** Field stringText supplies module/scope when re-translating selection msgid echoes. */
 const fieldStringText = computed(() => {

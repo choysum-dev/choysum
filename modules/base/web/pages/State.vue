@@ -11,7 +11,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { useRoute } from 'vue-router';
-import { createStoreByModel } from '@/web/web/stores/registry';
+import { createModelStore } from '@/web/web/stores/registry';
 import StateFormView from '../views/StateFormView.vue';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
 import type State from '@/base/service/models/state';
@@ -20,7 +20,7 @@ import { ChoyPage } from '@/web';
 defineOptions({ name: 'StatePage' });
 
 const route = useRoute();
-const stateStore = createStoreByModel<typeof State>('base.State', {
+const stateStore = createModelStore<typeof State>('base.State', {
   storeId: `State_${route.fullPath}`,
   scopeManager: useScopeManager().menuScopeManager,
 });

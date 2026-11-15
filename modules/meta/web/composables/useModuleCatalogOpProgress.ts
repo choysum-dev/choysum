@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { computed, getCurrentScope, onScopeDispose, ref, unref, type Ref } from 'vue';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import { ChoyMessage } from '@/web';
 import {
   formatModuleOpProgressHeadline,
@@ -38,7 +38,7 @@ export type ModuleCatalogOpProgressMsgs = {
  * Used after Confirm Apply and for card/deep-link "View Progress".
  */
 export function useModuleCatalogOpProgress(
-  operationStore: WebModelStore<any> | Ref<WebModelStore<any> | null | undefined> | null | undefined,
+  operationStore: ModelStore<any> | Ref<ModelStore<any> | null | undefined> | null | undefined,
   msgs: ModuleCatalogOpProgressMsgs,
   opts?: {
     refreshCatalog?: () => void | Promise<void>;
@@ -103,7 +103,7 @@ export function useModuleCatalogOpProgress(
 
   const progressValue = computed(() => formatModuleOpProgressValue(opStatus.value));
 
-  function resolveOperationStore(): WebModelStore<any> | null {
+  function resolveOperationStore(): ModelStore<any> | null {
     let store: any = operationStore;
     for (let i = 0; i < 3; i += 1) {
       const next = unref(store);

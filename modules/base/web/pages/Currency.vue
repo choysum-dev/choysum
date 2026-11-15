@@ -11,7 +11,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { useRoute } from 'vue-router';
-import { createStoreByModel } from '@/web/web/stores/registry';
+import { createModelStore } from '@/web/web/stores/registry';
 import CurrencyFormView from '../views/CurrencyFormView.vue';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
 import type Currency from '@/base/service/models/currency';
@@ -20,7 +20,7 @@ import { ChoyPage } from '@/web';
 defineOptions({ name: 'CurrencyPage' });
 
 const route = useRoute();
-const currencyStore = createStoreByModel<typeof Currency>('base.Currency', {
+const currencyStore = createModelStore<typeof Currency>('base.Currency', {
   storeId: `Currency_${route.fullPath}`,
   scopeManager: useScopeManager().menuScopeManager,
 });

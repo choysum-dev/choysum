@@ -3,14 +3,14 @@
 
 import { computed, shallowRef, watch, type Ref } from 'vue';
 import type { RouteLocationNormalizedLoaded } from 'vue-router';
-import { createStoreByModel } from '@/web/web/stores/registry';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import { createModelStore } from '@/web/web/stores/registry';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import { resolveAppSettingDetailApplication } from './app_setting_page_bind';
 
 export type AppSettingDetailPageDeps = {
   route: RouteLocationNormalizedLoaded;
   scopeManager: unknown;
-  createStore?: typeof createStoreByModel;
+  createStore?: typeof createModelStore;
 };
 
 /**
@@ -18,11 +18,11 @@ export type AppSettingDetailPageDeps = {
  */
 export function useAppSettingDetailPage(deps: AppSettingDetailPageDeps): {
   application: Ref<string>;
-  appSettingStore: Ref<WebModelStore<any> | null>;
+  appSettingStore: Ref<ModelStore<any> | null>;
 } {
-  const createStore = deps.createStore ?? createStoreByModel;
+  const createStore = deps.createStore ?? createModelStore;
   const application = computed(() => resolveAppSettingDetailApplication(deps.route));
-  const appSettingStore = shallowRef<WebModelStore<any> | null>(null);
+  const appSettingStore = shallowRef<ModelStore<any> | null>(null);
 
   watch(
     application,
@@ -34,7 +34,7 @@ export function useAppSettingDetailPage(deps: AppSettingDetailPageDeps): {
       appSettingStore.value = createStore(`${app}.AppSetting`, {
         storeId: `AppSetting_${app}`,
         scopeManager: deps.scopeManager,
-      }) as WebModelStore<any>;
+      }) as ModelStore<any>;
     },
     { immediate: true }
   );

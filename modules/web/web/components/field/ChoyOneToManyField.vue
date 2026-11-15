@@ -127,7 +127,7 @@ import { computed, nextTick, ref, watch, onMounted, provide } from 'vue';
 import { Trash2 } from 'lucide-vue-next';
 import type { RuleItem } from 'async-validator';
 import type { BaseModel, FieldPath, FieldPathType, ClientModel } from '@/core/rpc';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
 import ChoyFieldBase, { type FieldStateExpr, type FormItemProps } from './ChoyFieldBase.vue';
 import ChoyTableHost from '@/web/web/components/internal/ChoyTableHost.vue';
@@ -150,7 +150,7 @@ type IsAny<T> = 0 extends 1 & T ? true : false;
 
 const props = withDefaults(
   defineProps<{
-    store?: WebModelStore<T>;
+    store?: ModelStore<T>;
     prop?: P | (IsAny<T> extends true ? string : never);
     binding?: UseField<T, V>;
     label?: string;
@@ -221,7 +221,7 @@ const props = withDefaults(
 /** Footer strip for Add a line inside the table frame (edit mode). */
 const addLineFooterHeight = 36;
 
-const binding = (props.binding ?? useField<T, P, V>({ store: props.store as WebModelStore<T>, prop: props.prop as P })) as UseField<T, V>;
+const binding = (props.binding ?? useField<T, P, V>({ store: props.store as ModelStore<T>, prop: props.prop as P })) as UseField<T, V>;
 binding.registerFields(`${binding.prop}.DisplayName`);
 
 const { getItems, insertItem, removeItemAt } = binding.asMutableArray<any>();

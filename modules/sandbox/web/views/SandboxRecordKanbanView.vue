@@ -92,7 +92,7 @@ SPDX-License-Identifier: Apache-2.0
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import type SandboxRecord from '@/sandbox/service/models/sandbox_record';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import {
   ChoyButton,
   ChoyKanbanView,
@@ -114,7 +114,7 @@ const { _t } = createTranslate('sandbox', { scope: 'web/views/SandboxRecordKanba
 
 const props = withDefaults(
   defineProps<{
-    store?: WebModelStore<SandboxRecord>;
+    store?: ModelStore<SandboxRecord>;
     showHeader?: boolean;
   }>(),
   { showHeader: true },

@@ -28,7 +28,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import type SequenceIdempotency from '@/base/service/models/sequence_idempotency';
 import { useRouter } from 'vue-router';
 import { useListViewExpose } from '@/web/web/composables/useListView';
@@ -41,7 +41,7 @@ import type { RowEventPayload } from '@/web';
 
 defineOptions({ name: 'SequenceIdempotencyListView', inheritAttrs: true });
 const { _t, _lt } = createTranslate('base', { scope: 'web/views/SequenceIdempotencyListView' });
-const props = defineProps<{ store?: WebModelStore<SequenceIdempotency> }>();
+const props = defineProps<{ store?: ModelStore<SequenceIdempotency> }>();
 const store = resolvePageStore(props.store, 'SequenceIdempotencyListView');
 const sequenceIdempotencyActions = defineModelActions('base.SequenceIdempotency', { entityTitle: _lt('Sequence Idempotency Record') });
 const { hasAction } = usePermission();

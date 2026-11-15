@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { inject, onUnmounted, type InjectionKey } from 'vue';
-import { createStoreByModel as defaultCreateStoreByModel } from '@/web/web/stores/registry';
-import { getFieldMetadataView, type WebModelStore } from '@/web/web/stores/modelStore';
+import { createModelStore as defaultCreateModelStore } from '@/web/web/stores/registry';
+import { getFieldMetadataView, type ModelStore } from '@/web/web/stores/modelStore';
 import {
   getOperatorOptions as baseGetOperatorOptions,
   isNullOperator as baseIsNull,
@@ -15,18 +15,18 @@ import type { OperatorOption } from '@/web/web/query/utils/filter/operators';
 export type FilterEditorBindings = ReturnType<typeof useFilterEditorBindings>;
 
 export type FilterEditorBindingsDeps = {
-  createStoreByModel?: typeof defaultCreateStoreByModel;
+  createModelStore?: typeof defaultCreateModelStore;
 };
 
 /** Shared across nested SearchFilterGroup instances so relation stores are created once. */
 export const FilterEditorBindingsKey: InjectionKey<FilterEditorBindings> = Symbol('FilterEditorBindings');
 
-export function useInjectedFilterEditorBindings(store: WebModelStore<any>): FilterEditorBindings {
+export function useInjectedFilterEditorBindings(store: ModelStore<any>): FilterEditorBindings {
   return inject(FilterEditorBindingsKey, null) ?? useFilterEditorBindings(store);
 }
 
-export function useFilterEditorBindings(store: WebModelStore<any>, deps: FilterEditorBindingsDeps = {}) {
-  const createStoreByModel = deps.createStoreByModel ?? defaultCreateStoreByModel;
+export function useFilterEditorBindings(store: ModelStore<any>, deps: FilterEditorBindingsDeps = {}) {
+  const createModelStore = deps.createModelStore ?? defaultCreateModelStore;
 
   function metaTypeOf(field?: string): string {
     if (!field) return '';
@@ -41,7 +41,7 @@ export function useFilterEditorBindings(store: WebModelStore<any>, deps: FilterE
 
   function relationModelOf(field?: string): string | undefined {
     if (!field) return undefined;
-    const md = (store as WebModelStore<any>).fieldsMetadata || {};
+    const md = (store as ModelStore<any>).fieldsMetadata || {};
     return getFieldMetadataView(md[field] as any).relationModel;
   }
 
@@ -70,7 +70,7 @@ export function useFilterEditorBindings(store: WebModelStore<any>, deps: FilterE
 
     if (view.relationModel) {
       try {
-        const rs = createStoreByModel(view.relationModel, { scopeManager: undefined });
+        const rs = createModelStore(view.relationModel, { scopeManager: undefined });
         if (rs) {
           relStoreCache.set(cacheKey, rs);
           return rs;

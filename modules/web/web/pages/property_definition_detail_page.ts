@@ -3,14 +3,14 @@
 
 import { computed, shallowRef, watch, type Ref } from 'vue';
 import type { RouteLocationNormalizedLoaded } from 'vue-router';
-import { createStoreByModel } from '@/web/web/stores/registry';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import { createModelStore } from '@/web/web/stores/registry';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import { resolvePropertyDefinitionDetailApplication } from './property_definition_page_bind';
 
 export type PropertyDefinitionDetailPageDeps = {
   route: RouteLocationNormalizedLoaded;
   scopeManager: unknown;
-  createStore?: typeof createStoreByModel;
+  createStore?: typeof createModelStore;
 };
 
 /**
@@ -18,11 +18,11 @@ export type PropertyDefinitionDetailPageDeps = {
  */
 export function usePropertyDefinitionDetailPage(deps: PropertyDefinitionDetailPageDeps): {
   application: Ref<string>;
-  definitionStore: Ref<WebModelStore<any> | null>;
+  definitionStore: Ref<ModelStore<any> | null>;
 } {
-  const createStore = deps.createStore ?? createStoreByModel;
+  const createStore = deps.createStore ?? createModelStore;
   const application = computed(() => resolvePropertyDefinitionDetailApplication(deps.route));
-  const definitionStore = shallowRef<WebModelStore<any> | null>(null);
+  const definitionStore = shallowRef<ModelStore<any> | null>(null);
 
   watch(
     application,
@@ -34,7 +34,7 @@ export function usePropertyDefinitionDetailPage(deps: PropertyDefinitionDetailPa
       definitionStore.value = createStore(`${app}.PropertyDefinition`, {
         storeId: `PropertyDefinition_${app}`,
         scopeManager: deps.scopeManager,
-      }) as WebModelStore<any>;
+      }) as ModelStore<any>;
     },
     { immediate: true }
   );

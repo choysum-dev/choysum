@@ -27,7 +27,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import type Sequence from '@/base/service/models/sequence';
 import { useRouter } from 'vue-router';
 import { useListViewExpose } from '@/web/web/composables/useListView';
@@ -40,7 +40,7 @@ import type { RowEventPayload } from '@/web';
 
 defineOptions({ name: 'SequenceListView', inheritAttrs: true });
 const { _t, _lt } = createTranslate('base', { scope: 'web/views/SequenceListView' });
-const props = defineProps<{ store?: WebModelStore<Sequence> }>();
+const props = defineProps<{ store?: ModelStore<Sequence> }>();
 const store = resolvePageStore(props.store, 'SequenceListView');
 const sequenceActions = defineModelActions('base.Sequence', { entityTitle: _lt('Sequence') });
 const { hasAction } = usePermission();

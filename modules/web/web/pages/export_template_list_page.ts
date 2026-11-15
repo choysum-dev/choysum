@@ -2,9 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { computed, shallowRef, type Ref } from 'vue';
-import { createStoreByModel } from '@/web/web/stores/registry';
+import { createModelStore } from '@/web/web/stores/registry';
 import { createTranslate } from '@/web/web/i18n';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 
 const { _t: defaultTranslate } = createTranslate('web', {
   scope: 'web/pages/ExportTemplateList',
@@ -12,7 +12,7 @@ const { _t: defaultTranslate } = createTranslate('web', {
 
 export type ExportTemplateListPageDeps = {
   scopeManager: unknown;
-  createStore?: typeof createStoreByModel;
+  createStore?: typeof createModelStore;
   translate?: (msgid: string, ...args: unknown[]) => string;
 };
 
@@ -22,18 +22,18 @@ export type ExportTemplateListPageDeps = {
  */
 export function useExportTemplateListPage(deps: ExportTemplateListPageDeps): {
   pageTitle: Ref<string>;
-  exportTemplateStore: Ref<WebModelStore<any> | null>;
+  exportTemplateStore: Ref<ModelStore<any> | null>;
 } {
-  const createStore = deps.createStore ?? createStoreByModel;
+  const createStore = deps.createStore ?? createModelStore;
   const pageTitle = computed(() => {
     if (deps.translate) return deps.translate('Export Templates');
     return String(defaultTranslate('Export Templates'));
   });
-  const exportTemplateStore = shallowRef<WebModelStore<any> | null>(
+  const exportTemplateStore = shallowRef<ModelStore<any> | null>(
     createStore('web.ExportTemplate', {
       storeId: 'ExportTemplate_web_admin',
       scopeManager: deps.scopeManager,
-    }) as WebModelStore<any>
+    }) as ModelStore<any>
   );
 
   return { pageTitle, exportTemplateStore };

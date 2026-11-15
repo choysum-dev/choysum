@@ -39,7 +39,7 @@ const DeleteById = mutableFn(async () => 1);
 
 function deps() {
   return {
-    createStoreByModel: ((model: string) =>
+    createModelStore: ((model: string) =>
       model === 'web.ExportTemplate' ? { Search, Create, DeleteById } : {}) as any,
     actorUserId: (() => actorId) as any,
   };

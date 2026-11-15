@@ -35,7 +35,7 @@ SPDX-License-Identifier: Apache-2.0
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import type { RouteLocationRaw } from 'vue-router';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import type Bank from '@/base/service/models/bank';
 import type Address from '@/base/service/models/address';
 import type { ValueClickPayload as ManyToOneValueClickPayload } from '@/web/web/components/field/manyToOneTypes';
@@ -52,7 +52,7 @@ defineOptions({ name: 'BankFormView', inheritAttrs: true });
 const { _t, _lt } = createTranslate('base', { scope: 'web/views/BankFormView' });
 const requiredRules = computed(() => [{ required: true, message: _t('Required') }]);
 const props = withDefaults(
-  defineProps<{ store?: WebModelStore<Bank>; recordId?: string; viewMode?: ViewMode; showHeader?: boolean; createAction?: string | RouteLocationRaw }>(),
+  defineProps<{ store?: ModelStore<Bank>; recordId?: string; viewMode?: ViewMode; showHeader?: boolean; createAction?: string | RouteLocationRaw }>(),
   { showHeader: true, createAction: undefined }
 );
 const bankActions = defineModelActions('base.Bank', { entityTitle: _lt('Bank') });

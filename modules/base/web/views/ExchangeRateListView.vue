@@ -25,7 +25,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import type ExchangeRate from '@/base/service/models/exchange_rate';
 import { useRouter } from 'vue-router';
 import { useListViewExpose } from '@/web/web/composables/useListView';
@@ -38,7 +38,7 @@ import type { RowEventPayload } from '@/web';
 
 defineOptions({ name: 'ExchangeRateListView', inheritAttrs: true });
 const { _t, _lt } = createTranslate('base', { scope: 'web/views/ExchangeRateListView' });
-const props = defineProps<{ store?: WebModelStore<ExchangeRate> }>();
+const props = defineProps<{ store?: ModelStore<ExchangeRate> }>();
 const store = resolvePageStore(props.store, 'ExchangeRateListView');
 const exchangeRateActions = defineModelActions('base.ExchangeRate', { entityTitle: _lt('Exchange Rate') });
 const { hasAction } = usePermission();

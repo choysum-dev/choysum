@@ -204,7 +204,7 @@ import {
   ChoyFormView,
   ChoyVarcharField,
   ChoyBooleanField,
-  createLocalFormStore,
+  createUiModelStore,
 } from '@/web';
 import { createTranslate } from '@/web/web/i18n';
 import { resolveLoginRedirect, runHandledAuthSubmit } from './login_form';
@@ -232,7 +232,7 @@ const registerInitialValues = {
   AgreeTerms: false,
 };
 
-const formStore = createLocalFormStore({
+const formStore = createUiModelStore({
   fields: [
     { name: 'Username', label: 'Username', type: 'varchar' },
     { name: 'Email', label: 'Email', type: 'varchar' },

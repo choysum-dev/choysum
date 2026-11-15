@@ -84,7 +84,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import { ChoyFieldGroup, ChoyVarcharField, type LocalFormStore } from '@/web';
+import { ChoyFieldGroup, ChoyVarcharField, type UiModelStore } from '@/web';
 import { createTranslate } from '@/web/web/i18n';
 import {
   setupConfirmPasswordRules,
@@ -99,7 +99,7 @@ const { _t } = createTranslate('auth', { scope: 'web/pages/setup/SetupAdminStep'
 
 /** Administrator account fields of the setup wizard. */
 const props = defineProps<{
-  store: LocalFormStore;
+  store: UiModelStore;
   formData: Record<string, unknown>;
   /** Server field errors keyed by local field name. */
   serverErrors: Record<string, string>;

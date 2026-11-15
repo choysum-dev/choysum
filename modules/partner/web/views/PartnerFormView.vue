@@ -216,7 +216,7 @@ SPDX-License-Identifier: Apache-2.0
 import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import type { RouteLocationRaw } from 'vue-router';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import type Partner from '@/partner/service/models/partner';
 import type Company from '@/base/service/models/company';
 import type Address from '@/base/service/models/address';
@@ -260,7 +260,7 @@ const requiredRules = computed(() => [{ required: true, message: _t('Required') 
  */
 const props = withDefaults(
   defineProps<{
-    store?: WebModelStore<Partner>;
+    store?: ModelStore<Partner>;
     recordId?: string;
     initialValues?: Partial<Partner>;
     viewMode?: ViewMode;

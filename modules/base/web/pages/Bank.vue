@@ -11,7 +11,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { useRoute } from 'vue-router';
-import { createStoreByModel } from '@/web/web/stores/registry';
+import { createModelStore } from '@/web/web/stores/registry';
 import BankFormView from '../views/BankFormView.vue';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
 import type Bank from '@/base/service/models/bank';
@@ -20,7 +20,7 @@ import { ChoyPage } from '@/web';
 defineOptions({ name: 'BankPage' });
 
 const route = useRoute();
-const bankStore = createStoreByModel<typeof Bank>('base.Bank', {
+const bankStore = createModelStore<typeof Bank>('base.Bank', {
   storeId: `Bank_${route.fullPath}`,
   scopeManager: useScopeManager().menuScopeManager,
 });

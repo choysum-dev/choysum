@@ -251,7 +251,7 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts">
 import { computed, defineAsyncComponent, defineComponent, h, ref } from 'vue';
 import type { RouteLocationRaw } from 'vue-router';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import type Role from '@/auth/service/models/role';
 
 import { CircleHelp, GitBranch, Menu, Settings, User } from 'lucide-vue-next';
@@ -293,7 +293,7 @@ const requiredRules = computed(() => [{ required: true, message: _t('Required') 
 
 const props = withDefaults(
   defineProps<{
-    store?: WebModelStore<Role>;
+    store?: ModelStore<Role>;
     recordId?: string;
     viewMode?: ViewMode;
     showHeader?: boolean;

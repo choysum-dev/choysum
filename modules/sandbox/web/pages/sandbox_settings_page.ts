@@ -3,8 +3,8 @@
 
 import { computed, ref, shallowRef, type ComputedRef, type Ref, type ShallowRef } from 'vue';
 import { runWithLoading } from '@/core/web/client/loadingRegistry';
-import { createLocalFormStore, type LocalFormStore } from '@/web/web/stores/localFormStore';
-import { createStoreByModel } from '@/web/web/stores/registry';
+import { createUiModelStore, type UiModelStore } from '@/web/web/stores/uiModelStore';
+import { createModelStore } from '@/web/web/stores/registry';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
 import { ChoyMessage } from '@/web/web/composables/useChoyMessage';
 import { createTranslate } from '@/web/web/i18n';
@@ -26,7 +26,7 @@ export type SandboxSettingsPageDeps = {
 };
 
 export type SandboxSettingsPageApi = {
-  formStore: ShallowRef<LocalFormStore | null>;
+  formStore: ShallowRef<UiModelStore | null>;
   /** Save in flight (control). */
   loading: Ref<boolean>;
   /** First load / refresh of the sheet (surface). */
@@ -49,7 +49,7 @@ export function setSandboxSettingsAppSettingStoreForTests(
 }
 
 export type CreateSandboxAppSettingStoreOpts = {
-  createStore?: typeof createStoreByModel;
+  createStore?: typeof createModelStore;
   scopeManager?: unknown;
 };
 
@@ -57,7 +57,7 @@ export type CreateSandboxAppSettingStoreOpts = {
 export function createSandboxAppSettingStore(
   opts: CreateSandboxAppSettingStoreOpts = {},
 ): SandboxAppSettingKv {
-  const createStore = opts.createStore ?? createStoreByModel;
+  const createStore = opts.createStore ?? createModelStore;
   const scopeManager = opts.scopeManager ?? useScopeManager().menuScopeManager;
   const raw = createStore('sandbox.AppSetting', {
     storeId: 'AppSetting_sandbox_settings',
@@ -81,7 +81,7 @@ function resolveAppSettingStore(deps: SandboxSettingsPageDeps): () => SandboxApp
 
 /** Curated sandbox Settings: demo flag/label via AppSetting Get/Set. */
 export function useSandboxSettingsPage(deps: SandboxSettingsPageDeps): SandboxSettingsPageApi {
-  const formStore = shallowRef<LocalFormStore | null>(null);
+  const formStore = shallowRef<UiModelStore | null>(null);
   const baselineFlag = ref('0');
   const baselineLabel = ref('');
   const loading = ref(false);
@@ -98,8 +98,8 @@ export function useSandboxSettingsPage(deps: SandboxSettingsPageDeps): SandboxSe
   });
 
   function rebuildForm(flag: string, label: string) {
-    formStore.value = createLocalFormStore({
-      storeId: `local-form:sandbox-settings:${Date.now()}`,
+    formStore.value = createUiModelStore({
+      storeId: `ui-model:sandbox-settings:${Date.now()}`,
       fields: [
         { name: 'DemoFlag', label: deps.translate('Demo flag'), type: 'boolean' },
         { name: 'DemoLabel', label: deps.translate('Demo label'), type: 'varchar' },

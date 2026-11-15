@@ -39,8 +39,8 @@ import ChoyInput from '@/web/web/components/vendor/ui/input/Input.vue';
 import { ChoyMessage } from '../../composables/useChoyMessage';
 import { useAuthStore } from '@/auth/web/stores/auth';
 import { createTranslate } from '@/web/web/i18n';
-import { createStoreByModel } from '@/web/web/stores/registry';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import { createModelStore } from '@/web/web/stores/registry';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 
 defineOptions({ name: 'ChoyFieldCompanyValuesDialog' });
 
@@ -56,7 +56,7 @@ type CompanyValueRow = ChoyCompanyValueRow;
 
 const props = defineProps<{
   modelValue: boolean;
-  store: WebModelStore<any>;
+  store: ModelStore<any>;
   recordId: string;
   fieldName: string;
   fieldLabel?: string;
@@ -76,7 +76,7 @@ const emit = defineEmits<{
 }>();
 
 const { _t } = createTranslate('web', { scope: 'web/components/field/FieldCompanyValuesDialog' });
-const companyStore = createStoreByModel('base.Company');
+const companyStore = createModelStore('base.Company');
 
 const visible = computed({
   get: () => props.modelValue,

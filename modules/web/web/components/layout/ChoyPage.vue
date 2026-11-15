@@ -176,7 +176,7 @@ import {
   useOptionalPageStore,
   type PageTitleActionsIo,
 } from '../../composables/usePageContext';
-import type { WebModelStore } from '../../stores/modelStore';
+import type { ModelStore } from '../../stores/modelStore';
 import { blurFocusedDescendant } from './choy_page_loading_focus';
 import ChoyPageTitleActions from './ChoyPageTitleActions.vue';
 import ChoySpinner from './ChoySpinner.vue';
@@ -236,7 +236,7 @@ const props = withDefaults(
     /** Optional company override for import/export panels. */
     actionCompanyId?: string;
     /** Optional default screen store for ChoyFormView / ChoyListView / fields. */
-    store?: WebModelStore<any>;
+    store?: ModelStore<any>;
   }>(),
   {
     title: '',

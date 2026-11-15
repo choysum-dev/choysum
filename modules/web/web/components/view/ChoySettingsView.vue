@@ -33,7 +33,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import { createLocalFormStore, type LocalFormStore } from '@/web/web/stores/localFormStore';
+import { createUiModelStore, type UiModelStore } from '@/web/web/stores/uiModelStore';
 import ChoyFormView from './ChoyFormView.vue';
 import type { ChoyViewSwitcherOption } from './ChoyViewSwitcher.vue';
 
@@ -47,7 +47,7 @@ const props = withDefaults(
      * Optional local form store: when set without `draft`, form-root delegates
      * getField/setField to the store (curated settings keys as field names).
      */
-    localStore?: LocalFormStore | null;
+    localStore?: UiModelStore | null;
     showHeader?: boolean;
     /**
      * Optional title override for mounts without ChoyPage. Prefer Page `:title`
@@ -87,7 +87,7 @@ const emit = defineEmits<{
  * Form requires a store; draft-only mounts use a chrome placeholder while
  * form-root binds the draft bag inside presentation=settings.
  */
-const chromeStore = createLocalFormStore({
+const chromeStore = createUiModelStore({
   fields: [],
   storeId: 'choy.settings.chrome',
 });

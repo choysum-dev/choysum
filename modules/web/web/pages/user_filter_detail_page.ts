@@ -2,26 +2,26 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { shallowRef, type Ref } from 'vue';
-import { createStoreByModel } from '@/web/web/stores/registry';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import { createModelStore } from '@/web/web/stores/registry';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 
 export type UserFilterDetailPageDeps = {
   scopeManager: unknown;
-  createStore?: typeof createStoreByModel;
+  createStore?: typeof createModelStore;
 };
 
 /**
  * Settings → web Saved Filters create/detail: fixed web.UserFilter store.
  */
 export function useUserFilterDetailPage(deps: UserFilterDetailPageDeps): {
-  userFilterStore: Ref<WebModelStore<any> | null>;
+  userFilterStore: Ref<ModelStore<any> | null>;
 } {
-  const createStore = deps.createStore ?? createStoreByModel;
-  const userFilterStore = shallowRef<WebModelStore<any> | null>(
+  const createStore = deps.createStore ?? createModelStore;
+  const userFilterStore = shallowRef<ModelStore<any> | null>(
     createStore('web.UserFilter', {
       storeId: 'UserFilter_web_admin',
       scopeManager: deps.scopeManager,
-    }) as WebModelStore<any>
+    }) as ModelStore<any>
   );
   return { userFilterStore };
 }

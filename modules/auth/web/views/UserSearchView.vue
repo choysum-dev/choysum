@@ -21,7 +21,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import type User from '@/auth/service/models/user/user';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import type { GroupBySpec, QueryUpdatePayload } from '@/web/web/query/types';
 import { ChoySearchView } from '@/web';
 import { createTranslate } from '@/web/web/i18n';
@@ -31,7 +31,7 @@ const { _t } = createTranslate('auth', { scope: 'web/views/UserSearchView' });
 // Seed the initial group only once, then let store.queryState drive subsequent changes.
 const defaultGroups = ['IsActive'] as GroupBySpec<User>[];
 
-const props = defineProps<{ store: WebModelStore<User> }>();
+const props = defineProps<{ store: ModelStore<User> }>();
 const { store } = props;
 
 defineOptions({ name: 'UserSearchView' });

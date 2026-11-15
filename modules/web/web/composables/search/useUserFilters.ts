@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { computed, inject, ref, type InjectionKey, type Ref } from 'vue';
-import { createStoreByModel as defaultCreateStoreByModel } from '@/web/web/stores/registry';
+import { createModelStore as defaultCreateModelStore } from '@/web/web/stores/registry';
 import type { GroupBySpec, NamedFilter } from '@/web/web/query/types';
 import { filtersToQuery as defaultFiltersToQuery } from '@/web/web/query/utils/condition/builder';
 import { normalizeGroupby } from '@/web/web/query/utils/grouping/normalize';
@@ -65,7 +65,7 @@ function isMissingGroupByColumn(e: unknown): boolean {
 }
 
 export type UserFiltersDeps = {
-  createStoreByModel?: typeof defaultCreateStoreByModel;
+  createModelStore?: typeof defaultCreateModelStore;
   actorUserId?: typeof defaultActorUserId;
   filtersToQuery?: typeof defaultFiltersToQuery;
 };
@@ -95,12 +95,12 @@ export function useUserFilters(params: {
   codeDefaults?: () => NamedFilter[] | NamedFilter | undefined;
   /** Current route path (normalized to ScopeKey). */
   scopeKey?: () => string;
-  createStoreByModel?: UserFiltersDeps['createStoreByModel'];
+  createModelStore?: UserFiltersDeps['createModelStore'];
   actorUserId?: UserFiltersDeps['actorUserId'];
   filtersToQuery?: UserFiltersDeps['filtersToQuery'];
 }) {
   const { store, filtersRef, keywordRef, applyNamedFilter, codeDefaults } = params;
-  const createStoreByModel = params.createStoreByModel ?? defaultCreateStoreByModel;
+  const createModelStore = params.createModelStore ?? defaultCreateModelStore;
   const resolveActorUserId = params.actorUserId ?? defaultActorUserId;
   const runFiltersToQuery = params.filtersToQuery ?? defaultFiltersToQuery;
   const favorites = ref<UserFavoriteItem[]>([]);
@@ -119,7 +119,7 @@ export function useUserFilters(params: {
   }
 
   function userFilterStore() {
-    return createStoreByModel('web.UserFilter');
+    return createModelStore('web.UserFilter');
   }
 
   async function load(): Promise<void> {

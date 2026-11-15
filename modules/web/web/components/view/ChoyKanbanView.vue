@@ -297,7 +297,7 @@ SPDX-License-Identifier: Apache-2.0
 import { computed, defineComponent, h, ref, useSlots, watch, type PropType } from 'vue';
 import { Plus, RefreshCw } from 'lucide-vue-next';
 import type { ClassValue } from '../../lib/utils';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import type { Lane } from '@/web/web/query/types';
 import ChoyBadge from '../layout/ChoyBadge.vue';
 import ChoyButton from '../layout/ChoyButton.vue';
@@ -374,7 +374,7 @@ useProvideViewScope({ kind: 'Kanban', mode: 'display' });
 const props = withDefaults(
   defineProps<{
     class?: ClassValue;
-    store?: WebModelStore<any>;
+    store?: ModelStore<any>;
     showHeader?: boolean;
     showActions?: boolean;
     createLabel?: string;
@@ -440,7 +440,7 @@ const emit = defineEmits<{
   create: [];
 }>();
 
-const pageStore = useOptionalPageStore<WebModelStore<any>>();
+const pageStore = useOptionalPageStore<ModelStore<any>>();
 const boundStore = resolvePageStore(props.store ?? pageStore.value, 'ChoyKanbanView');
 
 function handleMoveError(error: unknown): void {

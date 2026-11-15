@@ -16,7 +16,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { useRoute } from 'vue-router';
-import { createStoreByModel } from '@/web/web/stores/registry';
+import { createModelStore } from '@/web/web/stores/registry';
 import CompanyListView from '../views/CompanyListView.vue';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
 import { createTranslate } from '@/web/web/i18n';
@@ -29,7 +29,7 @@ const { _t } = createTranslate('base', { scope: 'web/pages/CompanyList' });
 const pageTitle = _t('Company List');
 
 const route = useRoute();
-const companyStore = createStoreByModel<typeof Company>('base.Company', {
+const companyStore = createModelStore<typeof Company>('base.Company', {
   storeId: `Company_${route.fullPath}`,
   scopeManager: useScopeManager().menuScopeManager,
 });

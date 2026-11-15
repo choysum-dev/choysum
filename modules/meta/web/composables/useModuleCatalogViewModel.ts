@@ -3,7 +3,7 @@
 
 import { computed, inject, ref, watch, type Ref } from 'vue';
 import type { Router, RouteLocationNormalizedLoaded } from 'vue-router';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import { unwrapListRecord } from '@/web/web/composables/listRowEdit';
 import { PageContextKey } from '@/web/web/composables/usePageContext';
 import type { RowEventPayload } from '@/web';
@@ -67,8 +67,8 @@ function isOperationDeepLinkRoute(routeName: unknown): boolean {
  * Catalog view model: sync (button busy + toast), drawer/deep-link, and row action helpers.
  */
 export function useModuleCatalogViewModel(opts: {
-  store: WebModelStore<any>;
-  operationStore?: WebModelStore<any> | Ref<WebModelStore<any> | null | undefined> | null;
+  store: ModelStore<any>;
+  operationStore?: ModelStore<any> | Ref<ModelStore<any> | null | undefined> | null;
   route: RouteLocationNormalizedLoaded;
   router: Router;
   initialOperationId?: Ref<string> | (() => string);
