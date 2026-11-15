@@ -7,6 +7,7 @@
 
 import { reactive, toRaw, provide } from 'vue';
 import { buildUpdatePayload } from '@/core/utils/diff';
+import { runWithLoading } from '@/core/web/client/loadingRegistry';
 import { buildDiffFieldsMeta } from '@/web/web/composables/useOnchange';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import { createStoreByModel } from '@/web/web/stores/registry';
@@ -782,12 +783,31 @@ export function createFormController(store: WebModelStore<any>, deps: FormContro
     loading: false,
     error: null,
     result: null,
+    hasAppliedOnce: false,
   });
 
   const aborts = createAbortableRequests();
   let loadSeq = 0;
 
+  function formLoadingTarget(): string {
+    return `form:${String((store as any).storeId ?? (store as any).model ?? 'default')}`;
+  }
+
   async function beginDisplay(recordId: string) {
+    // Do not peek handoff via flashRead here — it is one-shot and consumed in beginDisplayImpl.
+    const hasFrame = !!(vm.draft || vm.original) || handoffCache.has(String(recordId));
+    // `return await` so QuickJS adopts rejections (bare `return promise` can unhandle).
+    return await runWithLoading(
+      {
+        layer: 'surface',
+        target: formLoadingTarget(),
+        mode: hasFrame ? 'stale' : 'block',
+      },
+      () => beginDisplayImpl(recordId),
+    );
+  }
+
+  async function beginDisplayImpl(recordId: string) {
     const seq = ++loadSeq;
     vm.loading = true;
     vm.error = null;
@@ -889,6 +909,13 @@ export function createFormController(store: WebModelStore<any>, deps: FormContro
   }
 
   async function submit(): Promise<any> {
+    return await runWithLoading(
+      { layer: 'control', target: formLoadingTarget(), pendingLabel: 'Saving…' },
+      () => submitImpl(),
+    );
+  }
+
+  async function submitImpl(): Promise<any> {
     vm.loading = true;
     vm.error = null;
     try {
@@ -1032,6 +1059,10 @@ export function createFormController(store: WebModelStore<any>, deps: FormContro
   }
 
   async function remove(): Promise<any> {
+    return await runWithLoading({ layer: 'control', target: formLoadingTarget() }, () => removeImpl());
+  }
+
+  async function removeImpl(): Promise<any> {
     vm.loading = true;
     vm.error = null;
     try {

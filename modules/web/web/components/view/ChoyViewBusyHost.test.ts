@@ -24,6 +24,12 @@ describe('ChoyViewBusyHost', () => {
   });
 
   test('busy host overlays spinner, sets inert, and teleports a live status', async () => {
+    // Clear teleports left by earlier view mounts in the same FE bundle run.
+    for (const node of Array.from(
+      document.body.querySelectorAll('[data-slot=view-busy-status]'),
+    )) {
+      node.parentNode?.removeChild(node);
+    }
     const mounted = mountApp(ChoyViewBusyHost as any, {
       props: { busy: true, busyLabel: 'Saving…', class: 'min-h-40' },
       slots: {
@@ -39,6 +45,7 @@ describe('ChoyViewBusyHost', () => {
 
     const overlay = mounted.q('[data-slot=view-busy-overlay]') as HTMLElement | null;
     expect(overlay).not.toBeNull();
+    expect(overlay?.getAttribute('data-mode')).toBe('block');
     expect(overlay?.querySelector('[data-testid=choy-spinner]')).not.toBeNull();
 
     // Teleport lands on document.body; require exactly one live region (no leaked stubs).
@@ -54,5 +61,22 @@ describe('ChoyViewBusyHost', () => {
       Array.from(document.body.querySelectorAll('[data-slot=view-busy-status]'))
         .length,
     ).toBe(0);
+  });
+
+  test('stale mode fades host without inert or blocking overlay', async () => {
+    const mounted = mountApp(ChoyViewBusyHost as any, {
+      props: { busy: true, mode: 'stale' },
+      slots: {
+        default: () => h('div', { 'data-testid': 'body' }, 'ok'),
+      },
+    });
+    await flushPromises();
+    const host = mounted.q('[data-slot=view-body-host]') as HTMLElement | null;
+    expect(host?.getAttribute('aria-busy')).toBe('true');
+    expect(host?.hasAttribute('inert')).toBe(false);
+    expect(host?.className || '').toContain('opacity-70');
+    expect(host?.className || '').not.toContain('pointer-events-none');
+    expect(mounted.q('[data-slot=view-busy-overlay]')).toBeNull();
+    mounted.unmount();
   });
 });

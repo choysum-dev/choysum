@@ -259,7 +259,7 @@ test('runHandledAuthSubmit: redirects after success and skips on failure', async
     submit: async () => true,
     fallbackMessage: 'fallback',
     setError: m => errors.push(m),
-    onSuccess: () => {
+    onSuccess: async () => {
       redirected += 1;
     },
   });
@@ -276,6 +276,35 @@ test('runHandledAuthSubmit: redirects after success and skips on failure', async
   expect(failed).toEqual({ handled: true, skipSuccessMessage: true });
   expect(redirected).toBe(1);
   expect(errors).toEqual([]);
+});
+
+test('runHandledAuthSubmit: awaits a pending onSuccess before settling', async () => {
+  let resolveSuccess!: () => void;
+  const pending = new Promise<void>(resolve => {
+    resolveSuccess = resolve;
+  });
+  let enteredSuccess = false;
+  let settled = false;
+  const run = runHandledAuthSubmit({
+    submit: async () => true,
+    fallbackMessage: 'fallback',
+    setError: () => {},
+    onSuccess: () => {
+      enteredSuccess = true;
+      return pending;
+    },
+  }).then(result => {
+    settled = true;
+    return result;
+  });
+  // Allow queued microtasks; must still be waiting on the unresolved onSuccess promise.
+  await new Promise<void>(resolve => setTimeout(resolve, 0));
+  expect(enteredSuccess).toBe(true);
+  expect(settled).toBe(false);
+  resolveSuccess();
+  const ok = await run;
+  expect(settled).toBe(true);
+  expect(ok).toEqual({ handled: true, skipSuccessMessage: true });
 });
 
 test('runHandledAuthSubmit: maps thrown Error and unknown values', async () => {

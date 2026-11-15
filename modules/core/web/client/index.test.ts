@@ -4,5 +4,25 @@
 import * as clientApi from './index';
 
 test('core/web client entrypoint export surface: keeps the client facade limited to stable service helpers', () => {
-  expect(Object.keys(clientApi).sort()).toEqual(['webApiService']);
+  expect(Object.keys(clientApi).sort()).toEqual(
+    [
+      'beginNavigationLoading',
+      'getControlBusy',
+      'getSurfaceBusy',
+      'hasActiveSurfaceBusy',
+      'loadingTiming',
+      'resetLoadingRegistryForTests',
+      'runWithLoading',
+      'runWithLoadingSync',
+      'scheduleNavigationSettleIfIdle',
+      'settleNavigationIfActive',
+      'useControlBusy',
+      'useHasActiveSurfaceBusy',
+      'useLoadingBarVisible',
+      'useLoadingSlowHintVisible',
+      'useNavigationHandoffBusy',
+      'useSurfaceBusy',
+      'webApiService',
+    ].sort(),
+  );
 });

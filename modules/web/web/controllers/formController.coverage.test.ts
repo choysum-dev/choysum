@@ -65,3 +65,28 @@ test('formController > create submit uses default handoff cache', async () => {
   expect(handoffCache.get('new-1')).toMatchObject({ Id: 'new-1', Name: 'created' });
   handoffCache.clear();
 });
+
+test('formController > remove runs under control loading and clears the record', async () => {
+  const DeleteById = asyncFnRecorder(async () => ({ ok: true }));
+  const store = {
+    fullModelName: 'demo.Widget',
+    storeId: 'demo.Widget',
+    fieldsMetadata: { Name: { type: 'varchar' } },
+    state: {},
+    getContext: () => ({}),
+    DeleteById,
+  } as any;
+
+  const controller = createFormController(store, {
+    exportFieldSelection: (() => ['Name']) as any,
+    flashRead: (() => ({ Id: 'del-1', Name: 'gone' })) as any,
+  });
+  await controller.beginDisplay('del-1');
+  expect(controller.vm.original).toMatchObject({ Id: 'del-1' });
+
+  const res = await controller.delete();
+  expect(DeleteById.calls.length).toBe(1);
+  expect(res).toEqual({ ok: true });
+  expect(controller.vm.original).toBeNull();
+  expect(controller.vm.draft).toBeNull();
+});

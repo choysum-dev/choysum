@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { computed, ref, shallowRef, type ComputedRef, type Ref, type ShallowRef } from 'vue';
+import { runWithLoading } from '@/core/web/client/loadingRegistry';
 import { createLocalFormStore, type LocalFormStore } from '@/web/web/stores/localFormStore';
 import { createStoreByModel } from '@/web/web/stores/registry';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
@@ -26,7 +27,10 @@ export type SandboxSettingsPageDeps = {
 
 export type SandboxSettingsPageApi = {
   formStore: ShallowRef<LocalFormStore | null>;
+  /** Save in flight (control). */
   loading: Ref<boolean>;
+  /** First load / refresh of the sheet (surface). */
+  contentLoading: Ref<boolean>;
   loadFailed: Ref<boolean>;
   dirty: ComputedRef<boolean>;
   load: () => Promise<void>;
@@ -81,8 +85,10 @@ export function useSandboxSettingsPage(deps: SandboxSettingsPageDeps): SandboxSe
   const baselineFlag = ref('0');
   const baselineLabel = ref('');
   const loading = ref(false);
+  const contentLoading = ref(false);
   const loadFailed = ref(false);
   const appSettingStore = resolveAppSettingStore(deps);
+  const settingsBusyTarget = 'settings:sandbox';
 
   const dirty = computed(() => {
     if (!formStore.value || loadFailed.value) return false;
@@ -108,20 +114,25 @@ export function useSandboxSettingsPage(deps: SandboxSettingsPageDeps): SandboxSe
   }
 
   async function load() {
-    loading.value = true;
+    contentLoading.value = true;
     try {
-      const store = appSettingStore();
-      const flag = (await store.Get(SANDBOX_DEMO_FLAG_KEY, '0')) ?? '0';
-      const label = (await store.Get(SANDBOX_DEMO_LABEL_KEY, '')) ?? '';
-      rebuildForm(flag === '1' ? '1' : '0', label);
-      loadFailed.value = false;
+      await runWithLoading(
+        { layer: 'surface', target: settingsBusyTarget, mode: 'skeleton' },
+        async () => {
+          const store = appSettingStore();
+          const flag = (await store.Get(SANDBOX_DEMO_FLAG_KEY, '0')) ?? '0';
+          const label = (await store.Get(SANDBOX_DEMO_LABEL_KEY, '')) ?? '';
+          rebuildForm(flag === '1' ? '1' : '0', label);
+          loadFailed.value = false;
+        },
+      );
     } catch {
       // Keep prior baselines; do not invent defaults that a later Save could write.
       loadFailed.value = true;
       formStore.value = null;
       ChoyMessage.error(settingsMessage('Load failed'));
     } finally {
-      loading.value = false;
+      contentLoading.value = false;
     }
   }
 
@@ -129,21 +140,26 @@ export function useSandboxSettingsPage(deps: SandboxSettingsPageDeps): SandboxSe
     if (!formStore.value || loadFailed.value || !dirty.value) return;
     loading.value = true;
     try {
-      const store = appSettingStore();
-      const flag = formStore.value.getField('DemoFlag') === true ? '1' : '0';
-      const label = String(formStore.value.getField('DemoLabel') ?? '');
-      // Only persist keys that actually changed (one edit must not Set siblings).
-      // Advance each baseline after its own Set so a later failure still retries
-      // only the remaining dirty key(s).
-      if (flag !== baselineFlag.value) {
-        await store.Set(SANDBOX_DEMO_FLAG_KEY, flag);
-        baselineFlag.value = flag;
-      }
-      if (label !== baselineLabel.value) {
-        await store.Set(SANDBOX_DEMO_LABEL_KEY, label);
-        baselineLabel.value = label;
-      }
-      ChoyMessage.success(settingsMessage('Saved successfully'));
+      await runWithLoading(
+        { layer: 'control', target: settingsBusyTarget, pendingLabel: 'Saving…' },
+        async () => {
+          const store = appSettingStore();
+          const flag = formStore.value!.getField('DemoFlag') === true ? '1' : '0';
+          const label = String(formStore.value!.getField('DemoLabel') ?? '');
+          // Only persist keys that actually changed (one edit must not Set siblings).
+          // Advance each baseline after its own Set so a later failure still retries
+          // only the remaining dirty key(s).
+          if (flag !== baselineFlag.value) {
+            await store.Set(SANDBOX_DEMO_FLAG_KEY, flag);
+            baselineFlag.value = flag;
+          }
+          if (label !== baselineLabel.value) {
+            await store.Set(SANDBOX_DEMO_LABEL_KEY, label);
+            baselineLabel.value = label;
+          }
+          ChoyMessage.success(settingsMessage('Saved successfully'));
+        },
+      );
     } catch {
       ChoyMessage.error(settingsMessage('Save failed'));
     } finally {
@@ -156,5 +172,5 @@ export function useSandboxSettingsPage(deps: SandboxSettingsPageDeps): SandboxSe
     rebuildForm(baselineFlag.value, baselineLabel.value);
   }
 
-  return { formStore, loading, loadFailed, dirty, load, onSave, onDiscard };
+  return { formStore, loading, contentLoading, loadFailed, dirty, load, onSave, onDiscard };
 }

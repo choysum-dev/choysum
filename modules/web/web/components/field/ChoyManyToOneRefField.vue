@@ -124,6 +124,7 @@ import { ChoyMessage } from '../../composables/useChoyMessage';
 import { RELATION_PICKER_CLOSE_KEY } from '@/web/web/components/field/relationPickerContext';
 import type { RuleItem } from 'async-validator';
 import type { BaseModel, FieldPath, FieldPathType, ClientModel, QueryCondition } from '@/core/rpc';
+import { runWithLoading } from '@/core/web/client/loadingRegistry';
 import type { WebModelStore } from '@/web/web/stores/modelStore';
 import { createStoreByModel } from '@/web/web/stores/registry';
 import type { WritableComputedRef, Component } from 'vue';
@@ -636,13 +637,15 @@ async function relationSearch(query: string, opts: { limit: number }, recordRef?
 
   const final: QueryCondition<any> | [] = parts.length === 0 ? ([] as any) : parts.length === 1 ? parts[0] : ({ And: parts } as any);
 
-  const result = (await relationStore.value?.NameSearch(String(query ?? '').trim(), final as any, {
-    fields: ['Id', 'DisplayName'],
-    limit: opts.limit ?? props.pageSize ?? 20,
-    ...buildRelationConditionSource(props.store as any, binding.prop),
-  })) as V[] | undefined;
+  const result = await runWithLoading({ silent: true }, async () =>
+    relationStore.value?.NameSearch(String(query ?? '').trim(), final as any, {
+      fields: ['Id', 'DisplayName'],
+      limit: opts.limit ?? props.pageSize ?? 20,
+      ...buildRelationConditionSource(props.store as any, binding.prop),
+    }),
+  );
 
-  const rows = result ?? [];
+  const rows = ((result as V[] | undefined) ?? []) as V[];
   for (const row of rows) {
     if (row && typeof row === 'object') upsertOption(row);
   }

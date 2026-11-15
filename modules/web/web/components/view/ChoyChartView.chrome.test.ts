@@ -63,20 +63,48 @@ describe('ChoyChartView chrome', () => {
     expect(String(body?.className || '')).toContain('flex-1');
 
     const exposed = mounted.root as {
-      controller: { vm: { loading: boolean; error: unknown } };
+      controller: { vm: { loading: boolean; error: unknown }; apply: () => Promise<unknown> };
+      onRetry: () => Promise<void>;
     };
     exposed.controller.vm.error = new Error('chart failed');
     await nextTick();
     expect(mounted.text()).toContain('chart failed');
     expect(mounted.text()).toContain('Retry');
+    // prepError is null here → onRetry falls through to onRefresh.
+    let applyCalls = 0;
+    exposed.controller.apply = async () => {
+      applyCalls += 1;
+      return [];
+    };
+    await exposed.onRetry();
+    await flushPromises();
+    expect(applyCalls).toBe(1);
 
-    exposed.controller.vm.error = null;
-    exposed.controller.vm.loading = true;
+    const ctrlVm = exposed.controller.vm as {
+      loading: boolean;
+      error: unknown;
+      hasAppliedOnce?: boolean;
+    };
+    // Concurrent Retry while busy must be ignored.
+    ctrlVm.loading = true;
     await nextTick();
-    expect(mounted.q('[data-testid=choy-spinner]')).not.toBeNull();
+    await exposed.onRetry();
+    expect(applyCalls).toBe(1);
+
+    ctrlVm.error = null;
+    ctrlVm.hasAppliedOnce = false;
+    ctrlVm.loading = true;
+    await nextTick();
+    // Empty chart first frame → block Loader2 (not skeleton bars).
+    expect(mounted.q('[data-slot=view-busy-overlay]')?.getAttribute('data-mode')).toBe('block');
     expect(mounted.q('[data-testid=choy-empty]')).toBeNull();
 
-    exposed.controller.vm.loading = false;
+    ctrlVm.loading = false;
+    await nextTick();
+    // Still gated until first apply settles.
+    expect(mounted.q('[data-testid=choy-empty]')).toBeNull();
+
+    ctrlVm.hasAppliedOnce = true;
     await nextTick();
     expect(mounted.q('[data-testid=choy-empty]')).not.toBeNull();
 

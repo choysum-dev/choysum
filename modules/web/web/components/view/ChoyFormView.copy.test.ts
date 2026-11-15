@@ -112,8 +112,9 @@ describe('FormView handleCopy awaits beginCreate', () => {
     expect(content!.hasAttribute('inert')).toBe(false);
     ss.controller.vm.loading = true;
     await flushPromises();
+    // Draft present → Form surface mode is stale: aria-busy only, content stays interactive.
     expect(content!.getAttribute('aria-busy')).toBe('true');
-    expect(content!.hasAttribute('inert')).toBe(true);
+    expect(content!.hasAttribute('inert')).toBe(false);
     ss.controller.vm.loading = false;
 
     wrapper.unmount();

@@ -195,3 +195,29 @@ test('Register.vue: valid submit registers and redirects', async () => {
   expect(replaces).toEqual(['/']);
   wrapper.unmount();
 });
+
+test('Register.vue: post-register navigation failure shows recovery message', async () => {
+  const replaces: unknown[] = [];
+  const wrapper = mount(Register as any, {
+    global: buildPageMountGlobal({
+      route: { path: '/register', query: {} },
+      router: {
+        replace: (to: unknown) => {
+          replaces.push(to);
+          return Promise.reject(new Error('nav boom'));
+        },
+      },
+    }),
+  });
+  await flushPromises();
+  await fillField(wrapper, '.register-username', 'alice');
+  await fillField(wrapper, '.register-email', 'alice@example.com');
+  await fillField(wrapper, '.register-password', 'secret1');
+  await fillField(wrapper, '.register-confirm', 'secret1');
+  await checkTerms(wrapper);
+  submitForm(wrapper);
+  await afterSubmit();
+  expect(replaces).toEqual(['/']);
+  expect(wrapper.text()).toContain('Your account was created, but the page could not open');
+  wrapper.unmount();
+});

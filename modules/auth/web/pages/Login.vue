@@ -182,8 +182,8 @@ const showRegisterLink = computed(() => import.meta.env.CHOYSUM_ENABLE_REGISTRAT
 /**
  * Redirect the user to the requested destination after login.
  */
-function handleRedirect() {
-  router.replace(resolveLoginRedirect(route.query.redirect?.toString()));
+async function handleRedirect() {
+  await router.replace(resolveLoginRedirect(route.query.redirect?.toString()));
 }
 
 function setPageError(message: string) {

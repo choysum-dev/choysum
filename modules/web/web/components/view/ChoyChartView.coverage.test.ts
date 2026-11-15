@@ -258,6 +258,7 @@ describe('ChoyChartView coverage', () => {
 
   test('autoBootstrap catches load errors', async () => {
     const errors: unknown[] = [];
+    let bootCalls = 0;
     const mounted = mountApp(ChoyChartView as any, {
       props: {
         store: makeStore(['TokenType']),
@@ -265,12 +266,20 @@ describe('ChoyChartView coverage', () => {
         metrics: [],
         onLoadError: (e: unknown) => errors.push(e),
         beforeBootstrap: async () => {
-          throw new Error('before boom');
+          bootCalls += 1;
+          if (bootCalls === 1) throw new Error('before boom');
         },
       },
     });
     await flushPromises();
     expect(errors.length).toBeGreaterThan(0);
+    expect(mounted.text()).toContain('before boom');
+    expect(mounted.text()).toContain('Retry');
+    const ex = mounted.root as { onRetry: () => Promise<void> };
+    await ex.onRetry();
+    await flushPromises();
+    expect(bootCalls).toBe(2);
+    expect(mounted.text()).not.toContain('before boom');
     mounted.unmount();
   });
 

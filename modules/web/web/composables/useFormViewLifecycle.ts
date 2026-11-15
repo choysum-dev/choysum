@@ -47,6 +47,13 @@ export type UseFormViewLifecycleOpts<T extends BaseModel> = {
    * edit→beginDisplay. Used by embedded FormViews that are not route-backed.
    */
   cancelHandler?: () => void | Promise<void>;
+  /**
+   * When this returns a boolean, leave/Cancel dirty checks use it instead of controller draft
+   * vs original (Settings chrome passes page-level dirty).
+   */
+  externalDirty?: () => boolean | undefined;
+  /** When true, block non-auth navigation (e.g. Settings Save in flight). */
+  leaveBlocked?: () => boolean;
 };
 
 function normalizeRecordId(raw: unknown): string | undefined {
@@ -77,6 +84,8 @@ export function useFormViewLifecycle<T extends BaseModel>(opts: UseFormViewLifec
   }
 
   function isFormDirty(): boolean {
+    const override = opts.externalDirty?.();
+    if (typeof override === 'boolean') return override;
     const draft = opts.controller.vm.draft as Record<string, unknown> | null | undefined;
     const meta = opts.fieldsMetadata?.();
     if (opts.viewMode.value === 'edit') {
@@ -124,6 +133,8 @@ export function useFormViewLifecycle<T extends BaseModel>(opts: UseFormViewLifec
       dismissLeaveConfirmIfPending();
       return true;
     }
+    // Settings Save (and similar control busy): do not leave or switch views mid-flight.
+    if (opts.leaveBlocked?.()) return false;
     if (!isFormDirty()) return true;
     return confirmDiscardIfDirty();
   });
@@ -378,9 +389,20 @@ export function useFormViewLifecycle<T extends BaseModel>(opts: UseFormViewLifec
     );
   }
 
+  async function runWhileLeaving<T>(fn: () => Promise<T> | T): Promise<T> {
+    leaving = true;
+    try {
+      return await fn();
+    } finally {
+      leaving = false;
+    }
+  }
+
   return {
     effectiveRecordId,
     isFormDirty,
+    confirmDiscardIfDirty,
+    runWhileLeaving,
     initializeForm,
     bumpInitializeSeq,
     handleEdit,

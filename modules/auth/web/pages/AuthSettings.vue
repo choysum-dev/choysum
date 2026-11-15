@@ -8,6 +8,7 @@ SPDX-License-Identifier: Apache-2.0
     <ChoySettingsView
       :local-store="formStore"
       :loading="loading"
+      :content-loading="contentLoading"
       :dirty="dirty"
       :active-view="activeView"
       :view-switcher-options="viewSwitcherOptions"
@@ -62,7 +63,7 @@ const viewSwitcherOptions = computed<ChoyViewSwitcherOption[]>(() => [
   { value: 'list', label: _t('Parameters View') },
 ]);
 
-const { formStore, loading, dirty, load, onSave, onDiscard } = useAuthSettingsPage({
+const { formStore, loading, contentLoading, dirty, load, onSave, onDiscard } = useAuthSettingsPage({
   translate: _t,
 });
 

@@ -4,6 +4,7 @@
 import { ConnectError, Code } from '@connectrpc/connect';
 import type { RpcRequestContext, RequestLifecycleProvider } from '../../rpc/types';
 import { asObjectRecord } from '../../utils/object';
+import { loadingRegistryOnRpcFinish, loadingRegistryOnRpcStart } from './loadingRegistry';
 import type { ApiState, ApiStateInternal } from './state';
 
 export function toPublicApiState(apiState: ApiStateInternal): ApiState {
@@ -24,6 +25,7 @@ export function createLifecycleProvider(apiState: ApiStateInternal): RequestLife
       const { serviceName, methodName, spanId } = context;
       const stateKey = apiState._internal.createStateKey(serviceName, methodName);
       apiState._internal.startRequest(spanId, stateKey);
+      loadingRegistryOnRpcStart(spanId);
     },
 
     onSuccess: () => {},
@@ -46,7 +48,11 @@ export function createLifecycleProvider(apiState: ApiStateInternal): RequestLife
     },
 
     onFinish: (context: RpcRequestContext) => {
-      apiState._internal.finishRequest(context.spanId);
+      try {
+        loadingRegistryOnRpcFinish(context.spanId);
+      } finally {
+        apiState._internal.finishRequest(context.spanId);
+      }
     },
   };
 }

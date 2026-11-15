@@ -6,6 +6,8 @@
  * The Vue SFC owns Combobox + virtual list presentation.
  */
 
+import { runWithLoading } from '@/core/web/client/loadingRegistry';
+
 export type RelationOption = {
   id: string;
   label: string;
@@ -70,10 +72,13 @@ export async function runRelationNameSearch(
   query: string | null | undefined,
   pageSize = 20,
 ): Promise<RelationOption[]> {
-  const limit = Number.isFinite(pageSize) ? Math.max(1, Math.floor(pageSize)) : 20;
-  const keyword = normalizeRelationQuery(query);
-  const rows = await search(keyword, { limit });
-  return Array.isArray(rows) ? mapNameSearchRows(rows).slice(0, limit) : [];
+  // `return await` so QuickJS adopts rejections (bare `return promise` can unhandle).
+  return await runWithLoading({ silent: true }, async () => {
+    const limit = Number.isFinite(pageSize) ? Math.max(1, Math.floor(pageSize)) : 20;
+    const keyword = normalizeRelationQuery(query);
+    const rows = await search(keyword, { limit });
+    return Array.isArray(rows) ? mapNameSearchRows(rows).slice(0, limit) : [];
+  });
 }
 
 /** Last successful NameSearch payload (Odoo Many2XAutocomplete previousSearch). */

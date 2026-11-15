@@ -1,10 +1,11 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { defineComponent, h, inject, nextTick } from 'vue';
+import { defineComponent, h, inject, nextTick, ref } from 'vue';
 import { createPinia } from 'pinia';
 import * as VueRouter from 'vue-router';
 import { flushPromises, mountApp, stubSfc, restoreSfc } from '@/web/web/__tests__/mountApp';
+import { resetLoadingRegistryForTests } from '@/core/web/client/loadingRegistry';
 import { createLocalFormStore } from '@/web/web/stores/localFormStore';
 import { useField } from '@/web/web/composables/useField';
 import ChoySettingsView from './ChoySettingsView.vue';
@@ -214,6 +215,194 @@ test('ChoySettingsView view-select confirms dirty then emits after navigation se
   }
 });
 
+test('ChoySettingsView view-select no-ops when the active view is re-selected', async () => {
+  const { useConfirmChoyStore } = await import('@/web/web/composables/confirmChoyAction');
+  stubSfc(
+    ChoyViewSwitcher as any,
+    defineComponent({
+      name: 'ChoyViewSwitcherSameStub',
+      emits: ['select'],
+      setup(_, { emit }) {
+        return () =>
+          h('button', {
+            type: 'button',
+            'data-testid': 'stub-view-same',
+            onClick: () => emit('select', 'settings'),
+          });
+      },
+    }),
+  );
+  const selected: string[] = [];
+  try {
+    const mounted = mountSettings(
+      {
+        dirty: true,
+        viewSwitcherOptions: [
+          { value: 'settings', label: 'Settings View' },
+          { value: 'list', label: 'Parameters View' },
+        ],
+        activeView: 'settings',
+      },
+      { on: { onViewSelect: (v: string) => selected.push(v) } },
+    );
+    await flushPromises();
+    const btn = mounted.q('[data-testid=stub-view-same]') as HTMLButtonElement | null;
+    expect(btn).not.toBeNull();
+    btn!.click();
+    await flushPromises();
+    expect(useConfirmChoyStore().open).toBe(false);
+    expect(selected).toEqual([]);
+    mounted.unmount();
+  } finally {
+    restoreSfc(ChoyViewSwitcher as any);
+  }
+});
+
+test('ChoyFormView view-select ignores failed navigation when settling leave', async () => {
+  const { default: ChoyFormView } = await import('./ChoyFormView.vue');
+  stubSfc(
+    ChoyViewSwitcher as any,
+    defineComponent({
+      name: 'ChoyViewSwitcherFailNavStub',
+      emits: ['select'],
+      setup(_, { emit }) {
+        return () =>
+          h('button', {
+            type: 'button',
+            'data-testid': 'stub-view-fail-nav',
+            onClick: () => emit('select', 'list'),
+          });
+      },
+    }),
+  );
+  const selected: string[] = [];
+  try {
+    const store = createLocalFormStore({
+      fields: [{ name: 'Note', label: 'Note', type: 'char' }],
+      initialValues: { Note: '' },
+    });
+    const { router } = createFeStubRouter({
+      route: {
+        name: 'FailNavSettings',
+        path: '/fail-nav/settings',
+        fullPath: '/fail-nav/settings',
+        params: {},
+        query: {},
+        meta: {},
+      },
+    });
+    router.beforeEach((to: { path: string }) => {
+      if (to.path === '/fail-nav/abort') return false;
+      return true;
+    });
+    const mounted = mountApp(ChoyFormView as any, {
+      props: {
+        presentation: 'settings',
+        store,
+        dirty: false,
+        showHeader: true,
+        showActions: true,
+        showMessages: false,
+        resolveRecordIdFromRoute: false,
+        registerActionTarget: false,
+        viewMode: 'edit',
+        activeView: 'settings',
+        viewSwitcherOptions: [
+          { value: 'settings', label: 'Settings View' },
+          { value: 'list', label: 'Parameters View' },
+        ],
+      },
+      plugins: [createPinia(), router],
+      on: {
+        onViewSelect: (v: string) => {
+          selected.push(v);
+          // Failed nav must not finish leaving; a later success settles via afterEach.
+          void router.push('/fail-nav/abort').finally(() => {
+            void router.push('/fail-nav/ok');
+          });
+        },
+      },
+    });
+    await flushPromises();
+    const btn = mounted.q('[data-testid=stub-view-fail-nav]') as HTMLButtonElement | null;
+    expect(btn).not.toBeNull();
+    btn!.click();
+    await flushPromises();
+    expect(selected).toEqual(['list']);
+    await new Promise<void>(resolve => setTimeout(resolve, 50));
+    mounted.unmount();
+  } finally {
+    restoreSfc(ChoyViewSwitcher as any);
+  }
+});
+
+test('ChoyFormView view-select emits immediately when router has no afterEach', async () => {
+  const { default: ChoyFormView } = await import('./ChoyFormView.vue');
+  stubSfc(
+    ChoyViewSwitcher as any,
+    defineComponent({
+      name: 'ChoyViewSwitcherNoAfterStub',
+      emits: ['select'],
+      setup(_, { emit }) {
+        return () =>
+          h('button', {
+            type: 'button',
+            'data-testid': 'stub-view-no-after',
+            onClick: () => emit('select', 'list'),
+          });
+      },
+    }),
+  );
+  const selected: string[] = [];
+  try {
+    const store = createLocalFormStore({
+      fields: [{ name: 'Note', label: 'Note', type: 'char' }],
+      initialValues: { Note: '' },
+    });
+    const { router } = createFeStubRouter({
+      route: {
+        name: 'NoAfterSettings',
+        path: '/no-after/settings',
+        fullPath: '/no-after/settings',
+        params: {},
+        query: {},
+        meta: {},
+      },
+    });
+    // Cover the no-afterEach early emit path (no 1s leave hold).
+    delete (router as { afterEach?: unknown }).afterEach;
+    const mounted = mountApp(ChoyFormView as any, {
+      props: {
+        presentation: 'settings',
+        store,
+        dirty: false,
+        showHeader: true,
+        showActions: true,
+        showMessages: false,
+        resolveRecordIdFromRoute: false,
+        registerActionTarget: false,
+        viewMode: 'edit',
+        activeView: 'settings',
+        viewSwitcherOptions: [
+          { value: 'settings', label: 'Settings View' },
+          { value: 'list', label: 'Parameters View' },
+        ],
+      },
+      plugins: [createPinia(), router],
+      on: { onViewSelect: (v: string) => selected.push(v) },
+    });
+    await flushPromises();
+    const btn = mounted.q('[data-testid=stub-view-no-after]') as HTMLButtonElement | null;
+    expect(btn).not.toBeNull();
+    btn!.click();
+    await flushPromises();
+    expect(selected).toEqual(['list']);
+    mounted.unmount();
+  } finally {
+    restoreSfc(ChoyViewSwitcher as any);
+  }
+});
+
 test('ChoySettingsView draft bag binds form-root without localStore', async () => {
   const draft = { DemoFlag: false };
   const Probe = defineComponent({
@@ -239,6 +428,117 @@ test('ChoySettingsView draft bag binds form-root without localStore', async () =
   await nextTick();
   expect(draft.DemoFlag).toBe(true);
   mounted.unmount();
+});
+
+test('ChoyFormView settings discard without cancelHandler emits discard', async () => {
+  const { resolveConfirmChoy, useConfirmChoyStore } = await import(
+    '@/web/web/composables/confirmChoyAction'
+  );
+  const { default: ChoyFormView } = await import('./ChoyFormView.vue');
+  const discards: number[] = [];
+  const store = createLocalFormStore({
+    fields: [{ name: 'Note', label: 'Note', type: 'char' }],
+    initialValues: { Note: '' },
+  });
+  const { router } = createFeStubRouter({
+    route: {
+      name: 'DirectSettings',
+      path: '/direct/settings',
+      fullPath: '/direct/settings',
+      params: {},
+      query: {},
+      meta: {},
+    },
+  });
+  const mounted = mountApp(ChoyFormView as any, {
+    props: {
+      presentation: 'settings',
+      store,
+      dirty: true,
+      showHeader: true,
+      showActions: true,
+      showMessages: false,
+      resolveRecordIdFromRoute: false,
+      registerActionTarget: false,
+      viewMode: 'edit',
+      pageTitle: 'Direct',
+    },
+    reactiveProps: true,
+    plugins: [createPinia(), router],
+    on: { onDiscard: () => discards.push(1) },
+  });
+  await flushPromises();
+  const discard = mounted.q('[data-testid=settings-discard]') as HTMLButtonElement | null;
+  expect(discard).not.toBeNull();
+  discard!.disabled = false;
+  discard!.click();
+  await Promise.resolve();
+  expect(useConfirmChoyStore().open).toBe(true);
+  resolveConfirmChoy('confirm');
+  await flushPromises();
+  expect(discards.length).toBe(1);
+  mounted.unmount();
+});
+
+test('ChoySettingsView form-root falls back to controller draft without bag', async () => {
+  const seen = ref('');
+  const Probe = defineComponent({
+    name: 'ControllerDraftProbe',
+    setup() {
+      const root = inject<{
+        draft: Record<string, unknown> | null;
+        getField: (path: string) => unknown;
+        setField: (path: string, value: unknown) => void;
+      }>('form-root')!;
+      return () =>
+        h('button', {
+          type: 'button',
+          'data-testid': 'set-via-root',
+          onClick: () => {
+            void root.draft;
+            root.setField('Note', 'hi');
+            seen.value = String(root.getField('Note') ?? '');
+          },
+        }, () => seen.value);
+    },
+  });
+  const mounted = mountSettings(
+    { dirty: false, pageTitle: 'NoBag' },
+    { slots: { default: () => h(Probe) } },
+  );
+  await flushPromises();
+  (mounted.q('[data-testid=set-via-root]') as HTMLElement).click();
+  await nextTick();
+  expect(seen.value).toBe('hi');
+  mounted.unmount();
+});
+
+test('ChoySettingsView save emits when dirty and unlocked', async () => {
+  resetLoadingRegistryForTests();
+  const saves: number[] = [];
+  const mounted = mountSettings(
+    { dirty: false, pageTitle: 'Settings' },
+    { on: { onSave: () => saves.push(1) } },
+  );
+  await flushPromises();
+  const saveClean = mounted.q('[data-testid=settings-save]') as HTMLButtonElement | null;
+  expect(saveClean).not.toBeNull();
+  expect(saveClean!.disabled).toBe(true);
+  saveClean!.click();
+  await flushPromises();
+  expect(saves.length).toBe(0);
+  mounted.props.dirty = true;
+  await nextTick();
+  await flushPromises();
+  const save = mounted.q('[data-testid=settings-save]') as HTMLButtonElement | null;
+  expect(save).not.toBeNull();
+  // FE host may keep the native disabled flag stale; click after unlocking dirty via props.
+  save!.disabled = false;
+  save!.click();
+  await flushPromises();
+  expect(saves.length).toBe(1);
+  mounted.unmount();
+  resetLoadingRegistryForTests();
 });
 
 test('ChoySettingsView custom labels, hidden header, and draft key prune', async () => {
