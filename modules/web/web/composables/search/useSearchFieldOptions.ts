@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { computed, type ComputedRef } from 'vue';
-import { getFieldMetadataView, type WebFieldMetadata, type WebModelStore } from '@/web/web/stores/modelStore';
+import { getFieldMetadataView, type WebFieldMetadata, type ModelStore } from '@/web/web/stores/modelStore';
 import { getGlobalComposer } from '@/web/web/i18n';
 import { resolveFieldLabel } from '@/web/web/composables/resolveFieldLabel';
 
@@ -13,7 +13,7 @@ export type SearchFieldOption = {
   type?: string;
 };
 
-function labelFor(store: WebModelStore<any>, prop: string, meta: Partial<WebFieldMetadata> | undefined): string {
+function labelFor(store: ModelStore<any>, prop: string, meta: Partial<WebFieldMetadata> | undefined): string {
   return resolveFieldLabel({
     prop,
     meta: meta as any,
@@ -54,7 +54,7 @@ export function isGroupableSearchField(prop: string, meta: Partial<WebFieldMetad
 }
 
 export function listSearchFieldOptions(
-  store: WebModelStore<any>,
+  store: ModelStore<any>,
   predicate: (prop: string, meta: Partial<WebFieldMetadata> | undefined) => boolean
 ): SearchFieldOption[] {
   const md = (store.fieldsMetadata ?? {}) as Record<string, Partial<WebFieldMetadata>>;
@@ -71,13 +71,13 @@ export function listSearchFieldOptions(
   return sortSearchFieldOptions(items);
 }
 
-export function useFilterableSearchFields(store: WebModelStore<any>): ComputedRef<Array<{ prop: string; label: string }>> {
+export function useFilterableSearchFields(store: ModelStore<any>): ComputedRef<Array<{ prop: string; label: string }>> {
   return computed(() =>
     listSearchFieldOptions(store, isFilterableSearchField).map(({ prop, label }) => ({ prop, label }))
   );
 }
 
-export function resolveSearchFieldLabel(store: WebModelStore<any> | undefined, prop: string): string {
+export function resolveSearchFieldLabel(store: ModelStore<any> | undefined, prop: string): string {
   if (!store || !prop) return prop;
   const meta = (store.fieldsMetadata as any)?.[prop];
   return labelFor(store, prop, meta);

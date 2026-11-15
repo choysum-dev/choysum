@@ -380,7 +380,7 @@ import { ref, computed, watch, nextTick, onMounted, inject } from 'vue';
 import { ChoyMessage } from '../../../composables/useChoyMessage';
 import { confirmChoyAction, confirmChoyChoice } from '../../../composables/confirmChoyAction';
 import type { BaseModel } from '@/core/rpc';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import { useSearch } from '@/web/web/composables/search';
 import { normalizeFilters } from '@/web/web/query/utils/filter/structures';
 import { filtersSignature, shouldApplyControlledFilters } from '@/web/web/query/utils/search/controlledFilters';
@@ -475,7 +475,7 @@ const granLabelMap = computed(() => ({
 }));
 
 const props = defineProps<{
-  store: WebModelStore<T>;
+  store: ModelStore<T>;
   placeholder?: string;
   /** Controlled grouping supplied entirely by the parent as GroupBySpec[]. */
   currentAppliedGroups?: GroupBySpec<T>[];

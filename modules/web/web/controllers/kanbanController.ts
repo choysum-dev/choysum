@@ -4,7 +4,7 @@
 import { computed, reactive, ref, watch } from 'vue';
 import type { ComputedRef, Ref } from 'vue';
 import type { QueryCondition } from '@/core/service/api/query';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import { createListController } from '@/web/web/controllers/listController';
 import type { RecordRow, Lane, IKanbanController, TemporalGranularity, QueryKind, GroupBySpec, ConditionGroup } from '@/web/web/query/types';
 import type { PaginationState, OrderByState } from '@/web/web/query/state';
@@ -29,7 +29,7 @@ export function combineLaneAggregateConditions(laneConditions: unknown[]): unkno
 /**
  * Creates a kanban controller backed by the shared list controller.
  */
-export function createKanbanController(store: WebModelStore<any>): IKanbanController {
+export function createKanbanController(store: ModelStore<any>): IKanbanController {
   const list = createListController(store);
   const laneRecords = ref<Record<string, RecordRow[]>>({});
 

@@ -25,7 +25,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import type Currency from '@/base/service/models/currency';
 import { useRouter } from 'vue-router';
 import { useListViewExpose } from '@/web/web/composables/useListView';
@@ -38,7 +38,7 @@ import type { RowEventPayload } from '@/web';
 
 defineOptions({ name: 'CurrencyListView', inheritAttrs: true });
 const { _t, _lt } = createTranslate('base', { scope: 'web/views/CurrencyListView' });
-const props = defineProps<{ store?: WebModelStore<Currency> }>();
+const props = defineProps<{ store?: ModelStore<Currency> }>();
 const store = resolvePageStore(props.store, 'CurrencyListView');
 const currencyActions = defineModelActions('base.Currency', { entityTitle: _lt('Currency') });
 const { hasAction } = usePermission();

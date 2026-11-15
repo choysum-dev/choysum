@@ -115,7 +115,7 @@ test('query executor binary/image descriptor decode > enriches descriptors by ca
   __decodeBinaryImageFieldsForTest(store, rows);
 
   await __enrichBinaryImageDescriptorsForTest(store, rows, {
-    createStoreByModel: (modelName: string) => {
+    createModelStore: (modelName: string) => {
       if (modelName === 'document.AttachmentBinding') {
         return {
           BatchDescribe: async () => ({
@@ -188,7 +188,7 @@ test('query executor binary/image descriptor decode > appends query token for in
   __decodeBinaryImageFieldsForTest(store, rows);
 
   await __enrichBinaryImageDescriptorsForTest(store, rows, {
-    createStoreByModel: (modelName: string) => {
+    createModelStore: (modelName: string) => {
       if (modelName === 'document.AttachmentBinding') {
         return {
           BatchDescribe: async () => ({
@@ -229,7 +229,7 @@ test('query executor binary/image descriptor decode > skips enrichment when Atta
   __decodeBinaryImageFieldsForTest(store, rows);
 
   await __enrichBinaryImageDescriptorsForTest(store, rows, {
-    createStoreByModel: () => {
+    createModelStore: () => {
       throw new Error("Store factory for model 'document.AttachmentBinding' not found");
     },
   } as any);

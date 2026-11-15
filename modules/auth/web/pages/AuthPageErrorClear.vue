@@ -6,7 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts">
 /**
  * Clears a page-level auth error when FormView draft credentials change.
- * Must bind values from the FormView slot `formData` (draft), not createLocalFormStore:
+ * Must bind values from the FormView slot `formData` (draft), not createUiModelStore:
  * field edits write through form-root into the draft, not the store.
  */
 import { watchClearPageErrorOnCredentialChange } from './login_form';

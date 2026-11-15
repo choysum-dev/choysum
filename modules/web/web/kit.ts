@@ -94,13 +94,13 @@ export {
   ChoySheetClose,
 } from './components/layout/choySheet';
 
-export { createLocalFormStore } from './stores/localFormStore';
+export { createUiModelStore } from './stores/uiModelStore';
 export type {
-  CreateLocalFormStoreOptions,
-  LocalFormFieldDef,
-  LocalFormFieldType,
-  LocalFormStore,
-} from './stores/localFormStore';
+  CreateUiModelStoreOptions,
+  UiModelFieldDef,
+  UiModelFieldType,
+  UiModelStore,
+} from './stores/uiModelStore';
 export { default as ChoyFormView } from './components/view/ChoyFormView.vue';
 export { default as ChoySettingsView } from './components/view/ChoySettingsView.vue';
 export { default as ChoyListView } from './components/view/ChoyListView.vue';

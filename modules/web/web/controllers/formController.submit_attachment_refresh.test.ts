@@ -66,10 +66,10 @@ describe('formController submit attachment refresh', () => {
     );
     handoffSetMock = syncFnRecorder();
     deps = {
-      createStoreByModel: ((modelName: string) => {
+      createModelStore: ((modelName: string) => {
         if (modelName === 'document.AttachmentContent') return newAttachmentService();
         throw new Error(`unexpected model: ${modelName}`);
-      }) as unknown as FormControllerDeps['createStoreByModel'],
+      }) as unknown as FormControllerDeps['createModelStore'],
       execute: executeMock as any,
       handoffSet: handoffSetMock as any,
     };

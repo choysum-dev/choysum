@@ -22,7 +22,7 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { RouteLocationRaw } from 'vue-router';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import type UoMCategory from '@/base/service/models/uom_category';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
@@ -36,7 +36,7 @@ const { _t, _lt } = createTranslate('base', { scope: 'web/views/UoMCategoryFormV
 const requiredRules = computed(() => [{ required: true, message: _t('Required') }]);
 const props = withDefaults(
   defineProps<{
-    store?: WebModelStore<UoMCategory>;
+    store?: ModelStore<UoMCategory>;
     recordId?: string;
     viewMode?: ViewMode;
     showHeader?: boolean;

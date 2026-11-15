@@ -21,7 +21,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import type SandboxTag from '@/sandbox/service/models/sandbox_tag';
 import { useListViewExpose } from '@/web/web/composables/useListView';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
@@ -38,7 +38,7 @@ import { sandboxTagActions } from './sandbox_tag_actions';
 defineOptions({ name: 'SandboxTagListView', inheritAttrs: true });
 
 const props = defineProps<{
-  store?: WebModelStore<SandboxTag>;
+  store?: ModelStore<SandboxTag>;
 }>();
 const store = resolvePageStore(props.store, 'SandboxTagListView');
 

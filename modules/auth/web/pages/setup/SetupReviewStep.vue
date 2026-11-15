@@ -41,7 +41,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import { ChoyBooleanField, type LocalFormStore } from '@/web';
+import { ChoyBooleanField, type UiModelStore } from '@/web';
 import { createTranslate } from '@/web/web/i18n';
 import type { SetupSelectionItem } from '../setup_options';
 
@@ -49,7 +49,7 @@ const { _t } = createTranslate('auth', { scope: 'web/pages/setup/SetupReviewStep
 
 /** Read-only summary of the wizard values before submit, plus optional demo import. */
 const props = defineProps<{
-  store: LocalFormStore;
+  store: UiModelStore;
   formData: Record<string, unknown>;
   selections: Record<'CountryCode' | 'CurrencyCode' | 'Timezone', SetupSelectionItem[]>;
 }>();

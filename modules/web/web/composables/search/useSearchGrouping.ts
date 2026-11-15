@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { computed, toValue, type MaybeRefOrGetter } from 'vue';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import type { TemporalGranularity, GroupBySpec } from '@/core/service/api/query';
 import { normalizeGroupby } from '@/web/web/query/utils/grouping/normalize';
 import { parseGbString } from '@/web/web/query/utils/grouping/format';
@@ -22,7 +22,7 @@ export type AppliedGroupMenuItem = {
  * Menu/tree helpers for Search "Group by" — keeps grouping UI out of the main component body.
  */
 export function useSearchGrouping(opts: {
-  store: WebModelStore<any>;
+  store: ModelStore<any>;
   currentAppliedGroups: MaybeRefOrGetter<Array<GroupBySpec<any>> | undefined>;
   /** Field names that cannot be toggled off from the Group by menu. */
   lockedGroupFields?: MaybeRefOrGetter<ReadonlyArray<string> | undefined>;

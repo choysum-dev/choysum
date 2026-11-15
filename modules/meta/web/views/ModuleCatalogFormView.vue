@@ -303,7 +303,7 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts">
 import { computed, ref, toRef } from 'vue';
 import { useRouter } from 'vue-router';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import type MetaModuleCatalog from '@/meta/service/models/module_catalog';
 import type MetaModuleOperation from '@/meta/service/models/module_operation';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
@@ -346,8 +346,8 @@ const router = useRouter();
 
 const props = withDefaults(
   defineProps<{
-    store?: WebModelStore<MetaModuleCatalog>;
-    operationStore?: WebModelStore<MetaModuleOperation> | null;
+    store?: ModelStore<MetaModuleCatalog>;
+    operationStore?: ModelStore<MetaModuleOperation> | null;
     recordId?: string;
     showHeader?: boolean;
   }>(),

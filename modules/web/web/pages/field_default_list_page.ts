@@ -3,9 +3,9 @@
 
 import { computed, shallowRef, watch, type Ref } from 'vue';
 import type { RouteLocationNormalizedLoaded } from 'vue-router';
-import { createStoreByModel } from '@/web/web/stores/registry';
+import { createModelStore } from '@/web/web/stores/registry';
 import { createTranslate } from '@/web/web/i18n';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import { resolveFieldDefaultListApplication } from './field_default_page_bind';
 
 const { _t: defaultTranslate } = createTranslate('web', {
@@ -15,7 +15,7 @@ const { _t: defaultTranslate } = createTranslate('web', {
 export type FieldDefaultListPageDeps = {
   route: RouteLocationNormalizedLoaded;
   scopeManager: unknown;
-  createStore?: typeof createStoreByModel;
+  createStore?: typeof createModelStore;
   translate?: (msgid: string, ...args: unknown[]) => string;
 };
 
@@ -25,9 +25,9 @@ export type FieldDefaultListPageDeps = {
 export function useFieldDefaultListPage(deps: FieldDefaultListPageDeps): {
   application: Ref<string>;
   pageTitle: Ref<string>;
-  fieldDefaultStore: Ref<WebModelStore<any> | null>;
+  fieldDefaultStore: Ref<ModelStore<any> | null>;
 } {
-  const createStore = deps.createStore ?? createStoreByModel;
+  const createStore = deps.createStore ?? createModelStore;
 
   const application = computed(() => resolveFieldDefaultListApplication(deps.route));
   const pageTitle = computed(() => {
@@ -37,7 +37,7 @@ export function useFieldDefaultListPage(deps: FieldDefaultListPageDeps): {
     }
     return String(defaultTranslate('Field Defaults: %s', appLabel));
   });
-  const fieldDefaultStore = shallowRef<WebModelStore<any> | null>(null);
+  const fieldDefaultStore = shallowRef<ModelStore<any> | null>(null);
 
   function bindStore(app: string) {
     if (!app) {
@@ -47,7 +47,7 @@ export function useFieldDefaultListPage(deps: FieldDefaultListPageDeps): {
     fieldDefaultStore.value = createStore(`${app}.FieldDefault`, {
       storeId: `FieldDefault_${app}`,
       scopeManager: deps.scopeManager,
-    }) as WebModelStore<any>;
+    }) as ModelStore<any>;
   }
 
   watch(application, (app) => bindStore(app), { immediate: true });

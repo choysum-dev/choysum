@@ -246,7 +246,7 @@ import { TRANSLATED_BASE_LANG, unwrapPropertyLabel } from '@/core/service/orm/mo
 import { createTranslate } from '@/web/web/i18n';
 import { confirmChoyAction } from '@/web/web/composables/confirmChoyAction';
 import { useI18nStore } from '@/web/web/stores/i18nStore';
-import { createLocalFormStore, type LocalFormStore } from '@/web/web/stores/localFormStore';
+import { createUiModelStore, type UiModelStore } from '@/web/web/stores/uiModelStore';
 import { ChoyDialog, ChoyDialogContent, ChoyDialogTitle } from '@/web/web/components/layout/choyDialog';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
 import ChoyFormView from '@/web/web/components/view/ChoyFormView.vue';
@@ -311,7 +311,7 @@ const formViewRef = ref<{
   cancel?: () => void | Promise<void>;
 } | null>(null);
 const local = ref<DefinitionEditorDraftItem | null>(null);
-const formStore = shallowRef<LocalFormStore | null>(null);
+const formStore = shallowRef<UiModelStore | null>(null);
 const formInitialValues = shallowRef<Record<string, unknown>>({});
 const formDataRef = shallowRef<Record<string, unknown>>({});
 const formError = ref('');
@@ -388,8 +388,8 @@ function openFormFromDraft(item: DefinitionEditorDraftItem) {
     Readonly: item.readonly === true,
   };
   formInitialValues.value = initial;
-  formStore.value = createLocalFormStore({
-    storeId: `local-form:property-definition-item:${Date.now()}`,
+  formStore.value = createUiModelStore({
+    storeId: `ui-model:property-definition-item:${Date.now()}`,
     fields: [
       { name: 'Name', label: _t('Name'), type: 'varchar' },
       {

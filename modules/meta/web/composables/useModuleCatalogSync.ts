@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { computed, getCurrentScope, onScopeDispose, ref, unref, type Ref } from 'vue';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import { ChoyMessage } from '@/web';
 import {
   formatModuleOpSummary,
@@ -36,8 +36,8 @@ export type ModuleCatalogSyncMsgs = {
  * Manual "Update Module List": RequestSync + background tip/poll + toast (no drawer).
  */
 export function useModuleCatalogSync(
-  catalogStore: WebModelStore<any>,
-  operationStore: WebModelStore<any> | Ref<WebModelStore<any> | null | undefined> | null | undefined,
+  catalogStore: ModelStore<any>,
+  operationStore: ModelStore<any> | Ref<ModelStore<any> | null | undefined> | null | undefined,
   msgs: ModuleCatalogSyncMsgs,
   opts?: {
     refreshCatalog?: () => void | Promise<void>;
@@ -76,7 +76,7 @@ export function useModuleCatalogSync(
     },
   }, opts?.progressDeps);
 
-  function resolveOperationStore(): WebModelStore<any> | null {
+  function resolveOperationStore(): ModelStore<any> | null {
     let store: any = operationStore;
     for (let i = 0; i < 3; i += 1) {
       const next = unref(store);

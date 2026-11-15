@@ -2,28 +2,28 @@
 // SPDX-License-Identifier: Apache-2.0
 
 // Execute plans against the store API and produce a DataSetSnapshot
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import { PlanBundle, QueryPlan } from './planner';
 import type { AttachmentFieldDescriptor } from './types';
 import { DataSetSnapshot, RecordRow, GroupRow } from './types';
 import { exportFieldSelection, pathsToFieldSelection, ensureRootId } from './utils/registry/field';
 import { exportMetrics } from './utils/registry/metric';
-import { createStoreByModel } from '../stores/registry';
+import { createModelStore } from '../stores/registry';
 import { getTokenProvider } from '@/core/web/rpc/providers';
 import { normalizeOptionalString } from '@/core/service/utils/normalization';
 
-type CreateStoreByModel = typeof createStoreByModel;
+type CreateModelStore = typeof createModelStore;
 
 type ExecutorStoreDeps = {
-  createStoreByModel: CreateStoreByModel;
+  createModelStore: CreateModelStore;
 };
 
 /**
  * Hydrates ManyToOneRef fields in bulk.
  * Replaces string ids in the result set with { Id, DisplayName } objects.
- * Used only by execute() browse/search (cross-app via createStoreByModel).
+ * Used only by execute() browse/search (cross-app via createModelStore).
  */
-async function hydrateManyToOneRefs(store: WebModelStore<any>, items: any[], deps: ExecutorStoreDeps) {
+async function hydrateManyToOneRefs(store: ModelStore<any>, items: any[], deps: ExecutorStoreDeps) {
   if (!items || items.length === 0) return;
 
   try {
@@ -56,7 +56,7 @@ async function hydrateManyToOneRefs(store: WebModelStore<any>, items: any[], dep
       Array.from(batch.entries()).map(async ([model, ids]) => {
         if (ids.size === 0) return;
         try {
-          const targetStore = deps.createStoreByModel(model);
+          const targetStore = deps.createModelStore(model);
           const cond: any = ['Id', 'in', Array.from(ids)];
           const results = await targetStore.Search(cond, { fields: ['Id', 'DisplayName'] });
 
@@ -96,7 +96,7 @@ async function hydrateManyToOneRefs(store: WebModelStore<any>, items: any[], dep
  * Hydrates ManyToManyRef fields in bulk.
  * Replaces id lists with target-model objects that at least contain Id and DisplayName.
  */
-async function hydrateManyToManyRefs(store: WebModelStore<any>, items: any[], deps: ExecutorStoreDeps) {
+async function hydrateManyToManyRefs(store: ModelStore<any>, items: any[], deps: ExecutorStoreDeps) {
   if (!items || items.length === 0) return;
 
   try {
@@ -127,7 +127,7 @@ async function hydrateManyToManyRefs(store: WebModelStore<any>, items: any[], de
       Array.from(batch.entries()).map(async ([model, ids]) => {
         if (ids.size === 0) return;
         try {
-          const targetStore = deps.createStoreByModel(model);
+          const targetStore = deps.createModelStore(model);
           const selectionPaths = exportFieldSelection(targetStore.storeId) || [];
           const selection = ensureRootId(pathsToFieldSelection(selectionPaths) ?? ['DisplayName']);
           const results = await targetStore.Search(['Id', 'in', Array.from(ids)] as any, { fields: selection });
@@ -282,7 +282,7 @@ function normalizeRelationProjectionPayload(items: any[]) {
   } catch {}
 }
 
-function decodeBinaryImageFields(store: WebModelStore<any>, items: any[]) {
+function decodeBinaryImageFields(store: ModelStore<any>, items: any[]) {
   if (!Array.isArray(items) || items.length === 0) return;
 
   const fieldsMeta = store.fieldsMetadata || {};
@@ -340,7 +340,7 @@ function decodeBinaryImageFields(store: WebModelStore<any>, items: any[]) {
 }
 
 type AttachmentDescriptorEnrichDeps = {
-  createStoreByModel: CreateStoreByModel;
+  createModelStore: CreateModelStore;
 };
 
 function isAttachmentDescriptor(value: unknown): value is AttachmentFieldDescriptor {
@@ -362,9 +362,9 @@ type AttachmentBatchDescribeItem = {
 };
 
 async function enrichBinaryImageDescriptors(
-  store: WebModelStore<any>,
+  store: ModelStore<any>,
   items: any[],
-  deps: AttachmentDescriptorEnrichDeps = { createStoreByModel }
+  deps: AttachmentDescriptorEnrichDeps = { createModelStore }
 ): Promise<void> {
   if (!Array.isArray(items) || items.length === 0) return;
 
@@ -392,9 +392,9 @@ async function enrichBinaryImageDescriptors(
 
   if (!descriptors.length || !bindingIds.size) return;
 
-  let bindingStore: WebModelStore<any>;
+  let bindingStore: ModelStore<any>;
   try {
-    bindingStore = deps.createStoreByModel('document.AttachmentBinding');
+    bindingStore = deps.createModelStore('document.AttachmentBinding');
   } catch {
     return;
   }
@@ -515,7 +515,7 @@ function withSelections(plan: QueryPlan, storeId: string): QueryPlan {
   return plan;
 }
 
-async function call(plan: QueryPlan, store: WebModelStore<any>): Promise<any> {
+async function call(plan: QueryPlan, store: ModelStore<any>): Promise<any> {
   switch (plan.kind) {
     case 'search': {
       const { condition, fields, orderBy, limit, offset, relationConditionSource } = plan.params || {};
@@ -596,15 +596,15 @@ function toGroupRows(groups: any[]): GroupRow[] {
 
 export async function execute(
   bundle: PlanBundle,
-  store: WebModelStore<any>,
+  store: ModelStore<any>,
   uiView?: string,
-  options?: { signal?: AbortSignal; createStoreByModel?: CreateStoreByModel }
+  options?: { signal?: AbortSignal; createModelStore?: CreateModelStore }
 ): Promise<DataSetSnapshot> {
   const storeId: string = store.storeId;
   const main = withSelections(bundle.main, storeId);
   const aux = bundle.auxiliary?.map(p => withSelections(p, storeId)) ?? [];
   const storeDeps: ExecutorStoreDeps = {
-    createStoreByModel: options?.createStoreByModel ?? createStoreByModel,
+    createModelStore: options?.createModelStore ?? createModelStore,
   };
   // Removed debug logging for execution plans
 

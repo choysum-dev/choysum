@@ -1,8 +1,8 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
-/** FE unit stub for `@/web/web/stores/registry` createStoreByModel. */
-export function createStoreByModel(_model, opts) {
+/** FE unit stub for `@/web/web/stores/registry` createModelStore. */
+export function createModelStore(_model, opts) {
   opts = opts || {};
   return {
     $id: opts.storeId || 'fe-stub-store',
@@ -25,7 +25,7 @@ export function getStoreFactoryRegistryVersion() {
 }
 
 export default {
-  createStoreByModel: createStoreByModel,
+  createModelStore: createModelStore,
   listRegisteredModelNames: listRegisteredModelNames,
   registerStoreFactory: registerStoreFactory,
   getStoreFactoryRegistryVersion: getStoreFactoryRegistryVersion,

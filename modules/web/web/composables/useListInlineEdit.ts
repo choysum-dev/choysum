@@ -12,7 +12,7 @@ import { computed, provide, ref, type Ref } from 'vue';
 import { ChoyMessage } from '../composables/useChoyMessage';
 import { confirmChoyChoice } from '../composables/confirmChoyAction';
 import type { BaseModel } from '@/core/rpc';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import type { ViewMode } from '@/web/web/components/view/ChoyViewScope.vue';
 import { provideOnchange, useProvidedOnchange } from '@/web/web/composables/useOnchange';
 import {
@@ -35,7 +35,7 @@ export type UseListInlineEditDeps = {
 };
 
 export function useListInlineEdit<T extends BaseModel>(opts: {
-  store: WebModelStore<T>;
+  store: ModelStore<T>;
   enabled: Ref<boolean>;
   translateScope?: string;
   onSaved?: () => void | Promise<void>;

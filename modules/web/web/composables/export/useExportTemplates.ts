@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { computed, ref } from 'vue';
-import { createStoreByModel as defaultCreateStoreByModel } from '@/web/web/stores/registry';
+import { createModelStore as defaultCreateModelStore } from '@/web/web/stores/registry';
 import { actorUserId as defaultActorUserId } from '@/web/web/composables/search/actorUserId';
 import { resolveUserFilterUserId } from '@/web/web/composables/search/userFilterDefaults';
 import type ExportTemplate from '@/web/service/models/export_template';
@@ -26,7 +26,7 @@ export type ExportTemplateItem = ExportTemplateRow & {
 };
 
 export type ExportTemplatesDeps = {
-  createStoreByModel?: typeof defaultCreateStoreByModel;
+  createModelStore?: typeof defaultCreateModelStore;
   actorUserId?: typeof defaultActorUserId;
 };
 
@@ -43,7 +43,7 @@ export function parseExportModelRef(model: string): { application: string; model
  * Load / apply / save / remove web.ExportTemplate rows for one target model.
  */
 export function useExportTemplates(modelRef: () => string, deps: ExportTemplatesDeps = {}) {
-  const createStoreByModel = deps.createStoreByModel ?? defaultCreateStoreByModel;
+  const createModelStore = deps.createModelStore ?? defaultCreateModelStore;
   const resolveActorUserId = deps.actorUserId ?? defaultActorUserId;
   const templates = ref<ExportTemplateItem[]>([]);
   const loading = ref(false);
@@ -53,7 +53,7 @@ export function useExportTemplates(modelRef: () => string, deps: ExportTemplates
   const target = computed(() => parseExportModelRef(modelRef()));
 
   function exportTemplateStore() {
-    return createStoreByModel('web.ExportTemplate');
+    return createModelStore('web.ExportTemplate');
   }
 
   async function load(): Promise<void> {

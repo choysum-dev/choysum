@@ -2,11 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { computed, nextTick, ref } from 'vue';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import { createTranslate } from '@/web/web/i18n';
 import { isGroupableSearchField, listSearchFieldOptions } from './useSearchFieldOptions';
 
-export function useGroupingOptions(store: WebModelStore<any>) {
+export function useGroupingOptions(store: ModelStore<any>) {
   const { _t } = createTranslate('web', { scope: 'web/composables/search/useGroupingOptions' });
 
   const granularityOptions = computed(() => [

@@ -158,7 +158,7 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts" generic="T extends BaseModel, P extends FieldPath<T, any>, V = FieldPathType<T, P>">
 import type { RuleItem } from 'async-validator';
 import type { BaseModel, FieldPath, FieldPathType } from '@/core/rpc';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import { useField } from '@/web/web/composables/useField';
 import type { UseField, NarrowAggProp, NonNumericAggFns } from '@/web/web/composables/useField';
 import { computed, inject, nextTick, ref, watch, type Ref } from 'vue';
@@ -204,7 +204,7 @@ type OnFieldChange = (() => Promise<void>) | undefined;
 
 const props = withDefaults(
   defineProps<{
-    store?: WebModelStore<T>;
+    store?: ModelStore<T>;
     prop?: P | (IsAny<T> extends true ? string : never);
     binding?: UseField<T, V>;
 
@@ -264,7 +264,7 @@ const props = withDefaults(
   }
 );
 
-const binding = (props.binding ?? useField<T, P, V>({ store: props.store as WebModelStore<T>, prop: props.prop as P, agg: props.agg })) as UseField<T, V>;
+const binding = (props.binding ?? useField<T, P, V>({ store: props.store as ModelStore<T>, prop: props.prop as P, agg: props.agg })) as UseField<T, V>;
 const fieldErrors = inject<Ref<Map<string, string>> | null>('field-errors', null);
 const formSubmitting = inject<Ref<boolean> | undefined>('form-submitting', undefined);
 const collaborationCaps = useReactiveCollaborationCaps();

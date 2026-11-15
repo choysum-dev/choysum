@@ -119,7 +119,7 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import type { Condition } from '@/web/web/query/types';
-import type { WebFieldMetadata, WebModelStore } from '@/web/web/stores/modelStore';
+import type { WebFieldMetadata, ModelStore } from '@/web/web/stores/modelStore';
 import { useStandaloneField } from '@/web/web/composables/useField';
 import { useInjectedFilterEditorBindings } from '@/web/web/composables/search/useFilterEditorBindings';
 import { createTranslate } from '@/web/web/i18n';
@@ -164,7 +164,7 @@ type CondLike = Condition & { tempId?: string };
 const props = defineProps<{
   condition: CondLike;
   fields: Array<{ prop: string; label: string }>;
-  store: WebModelStore<any>;
+  store: ModelStore<any>;
   onUpdateCondition: (id: string, patch: Partial<CondLike>) => void;
   onRemoveCondition: (id: string) => void;
 }>();

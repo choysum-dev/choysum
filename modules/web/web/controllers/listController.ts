@@ -4,7 +4,7 @@
 import { reactive } from 'vue';
 import { runWithLoading } from '@/core/web/client/loadingRegistry';
 import type { QueryCondition } from '@/core/service/api/query';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import type { PaginationState, OrderByState } from '@/web/web/query/state';
 import type { DataSetSnapshot, GroupRow, RecordRow, ListViewModel, GroupBySpec, QueryKind, ConditionGroup } from '@/web/web/query/types';
 import { buildSearchOrGroupContext, buildUnifiedQuery } from '@/web/web/query/context';
@@ -24,7 +24,7 @@ import { combineFilters, combinePresentConditions } from '@/web/web/query/utils/
 /**
  * Creates a list controller for flat and grouped list views.
  */
-export function createListController(store: WebModelStore<any>): IListController {
+export function createListController(store: ModelStore<any>): IListController {
   const vm = reactive<ListViewModel>({
     loading: false,
     error: null,

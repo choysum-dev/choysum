@@ -45,7 +45,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import { defineAction } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
@@ -67,7 +67,7 @@ const { _t, _lt } = createTranslate('web', { scope: 'web/views/TranslationTermFo
 
 const props = withDefaults(
   defineProps<{
-    store?: WebModelStore<any>;
+    store?: ModelStore<any>;
     application: string;
     recordId?: string;
     viewMode?: ViewMode;

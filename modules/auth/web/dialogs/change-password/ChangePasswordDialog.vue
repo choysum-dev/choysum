@@ -118,12 +118,12 @@ import {
   ChoyFormView,
   ChoyMessage,
   ChoyVarcharField,
-  createLocalFormStore,
+  createUiModelStore,
 } from '@/web';
 import { createTranslate } from '@/web/web/i18n';
 import { useAuthStore } from '@/auth/web/stores/auth';
 import { hashPasswordClient } from '@/auth/web/stores/auth/utils';
-import { createStoreByModel } from '@/web/web/stores/registry';
+import { createModelStore } from '@/web/web/stores/registry';
 import {
   changePasswordConfirmRules,
   changePasswordCurrentRules,
@@ -139,7 +139,7 @@ const { _t } = createTranslate('auth', {
   scope: 'web/dialogs/change-password/ChangePasswordDialog',
 });
 const authStore = useAuthStore();
-const userStore = createStoreByModel('auth.User');
+const userStore = createModelStore('auth.User');
 const saving = ref(false);
 
 const emptyValues = {
@@ -148,7 +148,7 @@ const emptyValues = {
   ConfirmPassword: '',
 };
 
-const formStore = createLocalFormStore({
+const formStore = createUiModelStore({
   storeId: 'auth.change-password',
   fields: [
     { name: 'CurrentPassword', label: 'Current password', type: 'varchar' },

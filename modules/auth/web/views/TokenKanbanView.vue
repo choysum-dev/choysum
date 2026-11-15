@@ -96,7 +96,7 @@ SPDX-License-Identifier: Apache-2.0
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import type Token from '@/auth/service/models/token';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import {
   ChoyButton,
   ChoyKanbanView,
@@ -123,7 +123,7 @@ import {
 defineOptions({ name: 'TokenKanbanView' });
 const { _t } = createTranslate('auth', { scope: 'web/views/TokenKanbanView' });
 
-const props = withDefaults(defineProps<{ store?: WebModelStore<Token>; showHeader?: boolean }>(), { showHeader: true });
+const props = withDefaults(defineProps<{ store?: ModelStore<Token>; showHeader?: boolean }>(), { showHeader: true });
 const store = resolvePageStore(props.store, 'TokenKanbanView');
 const { showHeader } = props;
 

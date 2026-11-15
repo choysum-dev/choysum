@@ -9,7 +9,7 @@ import { flushPromises, fnRecorder, mountApp } from '@/web/web/__tests__/mountAp
 import ChoyFormView from '@/web/web/components/view/ChoyFormView.vue';
 import ChoyVarcharField from '@/web/web/components/field/ChoyVarcharField.vue';
 import { listRegisteredModelNames } from '@/web/web/stores/registry';
-import { createLocalFormStore } from '@/web/web/stores/localFormStore';
+import { createUiModelStore } from '@/web/web/stores/uiModelStore';
 
 const createFeStubRouter = (VueRouter as any).createFeStubRouter;
 
@@ -20,8 +20,8 @@ function loginFields() {
   ];
 }
 
-test('createLocalFormStore reads and writes declared fields only', () => {
-  const store = createLocalFormStore({
+test('createUiModelStore reads and writes declared fields only', () => {
+  const store = createUiModelStore({
     fields: loginFields(),
     initialValues: { Username: 'admin', Extra: 'drop-me' },
   });
@@ -38,15 +38,15 @@ test('createLocalFormStore reads and writes declared fields only', () => {
   expect(store.getValues().Extra).toBeUndefined();
 });
 
-test('createLocalFormStore treats undefined initialValues as type defaults', () => {
-  const store = createLocalFormStore({
+test('createUiModelStore treats undefined initialValues as type defaults', () => {
+  const store = createUiModelStore({
     fields: loginFields(),
     initialValues: { Username: undefined, RememberMe: undefined },
   });
   expect(store.getField('Username')).toBe('');
   expect(store.getField('RememberMe')).toBe(false);
 
-  const fromNull = createLocalFormStore({
+  const fromNull = createUiModelStore({
     fields: loginFields(),
     initialValues: { Username: null, RememberMe: null },
   });
@@ -54,10 +54,10 @@ test('createLocalFormStore treats undefined initialValues as type defaults', () 
   expect(fromNull.getField('RememberMe')).toBe(false);
 });
 
-test('createLocalFormStore does not treat inherited Object keys as fields', () => {
+test('createUiModelStore does not treat inherited Object keys as fields', () => {
   const initialValues = Object.create(null) as Record<string, unknown>;
   initialValues['__proto__'] = 'own';
-  const store = createLocalFormStore({
+  const store = createUiModelStore({
     fields: [{ name: '__proto__', label: 'Proto', type: 'varchar' }],
     initialValues,
   });
@@ -68,8 +68,8 @@ test('createLocalFormStore does not treat inherited Object keys as fields', () =
   expect(store.getField('toString')).toBeUndefined();
 });
 
-test('createLocalFormStore metadata is FieldsGet-shaped without RPC methods succeeding', async () => {
-  const store = createLocalFormStore({ fields: loginFields() });
+test('createUiModelStore metadata is FieldsGet-shaped without RPC methods succeeding', async () => {
+  const store = createUiModelStore({ fields: loginFields() });
   const usernameMeta = store.getFieldMeta('Username');
   expect(usernameMeta?.type).toBe('varchar');
   expect(usernameMeta?.string).toBe('Username');
@@ -84,23 +84,23 @@ test('createLocalFormStore metadata is FieldsGet-shaped without RPC methods succ
   expect(() => store.UpdateById('1', {})).toThrow(/does not support UpdateById/);
 });
 
-test('createLocalFormStore is not registered as a model factory', () => {
+test('createUiModelStore is not registered as a model factory', () => {
   const before = listRegisteredModelNames();
-  const store = createLocalFormStore({ fields: loginFields(), storeId: 'local-form:unit' });
-  expect(store.storeId).toBe('local-form:unit');
+  const store = createUiModelStore({ fields: loginFields(), storeId: 'ui-model:unit' });
+  expect(store.storeId).toBe('ui-model:unit');
   expect(listRegisteredModelNames()).toEqual(before);
 });
 
-test('createLocalFormStore covers helpers, context, and remaining RPC stubs', async () => {
-  const empty = createLocalFormStore({ fields: undefined as any });
+test('createUiModelStore covers helpers, context, and remaining RPC stubs', async () => {
+  const empty = createUiModelStore({ fields: undefined as any });
   expect(empty.fieldNames).toEqual([]);
   expect(empty.getValues()).toEqual({});
-  expect(empty.storeId.startsWith('local-form:')).toBe(true);
+  expect(empty.storeId.startsWith('ui-model:')).toBe(true);
 
-  const blankId = createLocalFormStore({ fields: loginFields(), storeId: '   ' });
-  expect(blankId.storeId.startsWith('local-form:')).toBe(true);
+  const blankId = createUiModelStore({ fields: loginFields(), storeId: '   ' });
+  expect(blankId.storeId.startsWith('ui-model:')).toBe(true);
 
-  const store = createLocalFormStore({
+  const store = createUiModelStore({
     fields: [{ name: 'Username', label: 'Username', type: 'varchar', help: 'login id' }],
   });
   expect(store.getFieldMeta('Username')?.help).toBe('login id');
@@ -166,26 +166,26 @@ test('createLocalFormStore covers helpers, context, and remaining RPC stubs', as
   }
 });
 
-test('createLocalFormStore rejects duplicate or empty field names', () => {
+test('createUiModelStore rejects duplicate or empty field names', () => {
   expect(() =>
-    createLocalFormStore({
+    createUiModelStore({
       fields: [
         { name: 'Username', label: 'A', type: 'varchar' },
         { name: 'Username', label: 'B', type: 'varchar' },
       ],
     })
   ).toThrow(/duplicate field/);
-  expect(() => createLocalFormStore({ fields: [{ name: '  ', label: 'X', type: 'varchar' }] })).toThrow(
+  expect(() => createUiModelStore({ fields: [{ name: '  ', label: 'X', type: 'varchar' }] })).toThrow(
     /non-empty/
   );
   expect(() =>
-    createLocalFormStore({ fields: [{ name: 'Age', label: 'Age', type: 'number' as any }] })
+    createUiModelStore({ fields: [{ name: 'Age', label: 'Age', type: 'number' as any }] })
   ).toThrow(/unsupported field type/);
-  expect(() => createLocalFormStore({ fields: [null as any] })).toThrow(/must be an object/);
+  expect(() => createUiModelStore({ fields: [null as any] })).toThrow(/must be an object/);
 });
 
-test('createLocalFormStore pure-scalar types set defaults and selection meta', () => {
-  const store = createLocalFormStore({
+test('createUiModelStore pure-scalar types set defaults and selection meta', () => {
+  const store = createUiModelStore({
     fields: [
       { name: 'Title', label: 'Title', type: 'char', size: 32 },
       { name: 'Body', label: 'Body', type: 'text' },
@@ -221,14 +221,14 @@ test('createLocalFormStore pure-scalar types set defaults and selection meta', (
   expect(store.getFieldMeta('Payload')?.typeAnnotation).toBe('object');
 });
 
-test('createLocalFormStore selection requires a selection array', () => {
+test('createUiModelStore selection requires a selection array', () => {
   expect(() =>
-    createLocalFormStore({ fields: [{ name: 'Kind', label: 'Kind', type: 'selection' }] })
+    createUiModelStore({ fields: [{ name: 'Kind', label: 'Kind', type: 'selection' }] })
   ).toThrow(/requires a selection array/);
 });
 
-test('createLocalFormStore setFieldSelection replaces options reactively', () => {
-  const store = createLocalFormStore({
+test('createUiModelStore setFieldSelection replaces options reactively', () => {
+  const store = createUiModelStore({
     fields: [
       { name: 'Kind', label: 'Kind', type: 'selection', selection: [] },
       { name: 'Note', label: 'Note', type: 'varchar' },
@@ -249,13 +249,13 @@ test('createLocalFormStore setFieldSelection replaces options reactively', () =>
   expect(() => store.setFieldSelection('Note', [])).toThrow(/is not a selection field/);
 });
 
-describe('createLocalFormStore + ChoyFormView', () => {
+describe('createUiModelStore + ChoyFormView', () => {
   beforeEach(() => {
     setActivePinia(createPinia());
   });
 
   test('embedded create FormView seeds draft and ChoyFieldBase shows metadata label', async () => {
-    const store = createLocalFormStore({
+    const store = createUiModelStore({
       fields: loginFields(),
       initialValues: { Username: 'admin' },
     });

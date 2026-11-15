@@ -53,7 +53,7 @@ import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
 import ChoyInput from '@/web/web/components/vendor/ui/input/Input.vue';
 import { ChoyMessage } from '../../composables/useChoyMessage';
 import { createTranslate } from '@/web/web/i18n';
-import { createStoreByModel } from '@/web/web/stores/registry';
+import { createModelStore } from '@/web/web/stores/registry';
 import { TRANSLATED_BASE_LANG } from '@/core/service/orm/model/properties_label_i18n';
 
 defineOptions({ name: 'ChoyPropertyLabelTranslationsDialog' });
@@ -107,7 +107,7 @@ async function loadRows() {
     const current = props.translations && typeof props.translations === 'object' ? { ...props.translations } : {};
     let list: Array<{ Code?: string; Name?: string }> = [];
     try {
-      const languageStore = createStoreByModel('base.Language');
+      const languageStore = createModelStore('base.Language');
       list = (await (languageStore as any).GetActiveLanguages()) as Array<{ Code?: string; Name?: string }>;
     } catch {
       list = [];

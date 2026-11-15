@@ -105,7 +105,7 @@ SPDX-License-Identifier: Apache-2.0
 import type { BaseModel, FieldPath, FieldPathType } from '@/core/rpc';
 import type { PropertyItemDefinition } from '@/core/service/orm/model/properties_types';
 import { TRANSLATED_BASE_LANG } from '@/core/service/orm/model/properties_label_i18n';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import type { RuleItem } from 'async-validator';
 import { computed, defineComponent, h, nextTick, ref, watch, type WritableComputedRef } from 'vue';
 import { getActivePinia } from 'pinia';
@@ -379,7 +379,7 @@ type IsAny<T> = 0 extends 1 & T ? true : false;
 
 const props = withDefaults(
   defineProps<{
-    store?: WebModelStore<T>;
+    store?: ModelStore<T>;
     prop?: P | (IsAny<T> extends true ? string : never);
     binding?: UseField<T, V>;
 
@@ -422,7 +422,7 @@ const props = withDefaults(
 );
 
 const binding = (props.binding ??
-  useField<T, P, V>({ store: props.store as WebModelStore<T>, prop: props.prop as P })) as UseField<T, V>;
+  useField<T, P, V>({ store: props.store as ModelStore<T>, prop: props.prop as P })) as UseField<T, V>;
 
 const isTableLike = computed(() => {
   const mode = props.renderMode;

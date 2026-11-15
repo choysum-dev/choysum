@@ -67,7 +67,7 @@ export function listRegisteredModelNames(): string[] {
  * @param modelName Model name.
  * @param options Store creation options.
  */
-export function createStoreByModel(modelName: string, options?: any): unknown {
+export function createModelStore(modelName: string, options?: any): unknown {
   const factory = getStoreFactory(modelName);
   if (!factory) {
     throw new Error(`Store factory for model '${modelName}' not found. Make sure the module is loaded.`);

@@ -187,7 +187,7 @@ import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
 import { RELATION_PICKER_CLOSE_KEY } from '@/web/web/components/field/relationPickerContext';
 import type { RuleItem } from 'async-validator';
 import type { BaseModel, FieldPath, FieldPathType, QueryCondition } from '@/core/rpc';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import ChoyFieldBase, { type FieldStateExpr, type FormItemProps } from './ChoyFieldBase.vue';
 import ChoyTableHost from '@/web/web/components/internal/ChoyTableHost.vue';
 import ChoyTableColumn from '@/web/web/components/table/ChoyTableColumn.vue';
@@ -195,7 +195,7 @@ import { useField } from '@/web/web/composables/useField';
 import type { UseField } from '@/web/web/composables/useField';
 import ChoyViewScope from '@/web/web/components/view/ChoyViewScope.vue';
 import type { SelectionExpose } from '@/web/web/components/view/listViewTypes';
-import { createStoreByModel } from '@/web/web/stores/registry';
+import { createModelStore } from '@/web/web/stores/registry';
 import { createTranslate } from '@/web/web/i18n';
 import { formatRelationCountSummary } from './relationCountSummary';
 import { buildRelationConditionSource } from '@/web/web/composables/relationalForField';
@@ -221,7 +221,7 @@ type IsAny<T> = 0 extends 1 & T ? true : false;
 
 const props = withDefaults(
   defineProps<{
-    store?: WebModelStore<T>;
+    store?: ModelStore<T>;
     prop?: P | (IsAny<T> extends true ? string : never);
     binding?: UseField<T, V>;
 
@@ -298,14 +298,14 @@ const effectiveSearchViewTitle = computed(() => props.searchViewTitle || _t('Sel
 /** Footer strip for Add a line inside the table frame (edit mode). */
 const addLineFooterHeight = 36;
 
-const binding = (props.binding ?? useField<T, P, V>({ store: props.store as WebModelStore<T>, prop: props.prop as P })) as UseField<T, V>;
+const binding = (props.binding ?? useField<T, P, V>({ store: props.store as ModelStore<T>, prop: props.prop as P })) as UseField<T, V>;
 
-const relationStore = computed<WebModelStore<any> | undefined>(() => {
-  if (binding.relationStore) return binding.relationStore as WebModelStore<any>;
+const relationStore = computed<ModelStore<any> | undefined>(() => {
+  if (binding.relationStore) return binding.relationStore as ModelStore<any>;
   const target = props.targetModel || binding.meta?.relationModel;
   if (!target) return undefined;
   try {
-    return createStoreByModel(target);
+    return createModelStore(target);
   } catch (e) {
     console.warn(`[ChoyManyToManyRefField] Failed to create store for model '${target}'`, e);
     return undefined;
@@ -523,7 +523,7 @@ watch(
 const registeredRefFields = ref<Set<string>>(new Set());
 let registeredStoreId: string | null = null;
 
-function syncRemoteFieldRegistration(store?: WebModelStore<any> | null, fields?: string[]) {
+function syncRemoteFieldRegistration(store?: ModelStore<any> | null, fields?: string[]) {
   const nextStoreId = store?.storeId ?? null;
   const nextSet = new Set(fields || []);
   const unchanged =
@@ -611,6 +611,6 @@ watch(
 const store = props.store;
 
 defineSlots<{
-  default(props: { refStore: WebModelStore<any> | undefined }): any;
+  default(props: { refStore: ModelStore<any> | undefined }): any;
 }>();
 </script>

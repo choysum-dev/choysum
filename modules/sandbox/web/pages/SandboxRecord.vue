@@ -11,7 +11,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { useRoute } from 'vue-router';
-import { createStoreByModel } from '@/web/web/stores/registry';
+import { createModelStore } from '@/web/web/stores/registry';
 import { ChoyPage } from '@/web';
 import SandboxRecordFormView from '../views/SandboxRecordFormView.vue';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
@@ -22,7 +22,7 @@ defineOptions({ name: 'SandboxRecordPage' });
 
 const route = useRoute();
 const authStore = useAuthStore();
-const recordStore = createStoreByModel<typeof SandboxRecord>('sandbox.SandboxRecord', {
+const recordStore = createModelStore<typeof SandboxRecord>('sandbox.SandboxRecord', {
   storeId: `SandboxRecord_${route.fullPath}`,
   scopeManager: useScopeManager().menuScopeManager,
 });

@@ -39,7 +39,7 @@ SPDX-License-Identifier: Apache-2.0
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import type { RouteLocationRaw } from 'vue-router';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import type ExchangeRate from '@/base/service/models/exchange_rate';
 import type Currency from '@/base/service/models/currency';
 import type Company from '@/base/service/models/company';
@@ -58,7 +58,7 @@ const { _t, _lt } = createTranslate('base', { scope: 'web/views/ExchangeRateForm
 const requiredRules = computed(() => [{ required: true, message: _t('Required') }]);
 const props = withDefaults(
   defineProps<{
-    store?: WebModelStore<ExchangeRate>;
+    store?: ModelStore<ExchangeRate>;
     recordId?: string;
     viewMode?: ViewMode;
     showHeader?: boolean;

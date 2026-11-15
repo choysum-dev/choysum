@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { computed, ref, unref, type Ref } from 'vue';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import { ChoyMessage } from '@/web';
 import { createPlanDialogSessionGate } from '../views/module_catalog_chrome';
 import { createModuleOpProgressSession, type ModuleOpStatusSnapshot } from './useModuleOpProgress';
@@ -67,7 +67,7 @@ const OP_STATUS_FIELDS = [
 
 /** Read one operation row via Browse, else Search-by-Id. */
 export async function readOperationStatusSnapshot(
-  store: WebModelStore<any>,
+  store: ModelStore<any>,
   operationId: string,
 ): Promise<ModuleOpStatusSnapshot> {
   let row: Record<string, unknown> | null | undefined;
@@ -118,7 +118,7 @@ function mapPlanResponse(nextPlan: any): ModuleCatalogOpDrawerPlanView {
  * Drawer session: Plan → Confirm/Apply → C1 progress (operation-row Read + tip).
  */
 export function useModuleCatalogOpDrawerSession(opts: {
-  operationStore: WebModelStore<any> | Ref<WebModelStore<any> | null | undefined>;
+  operationStore: ModelStore<any> | Ref<ModelStore<any> | null | undefined>;
   isOpen: () => boolean;
   msgs: ModuleCatalogOpDrawerSessionMsgs;
   onSettled?: (status?: ModuleOpStatusSnapshot | null) => void;
@@ -137,7 +137,7 @@ export function useModuleCatalogOpDrawerSession(opts: {
   // Tracks which begin() seq last set planLoading, so finally can clear even after stop()/invalidate.
   let planLoadingOwnerSeq = 0;
 
-  function resolveStore(): WebModelStore<any> | null {
+  function resolveStore(): ModelStore<any> | null {
     // Unwrap Ref/ComputedRef layers. Some hosts pass a ComputedRef as the prop
     // value; one unref is not always enough.
     let store: any = opts.operationStore;

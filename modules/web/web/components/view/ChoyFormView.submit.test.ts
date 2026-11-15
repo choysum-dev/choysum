@@ -9,7 +9,7 @@ import * as VueRouter from 'vue-router';
 import { flushPromises, fnRecorder, mountApp } from '@/web/web/__tests__/mountApp';
 import { FIELD_CLIENT_VALIDATORS_KEY } from '@/web/web/composables/fieldClientValidation';
 import { ChoyMessage } from '@/web/web/composables/useChoyMessage';
-import { createLocalFormStore } from '@/web/web/stores/localFormStore';
+import { createUiModelStore } from '@/web/web/stores/uiModelStore';
 import FormView from './ChoyFormView.vue';
 
 const createFeStubRouter = (VueRouter as any).createFeStubRouter;
@@ -25,7 +25,7 @@ const NoopLoading = {
 };
 
 function loginStore() {
-  return createLocalFormStore({
+  return createUiModelStore({
     fields: [{ name: 'Username', label: 'Username', type: 'varchar' }],
     initialValues: { Username: 'admin' },
   });

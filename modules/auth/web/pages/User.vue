@@ -11,14 +11,14 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { useRoute } from 'vue-router';
-import { createStoreByModel } from '@/web/web/stores/registry';
+import { createModelStore } from '@/web/web/stores/registry';
 import UserFormView from '@/auth/web/views/UserFormView.vue';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
 import type User from '@/auth/service/models/user/user';
 import { ChoyPage } from '@/web';
 
 const route = useRoute();
-const userStore = createStoreByModel<typeof User>('auth.User', {
+const userStore = createModelStore<typeof User>('auth.User', {
   storeId: `User_${route.fullPath}`,
   scopeManager: useScopeManager().menuScopeManager,
 });

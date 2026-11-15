@@ -32,7 +32,7 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts" generic="T extends BaseModel">
 import { computed, getCurrentInstance, onMounted, ref, nextTick, useAttrs } from 'vue';
 import type { BaseModel } from '@/core/rpc';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import type { ConditionGroup, GroupBySpec, NamedFilter, QueryUpdatePayload } from '@/web/web/query/types';
 import Search from '@/web/web/components/view/search/Search.vue';
 import { computeInitialAppliedFilters, computeAppliedGroups } from '@/web/web/query/utils/search/initialQueryState';
@@ -63,7 +63,7 @@ const props = withDefaults(
     class?: ClassValue;
     placeholder?: string;
     disabled?: boolean;
-    store?: WebModelStore<T>;
+    store?: ModelStore<T>;
     keyword?: string;
     appliedFilters?: ConditionGroup[];
     appliedGroups?: Array<GroupBySpec<T>>;
@@ -83,7 +83,7 @@ const props = withDefaults(
 const lockedGroups = computed(() => props.lockedGroups || []);
 
 const attrs = useAttrs();
-const pageStore = useOptionalPageStore<WebModelStore<T>>();
+const pageStore = useOptionalPageStore<ModelStore<T>>();
 const splitAttrs = computed(() => splitChoyAttrsListeners(attrs as Record<string, unknown>));
 
 const rawPropKeys = new Set(

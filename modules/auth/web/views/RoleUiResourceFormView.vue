@@ -67,7 +67,7 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts">
 import { useRouter } from 'vue-router';
 import type { RouteLocationRaw } from 'vue-router';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import type RoleUiResource from '@/auth/service/models/role_ui_resource';
 import type Role from '@/auth/service/models/role';
 import type { ValueClickPayload as ManyToOneValueClickPayload } from '@/web/web/components/field/manyToOneTypes';
@@ -85,7 +85,7 @@ const { _t, _lt } = createTranslate('auth', { scope: 'web/views/RoleUiResourceFo
 
 const props = withDefaults(
   defineProps<{
-    store?: WebModelStore<RoleUiResource>;
+    store?: ModelStore<RoleUiResource>;
     recordId?: string;
     viewMode?: ViewMode;
     showHeader?: boolean;

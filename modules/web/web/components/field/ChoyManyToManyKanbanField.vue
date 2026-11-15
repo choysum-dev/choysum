@@ -147,7 +147,7 @@ SPDX-License-Identifier: Apache-2.0
 import { computed } from 'vue';
 import type { RuleItem } from 'async-validator';
 import type { BaseModel, FieldPath, FieldPathType, ClientModel } from '@/core/rpc';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import ChoyFieldBase, { type FieldStateExpr, type FormItemProps } from './ChoyFieldBase.vue';
 import ChoyO2MKanbanVirtualBoard from './ChoyO2MKanbanVirtualBoard.vue';
 import type { O2MKanbanVirtualizeMode } from './o2mKanbanVirtualHelpers';
@@ -170,7 +170,7 @@ defineSlots<{
 
 const props = withDefaults(
   defineProps<{
-    store?: WebModelStore<T>;
+    store?: ModelStore<T>;
     prop?: P | (IsAny<T> extends true ? string : never);
     binding?: UseField<T, V>;
     label?: string;
@@ -231,7 +231,7 @@ const emit = defineEmits<{
 const effectiveEmptyText = computed(() => props.emptyText || _t('No data'));
 
 const binding = (props.binding ??
-  useField<T, P, V>({ store: props.store as WebModelStore<T>, prop: props.prop as P })) as UseField<T, V>;
+  useField<T, P, V>({ store: props.store as ModelStore<T>, prop: props.prop as P })) as UseField<T, V>;
 
 function resolveReturnFieldPaths(): string[] {
   const prefix = String(binding.prop || props.prop || '').trim();

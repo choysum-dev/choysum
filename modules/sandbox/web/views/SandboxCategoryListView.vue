@@ -21,7 +21,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import type SandboxCategory from '@/sandbox/service/models/sandbox_category';
 import { useListViewExpose } from '@/web/web/composables/useListView';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
@@ -40,7 +40,7 @@ defineOptions({ name: 'SandboxCategoryListView', inheritAttrs: true });
 const { _lt } = createTranslate('sandbox', { scope: 'web/views/SandboxCategoryListView' });
 
 const props = defineProps<{
-  store?: WebModelStore<SandboxCategory>;
+  store?: ModelStore<SandboxCategory>;
 }>();
 const store = resolvePageStore(props.store, 'SandboxCategoryListView');
 

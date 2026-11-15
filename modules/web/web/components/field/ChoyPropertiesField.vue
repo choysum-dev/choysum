@@ -175,7 +175,7 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts" generic="T extends BaseModel, P extends FieldPath<T, Record<string, any> | null | undefined>, V = FieldPathType<T, P>">
 import type { BaseModel, FieldPath, FieldPathType } from '@/core/rpc';
 import type { ResolvedPropertyItem } from '@/core/service/orm/model/properties_types';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import type { RuleItem } from 'async-validator';
 import { computed, defineComponent, h, ref, watch, type WritableComputedRef } from 'vue';
 import { CircleHelp } from 'lucide-vue-next';
@@ -284,7 +284,7 @@ type IsAny<T> = 0 extends 1 & T ? true : false;
 
 const props = withDefaults(
   defineProps<{
-    store?: WebModelStore<T>;
+    store?: ModelStore<T>;
     prop?: P | (IsAny<T> extends true ? string : never);
     binding?: UseField<T, V>;
 
@@ -327,7 +327,7 @@ const props = withDefaults(
 );
 
 const binding = (props.binding ??
-  useField<T, P, V>({ store: props.store as WebModelStore<T>, prop: props.prop as P })) as UseField<T, V>;
+  useField<T, P, V>({ store: props.store as ModelStore<T>, prop: props.prop as P })) as UseField<T, V>;
 
 const isTableLike = computed(() => {
   const mode = props.renderMode;
@@ -556,7 +556,7 @@ function onDatetimeWrite(
 
 async function reloadResolved() {
   const generation = ++resolveGeneration;
-  const store = (binding.store ?? props.store) as WebModelStore<T> | undefined;
+  const store = (binding.store ?? props.store) as ModelStore<T> | undefined;
   const name = fieldName.value;
   if (!store || !name || typeof (store as any).ResolveProperties !== 'function') {
     resolvedItems.value = [];

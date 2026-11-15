@@ -11,7 +11,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { useRoute } from 'vue-router';
-import { createStoreByModel } from '@/web/web/stores/registry';
+import { createModelStore } from '@/web/web/stores/registry';
 import CountryFormView from '../views/CountryFormView.vue';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
 import type Country from '@/base/service/models/country';
@@ -20,7 +20,7 @@ import { ChoyPage } from '@/web';
 defineOptions({ name: 'CountryPage' });
 
 const route = useRoute();
-const countryStore = createStoreByModel<typeof Country>('base.Country', {
+const countryStore = createModelStore<typeof Country>('base.Country', {
   storeId: `Country_${route.fullPath}`,
   scopeManager: useScopeManager().menuScopeManager,
 });

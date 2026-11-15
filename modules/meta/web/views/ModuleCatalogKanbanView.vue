@@ -135,7 +135,7 @@ SPDX-License-Identifier: Apache-2.0
 import { computed, onMounted, toRef } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { RefreshCw } from 'lucide-vue-next';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import type MetaModuleCatalog from '@/meta/service/models/module_catalog';
 import type MetaModuleOperation from '@/meta/service/models/module_operation';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
@@ -174,8 +174,8 @@ const { hasAction } = usePermission();
 
 const props = withDefaults(
   defineProps<{
-    store?: WebModelStore<MetaModuleCatalog>;
-    operationStore?: WebModelStore<MetaModuleOperation> | null;
+    store?: ModelStore<MetaModuleCatalog>;
+    operationStore?: ModelStore<MetaModuleOperation> | null;
     showHeader?: boolean;
     initialOperationId?: string;
   }>(),

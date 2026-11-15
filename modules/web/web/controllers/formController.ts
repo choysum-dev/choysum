@@ -9,8 +9,8 @@ import { reactive, toRaw, provide } from 'vue';
 import { buildUpdatePayload } from '@/core/utils/diff';
 import { runWithLoading } from '@/core/web/client/loadingRegistry';
 import { buildDiffFieldsMeta } from '@/web/web/composables/useOnchange';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
-import { createStoreByModel } from '@/web/web/stores/registry';
+import type { ModelStore } from '@/web/web/stores/modelStore';
+import { createModelStore } from '@/web/web/stores/registry';
 import { buildBrowseContext } from '@/web/web/query/context';
 import { buildPlan } from '@/web/web/query/planner';
 import { execute } from '@/web/web/query/executor';
@@ -174,7 +174,7 @@ type AttachmentResolutionContext = {
   fieldName: string;
   /** Required only when resolving Blob/File uploads. */
   service?: AttachmentContentServiceLike;
-  store: WebModelStore<any>;
+  store: ModelStore<any>;
 };
 
 type AttachmentResolution = { kind: 'omit' } | { kind: 'clear' } | { kind: 'set'; attachmentObjectId: string };
@@ -215,7 +215,7 @@ function resolveAttachmentDisplayFileName(raw: unknown): string | undefined {
   return fileLikeName;
 }
 
-function resolveAttachmentFieldType(store: WebModelStore<any>, fieldName: string): string | undefined {
+function resolveAttachmentFieldType(store: ModelStore<any>, fieldName: string): string | undefined {
   const metas = (store as any)?.fieldsMetadata as Record<string, { type?: string }> | undefined;
   const raw = metas?.[fieldName]?.type;
   return typeof raw === 'string' ? raw.trim().toLowerCase() : undefined;
@@ -401,7 +401,7 @@ function isNoopAttachmentEnvelope(value: unknown): boolean {
   return normalizeOptionalString(value.kind)?.toLowerCase() === 'noop';
 }
 
-function attachmentFieldNames(store: WebModelStore<any>): string[] {
+function attachmentFieldNames(store: ModelStore<any>): string[] {
   const metas = (store as any)?.fieldsMetadata as Record<string, { type?: string }> | undefined;
   if (!metas) return [];
   return Object.entries(metas)
@@ -417,7 +417,7 @@ function hasAttachmentFieldMutation(payload: Record<string, unknown>, fields: st
   return fields.some(fieldName => Object.prototype.hasOwnProperty.call(payload, fieldName));
 }
 
-function resolveOwnerModel(store: WebModelStore<any>): string {
+function resolveOwnerModel(store: ModelStore<any>): string {
   const fullModelName = store.fullModelName;
   if (!fullModelName) {
     throw new Error('[Attachment] store.fullModelName is required.');
@@ -450,11 +450,11 @@ async function sha256Hex(blob: Blob): Promise<string | undefined> {
   }
 }
 
-type CreateStoreByModel = typeof createStoreByModel;
+type CreateModelStore = typeof createModelStore;
 
 function resolveAttachmentContentService(
-  store: WebModelStore<any>,
-  createStore: CreateStoreByModel = createStoreByModel
+  store: ModelStore<any>,
+  createStore: CreateModelStore = createModelStore
 ): AttachmentContentServiceLike {
   const service = createStore('document.AttachmentContent') as unknown as AttachmentContentServiceLike;
   if (!service || typeof service.PrepareUpload !== 'function' || typeof service.FinalizeUpload !== 'function') {
@@ -470,7 +470,7 @@ function resolveAttachmentContentService(
   return service;
 }
 
-async function runWithStoreContext<T>(store: WebModelStore<any>, service: AttachmentContentServiceLike, fn: () => Promise<T>): Promise<T> {
+async function runWithStoreContext<T>(store: ModelStore<any>, service: AttachmentContentServiceLike, fn: () => Promise<T>): Promise<T> {
   const context = typeof store.getContext === 'function' ? store.getContext() : {};
   if (context && Object.keys(context).length > 0 && typeof service.withContext === 'function') {
     return await service.withContext(context, fn);
@@ -650,11 +650,11 @@ async function resolveAttachmentFieldValue(raw: unknown, ctx: AttachmentResoluti
 }
 
 type AttachmentNormalizeDeps = {
-  createStoreByModel?: CreateStoreByModel;
+  createModelStore?: CreateModelStore;
 };
 
 async function normalizeAttachmentFieldsInPayload(
-  store: WebModelStore<any>,
+  store: ModelStore<any>,
   payload: Record<string, unknown>,
   options: {
     operation: UploadOperation;
@@ -675,7 +675,7 @@ async function normalizeAttachmentFieldsInPayload(
   // Defer AttachmentContent dial until a field actually needs Prepare/Finalize.
   // Models with binary/image metadata must still save without document installed.
   const service = needsUpload
-    ? resolveAttachmentContentService(store, pickDep(deps.createStoreByModel, createStoreByModel))
+    ? resolveAttachmentContentService(store, pickDep(deps.createModelStore, createModelStore))
     : undefined;
 
   for (const fieldName of options.fields) {
@@ -711,7 +711,7 @@ async function normalizeAttachmentFieldsInPayload(
 }
 
 async function preNormalizeDraftForDiff(
-  store: WebModelStore<any>,
+  store: ModelStore<any>,
   payload: Record<string, unknown>,
   options: {
     ownerModel: string;
@@ -747,7 +747,7 @@ async function preNormalizeDraftForDiff(
 
 /** Optional overrides used by unit tests; production callers omit this. */
 export type FormControllerDeps = {
-  createStoreByModel?: CreateStoreByModel;
+  createModelStore?: CreateModelStore;
   buildBrowseContext?: typeof buildBrowseContext;
   buildPlan?: typeof buildPlan;
   execute?: typeof execute;
@@ -765,8 +765,8 @@ function defaultHandoffSet(id: string, record: unknown): void {
   handoffCache.set(id, record);
 }
 
-export function createFormController(store: WebModelStore<any>, deps: FormControllerDeps = {}): IFormViewController {
-  const createStore = pickDep(deps.createStoreByModel, createStoreByModel);
+export function createFormController(store: ModelStore<any>, deps: FormControllerDeps = {}): IFormViewController {
+  const createStore = pickDep(deps.createModelStore, createModelStore);
   const runBuildBrowseContext = pickDep(deps.buildBrowseContext, buildBrowseContext);
   const runBuildPlan = pickDep(deps.buildPlan, buildPlan);
   const runExecute = pickDep(deps.execute, execute);
@@ -774,7 +774,7 @@ export function createFormController(store: WebModelStore<any>, deps: FormContro
   const runAwaitFieldSelection = pickDep(deps.awaitFieldSelection, awaitFieldSelection);
   const runExportFieldSelection = pickDep(deps.exportFieldSelection, exportFieldSelection);
   const runHandoffSet = pickDep(deps.handoffSet, defaultHandoffSet);
-  const attachmentDeps: AttachmentNormalizeDeps = { createStoreByModel: createStore };
+  const attachmentDeps: AttachmentNormalizeDeps = { createModelStore: createStore };
 
   const vm = reactive<FormViewModel>({
     mode: 'display',
@@ -841,7 +841,7 @@ export function createFormController(store: WebModelStore<any>, deps: FormContro
       const ctx = runBuildBrowseContext(store, recordId);
       const bundle = runBuildPlan(ctx);
       const snap = await aborts.execute('form.load', async signal => {
-        const r = await runExecute(bundle, store, 'form', { signal, createStoreByModel: createStore });
+        const r = await runExecute(bundle, store, 'form', { signal, createModelStore: createStore });
         if (signal.aborted) throw new CancellationError();
         return r;
       });

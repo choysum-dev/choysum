@@ -55,7 +55,7 @@ import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import type SandboxRecord from '@/sandbox/service/models/sandbox_record';
 import { usePermission } from '@/auth/web/composables/usePermission';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import {
   ChoyChartView,
   ChoyMessage,
@@ -74,7 +74,7 @@ const { _t } = createTranslate('sandbox', { scope: 'web/views/SandboxRecordChart
 
 const props = withDefaults(
   defineProps<{
-    store?: WebModelStore<SandboxRecord>;
+    store?: ModelStore<SandboxRecord>;
     showHeader?: boolean;
   }>(),
   { showHeader: true },

@@ -6,14 +6,14 @@ import type { RouteLocationRaw, Router } from 'vue-router';
 import { ChoyMessage } from './useChoyMessage';
 import { confirmChoyAction } from './confirmChoyAction';
 import type { BaseModel, QueryCondition } from '@/core/rpc';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import type { createListController } from '@/web/web/controllers/listController';
 import { RELATION_PICKER_CLOSE_KEY } from '@/web/web/components/field/relationPickerContext';
 
 type ListController = ReturnType<typeof createListController>;
 
 export type UseListViewActionsOpts<T extends BaseModel> = {
-  store: WebModelStore<T>;
+  store: ModelStore<T>;
   controller: ListController;
   router: Router;
   resolvedCreateAction: ComputedRef<RouteLocationRaw | string | undefined>;

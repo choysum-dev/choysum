@@ -46,7 +46,7 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts" generic="T extends BaseModel, P extends FieldPath<T, number | null>, V = FieldPathType<T, P>">
 import type { RuleItem } from 'async-validator';
 import type { BaseModel, FieldPath, FieldPathType } from '@/core/rpc';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import { ref, watch, computed, defineComponent, h } from 'vue';
 import { useField } from '@/web/web/composables/useField';
 import type { UseField } from '@/web/web/composables/useField';
@@ -74,7 +74,7 @@ type ViewType = FieldType;
 
 const props = withDefaults(
   defineProps<{
-    store?: WebModelStore<T>;
+    store?: ModelStore<T>;
     prop?: P | (IsAny<T> extends true ? string : never);
     binding?: UseField<T, V>;
 
@@ -128,7 +128,7 @@ const props = withDefaults(
 // Binding with agg forwarded to useField.
 const binding = (props.binding ??
   useField<T, P, V>({
-    store: props.store as WebModelStore<T>,
+    store: props.store as ModelStore<T>,
     prop: props.prop as P,
     agg: props.agg,
   })) as UseField<T, V>;

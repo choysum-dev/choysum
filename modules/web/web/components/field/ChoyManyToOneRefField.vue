@@ -125,8 +125,8 @@ import { RELATION_PICKER_CLOSE_KEY } from '@/web/web/components/field/relationPi
 import type { RuleItem } from 'async-validator';
 import type { BaseModel, FieldPath, FieldPathType, ClientModel, QueryCondition } from '@/core/rpc';
 import { runWithLoading } from '@/core/web/client/loadingRegistry';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
-import { createStoreByModel } from '@/web/web/stores/registry';
+import type { ModelStore } from '@/web/web/stores/modelStore';
+import { createModelStore } from '@/web/web/stores/registry';
 import type { WritableComputedRef, Component } from 'vue';
 import ChoyFieldBase, { type FieldStateExpr, type FormItemProps } from './ChoyFieldBase.vue';
 import { useField } from '@/web/web/composables/useField';
@@ -162,7 +162,7 @@ const emit = defineEmits<{
 
 const props = withDefaults(
   defineProps<{
-    store?: WebModelStore<T>;
+    store?: ModelStore<T>;
     prop?: P | (IsAny<T> extends true ? string : never);
     binding?: UseField<T, V>;
     label?: string;
@@ -237,7 +237,7 @@ const effectiveSearchViewTitle = computed(() => props.searchViewTitle || _t('Sel
 
 const binding = (props.binding ??
   useField<T, P, V>({
-    store: props.store as WebModelStore<T>,
+    store: props.store as ModelStore<T>,
     prop: props.prop as P,
     agg: props.agg,
   })) as UseField<T, V>;
@@ -245,12 +245,12 @@ binding.registerFields(`${binding.prop}.DisplayName`);
 
 // Resolve the relation store dynamically.
 const relationStore = computed(() => {
-  if (binding.relationStore) return binding.relationStore as WebModelStore<any>;
+  if (binding.relationStore) return binding.relationStore as ModelStore<any>;
 
   const target = props.targetModel || binding.meta?.relationModel;
   if (target) {
     try {
-      return createStoreByModel(target);
+      return createModelStore(target);
     } catch (e) {
       console.warn(`[ChoyManyToOneRefField] Failed to create store for model '${target}'`, e);
     }

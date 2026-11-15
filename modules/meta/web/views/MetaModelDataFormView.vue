@@ -61,7 +61,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { createTranslate } from '@/web/web/i18n';
 import {
@@ -79,7 +79,7 @@ const { _t } = createTranslate('meta', { scope: 'web/views/MetaModelDataFormView
 
 const props = withDefaults(
   defineProps<{
-    store?: WebModelStore<any>;
+    store?: ModelStore<any>;
     recordId?: string;
     showHeader?: boolean;
   }>(),

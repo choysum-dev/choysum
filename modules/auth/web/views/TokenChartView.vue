@@ -57,7 +57,7 @@ import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import type Token from '@/auth/service/models/token';
 import { usePermission } from '@/auth/web/composables/usePermission';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import {
   ChoyChartView,
   ChoyMessage,
@@ -75,7 +75,7 @@ import { formatTokenRevokedChartLabel } from './token_chart_labels';
 defineOptions({ name: 'TokenChartView' });
 const { _t } = createTranslate('auth', { scope: 'web/views/TokenChartView' });
 
-const props = withDefaults(defineProps<{ store?: WebModelStore<Token>; showHeader?: boolean }>(), {
+const props = withDefaults(defineProps<{ store?: ModelStore<Token>; showHeader?: boolean }>(), {
   showHeader: true,
 });
 const store = resolvePageStore(props.store, 'TokenChartView');

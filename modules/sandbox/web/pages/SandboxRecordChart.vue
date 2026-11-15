@@ -12,7 +12,7 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts">
 import { ChoyPage } from '@/web';
 import SandboxRecordChartView from '../views/SandboxRecordChartView.vue';
-import { createStoreByModel } from '@/web/web/stores/registry';
+import { createModelStore } from '@/web/web/stores/registry';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
 import { createTranslate } from '@/web/web/i18n';
 import type SandboxRecord from '@/sandbox/service/models/sandbox_record';
@@ -22,7 +22,7 @@ defineOptions({ name: 'SandboxRecordChartPage' });
 const { _t } = createTranslate('sandbox', { scope: 'web/pages/SandboxRecordChart' });
 const pageTitle = _t('Sandbox Record Chart');
 
-const recordStore = createStoreByModel<typeof SandboxRecord>('sandbox.SandboxRecord', {
+const recordStore = createModelStore<typeof SandboxRecord>('sandbox.SandboxRecord', {
   storeId: 'SandboxRecord_ListKanban',
   scopeManager: useScopeManager().menuScopeManager,
 });

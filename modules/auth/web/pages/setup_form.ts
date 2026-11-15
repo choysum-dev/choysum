@@ -3,7 +3,7 @@
 
 import { ChoysumError } from '../error';
 import { createTranslate } from '@/web/web/i18n';
-import { createStoreByModel } from '@/web/web/stores/registry';
+import { createModelStore } from '@/web/web/stores/registry';
 import type { CompleteInitialSetupInput } from '../stores/auth';
 import {
   registerConfirmPasswordError,
@@ -240,7 +240,7 @@ export function resolveSetupLoadDemoRequester(fallback: SetupLoadDemoRequester):
   return testSetupLoadDemoRequester ?? fallback;
 }
 
-export type CreateStoreByModelFn = (modelName: string, options?: unknown) => unknown;
+export type CreateModelStoreFn = (modelName: string, options?: unknown) => unknown;
 
 type MetaModuleOpStore = {
   RequestLoadDemo?: (req?: Record<string, never>) => Promise<SetupLoadDemoResp>;
@@ -251,7 +251,7 @@ type MetaModuleOpStore = {
  * or the store has no RequestLoadDemo (setup can run before meta is present).
  */
 export async function requestMetaModuleLoadDemo(
-  createStore: CreateStoreByModelFn = createStoreByModel,
+  createStore: CreateModelStoreFn = createModelStore,
 ): Promise<SetupLoadDemoResp> {
   let opStore: MetaModuleOpStore | null = null;
   try {

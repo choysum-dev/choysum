@@ -52,7 +52,7 @@ SPDX-License-Identifier: Apache-2.0
 import type { RuleItem } from 'async-validator';
 import type { Editor } from '@tiptap/vue-3';
 import type { BaseModel, FieldPath, FieldPathType } from '@/core/rpc';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import { computed, defineComponent, h, onBeforeUnmount, ref, watch, type Component } from 'vue';
 import { EditorContent, useEditor } from '@tiptap/vue-3';
 import Link from '@tiptap/extension-link';
@@ -87,7 +87,7 @@ type ViewType = string | null;
 
 const props = withDefaults(
   defineProps<{
-    store?: WebModelStore<T>;
+    store?: ModelStore<T>;
     prop?: P | (IsAny<T> extends true ? string : never);
     agg?: NarrowAggProp<NonNumericAggFns>;
     binding?: UseField<T, V>;
@@ -130,7 +130,7 @@ const props = withDefaults(
 );
 
 const binding = (props.binding ??
-  useField<T, P, V>({ store: props.store as WebModelStore<T>, prop: props.prop as P, agg: props.agg })) as UseField<T, V>;
+  useField<T, P, V>({ store: props.store as ModelStore<T>, prop: props.prop as P, agg: props.agg })) as UseField<T, V>;
 
 const toView = (raw: unknown): ViewType => (raw == null ? null : String(raw));
 const fromView = (v: ViewType) => v as unknown as V;

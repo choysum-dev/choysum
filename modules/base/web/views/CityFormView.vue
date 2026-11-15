@@ -39,7 +39,7 @@ SPDX-License-Identifier: Apache-2.0
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import type { RouteLocationRaw } from 'vue-router';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import type City from '@/base/service/models/city';
 import type Country from '@/base/service/models/country';
 import type State from '@/base/service/models/state';
@@ -57,7 +57,7 @@ defineOptions({ name: 'CityFormView', inheritAttrs: true });
 const { _t, _lt } = createTranslate('base', { scope: 'web/views/CityFormView' });
 const requiredRules = computed(() => [{ required: true, message: _t('Required') }]);
 const props = withDefaults(
-  defineProps<{ store?: WebModelStore<City>; recordId?: string; viewMode?: ViewMode; showHeader?: boolean; createAction?: string | RouteLocationRaw }>(),
+  defineProps<{ store?: ModelStore<City>; recordId?: string; viewMode?: ViewMode; showHeader?: boolean; createAction?: string | RouteLocationRaw }>(),
   { showHeader: true, createAction: undefined }
 );
 const cityActions = defineModelActions('base.City', { entityTitle: _lt('City') });

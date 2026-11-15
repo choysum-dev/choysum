@@ -9,7 +9,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts" generic="T extends BaseModel, P extends FieldPath<T, any>">
 import type { BaseModel, FieldPath } from '@/core/rpc';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import { watch, onMounted } from 'vue';
 import { useField } from '@/web/web/composables/useField';
 import type { AggProp } from '@/web/web/composables/useField';
@@ -20,7 +20,7 @@ type IsAny<T> = 0 extends 1 & T ? true : false;
 
 const props = withDefaults(
   defineProps<{
-    store: WebModelStore<T>;
+    store: ModelStore<T>;
     prop: P | (IsAny<T> extends true ? string : never);
     // Support one or more aggregate declarations.
     agg?: AggProp | AggProp[];

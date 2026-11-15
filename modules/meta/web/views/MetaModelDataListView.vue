@@ -57,7 +57,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { useRouter } from 'vue-router';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import { useListViewExpose } from '@/web/web/composables/useListView';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { createTranslate } from '@/web/web/i18n';
@@ -76,7 +76,7 @@ const { _t } = createTranslate('meta', { scope: 'web/views/MetaModelDataListView
 const router = useRouter();
 
 const props = defineProps<{
-  store?: WebModelStore<any>;
+  store?: ModelStore<any>;
 }>();
 
 const store = resolvePageStore(props.store, 'MetaModelDataListView');

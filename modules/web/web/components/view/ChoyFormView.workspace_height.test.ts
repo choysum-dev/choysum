@@ -12,13 +12,13 @@ import * as VueRouter from 'vue-router';
 import { flushPromises, mountApp } from '@/web/web/__tests__/mountApp';
 import ChoyPage from '@/web/web/components/layout/ChoyPage.vue';
 import { PageContextKey, type PageActionTarget } from '@/web/web/composables/usePageContext';
-import { createLocalFormStore } from '@/web/web/stores/localFormStore';
+import { createUiModelStore } from '@/web/web/stores/uiModelStore';
 import ChoyFormView from './ChoyFormView.vue';
 
 const createFeStubRouter = (VueRouter as any).createFeStubRouter;
 
 function loginStore() {
-  return createLocalFormStore({
+  return createUiModelStore({
     fields: [{ name: 'Username', label: 'Username', type: 'varchar' }],
     initialValues: { Username: 'admin' },
   });

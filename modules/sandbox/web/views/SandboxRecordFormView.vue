@@ -193,8 +193,8 @@ SPDX-License-Identifier: Apache-2.0
               :search-view-title="_t('Select Tag Ref Table')"
             >
               <template #default="{ refStore }">
-                <ChoyVarcharField :store="(refStore as WebModelStore<SandboxTag> | undefined)" prop="Name" />
-                <ChoyVarcharField :store="(refStore as WebModelStore<SandboxTag> | undefined)" prop="Code" />
+                <ChoyVarcharField :store="(refStore as ModelStore<SandboxTag> | undefined)" prop="Name" />
+                <ChoyVarcharField :store="(refStore as ModelStore<SandboxTag> | undefined)" prop="Code" />
               </template>
             </ChoyManyToManyRefField>
           </ChoyCol>
@@ -299,7 +299,7 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import type { RouteLocationRaw } from 'vue-router';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import type SandboxRecord from '@/sandbox/service/models/sandbox_record';
 import type SandboxLine from '@/sandbox/service/models/sandbox_line';
 import type SandboxTag from '@/sandbox/service/models/sandbox_tag';
@@ -359,7 +359,7 @@ const linesTab = ref('lines-table');
 
 const props = withDefaults(
   defineProps<{
-    store?: WebModelStore<SandboxRecord>;
+    store?: ModelStore<SandboxRecord>;
     recordId?: string;
     initialValues?: Partial<SandboxRecord>;
     viewMode?: ViewMode;

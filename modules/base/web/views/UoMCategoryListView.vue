@@ -22,7 +22,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import type UoMCategory from '@/base/service/models/uom_category';
 import { useRouter } from 'vue-router';
 import { useListViewExpose } from '@/web/web/composables/useListView';
@@ -35,7 +35,7 @@ import type { RowEventPayload } from '@/web';
 
 defineOptions({ name: 'UoMCategoryListView', inheritAttrs: true });
 const { _t, _lt } = createTranslate('base', { scope: 'web/views/UoMCategoryListView' });
-const props = defineProps<{ store?: WebModelStore<UoMCategory> }>();
+const props = defineProps<{ store?: ModelStore<UoMCategory> }>();
 const store = resolvePageStore(props.store, 'UoMCategoryListView');
 const uomCategoryActions = defineModelActions('base.UoMCategory', { entityTitle: _lt('Unit of Measure Category') });
 const { hasAction } = usePermission();

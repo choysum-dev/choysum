@@ -4,12 +4,12 @@
 import { execute } from './executor';
 import { asyncFnRecorder } from '@/web/web/__tests__/mountApp';
 
-test('execute hydrates ManyToManyRef id lists via createStoreByModel', async () => {
+test('execute hydrates ManyToManyRef id lists via createModelStore', async () => {
   const tagSearch = asyncFnRecorder(async () => [
     { Id: 't1', DisplayName: 'Red' },
     { Id: 't2', DisplayName: 'Blue' },
   ]);
-  const createStoreByModel = (modelName: string) => {
+  const createModelStore = (modelName: string) => {
     if (modelName === 'demo.Tag') {
       return { storeId: 'demo.Tag', Search: tagSearch } as any;
     }
@@ -32,7 +32,7 @@ test('execute hydrates ManyToManyRef id lists via createStoreByModel', async () 
     } as any,
     store,
     'list',
-    { createStoreByModel }
+    { createModelStore }
   );
 
   expect(tagSearch.calls.length).toBe(1);

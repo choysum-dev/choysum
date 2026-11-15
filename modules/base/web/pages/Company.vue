@@ -13,7 +13,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { useRoute } from 'vue-router';
-import { createStoreByModel } from '@/web/web/stores/registry';
+import { createModelStore } from '@/web/web/stores/registry';
 import CompanyFormView from '../views/CompanyFormView.vue';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
 import type Company from '@/base/service/models/company';
@@ -22,7 +22,7 @@ import { ChoyPage } from '@/web';
 defineOptions({ name: 'CompanyPage' });
 
 const route = useRoute();
-const companyStore = createStoreByModel<typeof Company>('base.Company', {
+const companyStore = createModelStore<typeof Company>('base.Company', {
   storeId: `Company_${route.fullPath}`,
   scopeManager: useScopeManager().menuScopeManager,
 });

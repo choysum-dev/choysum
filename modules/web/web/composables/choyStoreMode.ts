@@ -5,7 +5,7 @@ import { computed, type ComputedRef } from 'vue';
 import { useOptionalPageStore } from '@/web/web/composables/usePageContext';
 
 /**
- * Detects whether a Choy field should bind to a WebModelStore engine.
+ * Detects whether a Choy field should bind to a ModelStore engine.
  * `pageStore` covers fields under a store-backed ChoyPage that only pass `prop`.
  */
 export function isChoyStoreFieldBinding(

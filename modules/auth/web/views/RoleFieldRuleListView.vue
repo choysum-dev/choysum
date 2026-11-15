@@ -29,7 +29,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { useRouter } from 'vue-router';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import type RoleFieldRule from '@/auth/service/models/role_field_rule';
 import { useListViewExpose } from '@/web/web/composables/useListView';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
@@ -47,7 +47,7 @@ const router = useRouter();
 
 const props = withDefaults(
   defineProps<{
-    store?: WebModelStore<RoleFieldRule>;
+    store?: ModelStore<RoleFieldRule>;
     showHeader?: boolean;
   }>(),
   {

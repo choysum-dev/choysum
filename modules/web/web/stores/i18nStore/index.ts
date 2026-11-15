@@ -15,22 +15,22 @@ import { fetchWebTranslations, type TerminologyLoadResult } from './terminologyL
 import { resolveLocaleRemountMode, softLocaleRemount } from './localeRemount';
 import { revalidateTerminologyCatalog } from './terminologyRevalidate';
 import { shouldNoopSetUiKey } from './setUiKeyGuard';
-import { createStoreByModel } from '@/web/web/stores/registry';
+import { createModelStore } from '@/web/web/stores/registry';
 import {
   collectActiveLanguageFormats,
   resolveFormatConfig,
   type LanguageFormatOverlay,
 } from './languageFormat';
 
-type CreateStoreByModel = typeof createStoreByModel;
-let createStoreByModelImpl: CreateStoreByModel = createStoreByModel;
+type CreateModelStore = typeof createModelStore;
+let createModelStoreImpl: CreateModelStore = createModelStore;
 
 /**
- * Overrides createStoreByModel used by i18n RPC helpers (FE unit tests).
+ * Overrides createModelStore used by i18n RPC helpers (FE unit tests).
  * Pass null to restore the default registry lookup.
  */
-export function setI18nCreateStoreForTests(fn: CreateStoreByModel | null): void {
-  createStoreByModelImpl = fn ?? createStoreByModel;
+export function setI18nCreateStoreForTests(fn: CreateModelStore | null): void {
+  createModelStoreImpl = fn ?? createModelStore;
 }
 
 // Re-export types for external consumers.
@@ -411,7 +411,7 @@ export const useI18nStore = defineStore(
      */
     async function loadActiveUiKeysFromServer() {
       try {
-        const languageStore = createStoreByModelImpl('base.Language');
+        const languageStore = createModelStoreImpl('base.Language');
         const rows = await (languageStore as any).GetActiveLanguages();
         const { formats, uiKeys } = collectActiveLanguageFormats(rows);
         languageFormatByCode.value = formats;

@@ -26,7 +26,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import type City from '@/base/service/models/city';
 import { useRouter } from 'vue-router';
 import { useListViewExpose } from '@/web/web/composables/useListView';
@@ -39,7 +39,7 @@ import type { RowEventPayload } from '@/web';
 
 defineOptions({ name: 'CityListView', inheritAttrs: true });
 const { _t, _lt } = createTranslate('base', { scope: 'web/views/CityListView' });
-const props = defineProps<{ store?: WebModelStore<City> }>();
+const props = defineProps<{ store?: ModelStore<City> }>();
 const store = resolvePageStore(props.store, 'CityListView');
 const cityActions = defineModelActions('base.City', { entityTitle: _lt('City') });
 const { hasAction } = usePermission();

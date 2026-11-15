@@ -79,7 +79,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { useRouter } from 'vue-router';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import type Bank from '@/base/service/models/bank';
 import type { ValueClickPayload as ManyToOneValueClickPayload } from '@/web/web/components/field/manyToOneTypes';
 import BankListView from '@/base/web/views/BankListView.vue';
@@ -102,7 +102,7 @@ const { _t } = createTranslate('partner_bank', { scope: 'web/views/PartnerBankAc
  */
 const props = withDefaults(
   defineProps<{
-    store: WebModelStore<any>;
+    store: ModelStore<any>;
     recordId?: string;
     initialValues?: Record<string, any>;
     viewMode?: ViewMode;

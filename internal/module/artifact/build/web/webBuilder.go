@@ -2612,7 +2612,7 @@ func (b *WebModuleBuilder) entryPointImports() []string {
 	}
 
 	// Store side-effect imports must run before module entrypoints so factory
-	// registration is available to top-level createStoreByModel(...) calls.
+	// registration is available to top-level createModelStore(...) calls.
 	return append(storeImports, moduleImports...)
 }
 

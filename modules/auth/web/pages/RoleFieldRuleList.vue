@@ -16,7 +16,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { useRoute } from 'vue-router';
-import { createStoreByModel } from '@/web/web/stores/registry';
+import { createModelStore } from '@/web/web/stores/registry';
 import RoleFieldRuleListView from '@/auth/web/views/RoleFieldRuleListView.vue';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
 import { createTranslate } from '@/web/web/i18n';
@@ -27,7 +27,7 @@ const { _t } = createTranslate('auth', { scope: 'web/pages/RoleFieldRuleList' })
 const pageTitle = _t('Field Rule List');
 
 const route = useRoute();
-const fieldRuleStore = createStoreByModel<typeof RoleFieldRule>('auth.RoleFieldRule', {
+const fieldRuleStore = createModelStore<typeof RoleFieldRule>('auth.RoleFieldRule', {
   storeId: `RoleFieldRule_${route.fullPath}`,
   scopeManager: useScopeManager().menuScopeManager,
 });

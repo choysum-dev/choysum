@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import type { BaseModel } from '@/core/rpc';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 
 const getByPath = (obj: any, path: string) =>
   path
@@ -25,7 +25,7 @@ const setByPath = (obj: any, path: string, v: any) => {
  * Provides array mutation helpers for list results or to-many form fields.
  */
 export function useArrayMutations<T extends BaseModel>(opts: {
-  store: WebModelStore<T>;
+  store: ModelStore<T>;
 
   /** Optional to-many field path; when omitted the list result array is mutated. */
   prop?: string;

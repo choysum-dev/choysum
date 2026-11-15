@@ -352,7 +352,7 @@ describe('SearchFilterCondition', () => {
     const { unmount, setupState } = mountRow(condition, {
       store: {
         getFieldMeta: undefined,
-        // FE host stubs createStoreByModel, so relationStore comes from that path
+        // FE host stubs createModelStore, so relationStore comes from that path
         // (getRelationStore fallback is covered in useFilterEditorBindings tests).
         getRelationStore: fnRecorder(() => ({ destroy: fnRecorder() })),
       },

@@ -371,7 +371,7 @@ func analyzeRelationFields(model *meta.Model) ([]RelationFieldInfo, []string) {
 
 // resolveBaseServiceNames loads conventional service names from the abstract BaseModel
 // Model (by BaseModelModuleSpec path). These names are filtered out of generated
-// XxxStore interfaces because they are already declared on the hand-written WebModelStore.
+// XxxStore interfaces because they are already declared on the hand-written ModelStore.
 // Do not maintain a parallel hardcoded name list here.
 func resolveBaseServiceNames(runtimeScope scope.Scope) (map[string]bool, error) {
 	path, _ := meta.BaseModelModuleSpec(runtimeScope)
@@ -446,7 +446,7 @@ func (g *webApiStoreGenerator) generate(ctx context.Context, app *meta.Applicati
 			p := strings.ReplaceAll(path, runtimeOpts.modulesPath, "@")
 			return strings.TrimSuffix(p, ".ts")
 		},
-		// True when name is a BaseModel conventional service (already on WebModelStore).
+		// True when name is a BaseModel conventional service (already on ModelStore).
 		"IsBaseService": func(name string) bool {
 			return baseServiceNames[name]
 		},

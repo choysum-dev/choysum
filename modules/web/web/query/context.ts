@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 // Build QueryContext objects from store state and override inputs
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import type { PaginationState, OrderByState } from './state';
 import type { GroupBySpec } from './types';
 import { filtersToQuery } from '@/web/web/query/utils/condition/builder';
@@ -52,7 +52,7 @@ export function modelNameFromStoreId(storeId: string): string {
   return seg.charAt(0).toUpperCase() + seg.slice(1);
 }
 
-export function buildSearchOrGroupContext(store: WebModelStore<any>, overrides: BuildContextOverrides = {}): QueryContext {
+export function buildSearchOrGroupContext(store: ModelStore<any>, overrides: BuildContextOverrides = {}): QueryContext {
   // Lock model to store.storeId only
   const baseModel = modelNameFromStoreId(store.storeId);
   const wantedShape = overrides.shape;
@@ -101,7 +101,7 @@ export function buildSearchOrGroupContext(store: WebModelStore<any>, overrides: 
   };
 }
 
-export function buildBrowseContext(store: WebModelStore<any>, recordId: string, overrides: BuildContextOverrides = {}): QueryContext {
+export function buildBrowseContext(store: ModelStore<any>, recordId: string, overrides: BuildContextOverrides = {}): QueryContext {
   // Lock model to store.storeId only
   const baseModel = modelNameFromStoreId(store.storeId);
   return {
@@ -118,7 +118,7 @@ export function buildBrowseContext(store: WebModelStore<any>, recordId: string, 
 
 // Unified query builder that combines UI filters, keywords, forcedCondition, and parent conditions.
 export function buildUnifiedQuery(
-  store: WebModelStore<any>,
+  store: ModelStore<any>,
   options: {
     groupby?: GroupBySpec<any>[];
     pagination?: PaginationState;

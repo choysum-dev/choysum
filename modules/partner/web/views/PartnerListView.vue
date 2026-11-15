@@ -28,7 +28,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { useRouter } from 'vue-router';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import type Partner from '@/partner/service/models/partner';
 import { useListViewExpose } from '@/web/web/composables/useListView';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
@@ -55,7 +55,7 @@ const { _t } = createTranslate('partner', { scope: 'web/views/PartnerListView' }
  * `store` falls back to ChoyPage provided store when omitted.
  */
 const props = defineProps<{
-  store?: WebModelStore<Partner>;
+  store?: ModelStore<Partner>;
 }>();
 
 const store = resolvePageStore(props.store, 'PartnerListView');

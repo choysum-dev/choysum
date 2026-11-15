@@ -11,7 +11,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { useRoute } from 'vue-router';
-import { createStoreByModel } from '@/web/web/stores/registry';
+import { createModelStore } from '@/web/web/stores/registry';
 import UoMCategoryFormView from '../views/UoMCategoryFormView.vue';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
 import type UoMCategory from '@/base/service/models/uom_category';
@@ -20,7 +20,7 @@ import { ChoyPage } from '@/web';
 defineOptions({ name: 'UoMCategoryPage' });
 
 const route = useRoute();
-const uomCategoryStore = createStoreByModel<typeof UoMCategory>('base.UoMCategory', {
+const uomCategoryStore = createModelStore<typeof UoMCategory>('base.UoMCategory', {
   storeId: `UoMCategory_${route.fullPath}`,
   scopeManager: useScopeManager().menuScopeManager,
 });

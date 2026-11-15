@@ -16,7 +16,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { useRoute } from 'vue-router';
-import { createStoreByModel } from '@/web/web/stores/registry';
+import { createModelStore } from '@/web/web/stores/registry';
 import CurrencyListView from '../views/CurrencyListView.vue';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
 import { createTranslate } from '@/web/web/i18n';
@@ -29,7 +29,7 @@ const { _t } = createTranslate('base', { scope: 'web/pages/CurrencyList' });
 const pageTitle = _t('Currency List');
 
 const route = useRoute();
-const currencyStore = createStoreByModel<typeof Currency>('base.Currency', {
+const currencyStore = createModelStore<typeof Currency>('base.Currency', {
   storeId: `Currency_${route.fullPath}`,
   scopeManager: useScopeManager().menuScopeManager,
 });

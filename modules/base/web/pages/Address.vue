@@ -11,7 +11,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { useRoute } from 'vue-router';
-import { createStoreByModel } from '@/web/web/stores/registry';
+import { createModelStore } from '@/web/web/stores/registry';
 import AddressFormView from '../views/AddressFormView.vue';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
 import type Address from '@/base/service/models/address';
@@ -20,7 +20,7 @@ import { ChoyPage } from '@/web';
 defineOptions({ name: 'AddressPage' });
 
 const route = useRoute();
-const addressStore = createStoreByModel<typeof Address>('base.Address', {
+const addressStore = createModelStore<typeof Address>('base.Address', {
   storeId: `Address_${route.fullPath}`,
   scopeManager: useScopeManager().menuScopeManager,
 });

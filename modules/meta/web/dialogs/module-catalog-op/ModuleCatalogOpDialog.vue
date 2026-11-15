@@ -262,7 +262,7 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts">
 import { computed, ref, toRef, watch } from 'vue';
 import { ChevronRight } from 'lucide-vue-next';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import type MetaModuleOperation from '@/meta/service/models/module_operation';
 import { createTranslate } from '@/web/web/i18n';
 import { useModuleCatalogOpDrawerSession } from '@/meta/web/composables/useModuleCatalogOpDrawerSession';
@@ -292,7 +292,7 @@ const open = defineModel<boolean>('open', { default: false });
 
 const props = withDefaults(
   defineProps<{
-    operationStore?: WebModelStore<MetaModuleOperation> | null;
+    operationStore?: ModelStore<MetaModuleOperation> | null;
     operationId?: string;
     moduleName?: string;
     action?: 'install' | 'upgrade' | 'uninstall' | 'sync' | 'load_demo' | 'progress' | '';

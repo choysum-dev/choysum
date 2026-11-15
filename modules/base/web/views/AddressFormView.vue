@@ -50,7 +50,7 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts">
 import { useRouter } from 'vue-router';
 import type { RouteLocationRaw } from 'vue-router';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import type Address from '@/base/service/models/address';
 import type Country from '@/base/service/models/country';
 import type State from '@/base/service/models/state';
@@ -71,7 +71,7 @@ const { _t, _lt } = createTranslate('base', { scope: 'web/views/AddressFormView'
 
 const props = withDefaults(
   defineProps<{
-    store?: WebModelStore<Address>;
+    store?: ModelStore<Address>;
     recordId?: string;
     viewMode?: ViewMode;
     showHeader?: boolean;

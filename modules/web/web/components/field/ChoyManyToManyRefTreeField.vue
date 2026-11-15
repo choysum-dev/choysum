@@ -93,11 +93,11 @@ import { computed, ref, watch, inject, type Ref } from 'vue';
 import type { RuleItem } from 'async-validator';
 import type { BaseModel, FieldPath, FieldPathType } from '@/core/rpc';
 import { buildRelationConditionSource } from '@/web/web/composables/relationalForField';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import ChoyFieldBase, { type FieldStateExpr, type FormItemProps } from './ChoyFieldBase.vue';
 import { useField } from '@/web/web/composables/useField';
 import type { UseField } from '@/web/web/composables/useField';
-import { createStoreByModel } from '@/web/web/stores/registry';
+import { createModelStore } from '@/web/web/stores/registry';
 import { createTranslate } from '@/web/web/i18n';
 import { normalizeTreeRefId as normalizeRefId } from './treeRefId';
 import { resolveTreeBoxStyle, type TreeBoxHeight } from './treeBoxHeight';
@@ -123,7 +123,7 @@ type TreeNode = {
 
 const props = withDefaults(
   defineProps<{
-    store?: WebModelStore<T>;
+    store?: ModelStore<T>;
     prop?: P | (IsAny<T> extends true ? string : never);
     binding?: UseField<T, V>;
 
@@ -191,15 +191,15 @@ const props = withDefaults(
 
 const effectiveEmptyText = computed(() => props.emptyText || _t('No data'));
 
-const binding = (props.binding ?? useField<T, P, V>({ store: props.store as WebModelStore<T>, prop: props.prop as P })) as UseField<T, V>;
+const binding = (props.binding ?? useField<T, P, V>({ store: props.store as ModelStore<T>, prop: props.prop as P })) as UseField<T, V>;
 const { getItems, clearItems, insertItem } = binding.asMutableArray<any>();
 
-const relationStore = computed<WebModelStore<any> | undefined>(() => {
-  if (binding.relationStore) return binding.relationStore as WebModelStore<any>;
+const relationStore = computed<ModelStore<any> | undefined>(() => {
+  if (binding.relationStore) return binding.relationStore as ModelStore<any>;
   const target = props.targetModel || binding.meta?.relationModel;
   if (!target) return undefined;
   try {
-    return createStoreByModel(target);
+    return createModelStore(target);
   } catch (e) {
     console.warn(`[ChoyManyToManyRefTreeField] Failed to create store for model '${target}'`, e);
     return undefined;

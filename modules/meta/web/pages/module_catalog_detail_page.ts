@@ -2,15 +2,15 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { computed, ref, watch, type Ref } from 'vue';
-import { createStoreByModel } from '@/web/web/stores/registry';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import { createModelStore } from '@/web/web/stores/registry';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import type MetaModuleCatalog from '@/meta/service/models/module_catalog';
 import type MetaModuleOperation from '@/meta/service/models/module_operation';
 
 export type ModuleCatalogDetailPageDeps = {
   scopeManager: unknown;
   moduleName: Ref<string> | (() => string);
-  createStore?: typeof createStoreByModel;
+  createStore?: typeof createModelStore;
 };
 
 /**
@@ -19,14 +19,14 @@ export type ModuleCatalogDetailPageDeps = {
  * cannot overwrite a newer module name.
  */
 export function useModuleCatalogDetailPage(deps: ModuleCatalogDetailPageDeps): {
-  catalogStore: WebModelStore<MetaModuleCatalog>;
-  operationStore: WebModelStore<MetaModuleOperation>;
+  catalogStore: ModelStore<MetaModuleCatalog>;
+  operationStore: ModelStore<MetaModuleOperation>;
   recordId: Ref<string>;
   loading: Ref<boolean>;
   missing: Ref<boolean>;
   moduleName: Ref<string>;
 } {
-  const createStore = deps.createStore ?? createStoreByModel;
+  const createStore = deps.createStore ?? createModelStore;
   const moduleName = computed(() => {
     const raw = typeof deps.moduleName === 'function' ? deps.moduleName() : deps.moduleName.value;
     return String(raw || '').trim();
@@ -35,11 +35,11 @@ export function useModuleCatalogDetailPage(deps: ModuleCatalogDetailPageDeps): {
   const catalogStore = createStore('meta.MetaModuleCatalog', {
     storeId: 'MetaModuleCatalog_Form',
     scopeManager: deps.scopeManager,
-  }) as WebModelStore<MetaModuleCatalog>;
+  }) as ModelStore<MetaModuleCatalog>;
   const operationStore = createStore('meta.MetaModuleOperation', {
     storeId: 'MetaModuleOperation_FormDrawer',
     scopeManager: deps.scopeManager,
-  }) as WebModelStore<MetaModuleOperation>;
+  }) as ModelStore<MetaModuleOperation>;
   const recordId = ref('');
   const loading = ref(false);
   const missing = ref(false);

@@ -4,7 +4,7 @@
 import { reactive } from 'vue';
 import { runWithLoading } from '@/core/web/client/loadingRegistry';
 import type { GroupBySpec, QueryCondition } from '@/core/service/api/query';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import type { DataSetSnapshot } from '@/web/web/query/types';
 import type { OrderByState } from '@/web/web/query/state';
 import { buildUnifiedQuery } from '@/web/web/query/context';
@@ -50,7 +50,7 @@ export interface IChartController {
 /**
  * Creates a chart controller backed by a web model store.
  */
-export function createChartController(store: WebModelStore<any>): IChartController {
+export function createChartController(store: ModelStore<any>): IChartController {
   const vm = reactive<ChartControllerVM>({ loading: false, error: null, result: null, hasAppliedOnce: false });
   const aborts = createAbortableRequests();
   let seq = 0;

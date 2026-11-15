@@ -7,7 +7,7 @@
 
 import { collectChangedPaths } from '@/core/utils/diff';
 import { deepClonePreserve as deepClone } from '@/core/utils/clone';
-import type { WebModelStore, WebFieldMetadata } from '@/web/web/stores/modelStore';
+import type { ModelStore, WebFieldMetadata } from '@/web/web/stores/modelStore';
 
 const getByPath = (obj: any, path: string) =>
   String(path)
@@ -53,7 +53,7 @@ export function isNumericHandleField(meta: WebFieldMetadata | undefined): boolea
 }
 
 /** Whether the store metadata contains a writable numeric handle field. */
-export function hasHandleField(store: WebModelStore<any> | undefined, handleField = 'Sequence'): boolean {
+export function hasHandleField(store: ModelStore<any> | undefined, handleField = 'Sequence'): boolean {
   if (!store || !handleField) return false;
   const meta = (store.fieldsMetadata || {})[handleField] as WebFieldMetadata | undefined;
   if (!meta) return false;

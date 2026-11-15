@@ -16,7 +16,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { useRoute } from 'vue-router';
-import { createStoreByModel } from '@/web/web/stores/registry';
+import { createModelStore } from '@/web/web/stores/registry';
 import ExchangeRateListView from '../views/ExchangeRateListView.vue';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
 import { createTranslate } from '@/web/web/i18n';
@@ -29,7 +29,7 @@ const { _t } = createTranslate('base', { scope: 'web/pages/ExchangeRateList' });
 const pageTitle = _t('Exchange Rate List');
 
 const route = useRoute();
-const exchangeRateStore = createStoreByModel<typeof ExchangeRate>('base.ExchangeRate', {
+const exchangeRateStore = createModelStore<typeof ExchangeRate>('base.ExchangeRate', {
   storeId: `ExchangeRate_${route.fullPath}`,
   scopeManager: useScopeManager().menuScopeManager,
 });

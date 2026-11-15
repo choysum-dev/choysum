@@ -485,7 +485,7 @@ import type { ClassValue } from '../../lib/utils';
 import { cn } from '../../lib/utils';
 import type { BaseModel } from '@/core/rpc';
 import type { GroupBySpec, QueryCondition } from '@/core/service/api/query';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import type { OrderByState } from '@/web/web/query/state';
 import type { ChoySearchQuery } from './searchViewHelpers';
 import ChoyButton from '../layout/ChoyButton.vue';
@@ -576,7 +576,7 @@ useProvideViewScope({ kind: 'Chart', mode: 'display' });
 const props = withDefaults(
   defineProps<{
     class?: ClassValue;
-    store?: WebModelStore<any>;
+    store?: ModelStore<any>;
     defaultGroups?: GroupBySpec<any> | GroupBySpec<any>[];
     keywordFields?: string[];
     forcedCondition?: QueryCondition<any> | QueryCondition<any>[];
@@ -663,7 +663,7 @@ const emit = defineEmits<{
   'query-update': [query: ChoySearchQuery];
 }>();
 
-const controller = createChartController(store as WebModelStore<BaseModel>);
+const controller = createChartController(store as ModelStore<BaseModel>);
 
 const categories = ref<string[]>([]);
 const seriesMatrix = ref<ChoyChartSeries[]>([]);

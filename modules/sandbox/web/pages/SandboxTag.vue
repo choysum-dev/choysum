@@ -11,7 +11,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { useRoute } from 'vue-router';
-import { createStoreByModel } from '@/web/web/stores/registry';
+import { createModelStore } from '@/web/web/stores/registry';
 import { ChoyPage } from '@/web';
 import SandboxTagFormView from '../views/SandboxTagFormView.vue';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
@@ -20,7 +20,7 @@ import type SandboxTag from '@/sandbox/service/models/sandbox_tag';
 defineOptions({ name: 'SandboxTagPage' });
 
 const route = useRoute();
-const tagStore = createStoreByModel<typeof SandboxTag>('sandbox.SandboxTag', {
+const tagStore = createModelStore<typeof SandboxTag>('sandbox.SandboxTag', {
   storeId: `SandboxTag_${route.fullPath}`,
   scopeManager: useScopeManager().menuScopeManager,
 });

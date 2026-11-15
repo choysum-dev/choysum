@@ -16,7 +16,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { useRoute } from 'vue-router';
-import { createStoreByModel } from '@/web/web/stores/registry';
+import { createModelStore } from '@/web/web/stores/registry';
 import RoleMethodAccessListView from '@/auth/web/views/RoleMethodAccessListView.vue';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
 import { createTranslate } from '@/web/web/i18n';
@@ -27,7 +27,7 @@ const { _t } = createTranslate('auth', { scope: 'web/pages/RoleMethodAccessList'
 const pageTitle = _t('Method Access List');
 
 const route = useRoute();
-const methodAccessStore = createStoreByModel<typeof RoleMethodAccess>('auth.RoleMethodAccess', {
+const methodAccessStore = createModelStore<typeof RoleMethodAccess>('auth.RoleMethodAccess', {
   storeId: `RoleMethodAccess_${route.fullPath}`,
   scopeManager: useScopeManager().menuScopeManager,
 });

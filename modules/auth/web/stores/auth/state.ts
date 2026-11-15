@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { ref, computed, reactive, ComputedRef } from 'vue';
-import { createStoreByModel } from '@/web/web/stores/registry';
+import { createModelStore } from '@/web/web/stores/registry';
 import type User from '@/auth/service/models/user/user';
 import type { ClientModel } from '@/core/rpc';
 import { AuthOptions, DEFAULT_AUTH_OPTIONS, createAuthOptions } from './options';
@@ -15,7 +15,7 @@ let globalUserStore: any | null = null;
  */
 function getGlobalUserStore(): any {
   if (globalUserStore) return globalUserStore;
-  globalUserStore = createStoreByModel<typeof User>('auth.User');
+  globalUserStore = createModelStore<typeof User>('auth.User');
   return globalUserStore;
 }
 

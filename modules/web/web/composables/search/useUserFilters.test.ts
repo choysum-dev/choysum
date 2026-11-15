@@ -42,7 +42,7 @@ const filtersToQuery = mutableFn(() => ({ And: [['Name', '=', 'x']] }) as any);
 
 function deps() {
   return {
-    createStoreByModel: ((model: string) =>
+    createModelStore: ((model: string) =>
       model === 'web.UserFilter' ? { Search, Create, UpdateById, DeleteById } : {}) as any,
     actorUserId: (() => actorId) as any,
     filtersToQuery: filtersToQuery as any,

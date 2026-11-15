@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-// WebModelStore: unified query state, result snapshots, and base service signatures.
+// ModelStore: unified query state, result snapshots, and base service signatures.
 import type { ScopedStore } from '@/web/web/stores/storeScopeManager/types';
 import type { QueryState } from '@/web/web/query/state';
 import type { DataSetSnapshot } from '@/web/web/query/types';
@@ -222,7 +222,7 @@ export type PlanCacheEntry = {
   createdAt: number;
 };
 
-export interface WebModelStore<TModel extends BaseModel> extends ScopedStore {
+export interface ModelStore<TModel extends BaseModel> extends ScopedStore {
   readonly storeId: string;
   // Fully qualified model name, for example auth.Role.
   readonly fullModelName?: string;

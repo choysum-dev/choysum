@@ -16,7 +16,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { useRoute } from 'vue-router';
-import { createStoreByModel } from '@/web/web/stores/registry';
+import { createModelStore } from '@/web/web/stores/registry';
 import AddressListView from '../views/AddressListView.vue';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
 import { createTranslate } from '@/web/web/i18n';
@@ -29,7 +29,7 @@ const { _t } = createTranslate('base', { scope: 'web/pages/AddressList' });
 const pageTitle = _t('Address List');
 
 const route = useRoute();
-const addressStore = createStoreByModel<typeof Address>('base.Address', {
+const addressStore = createModelStore<typeof Address>('base.Address', {
   storeId: `Address_${route.fullPath}`,
   scopeManager: useScopeManager().menuScopeManager,
 });

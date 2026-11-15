@@ -16,7 +16,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { useRoute } from 'vue-router';
-import { createStoreByModel } from '@/web/web/stores/registry';
+import { createModelStore } from '@/web/web/stores/registry';
 import UoMCategoryListView from '../views/UoMCategoryListView.vue';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
 import { createTranslate } from '@/web/web/i18n';
@@ -29,7 +29,7 @@ const { _t } = createTranslate('base', { scope: 'web/pages/UoMCategoryList' });
 const pageTitle = _t('Unit of Measure Category List');
 
 const route = useRoute();
-const uomCategoryStore = createStoreByModel<typeof UoMCategory>('base.UoMCategory', {
+const uomCategoryStore = createModelStore<typeof UoMCategory>('base.UoMCategory', {
   storeId: `UoMCategory_${route.fullPath}`,
   scopeManager: useScopeManager().menuScopeManager,
 });

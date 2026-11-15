@@ -274,7 +274,7 @@ import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
 import { confirmChoyAction } from '../../composables/confirmChoyAction';
 import type { RuleItem } from 'async-validator';
 import type { BaseModel, FieldPath, FieldPathType, ClientModel } from '@/core/rpc';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import { deepClonePreserve } from '@/core/utils/clone';
 import ChoyFieldBase, { type FieldStateExpr, type FormItemProps } from './ChoyFieldBase.vue';
 import ChoyO2MKanbanVirtualBoard from './ChoyO2MKanbanVirtualBoard.vue';
@@ -351,7 +351,7 @@ function noopRemove(): Promise<boolean> {
 
 const props = withDefaults(
   defineProps<{
-    store?: WebModelStore<T>;
+    store?: ModelStore<T>;
     prop?: P | (IsAny<T> extends true ? string : never);
     binding?: UseField<T, V>;
     label?: string;
@@ -462,7 +462,7 @@ const effectiveCreateDialogTitle = computed(() => props.createDialogTitle || _t(
 const effectiveEditDialogTitle = computed(() => props.editDialogTitle || _t('Edit record'));
 const effectiveDisplayDialogTitle = computed(() => props.displayDialogTitle || _t('View record'));
 
-const binding = (props.binding ?? useField<T, P, V>({ store: props.store as WebModelStore<T>, prop: props.prop as P })) as UseField<T, V>;
+const binding = (props.binding ?? useField<T, P, V>({ store: props.store as ModelStore<T>, prop: props.prop as P })) as UseField<T, V>;
 
 /** Register nested O2M columns so Create/Update returnFields keep card data after save. */
 function resolveKanbanReturnFieldPaths(): string[] {
@@ -483,7 +483,7 @@ function resolveKanbanReturnFieldPaths(): string[] {
 binding.registerFields(resolveKanbanReturnFieldPaths());
 
 const { getItems, insertItem, removeItemAt } = binding.asMutableArray<any>();
-const dialogStore = computed<WebModelStore<any>>(() => (binding.relationStore as WebModelStore<any>) || (props.store as WebModelStore<any>));
+const dialogStore = computed<ModelStore<any>>(() => (binding.relationStore as ModelStore<any>) || (props.store as ModelStore<any>));
 const slots = useSlots();
 
 const showHandleColumn = computed(

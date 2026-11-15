@@ -16,7 +16,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { useRoute } from 'vue-router';
-import { createStoreByModel } from '@/web/web/stores/registry';
+import { createModelStore } from '@/web/web/stores/registry';
 import SequenceIdempotencyListView from '../views/SequenceIdempotencyListView.vue';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
 import { createTranslate } from '@/web/web/i18n';
@@ -29,7 +29,7 @@ const { _t } = createTranslate('base', { scope: 'web/pages/SequenceIdempotencyLi
 const pageTitle = _t('Sequence Idempotency List');
 
 const route = useRoute();
-const sequenceIdempotencyStore = createStoreByModel<typeof SequenceIdempotency>('base.SequenceIdempotency', {
+const sequenceIdempotencyStore = createModelStore<typeof SequenceIdempotency>('base.SequenceIdempotency', {
   storeId: `SequenceIdempotency_${route.fullPath}`,
   scopeManager: useScopeManager().menuScopeManager,
 });

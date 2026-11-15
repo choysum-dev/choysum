@@ -16,7 +16,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { useRoute } from 'vue-router';
-import { createStoreByModel } from '@/web/web/stores/registry';
+import { createModelStore } from '@/web/web/stores/registry';
 import RoleRecordRuleListView from '@/auth/web/views/RoleRecordRuleListView.vue';
 import { useScopeManager } from '@/web/web/stores/storeScopeManager';
 import { createTranslate } from '@/web/web/i18n';
@@ -27,7 +27,7 @@ const { _t } = createTranslate('auth', { scope: 'web/pages/RoleRecordRuleList' }
 const pageTitle = _t('Record Rule List');
 
 const route = useRoute();
-const recordRuleStore = createStoreByModel<typeof RoleRecordRule>('auth.RoleRecordRule', {
+const recordRuleStore = createModelStore<typeof RoleRecordRule>('auth.RoleRecordRule', {
   storeId: `RoleRecordRule_${route.fullPath}`,
   scopeManager: useScopeManager().menuScopeManager,
 });

@@ -44,7 +44,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import type { RouteLocationRaw } from 'vue-router';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import type SequenceIdempotency from '@/base/service/models/sequence_idempotency';
 import SequenceListView from './SequenceListView.vue';
 import CompanyListView from './CompanyListView.vue';
@@ -59,7 +59,7 @@ defineOptions({ name: 'SequenceIdempotencyFormView', inheritAttrs: true });
 const { _t, _lt } = createTranslate('base', { scope: 'web/views/SequenceIdempotencyFormView' });
 const props = withDefaults(
   defineProps<{
-    store?: WebModelStore<SequenceIdempotency>;
+    store?: ModelStore<SequenceIdempotency>;
     recordId?: string;
     viewMode?: ViewMode;
     showHeader?: boolean;

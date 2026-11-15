@@ -58,7 +58,7 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts">
 import { useRouter } from 'vue-router';
 import type { RouteLocationRaw } from 'vue-router';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import type Session from '@/auth/service/models/session';
 import type User from '@/auth/service/models/user/user';
 
@@ -76,7 +76,7 @@ const { _t, _lt } = createTranslate('auth', { scope: 'web/views/SessionFormView'
 
 const props = withDefaults(
   defineProps<{
-    store?: WebModelStore<Session>;
+    store?: ModelStore<Session>;
     recordId?: string;
     viewMode?: ViewMode;
     showHeader?: boolean;

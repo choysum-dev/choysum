@@ -26,7 +26,7 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { RouteLocationRaw } from 'vue-router';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 import type State from '@/base/service/models/state';
 import CountryListView from './CountryListView.vue';
 import { defineModelActions } from '@/core/web/resource';
@@ -40,7 +40,7 @@ defineOptions({ name: 'StateFormView', inheritAttrs: true });
 const { _t, _lt } = createTranslate('base', { scope: 'web/views/StateFormView' });
 const requiredRules = computed(() => [{ required: true, message: _t('Required') }]);
 const props = withDefaults(
-  defineProps<{ store?: WebModelStore<State>; recordId?: string; viewMode?: ViewMode; showHeader?: boolean; createAction?: string | RouteLocationRaw }>(),
+  defineProps<{ store?: ModelStore<State>; recordId?: string; viewMode?: ViewMode; showHeader?: boolean; createAction?: string | RouteLocationRaw }>(),
   { showHeader: true, createAction: undefined }
 );
 const stateActions = defineModelActions('base.State', { entityTitle: _lt('State') });

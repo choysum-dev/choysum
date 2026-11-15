@@ -41,9 +41,9 @@ import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
 import ChoyInput from '@/web/web/components/vendor/ui/input/Input.vue';
 import { ChoyMessage } from '../../composables/useChoyMessage';
 import { createTranslate } from '@/web/web/i18n';
-import { createStoreByModel } from '@/web/web/stores/registry';
+import { createModelStore } from '@/web/web/stores/registry';
 import { useI18nStore } from '@/web/web/stores/i18nStore';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 
 defineOptions({ name: 'ChoyFieldTranslationsDialog' });
 
@@ -59,7 +59,7 @@ type TranslationRow = ChoyTranslationRow;
 
 const props = defineProps<{
   modelValue: boolean;
-  store: WebModelStore<any>;
+  store: ModelStore<any>;
   recordId: string;
   fieldName: string;
   fieldLabel?: string;
@@ -77,7 +77,7 @@ const emit = defineEmits<{
 }>();
 
 const { _t } = createTranslate('web', { scope: 'web/components/field/FieldTranslationsDialog' });
-const languageStore = createStoreByModel('base.Language');
+const languageStore = createModelStore('base.Language');
 
 const visible = computed({
   get: () => props.modelValue,

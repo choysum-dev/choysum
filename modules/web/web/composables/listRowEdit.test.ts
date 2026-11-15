@@ -15,7 +15,7 @@ import {
   unwrapListRecord,
   withEditingPayload,
 } from '@/web/web/composables/listRowEdit';
-import type { WebModelStore } from '@/web/web/stores/modelStore';
+import type { ModelStore } from '@/web/web/stores/modelStore';
 
 describe('listRowEdit helpers', () => {
   test('unwrapListRecord covers wrappers and passthrough', () => {
@@ -79,7 +79,7 @@ describe('listRowEdit helpers', () => {
         Locked: { id: '2', type: 'int', typeAnnotation: '', isReadonly: true },
         Name: { id: '3', type: 'string', typeAnnotation: '' },
       },
-    } as unknown as WebModelStore<any>;
+    } as unknown as ModelStore<any>;
     expect(hasHandleField(store, 'Sequence')).toBe(true);
     expect(hasHandleField(store, 'Locked')).toBe(false);
     expect(hasHandleField(store, 'Name')).toBe(false);
