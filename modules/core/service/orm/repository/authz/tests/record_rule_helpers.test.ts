@@ -26,7 +26,6 @@ function createDeps(overrides: DepOverrides = {}) {
     requestContext: { activeCompanyId: 'company_a' },
     normalizeCompanyIds: () => ['company_a', 'company_b'],
     normalizeCompanyIdForWrite: () => 'company_a',
-    isControlPlaneMetaModel: () => false,
     recordRuleEnabled: () => true,
     getRecordRuleBypassDepth: () => 0,
     withRecordRuleBypass: async <T>(fn: () => Promise<T>) => await fn(),
@@ -187,15 +186,31 @@ test('record rule helper denies unknown token and invalid condition json', () =>
   expect(invalidJsonMessage.includes('record_rule_invalid_condition_json')).toBe(true);
 });
 
-test('record rule helper returns early allow envelopes for disabled/control-plane/bypass branches', async () => {
+test('record rule helper returns early allow envelopes for disabled/bypass branches', async () => {
   const disabled = createDeps({ recordRuleEnabled: () => false });
   expect(await fetchRepositoryRecordRuleEnvelope(disabled.deps, 'read')).toEqual({ kind: 'true', reason: 'record_rule_disabled' });
 
-  const controlPlane = createDeps({ isControlPlaneMetaModel: () => true });
-  expect(await fetchRepositoryRecordRuleEnvelope(controlPlane.deps, 'read')).toEqual({ kind: 'true', reason: 'control_plane_meta_model' });
-
   const bypass = createDeps({ getRecordRuleBypassDepth: () => 1 });
   expect(await fetchRepositoryRecordRuleEnvelope(bypass.deps, 'read')).toEqual({ kind: 'true', reason: 'record_rule_bypass' });
+});
+
+test('record rule helper evaluates meta models through AuthUserService instead of app-wide bypass', async () => {
+  const original = AuthUserService.GetRecordRuleCondition;
+  const calls: Array<{ model: string; op: string }> = [];
+  (AuthUserService as any).GetRecordRuleCondition = async (model: string, op: string) => {
+    calls.push({ model, op });
+    return { kind: 'false', reason: 'no_grant_write_deny' };
+  };
+  try {
+    const { deps } = createDeps({
+      meta: { fullModelName: 'meta.MetaModel', modelName: 'MetaModel', name: 'MetaModel', application: 'meta' },
+    });
+    const env = await fetchRepositoryRecordRuleEnvelope(deps, 'write');
+    expect(env).toEqual({ kind: 'false', reason: 'no_grant_write_deny' });
+    expect(calls).toEqual([{ model: 'meta.MetaModel', op: 'write' }]);
+  } finally {
+    (AuthUserService as any).GetRecordRuleCondition = original;
+  }
 });
 
 test('record rule helper allowlist hit returns allow envelope and service invalid envelope is normalized', async () => {

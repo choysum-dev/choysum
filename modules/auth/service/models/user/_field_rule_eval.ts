@@ -12,6 +12,7 @@ import type MetaApplicationModel from '@/meta/service/models/application';
 import type MetaFieldModel from '@/meta/service/models/field';
 import type MetaModelModel from '@/meta/service/models/model';
 import { normalizeRefId } from '@/core/service/utils/normalization';
+import { withPermissionGraphBypass } from './_authz_shared';
 
 const MetaApplication = createServiceByModel<typeof MetaApplicationModel>('meta.MetaApplication');
 const MetaField = createServiceByModel<typeof MetaFieldModel>('meta.MetaField');
@@ -55,6 +56,27 @@ type FieldRuleDecision = {
   logicalName: string | null;
   permRead: 'allow' | 'deny' | null;
   permWrite: 'allow' | 'deny' | null;
+};
+
+/** Projected RoleFieldRule.Search row used by field-rule evaluation. */
+type RoleFieldRuleEvalRow = {
+  Id?: unknown;
+  MetaApplicationId?: unknown;
+  MetaModelId?: unknown;
+  MetaFieldId?: unknown;
+  LogicalModelName?: unknown;
+  PermRead?: unknown;
+  PermWrite?: unknown;
+};
+
+type FieldRuleEvalMaterial = {
+  applicationId: string;
+  modelId: string;
+  modelNameWant: string;
+  fieldNames: string[];
+  fieldNameById: Map<string, string>;
+  fieldIdSet: Set<string>;
+  rules: RoleFieldRuleEvalRow[];
 };
 
 function getFieldRuleReqState(): Record<string, unknown> | undefined {
@@ -106,8 +128,20 @@ function denyAllNonSystemFields(fieldNames: string[], reason: string, hitRuleIds
  *
  * Deny-by-default: no matching allow ⇒ field enters deny lists.
  * More-specific scope wins; same-scope deny-wins; read-deny ⇒ write-deny.
+ *
+ * Permission-graph reads (meta + RoleFieldRule) run under bypass — same need as
+ * evaluateRecordRuleCondition wrapping RoleRecordRule.Search. In-memory partition
+ * and per-field decisions run outside bypass.
  */
 export async function evaluateFieldRules(input: FieldRuleEvalInput): Promise<FieldRuleEvalResult> {
+  const loaded = await withPermissionGraphBypass(async () => loadFieldRuleEvalMaterial(input));
+  if (loaded.kind === 'early') return loaded.result;
+  return decideFieldRulesFromMaterial(loaded.material);
+}
+
+async function loadFieldRuleEvalMaterial(
+  input: FieldRuleEvalInput
+): Promise<{ kind: 'early'; result: FieldRuleEvalResult } | { kind: 'decide'; material: FieldRuleEvalMaterial }> {
   const modelNameWant = String(input.modelName || '').trim();
   const [applicationId, modelId] = await Promise.all([
     resolveApplicationId(input.appName),
@@ -143,11 +177,11 @@ export async function evaluateFieldRules(input: FieldRuleEvalInput): Promise<Fie
 
   if (fieldIdsByName.size === 0) {
     // Nothing to deny (system fields are never listed).
-    return { denyReadFields: [], denyWriteFields: [], reason: 'no_fields_deny_by_default' };
+    return { kind: 'early', result: { denyReadFields: [], denyWriteFields: [], reason: 'no_fields_deny_by_default' } };
   }
 
   if (input.roleIds.length === 0) {
-    return denyAllNonSystemFields(fieldNames, 'no_roles_deny_by_default');
+    return { kind: 'early', result: denyAllNonSystemFields(fieldNames, 'no_roles_deny_by_default') };
   }
 
   // Load rules
@@ -198,7 +232,7 @@ export async function evaluateFieldRules(input: FieldRuleEvalInput): Promise<Fie
     }
   );
 
-  const rules = await RoleFieldRule.Search(
+  const rules = (await RoleFieldRule.Search(
     condition({
       And: [['RoleId', 'in', input.roleIds], { Or: scopeOr }],
     }),
@@ -206,11 +240,28 @@ export async function evaluateFieldRules(input: FieldRuleEvalInput): Promise<Fie
       fields: ['Id', 'MetaApplicationId', 'MetaModelId', 'MetaFieldId', 'LogicalModelName', 'PermRead', 'PermWrite'],
       limit: 5000,
     }
-  );
+  )) as RoleFieldRuleEvalRow[] | null | undefined;
 
   if (!rules || rules.length === 0) {
-    return denyAllNonSystemFields(fieldNames, 'no_field_rules_deny_by_default');
+    return { kind: 'early', result: denyAllNonSystemFields(fieldNames, 'no_field_rules_deny_by_default') };
   }
+
+  return {
+    kind: 'decide',
+    material: {
+      applicationId,
+      modelId,
+      modelNameWant,
+      fieldNames,
+      fieldNameById,
+      fieldIdSet,
+      rules,
+    },
+  };
+}
+
+function decideFieldRulesFromMaterial(material: FieldRuleEvalMaterial): FieldRuleEvalResult {
+  const { applicationId, modelId, modelNameWant, fieldNames, fieldNameById, fieldIdSet, rules } = material;
 
   // Partition by scope
   const fieldRulesByFieldName = new Map<string, FieldRuleDecision[]>();

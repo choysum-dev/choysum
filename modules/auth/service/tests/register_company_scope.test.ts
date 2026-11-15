@@ -7,6 +7,7 @@ import Role from '@/auth/service/models/role';
 import UserRole from '@/auth/service/models/user_role';
 import { createServiceByModel } from '@/core/service/rpc';
 import type Company from '@/base/service/models/company';
+import { META_FIXTURE_RECORD_RULE_ALLOW } from './_meta_fixture_allow';
 
 const CompanyService = createServiceByModel<typeof Company>('base.Company');
 
@@ -73,10 +74,7 @@ function setupAllowlistForRegister(): void {
       'RoleMethodAccess:read',
       'RoleMethodAccess:create',
 
-      'meta.MetaModel:read',
-      'meta.MetaService:read',
-      'MetaModel:read',
-      'MetaService:read',
+      ...META_FIXTURE_RECORD_RULE_ALLOW,
 
       'base.Company:read',
       'Company:read',

@@ -49,7 +49,6 @@ function createDeps(overrides: DepOverrides = {}) {
       userId: 'user_1',
       requestContext: { activeCompanyId: 'company_a' },
       normalizeCompanyIds: () => ['company_a'],
-      isControlPlaneMetaModel: () => false,
       isFieldRuleControlPlaneModel: () => false,
       withRecordRuleBypass: async <T>(fn: () => Promise<T>) => await fn(),
       withFieldRuleBypass: async <T>(fn: () => Promise<T>) => await fn(),
@@ -284,7 +283,7 @@ test('field rule helper env switch toggles global enable flag', () => {
   }
 });
 
-test('field rule helper returns early allow specs for disabled/control-plane/skip branches', async () => {
+test('field rule helper returns early allow specs for disabled/field-control-plane/skip branches', async () => {
   const originalEnv = (globalThis as any).__CHOYSUM_RUNTIME_ENV__;
   try {
     (globalThis as any).__CHOYSUM_RUNTIME_ENV__ = { CHOYSUM_GRPC_FIELD_RULE_ENABLED: 'false' };
@@ -296,13 +295,6 @@ test('field rule helper returns early allow specs for disabled/control-plane/ski
     });
 
     (globalThis as any).__CHOYSUM_RUNTIME_ENV__ = { CHOYSUM_GRPC_FIELD_RULE_ENABLED: true };
-    const control = createDeps({ isControlPlaneMetaModel: () => true });
-    expect(await getRepositoryFieldRuleSpec(control.deps)).toEqual({
-      denyReadFields: [],
-      denyWriteFields: [],
-      reason: 'control_plane_meta_model',
-    });
-
     const fieldControl = createDeps({ isFieldRuleControlPlaneModel: () => true });
     expect(await getRepositoryFieldRuleSpec(fieldControl.deps)).toEqual({
       denyReadFields: [],
@@ -437,7 +429,7 @@ test('field rule helper prunes selection tree recursively and keeps Id when chil
   };
 
   try {
-    await pruneRepositorySelectionTreeForFieldRule({ isControlPlaneMetaModel: () => false } as any, parentMeta, node, new Map());
+    await pruneRepositorySelectionTreeForFieldRule(parentMeta, node, new Map());
   } finally {
     RepositoryFactory.getRepository = originalGetRepo;
     (MetadataStorage.instance as any).getModelMetadata = originalGetMeta;
@@ -488,7 +480,7 @@ test('field rule helper prune tolerates repository lookup failure and leaves nod
   };
 
   try {
-    await pruneRepositorySelectionTreeForFieldRule({ isControlPlaneMetaModel: () => false } as any, parentMeta, node, new Map());
+    await pruneRepositorySelectionTreeForFieldRule(parentMeta, node, new Map());
   } finally {
     RepositoryFactory.getRepository = originalGetRepo;
     (MetadataStorage.instance as any).getModelMetadata = originalGetMeta;
@@ -684,25 +676,38 @@ test('field rule helper write assertion returns early for non-plain payload and 
   );
 });
 
-test('field rule helper prune returns early for missing node, disabled env and control-plane mode', async () => {
+test('field rule helper prune returns early for missing node and disabled env', async () => {
   const originalEnv = (globalThis as any).__CHOYSUM_RUNTIME_ENV__;
   try {
-    await pruneRepositorySelectionTreeForFieldRule(
-      { isControlPlaneMetaModel: () => false } as any,
-      { type: class DemoModel {} } as any,
-      undefined as any,
-      new Map()
-    );
+    await pruneRepositorySelectionTreeForFieldRule({ type: class DemoModel {} } as any, undefined as any, new Map());
 
     (globalThis as any).__CHOYSUM_RUNTIME_ENV__ = { CHOYSUM_GRPC_FIELD_RULE_ENABLED: 'false' };
     const node = { columns: new Set(['Name']), relations: new Map() } as any;
-    await pruneRepositorySelectionTreeForFieldRule({ isControlPlaneMetaModel: () => false } as any, { type: class DemoModel {} } as any, node, new Map());
-    expect(node.columns.has('Name')).toBe(true);
-
-    (globalThis as any).__CHOYSUM_RUNTIME_ENV__ = { CHOYSUM_GRPC_FIELD_RULE_ENABLED: true };
-    await pruneRepositorySelectionTreeForFieldRule({ isControlPlaneMetaModel: () => true } as any, { type: class DemoModel {} } as any, node, new Map());
+    await pruneRepositorySelectionTreeForFieldRule({ type: class DemoModel {} } as any, node, new Map());
     expect(node.columns.has('Name')).toBe(true);
   } finally {
+    (globalThis as any).__CHOYSUM_RUNTIME_ENV__ = originalEnv;
+  }
+});
+
+test('field rule helper prune still applies deny fields for meta-named models', async () => {
+  class MetaModel {}
+  const meta = { type: MetaModel, fullModelName: 'meta.MetaModel', application: 'meta' } as any;
+  const node = { columns: new Set(['Id', 'Name', 'Path']), relations: new Map() } as any;
+  const originalEnv = (globalThis as any).__CHOYSUM_RUNTIME_ENV__;
+  const originalGetRepo = RepositoryFactory.getRepository;
+
+  try {
+    (globalThis as any).__CHOYSUM_RUNTIME_ENV__ = { CHOYSUM_GRPC_FIELD_RULE_ENABLED: true };
+    (RepositoryFactory as any).getRepository = () => ({
+      getDenyReadFields: async () => ({ denyReadFields: ['Path', 'Name'] }),
+    });
+    await pruneRepositorySelectionTreeForFieldRule(meta, node, new Map());
+    expect(node.columns.has('Id')).toBe(true);
+    expect(node.columns.has('Name')).toBe(false);
+    expect(node.columns.has('Path')).toBe(false);
+  } finally {
+    (RepositoryFactory as any).getRepository = originalGetRepo;
     (globalThis as any).__CHOYSUM_RUNTIME_ENV__ = originalEnv;
   }
 });
@@ -730,8 +735,8 @@ test('field rule helper prune honors deny cache and Id special-case handling', a
 
   try {
     const cache = new Map<any, string[]>();
-    await pruneRepositorySelectionTreeForFieldRule({ isControlPlaneMetaModel: () => false } as any, parentMeta, node, cache);
-    await pruneRepositorySelectionTreeForFieldRule({ isControlPlaneMetaModel: () => false } as any, parentMeta, node, cache);
+    await pruneRepositorySelectionTreeForFieldRule(parentMeta, node, cache);
+    await pruneRepositorySelectionTreeForFieldRule(parentMeta, node, cache);
   } finally {
     RepositoryFactory.getRepository = originalGetRepo;
   }
@@ -776,7 +781,30 @@ test('field rule helper uses process cache and fallback key parts when request c
   });
 });
 
-test('field rule helper write assertion returns early on disabled and control-plane guards', async () => {
+test('field rule helper fetches spec for meta models instead of app-wide bypass', async () => {
+  const originalEnv = (globalThis as any).__CHOYSUM_RUNTIME_ENV__;
+  const original = AuthUserService.GetFieldRuleSpec;
+  const calls: string[] = [];
+  try {
+    (globalThis as any).__CHOYSUM_RUNTIME_ENV__ = { CHOYSUM_GRPC_FIELD_RULE_ENABLED: true };
+    (AuthUserService as any).GetFieldRuleSpec = async (model: string) => {
+      calls.push(model);
+      return { denyReadFields: [], denyWriteFields: ['Path'], reason: 'ok' };
+    };
+    const { deps } = createDeps({
+      meta: { fullModelName: 'meta.MetaModel', modelName: 'MetaModel', name: 'MetaModel', application: 'meta', fields: new Map() },
+    });
+    const spec = await getRepositoryFieldRuleSpec(deps);
+    expect(calls).toEqual(['meta.MetaModel']);
+    expect(spec.denyWriteFields).toEqual(['Path']);
+    expect(spec.reason).toBe('ok');
+  } finally {
+    (AuthUserService as any).GetFieldRuleSpec = original;
+    (globalThis as any).__CHOYSUM_RUNTIME_ENV__ = originalEnv;
+  }
+});
+
+test('field rule helper write assertion returns early on disabled and field-control-plane guards', async () => {
   const envBackup = (globalThis as any).__CHOYSUM_RUNTIME_ENV__;
   try {
     (globalThis as any).__CHOYSUM_RUNTIME_ENV__ = { CHOYSUM_GRPC_FIELD_RULE_ENABLED: false };
@@ -784,9 +812,6 @@ test('field rule helper write assertion returns early on disabled and control-pl
     await assertRepositoryFieldRuleWriteAllowed({ ...disabled.deps, payload: { Name: 'x' } });
 
     (globalThis as any).__CHOYSUM_RUNTIME_ENV__ = { CHOYSUM_GRPC_FIELD_RULE_ENABLED: true };
-    const control = createDeps({ isControlPlaneMetaModel: () => true });
-    await assertRepositoryFieldRuleWriteAllowed({ ...control.deps, payload: { Name: 'x' } });
-
     const fieldControl = createDeps({ isFieldRuleControlPlaneModel: () => true });
     await assertRepositoryFieldRuleWriteAllowed({ ...fieldControl.deps, payload: { Name: 'x' } });
   } finally {
@@ -840,7 +865,7 @@ test('field rule helper prune handles missing ctor and keeps non-empty child nod
     columns: new Set(['Name']),
     relations: new Map(),
   } as any;
-  await pruneRepositorySelectionTreeForFieldRule({ isControlPlaneMetaModel: () => false } as any, {} as any, nodeWithoutCtor, new Map());
+  await pruneRepositorySelectionTreeForFieldRule({} as any, nodeWithoutCtor, new Map());
   expect(nodeWithoutCtor.columns.has('Name')).toBe(true);
 
   class ParentModel {}
@@ -882,7 +907,7 @@ test('field rule helper prune handles missing ctor and keeps non-empty child nod
   };
 
   try {
-    await pruneRepositorySelectionTreeForFieldRule({ isControlPlaneMetaModel: () => false } as any, parentMeta, node, new Map());
+    await pruneRepositorySelectionTreeForFieldRule(parentMeta, node, new Map());
   } finally {
     RepositoryFactory.getRepository = originalGetRepo;
     (MetadataStorage.instance as any).getModelMetadata = originalGetMeta;
@@ -949,7 +974,7 @@ test('field rule helper trim-skips empty deny items during prune', async () => {
   }) as any;
 
   try {
-    await pruneRepositorySelectionTreeForFieldRule({ isControlPlaneMetaModel: () => false } as any, parentMeta, node, new Map());
+    await pruneRepositorySelectionTreeForFieldRule(parentMeta, node, new Map());
   } finally {
     RepositoryFactory.getRepository = originalGetRepo;
   }

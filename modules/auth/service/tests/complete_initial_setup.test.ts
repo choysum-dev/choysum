@@ -11,6 +11,7 @@ import { SETUP_COMPLETED_AT_KEY } from '@/auth/service/models/user/setup_complet
 import type MetaModelData from '@/meta/service/models/model_data';
 import type CompanyModel from '@/base/service/models/company';
 import type CurrencyModel from '@/base/service/models/currency';
+import { META_FIXTURE_RECORD_RULE_ALLOW } from './_meta_fixture_allow';
 
 const MetaModelDataService = createServiceByModel<typeof MetaModelData>('meta.MetaModelData');
 const Company = createServiceByModel<typeof CompanyModel>('base.Company');
@@ -71,8 +72,7 @@ function setupAllowlistForCompleteInitialSetup(): void {
       'AppSetting:write',
       'AppSetting:create',
       'AppSetting:unlink',
-      'meta.MetaModelData:read',
-      'MetaModelData:read',
+      ...META_FIXTURE_RECORD_RULE_ALLOW,
       'auth.Session:read',
       'auth.Session:write',
       'Session:read',

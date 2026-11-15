@@ -11,7 +11,6 @@ export {
   createRepositoryRecordRuleCoordinatorPolicyDeps,
   createRepositoryFieldRuleDeps,
   createRepositoryFieldRulePolicyDeps,
-  createRepositoryFieldRuleSelectionDeps,
   createRepositoryCompanyScopeDeps,
   createRepositoryCompanyScopePolicyDeps,
   createRepositoryCompanyScopeQueryDeps,
@@ -62,7 +61,7 @@ export {
 } from './record_rule';
 export type { RepositoryRecordRuleDeps } from './record_rule_helpers';
 export { fetchRepositoryRecordRuleEnvelope, replaceRepositoryRecordRuleConditionTokens } from './record_rule_helpers';
-export type { RepositoryFieldRuleDeps, RepositoryFieldRuleSelectionDeps, RepositoryFieldRuleSpec } from './field_rule';
+export type { RepositoryFieldRuleDeps, RepositoryFieldRuleSpec } from './field_rule';
 export {
   assertRepositoryFieldRuleWriteAllowed,
   buildFailClosedFieldRuleSpec,

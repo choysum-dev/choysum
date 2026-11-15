@@ -12,6 +12,7 @@ import { evaluateRecordRuleCondition } from '@/auth/service/models/user/_record_
 import { evaluateFieldRules } from '@/auth/service/models/user/_field_rule_eval';
 import { resolveMethodAccessMeta } from '@/auth/service/models/user/_method_access';
 import { metaModelId } from './_meta_ids';
+import { META_FIXTURE_RECORD_RULE_ALLOW } from './_meta_fixture_allow';
 import { createServiceByModel } from '@/core/service/rpc';
 import type MetaApplicationModel from '@/meta/service/models/application';
 import type MetaModelModel from '@/meta/service/models/model';
@@ -123,10 +124,7 @@ function setupAllowlistForFixtures(): void {
       'RoleInheritance:delete',
 
       // meta
-      'meta.MetaModel:read',
-      'meta.MetaService:read',
-      'MetaModel:read',
-      'MetaService:read',
+      ...META_FIXTURE_RECORD_RULE_ALLOW,
     ],
   });
 }

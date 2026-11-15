@@ -24,7 +24,6 @@ type RepositoryAuthPolicyCommonDepsParams = {
 
 type RepositoryRecordRuleDepsParams = RepositoryAuthPolicyCommonDepsParams & {
   normalizeCompanyIdForWrite: () => string | undefined;
-  isControlPlaneMetaModel: () => boolean;
   recordRuleEnabled: () => boolean;
   getRecordRuleBypassDepth: () => number;
   withRecordRuleBypass: <T>(fn: () => Promise<T>) => Promise<T>;
@@ -39,7 +38,6 @@ type RepositoryRecordRuleCoordinatorDepsParams = RepositoryAuthzContextDepsParam
 };
 
 type RepositoryFieldRuleDepsParams = RepositoryAuthPolicyCommonDepsParams & {
-  isControlPlaneMetaModel: () => boolean;
   isFieldRuleControlPlaneModel: () => boolean;
   withRecordRuleBypass: <T>(fn: () => Promise<T>) => Promise<T>;
   withFieldRuleBypass: <T>(fn: () => Promise<T>) => Promise<T>;
@@ -81,7 +79,6 @@ export function createRepositoryRecordRuleDeps(params: RepositoryRecordRuleDepsP
   return {
     ...createRepositoryAuthPolicyCommonDeps(params),
     normalizeCompanyIdForWrite: params.normalizeCompanyIdForWrite,
-    isControlPlaneMetaModel: params.isControlPlaneMetaModel,
     recordRuleEnabled: params.recordRuleEnabled,
     getRecordRuleBypassDepth: params.getRecordRuleBypassDepth,
     withRecordRuleBypass: params.withRecordRuleBypass,
@@ -110,7 +107,6 @@ export function createRepositoryRecordRuleCoordinatorPolicyDeps(params: Reposito
 export function createRepositoryFieldRuleDeps(params: RepositoryFieldRuleDepsParams) {
   return {
     ...createRepositoryAuthPolicyCommonDeps(params),
-    isControlPlaneMetaModel: params.isControlPlaneMetaModel,
     isFieldRuleControlPlaneModel: params.isFieldRuleControlPlaneModel,
     withRecordRuleBypass: params.withRecordRuleBypass,
     withFieldRuleBypass: params.withFieldRuleBypass,
@@ -119,12 +115,6 @@ export function createRepositoryFieldRuleDeps(params: RepositoryFieldRuleDepsPar
 
 export function createRepositoryFieldRulePolicyDeps(params: RepositoryFieldRuleDepsParams) {
   return createRepositoryFieldRuleDeps(params);
-}
-
-export function createRepositoryFieldRuleSelectionDeps(params: Pick<RepositoryFieldRuleDepsParams, 'isControlPlaneMetaModel'>) {
-  return {
-    isControlPlaneMetaModel: params.isControlPlaneMetaModel,
-  };
 }
 
 export function createRepositoryCompanyScopeDeps(params: RepositoryCompanyScopeDepsParams) {

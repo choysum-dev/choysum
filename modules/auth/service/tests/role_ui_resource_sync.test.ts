@@ -10,6 +10,11 @@ import { createServiceByModel } from '@/core/service/rpc';
 import type MetaServiceModel from '@/meta/service/models/service';
 import type MetaUiResourceModel from '@/meta/service/models/ui_resource';
 import { metaApplicationId, metaModelId } from './_meta_ids';
+import {
+  META_FIXTURE_RECORD_RULE_ALLOW,
+  META_FIXTURE_RECORD_RULE_ALLOW_UI_MUTATE,
+} from './_meta_fixture_allow';
+
 const MetaService = createServiceByModel<typeof MetaServiceModel>('meta.MetaService');
 const MetaUiResource = createServiceByModel<typeof MetaUiResourceModel>('meta.MetaUiResource');
 
@@ -86,21 +91,8 @@ function setupAllowlistForFixtures(): void {
       'RoleUiResource:create',
       'RoleUiResource:delete',
 
-      'meta.MetaUiResource:read',
-      'meta.MetaUiResource:write',
-      'meta.MetaUiResource:create',
-      'meta.MetaUiResource:delete',
-      'MetaUiResource:read',
-      'MetaUiResource:write',
-      'MetaUiResource:create',
-      'MetaUiResource:delete',
-
-      'meta.MetaModel:read',
-      'meta.MetaService:read',
-      'meta.MetaApplication:read',
-      'MetaModel:read',
-      'MetaService:read',
-      'MetaApplication:read',
+      ...META_FIXTURE_RECORD_RULE_ALLOW,
+      ...META_FIXTURE_RECORD_RULE_ALLOW_UI_MUTATE,
     ],
   });
 }

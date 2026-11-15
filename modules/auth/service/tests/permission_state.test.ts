@@ -14,7 +14,13 @@ import type MetaServiceModel from '@/meta/service/models/service';
 import type MetaUiResourceModel from '@/meta/service/models/ui_resource';
 import type MetaUiResourceMenuRouteModel from '@/meta/service/models/ui_resource_menu_route';
 import type MetaUiResourceRouteActionModel from '@/meta/service/models/ui_resource_route_action';
+import { withPermissionGraphBypass } from '@/core/service/api/authz_bypass';
+import {
+  META_FIXTURE_RECORD_RULE_ALLOW,
+  META_FIXTURE_RECORD_RULE_ALLOW_UI_MUTATE,
+} from './_meta_fixture_allow';
 import { metaApplicationId, metaModelId } from './_meta_ids';
+
 const MetaService = createServiceByModel<typeof MetaServiceModel>('meta.MetaService');
 const MetaUiResource = createServiceByModel<typeof MetaUiResourceModel>('meta.MetaUiResource');
 const MetaUiResourceMenuRoute = createServiceByModel<typeof MetaUiResourceMenuRouteModel>('meta.MetaUiResourceMenuRoute');
@@ -129,12 +135,8 @@ function setupAllowlistForFixtures(): void {
       'RoleUiResource:delete',
 
       // meta
-      'meta.MetaApplication:read',
-      'MetaApplication:read',
-      'meta.MetaModel:read',
-      'meta.MetaService:read',
-      'MetaModel:read',
-      'MetaService:read',
+      ...META_FIXTURE_RECORD_RULE_ALLOW,
+      ...META_FIXTURE_RECORD_RULE_ALLOW_UI_MUTATE,
     ],
   });
 }
@@ -157,49 +159,53 @@ async function resolveModelId(appName: string, modelName: string): Promise<strin
 }
 
 async function resolveServiceId(modelId: string, serviceName: string): Promise<string> {
-  const rows = await MetaService.Search(
-    {
-      And: [['ModelId', '=', modelId]],
-    } as any,
-    { fields: ['Id', 'Name'], limit: 5000 }
-  );
+  return await withPermissionGraphBypass(async () => {
+    const rows = await MetaService.Search(
+      {
+        And: [['ModelId', '=', modelId]],
+      } as any,
+      { fields: ['Id', 'Name'], limit: 5000 }
+    );
 
-  const target = String(serviceName || '')
-    .trim()
-    .toLowerCase();
-  const hit = (rows || []).find(
-    (r: any) =>
-      String((r as any).Name || '')
-        .trim()
-        .toLowerCase() === target
-  ) as any;
+    const target = String(serviceName || '')
+      .trim()
+      .toLowerCase();
+    const hit = (rows || []).find(
+      (r: any) =>
+        String((r as any).Name || '')
+          .trim()
+          .toLowerCase() === target
+    ) as any;
 
-  const id = String(hit?.Id || '').trim();
-  if (!id) throw new Error(`meta service not found: ${modelId}.${serviceName}`);
-  return id;
+    const id = String(hit?.Id || '').trim();
+    if (!id) throw new Error(`meta service not found: ${modelId}.${serviceName}`);
+    return id;
+  });
 }
 
 async function resolveService(modelId: string, serviceName: string): Promise<{ id: string; name: string }> {
-  const rows = await MetaService.Search(
-    {
-      And: [['ModelId', '=', modelId]],
-    } as any,
-    { fields: ['Id', 'Name'], limit: 5000 }
-  );
+  return await withPermissionGraphBypass(async () => {
+    const rows = await MetaService.Search(
+      {
+        And: [['ModelId', '=', modelId]],
+      } as any,
+      { fields: ['Id', 'Name'], limit: 5000 }
+    );
 
-  const target = String(serviceName || '')
-    .trim()
-    .toLowerCase();
-  const hit = (rows || []).find(
-    (r: any) =>
-      String((r as any).Name || '')
-        .trim()
-        .toLowerCase() === target
-  ) as any;
-  const id = String(hit?.Id || '').trim();
-  const name = String(hit?.Name || '').trim();
-  if (!id || !name) throw new Error(`meta service not found: ${modelId}.${serviceName}`);
-  return { id, name };
+    const target = String(serviceName || '')
+      .trim()
+      .toLowerCase();
+    const hit = (rows || []).find(
+      (r: any) =>
+        String((r as any).Name || '')
+          .trim()
+          .toLowerCase() === target
+    ) as any;
+    const id = String(hit?.Id || '').trim();
+    const name = String(hit?.Name || '').trim();
+    if (!id || !name) throw new Error(`meta service not found: ${modelId}.${serviceName}`);
+    return { id, name };
+  });
 }
 
 async function resolveApplicationId(appName: string): Promise<string> {
@@ -216,28 +222,32 @@ async function createUiResource(input: {
   MetaApplicationId?: string | null;
   module?: string;
 }): Promise<void> {
-  const parentDbId = input.parentId ? await resolveUiResourceDbId(input.parentId) : null;
-  await MetaUiResource.Create(
-    {
-      Name: input.resourceId,
-      Type: input.type,
-      ParentId: parentDbId ? ({ Id: parentDbId } as any) : null,
-      Requires: input.requires ?? [],
-      MetaApplicationId: input.MetaApplicationId ?? null,
-      Module: input.module ?? 'auth',
-    } as any,
-    ['Id'] as any
-  );
+  await withPermissionGraphBypass(async () => {
+    const parentDbId = input.parentId ? await resolveUiResourceDbId(input.parentId) : null;
+    await MetaUiResource.Create(
+      {
+        Name: input.resourceId,
+        Type: input.type,
+        ParentId: parentDbId ? ({ Id: parentDbId } as any) : null,
+        Requires: input.requires ?? [],
+        MetaApplicationId: input.MetaApplicationId ?? null,
+        Module: input.module ?? 'auth',
+      } as any,
+      ['Id'] as any
+    );
+  });
 }
 
 async function createRoleUiResourceGrant(input: { roleId: string; resourceId: string; Mode?: 'allow' | 'deny' }): Promise<void> {
-  const rows = await MetaUiResource.Search(
-    {
-      And: [['Name', '=', input.resourceId]],
-    } as any,
-    { fields: ['Id'], limit: 1 } as any
-  );
-  const uiResourceId = String((rows as any)?.[0]?.Id || '').trim();
+  const uiResourceId = await withPermissionGraphBypass(async () => {
+    const rows = await MetaUiResource.Search(
+      {
+        And: [['Name', '=', input.resourceId]],
+      } as any,
+      { fields: ['Id'], limit: 1 } as any
+    );
+    return String((rows as any)?.[0]?.Id || '').trim();
+  });
   if (!uiResourceId) throw new Error(`MetaUiResource not found: ${input.resourceId}`);
 
   await RoleUiResource.Create(
@@ -254,13 +264,16 @@ async function createRoleUiResourceGrant(input: { roleId: string; resourceId: st
 async function createRoleUiGrant(input: { roleId: string; resourceId?: string; irApplicationId?: string | null; Mode?: 'allow' | 'deny' }): Promise<void> {
   let uiResourceId: string | null = null;
   if (input.resourceId) {
-    const rows = await MetaUiResource.Search(
-      {
-        And: [['Name', '=', input.resourceId]],
-      } as any,
-      { fields: ['Id'], limit: 1 } as any
-    );
-    uiResourceId = String((rows as any)?.[0]?.Id || '').trim() || null;
+    uiResourceId =
+      (await withPermissionGraphBypass(async () => {
+        const rows = await MetaUiResource.Search(
+          {
+            And: [['Name', '=', input.resourceId]],
+          } as any,
+          { fields: ['Id'], limit: 1 } as any
+        );
+        return String((rows as any)?.[0]?.Id || '').trim() || null;
+      })) || null;
     if (!uiResourceId) throw new Error(`MetaUiResource not found: ${input.resourceId}`);
   }
 
@@ -276,41 +289,47 @@ async function createRoleUiGrant(input: { roleId: string; resourceId?: string; i
 }
 
 async function resolveUiResourceDbId(resourceId: string): Promise<string> {
-  const rows = await MetaUiResource.Search(
-    {
-      And: [['Name', '=', resourceId]],
-    } as any,
-    { fields: ['Id'], limit: 1 } as any
-  );
-  const id = String((rows as any)?.[0]?.Id || '').trim();
-  if (!id) throw new Error(`MetaUiResource not found: ${resourceId}`);
-  return id;
+  return await withPermissionGraphBypass(async () => {
+    const rows = await MetaUiResource.Search(
+      {
+        And: [['Name', '=', resourceId]],
+      } as any,
+      { fields: ['Id'], limit: 1 } as any
+    );
+    const id = String((rows as any)?.[0]?.Id || '').trim();
+    if (!id) throw new Error(`MetaUiResource not found: ${resourceId}`);
+    return id;
+  });
 }
 
 async function createMenuRouteRelation(input: { menuResourceId: string; routeResourceId: string }): Promise<void> {
-  const menuId = await resolveUiResourceDbId(input.menuResourceId);
-  const routeId = await resolveUiResourceDbId(input.routeResourceId);
+  await withPermissionGraphBypass(async () => {
+    const menuId = await resolveUiResourceDbId(input.menuResourceId);
+    const routeId = await resolveUiResourceDbId(input.routeResourceId);
 
-  await MetaUiResourceMenuRoute.Create(
-    {
-      MenuUiResourceId: { Id: menuId } as any,
-      RouteUiResourceId: { Id: routeId } as any,
-    } as any,
-    ['Id'] as any
-  );
+    await MetaUiResourceMenuRoute.Create(
+      {
+        MenuUiResourceId: { Id: menuId } as any,
+        RouteUiResourceId: { Id: routeId } as any,
+      } as any,
+      ['Id'] as any
+    );
+  });
 }
 
 async function createRouteActionRelation(input: { routeResourceId: string; actionResourceId: string }): Promise<void> {
-  const routeId = await resolveUiResourceDbId(input.routeResourceId);
-  const actionId = await resolveUiResourceDbId(input.actionResourceId);
+  await withPermissionGraphBypass(async () => {
+    const routeId = await resolveUiResourceDbId(input.routeResourceId);
+    const actionId = await resolveUiResourceDbId(input.actionResourceId);
 
-  await MetaUiResourceRouteAction.Create(
-    {
-      RouteUiResourceId: { Id: routeId } as any,
-      ActionUiResourceId: { Id: actionId } as any,
-    } as any,
-    ['Id'] as any
-  );
+    await MetaUiResourceRouteAction.Create(
+      {
+        RouteUiResourceId: { Id: routeId } as any,
+        ActionUiResourceId: { Id: actionId } as any,
+      } as any,
+      ['Id'] as any
+    );
+  });
 }
 
 async function createUser(companyId: string): Promise<string> {
@@ -863,11 +882,13 @@ test('PermissionState: explicit RoleUiResource grant materializes UI whitelist w
       await createRoleUiResourceGrant({ roleId: r.id, resourceId: 'auth.route.explicit_page' });
 
       disableAllowlist();
-      const actionRows = await MetaUiResource.Search(
-        {
-          And: [['Name', '=', 'auth.action.explicit_edit']],
-        } as any,
-        { fields: ['Id', 'Name', 'Type', 'ParentId', 'MetaApplicationId', 'Requires'], limit: 1 } as any
+      const actionRows = await withPermissionGraphBypass(async () =>
+        MetaUiResource.Search(
+          {
+            And: [['Name', '=', 'auth.action.explicit_edit']],
+          } as any,
+          { fields: ['Id', 'Name', 'Type', 'ParentId', 'MetaApplicationId', 'Requires'], limit: 1 } as any
+        )
       );
       expect(parseJsonStringArray(((actionRows as any)?.[0] as any)?.Requires)).toEqual([
         'rpc:/auth.User/DefinitelyMissingMethod',

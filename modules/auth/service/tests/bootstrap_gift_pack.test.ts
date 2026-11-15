@@ -7,9 +7,11 @@ import Role from '@/auth/service/models/role';
 import UserRole from '@/auth/service/models/user_role';
 import RoleRecordRule from '@/auth/service/models/role_record_rule';
 import RoleFieldRule from '@/auth/service/models/role_field_rule';
+import { withPermissionGraphBypass } from '@/core/service/api/authz_bypass';
 import { createServiceByModel } from '@/core/service/rpc';
 import type MetaFieldModel from '@/meta/service/models/field';
 import type MetaModelDataModel from '@/meta/service/models/model_data';
+import { META_FIXTURE_RECORD_RULE_ALLOW } from './_meta_fixture_allow';
 import { metaApplicationId, metaModelId } from './_meta_ids';
 
 const MetaField = createServiceByModel<typeof MetaFieldModel>('meta.MetaField');
@@ -103,10 +105,7 @@ function setupAllowlistForFixtures(): void {
       'RoleFieldRule:write',
       'RoleFieldRule:create',
 
-      'meta.MetaApplication:read',
-      'MetaApplication:read',
-      'meta.MetaModel:read',
-      'MetaModel:read',
+      ...META_FIXTURE_RECORD_RULE_ALLOW,
     ],
   });
 }
@@ -173,20 +172,22 @@ test('auth bootstrap seeds platform FieldDefault/AppSetting/PropertyDefinition l
     { name: 'rma_sys_admin_property_definition_logical', model: 'RoleMethodAccess' },
     { name: 'rfr_sys_admin_property_definition_logical', model: 'RoleFieldRule' },
   ];
-  for (const { name, model } of expected) {
-    const rows = await MetaModelData.Search(
-      {
-        And: [
-          ['Module', '=', 'auth'],
-          ['Name', '=', name],
-        ],
-      } as any,
-      { fields: ['Id', 'Application', 'ModelName'], limit: 1 } as any
-    );
-    expect(Array.isArray(rows) && rows.length === 1).toBe(true);
-    expect(String((rows as any)[0].Application)).toBe('auth');
-    expect(String((rows as any)[0].ModelName)).toBe(model);
-  }
+  await withPermissionGraphBypass(async () => {
+    for (const { name, model } of expected) {
+      const rows = await MetaModelData.Search(
+        {
+          And: [
+            ['Module', '=', 'auth'],
+            ['Name', '=', name],
+          ],
+        } as any,
+        { fields: ['Id', 'Application', 'ModelName'], limit: 1 } as any
+      );
+      expect(Array.isArray(rows) && rows.length === 1).toBe(true);
+      expect(String((rows as any)[0].Application)).toBe('auth');
+      expect(String((rows as any)[0].ModelName)).toBe(model);
+    }
+  });
 });
 
 test('PR-C-2 gift pack: bootstrap seeds sys.admin global RR+FR and base.user app packs', async () => {

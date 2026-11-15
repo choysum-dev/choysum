@@ -17,7 +17,6 @@ export type RepositoryRecordRuleDeps = {
   requestContext: unknown;
   normalizeCompanyIds: () => string[];
   normalizeCompanyIdForWrite: () => string | undefined;
-  isControlPlaneMetaModel: () => boolean;
   recordRuleEnabled: () => boolean;
   getRecordRuleBypassDepth: () => number;
   withRecordRuleBypass: <T>(fn: () => Promise<T>) => Promise<T>;
@@ -86,7 +85,6 @@ function getRepositoryTopLevelRecordRuleAllowlist(): { enabled: boolean; allow: 
 
 export async function fetchRepositoryRecordRuleEnvelope(params: RepositoryRecordRuleDeps, op: RecordRuleOp): Promise<ConditionEnvelope> {
   if (!params.recordRuleEnabled()) return { kind: 'true', reason: 'record_rule_disabled' };
-  if (params.isControlPlaneMetaModel()) return { kind: 'true', reason: 'control_plane_meta_model' };
   if (params.getRecordRuleBypassDepth() > 0) return { kind: 'true', reason: 'record_rule_bypass' };
 
   const { enabled, allow, method } = getRepositoryTopLevelRecordRuleAllowlist();

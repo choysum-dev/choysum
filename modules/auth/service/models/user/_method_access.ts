@@ -13,7 +13,14 @@ import { uniqStrings } from '@/core/service/utils/normalization';
 import { buildUiGrantCacheKey } from '../_request_cache_invalidation';
 import RoleMethodAccess from '../role_method_access';
 import RoleUiResource from '../role_ui_resource';
-import { normalizeScopeRefId, normalizeUiResourceId, parseJsonStringArray, requireMatchesMethod, sortStrings } from './_authz_shared';
+import {
+  normalizeScopeRefId,
+  normalizeUiResourceId,
+  parseJsonStringArray,
+  requireMatchesMethod,
+  sortStrings,
+  withPermissionGraphBypass,
+} from './_authz_shared';
 import { logicalMethodsAllow } from '../_logical_model_registry';
 
 const MetaApplication = createServiceByModel<typeof MetaApplicationModel>('meta.MetaApplication');
@@ -85,83 +92,85 @@ export async function resolveMethodAccessMeta(
 > {
   const state = getMethodAccessReqState();
   const key = buildMethodAccessMetaCacheKey(appName, modelName, methodName);
-  return await memoizeInReqState(state, key, async () => {
-    const modelId = await metaModelId(appName, modelName);
-    if (!modelId) return undefined;
+  return await memoizeInReqState(state, key, async () =>
+    withPermissionGraphBypass(async () => {
+      const modelId = await metaModelId(appName, modelName);
+      if (!modelId) return undefined;
 
-    const serviceRows = await MetaService.Search(
-      { And: [['ModelId', '=', modelId]] },
-      { fields: ['Id', 'Name'], limit: 5000 }
-    );
-    const methodLower = String(methodName || '')
-      .trim()
-      .toLowerCase();
-    const matched = (serviceRows || []).find(
-      r =>
-        String(r.Name || '')
-          .trim()
-          .toLowerCase() === methodLower
-    );
-    const irServiceId = String(matched?.Id || '').trim();
-    if (!irServiceId) return undefined;
+      const serviceRows = await MetaService.Search(
+        { And: [['ModelId', '=', modelId]] },
+        { fields: ['Id', 'Name'], limit: 5000 }
+      );
+      const methodLower = String(methodName || '')
+        .trim()
+        .toLowerCase();
+      const matched = (serviceRows || []).find(
+        r =>
+          String(r.Name || '')
+            .trim()
+            .toLowerCase() === methodLower
+      );
+      const irServiceId = String(matched?.Id || '').trim();
+      if (!irServiceId) return undefined;
 
-    const irApplicationId = await metaApplicationId(appName);
-    const scopeOr: UntypedQueryCondition[] = [
-      {
-        And: [
-          ['MetaServiceId', '=', irServiceId],
-          ['MetaModelId', 'is', null],
-          ['MetaApplicationId', 'is', null],
-          ['LogicalModelName', 'is', null],
-        ],
-      },
-      {
-        And: [
-          ['MetaServiceId', 'is', null],
-          ['MetaModelId', '=', modelId],
-          ['MetaApplicationId', 'is', null],
-          ['LogicalModelName', 'is', null],
-        ],
-      },
-      {
-        And: [
-          ['MetaServiceId', 'is', null],
-          ['MetaModelId', 'is', null],
-          ['MetaApplicationId', 'is', null],
-          ['LogicalModelName', '=', modelName],
-        ],
-      },
-      {
-        And: [
-          ['MetaServiceId', 'is', null],
-          ['MetaModelId', 'is', null],
-          ['MetaApplicationId', 'is', null],
-          ['LogicalModelName', 'is', null],
-        ],
-      },
-    ];
+      const irApplicationId = await metaApplicationId(appName);
+      const scopeOr: UntypedQueryCondition[] = [
+        {
+          And: [
+            ['MetaServiceId', '=', irServiceId],
+            ['MetaModelId', 'is', null],
+            ['MetaApplicationId', 'is', null],
+            ['LogicalModelName', 'is', null],
+          ],
+        },
+        {
+          And: [
+            ['MetaServiceId', 'is', null],
+            ['MetaModelId', '=', modelId],
+            ['MetaApplicationId', 'is', null],
+            ['LogicalModelName', 'is', null],
+          ],
+        },
+        {
+          And: [
+            ['MetaServiceId', 'is', null],
+            ['MetaModelId', 'is', null],
+            ['MetaApplicationId', 'is', null],
+            ['LogicalModelName', '=', modelName],
+          ],
+        },
+        {
+          And: [
+            ['MetaServiceId', 'is', null],
+            ['MetaModelId', 'is', null],
+            ['MetaApplicationId', 'is', null],
+            ['LogicalModelName', 'is', null],
+          ],
+        },
+      ];
 
-    if (irApplicationId) {
-      // Insert Application between MetaModel and LogicalModel (index 2).
-      scopeOr.splice(2, 0, {
-        And: [
-          ['MetaServiceId', 'is', null],
-          ['MetaModelId', 'is', null],
-          ['MetaApplicationId', '=', irApplicationId],
-          ['LogicalModelName', 'is', null],
-        ],
-      });
-    }
+      if (irApplicationId) {
+        // Insert Application between MetaModel and LogicalModel (index 2).
+        scopeOr.splice(2, 0, {
+          And: [
+            ['MetaServiceId', 'is', null],
+            ['MetaModelId', 'is', null],
+            ['MetaApplicationId', '=', irApplicationId],
+            ['LogicalModelName', 'is', null],
+          ],
+        });
+      }
 
-    return {
-      modelId,
-      irServiceId,
-      irApplicationId,
-      scopeOr,
-      modelKey: `${appName}.${modelName}`,
-      methodLower,
-    };
-  });
+      return {
+        modelId,
+        irServiceId,
+        irApplicationId,
+        scopeOr,
+        modelKey: `${appName}.${modelName}`,
+        methodLower,
+      };
+    })
+  );
 }
 
 /**

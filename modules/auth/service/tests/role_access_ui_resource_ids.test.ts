@@ -9,6 +9,11 @@ import type MetaApplicationModel from '@/meta/service/models/application';
 import type MetaUiResourceModel from '@/meta/service/models/ui_resource';
 import type MetaUiResourceMenuRouteModel from '@/meta/service/models/ui_resource_menu_route';
 import type MetaUiResourceRouteActionModel from '@/meta/service/models/ui_resource_route_action';
+import {
+  META_FIXTURE_RECORD_RULE_ALLOW,
+  META_FIXTURE_RECORD_RULE_ALLOW_UI_MUTATE,
+} from './_meta_fixture_allow';
+
 const MetaApplication = createServiceByModel<typeof MetaApplicationModel>('meta.MetaApplication');
 const MetaUiResource = createServiceByModel<typeof MetaUiResourceModel>('meta.MetaUiResource');
 const MetaUiResourceMenuRoute = createServiceByModel<typeof MetaUiResourceMenuRouteModel>('meta.MetaUiResourceMenuRoute');
@@ -78,35 +83,8 @@ function setupAllowlistForFixtures(): void {
       'RoleUiResource:create',
       'RoleUiResource:delete',
 
-      'meta.MetaUiResource:read',
-      'meta.MetaUiResource:write',
-      'meta.MetaUiResource:create',
-      'meta.MetaUiResource:delete',
-      'MetaUiResource:read',
-      'MetaUiResource:write',
-      'MetaUiResource:create',
-      'MetaUiResource:delete',
-
-      'meta.MetaUiResourceMenuRoute:read',
-      'meta.MetaUiResourceMenuRoute:write',
-      'meta.MetaUiResourceMenuRoute:create',
-      'meta.MetaUiResourceMenuRoute:delete',
-      'MetaUiResourceMenuRoute:read',
-      'MetaUiResourceMenuRoute:write',
-      'MetaUiResourceMenuRoute:create',
-      'MetaUiResourceMenuRoute:delete',
-
-      'meta.MetaUiResourceRouteAction:read',
-      'meta.MetaUiResourceRouteAction:write',
-      'meta.MetaUiResourceRouteAction:create',
-      'meta.MetaUiResourceRouteAction:delete',
-      'MetaUiResourceRouteAction:read',
-      'MetaUiResourceRouteAction:write',
-      'MetaUiResourceRouteAction:create',
-      'MetaUiResourceRouteAction:delete',
-
-      'meta.MetaApplication:read',
-      'MetaApplication:read',
+      ...META_FIXTURE_RECORD_RULE_ALLOW,
+      ...META_FIXTURE_RECORD_RULE_ALLOW_UI_MUTATE,
     ],
   });
 }
