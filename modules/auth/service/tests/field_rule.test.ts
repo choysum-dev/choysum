@@ -10,9 +10,12 @@ import Role from '@/auth/service/models/role';
 import UserRole from '@/auth/service/models/user_role';
 import RoleFieldRule from '@/auth/service/models/role_field_rule';
 import { evaluateFieldRules } from '@/auth/service/models/user/_field_rule_eval';
-import { metaApplicationId, metaModelId } from './_meta_ids';
+import { withPermissionGraphBypass } from '@/core/service/api/authz_bypass';
 import { createServiceByModel } from '@/core/service/rpc';
 import type MetaFieldModel from '@/meta/service/models/field';
+import { META_FIXTURE_RECORD_RULE_ALLOW } from './_meta_fixture_allow';
+import { metaApplicationId, metaModelId } from './_meta_ids';
+
 const MetaField = createServiceByModel<typeof MetaFieldModel>('meta.MetaField');
 
 const RR_CACHE_KEY = Symbol.for('choysum.recordrule.cache');
@@ -98,6 +101,8 @@ function resetRequestContext(): void {
       'CompanyScopedResource:write',
       'CompanyScopedResource:create',
       'CompanyScopedResource:delete',
+
+      ...META_FIXTURE_RECORD_RULE_ALLOW,
     ],
     fieldRuleMode: '',
   };
@@ -217,18 +222,20 @@ async function resolveApplicationId(appName: string): Promise<string> {
 }
 
 async function resolveFieldId(modelId: string, fieldName: string): Promise<string> {
-  const rows = await MetaField.Search(
-    {
-      And: [
-        ['ModelId', '=', modelId],
-        ['Name', '=', fieldName],
-      ],
-    } as any,
-    { fields: ['Id', 'UpdatedAt'], orderBy: { field: 'UpdatedAt', order: 'desc' }, limit: 1 }
-  );
-  const id = String((rows as any)?.[0]?.Id || '').trim();
-  if (!id) throw new Error(`meta field not found: modelId=${modelId} field=${fieldName}`);
-  return id;
+  return await withPermissionGraphBypass(async () => {
+    const rows = await MetaField.Search(
+      {
+        And: [
+          ['ModelId', '=', modelId],
+          ['Name', '=', fieldName],
+        ],
+      } as any,
+      { fields: ['Id', 'UpdatedAt'], orderBy: { field: 'UpdatedAt', order: 'desc' }, limit: 1 }
+    );
+    const id = String((rows as any)?.[0]?.Id || '').trim();
+    if (!id) throw new Error(`meta field not found: modelId=${modelId} field=${fieldName}`);
+    return id;
+  });
 }
 
 async function withFieldRuleSkip<T>(fn: () => Promise<T>): Promise<T> {

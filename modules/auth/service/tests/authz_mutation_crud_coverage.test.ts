@@ -13,6 +13,7 @@ import { createServiceByModel } from '@/core/service/rpc';
 import type MetaServiceModel from '@/meta/service/models/service';
 import type MetaFieldModel from '@/meta/service/models/field';
 import { metaModelId } from './_meta_ids';
+import { META_FIXTURE_RECORD_RULE_ALLOW } from './_meta_fixture_allow';
 import { ensureRequestContext, resetRequestContext, uid } from '@/auth/service/tests/_request_context_fixtures';
 
 const MetaService = createServiceByModel<typeof MetaServiceModel>('meta.MetaService');
@@ -92,12 +93,7 @@ function setupAllowlistForFixtures(): void {
       'RoleFieldRule:write',
       'RoleFieldRule:create',
       'RoleFieldRule:delete',
-      'meta.MetaModel:read',
-      'meta.MetaService:read',
-      'meta.MetaField:read',
-      'MetaModel:read',
-      'MetaService:read',
-      'MetaField:read',
+      ...META_FIXTURE_RECORD_RULE_ALLOW,
     ],
   });
 }

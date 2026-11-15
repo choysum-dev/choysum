@@ -76,7 +76,6 @@ import {
   createRepositoryCompanyScopeQueryDeps,
   createRepositoryFieldRuleDeps,
   createRepositoryFieldRulePolicyDeps,
-  createRepositoryFieldRuleSelectionDeps,
   createRepositoryPermissionDeniedError,
   createRepositoryRecordRuleCoordinatorDeps,
   createRepositoryRecordRuleCoordinatorPolicyDeps,
@@ -165,19 +164,6 @@ export class Repository {
   /* ----------------------------- RecordRule (P2-2) ----------------------------- */
 
   /**
-   * Control-plane metadata models (application === 'meta') must skip RecordRule injection.
-   * - Avoid recursion when GetRecordRuleCondition or CheckMethodAccess depends on metadata queries.
-   * - Keep Smart Routing local and remote behavior aligned.
-   */
-  private isControlPlaneMetaModel(): boolean {
-    const app = String(this.meta.application || '').trim();
-    if (app === 'meta') return true;
-
-    const full = String(this.meta.fullModelName || '').trim();
-    return full.startsWith('meta.');
-  }
-
-  /**
    * FieldRule control-plane models must not be constrained by FieldRule itself.
    * Otherwise a deny rule can block the later allow exception and lock the system out.
    * These models should instead be protected by higher-level mechanisms such as MethodAccess and RecordRule.
@@ -238,8 +224,6 @@ export class Repository {
   }
 
   private async applyRecordRuleToCondition(condition: UntypedQueryCondition, op: RecordRuleOp): Promise<UntypedQueryCondition> {
-    if (this.isControlPlaneMetaModel()) return condition;
-
     return await applyRepositoryRecordRuleToCondition(this.createRecordRuleCoordinatorDeps(), condition, op);
   }
 
@@ -383,7 +367,6 @@ export class Repository {
       createRepositoryRecordRulePolicyDeps({
         ...common,
         normalizeCompanyIdForWrite: () => this.normalizeCompanyIdForWrite(),
-        isControlPlaneMetaModel: () => this.isControlPlaneMetaModel(),
         recordRuleEnabled: () => this.recordRuleEnabled(),
         getRecordRuleBypassDepth: () => this.getRecordRuleBypassDepth(),
         withRecordRuleBypass: fn => this.withRecordRuleBypass(fn),
@@ -409,7 +392,6 @@ export class Repository {
     return createRepositoryFieldRuleDeps(
       createRepositoryFieldRulePolicyDeps({
         ...common,
-        isControlPlaneMetaModel: () => this.isControlPlaneMetaModel(),
         isFieldRuleControlPlaneModel: () => this.isFieldRuleControlPlaneModel(),
         withRecordRuleBypass: fn => this.withRecordRuleBypass(fn),
         withFieldRuleBypass: fn => this.withFieldRuleBypass(fn),
@@ -1140,14 +1122,7 @@ export class Repository {
   }
 
   private async pruneSelectionTreeForFieldRule(meta: ModelMetadata, node: SelectionNode, denyCache: Map<unknown, string[]>): Promise<void> {
-    await pruneRepositorySelectionTreeForFieldRule(
-      createRepositoryFieldRuleSelectionDeps({
-        isControlPlaneMetaModel: () => this.isControlPlaneMetaModel(),
-      }),
-      meta,
-      node,
-      denyCache
-    );
+    await pruneRepositorySelectionTreeForFieldRule(meta, node, denyCache);
   }
 
   /* ----------------------- Build selection tree (recursive) ----------------------- */

@@ -10,6 +10,7 @@ import RoleMethodAccess from '@/auth/service/models/role_method_access';
 import RoleUiResource from '@/auth/service/models/role_ui_resource';
 import { evaluateUiDerivedMethodDecision } from '@/auth/service/models/user/_method_access';
 import { metaApplicationId, metaModelId } from './_meta_ids';
+import { META_FIXTURE_RECORD_RULE_ALLOW } from './_meta_fixture_allow';
 import { createServiceByModel } from '@/core/service/rpc';
 import type MetaServiceModel from '@/meta/service/models/service';
 import type MetaUiResourceModel from '@/meta/service/models/ui_resource';
@@ -115,22 +116,9 @@ function setupAllowlistForFixtures(): void {
       'RoleUiResource:create',
       'RoleUiResource:delete',
 
-      'meta.MetaUiResource:read',
-      'meta.MetaUiResource:write',
-      'meta.MetaUiResource:create',
-      'meta.MetaUiResource:delete',
-      'MetaUiResource:read',
-      'MetaUiResource:write',
-      'MetaUiResource:create',
-      'MetaUiResource:delete',
+      ...META_FIXTURE_RECORD_RULE_ALLOW,
 
       // meta
-      'meta.MetaApplication:read',
-      'MetaApplication:read',
-      'meta.MetaModel:read',
-      'meta.MetaService:read',
-      'MetaModel:read',
-      'MetaService:read',
     ],
   });
 }

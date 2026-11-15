@@ -306,7 +306,6 @@ test('record rule wrapper functions delegate to helper deps', async () => {
     requestContext: {},
     normalizeCompanyIds: () => ['company_a'],
     normalizeCompanyIdForWrite: () => 'company_a',
-    isControlPlaneMetaModel: () => false,
     recordRuleEnabled: () => true,
     getRecordRuleBypassDepth: () => 0,
     withRecordRuleBypass: async (fn: () => Promise<unknown>) => await fn(),

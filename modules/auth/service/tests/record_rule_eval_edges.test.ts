@@ -3,11 +3,12 @@
 
 import RoleRecordRule from '@/auth/service/models/role_record_rule';
 import { buildCompanyGateExpr, evaluateRecordRuleCondition } from '@/auth/service/models/user/_record_rule_eval';
-import { metaModelId } from './_meta_ids';
+import { withPermissionGraphBypass } from '@/core/service/api/authz_bypass';
 import { createServiceByModel } from '@/core/service/rpc';
 import type MetaApplicationModel from '@/meta/service/models/application';
 import type MetaFieldModel from '@/meta/service/models/field';
 import type MetaModelModel from '@/meta/service/models/model';
+import { metaModelId } from './_meta_ids';
 
 const MetaApplication = createServiceByModel<typeof MetaApplicationModel>('meta.MetaApplication');
 const MetaModel = createServiceByModel<typeof MetaModelModel>('meta.MetaModel');
@@ -400,10 +401,12 @@ test('P2-2 eval edges: unconstrained grant with one restrict uses grant_and_rest
 
 test('P2-2 eval edges: app-scoped grant participates when MetaApplication resolves', async () => {
   resetRequestContext();
-  const apps = await MetaApplication.Search({ And: [['Name', '=', 'auth']] } as any, {
-    fields: ['Id'],
-    limit: 1,
-  } as any);
+  const apps = await withPermissionGraphBypass(async () =>
+    MetaApplication.Search({ And: [['Name', '=', 'auth']] } as any, {
+      fields: ['Id'],
+      limit: 1,
+    } as any)
+  );
   const appId = String((apps[0] as any)?.Id || '').trim();
   expect(appId.length > 0).toBe(true);
   const roleId = uid('role');
@@ -536,6 +539,8 @@ test('P2-2 eval edges: defensive fallbacks for empty/null inputs', async () => {
         MetaApplicationId: null,
       },
     ];
+    // Ownership-field probe must see a hit; avoid depending on live MetaField.Count under RR.
+    (MetaField as any).Count = async () => 1;
 
     const env2 = await evaluateRecordRuleCondition({
       appName: 'auth',
@@ -587,9 +592,13 @@ test('P2-2 eval edges: defensive fallbacks for empty/null inputs', async () => {
     expect(JSON.stringify((envEveryone as any).expr || {})).not.toContain('CompanyId');
 
     // Missing request while company-scoped gate runs ⇒ req? undefined arm in computeCompanyGateMode.
+    // Without a request, RR bypass cannot attach; stub MetaModel so IR lookup does not depend on
+    // repository control-plane exemption (removed).
     const root = (globalThis as any).$choysum;
     const prevRequest = root.request;
+    const origModelSearch = (MetaModel as any).Search;
     root.request = undefined;
+    (MetaModel as any).Search = async () => [{ Id: modelId, CompanyField: 'CompanyId' }];
     (MetaField as any).Count = async () => 1;
     (RoleRecordRule as any).Search = async () => [
       {
@@ -600,18 +609,22 @@ test('P2-2 eval edges: defensive fallbacks for empty/null inputs', async () => {
         MetaApplicationId: null,
       },
     ];
-    const env4 = await evaluateRecordRuleCondition({
-      appName: 'auth',
-      modelName: 'CompanyScopedResource',
-      hasCompany: true,
-      opValue: 'read',
-      roleIds: [roleId],
-      // global:true hits buildCompanyGateExpr early return when gate enabled.
-      roleScopesById: { [roleId]: { global: true, companies: [] } },
-    });
-    expect(env4.kind).toBe('expr');
-    expect(JSON.stringify((env4 as any).expr || {})).not.toContain('CompanyId');
-    root.request = prevRequest;
+    try {
+      const env4 = await evaluateRecordRuleCondition({
+        appName: 'auth',
+        modelName: 'CompanyScopedResource',
+        hasCompany: true,
+        opValue: 'read',
+        roleIds: [roleId],
+        // global:true hits buildCompanyGateExpr early return when gate enabled.
+        roleScopesById: { [roleId]: { global: true, companies: [] } },
+      });
+      expect(env4.kind).toBe('expr');
+      expect(JSON.stringify((env4 as any).expr || {})).not.toContain('CompanyId');
+    } finally {
+      root.request = prevRequest;
+      (MetaModel as any).Search = origModelSearch;
+    }
   } finally {
     (RoleRecordRule as any).Search = origSearch;
     (MetaApplication as any).Search = origAppSearch;

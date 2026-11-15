@@ -12,6 +12,7 @@ import type MetaApplicationModel from '@/meta/service/models/application';
 import type MetaFieldModel from '@/meta/service/models/field';
 import type MetaModelModel from '@/meta/service/models/model';
 import { normalizeRefId } from '@/core/service/utils/normalization';
+import { withPermissionGraphBypass } from './_authz_shared';
 
 const MetaApplication = createServiceByModel<typeof MetaApplicationModel>('meta.MetaApplication');
 const MetaField = createServiceByModel<typeof MetaFieldModel>('meta.MetaField');
@@ -108,6 +109,12 @@ function denyAllNonSystemFields(fieldNames: string[], reason: string, hitRuleIds
  * More-specific scope wins; same-scope deny-wins; read-deny ⇒ write-deny.
  */
 export async function evaluateFieldRules(input: FieldRuleEvalInput): Promise<FieldRuleEvalResult> {
+  // Permission-graph reads (meta + RoleFieldRule) must bypass RR/FR, matching
+  // evaluateRecordRuleCondition and GetFieldRuleSpec's outer wrap.
+  return await withPermissionGraphBypass(async () => evaluateFieldRulesUnderBypass(input));
+}
+
+async function evaluateFieldRulesUnderBypass(input: FieldRuleEvalInput): Promise<FieldRuleEvalResult> {
   const modelNameWant = String(input.modelName || '').trim();
   const [applicationId, modelId] = await Promise.all([
     resolveApplicationId(input.appName),

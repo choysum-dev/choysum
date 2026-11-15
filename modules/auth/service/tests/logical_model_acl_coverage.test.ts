@@ -15,6 +15,7 @@ import type MetaApplicationModel from '@/meta/service/models/application';
 import type MetaFieldModel from '@/meta/service/models/field';
 import type MetaModelModel from '@/meta/service/models/model';
 import type MetaServiceModel from '@/meta/service/models/service';
+import { META_FIXTURE_RECORD_RULE_ALLOW } from './_meta_fixture_allow';
 
 const MetaService = createServiceByModel<typeof MetaServiceModel>('meta.MetaService');
 const MetaModel = createServiceByModel<typeof MetaModelModel>('meta.MetaModel');
@@ -84,10 +85,7 @@ function setupAllowlistForFixtures(): void {
       'RoleMethodAccess:write',
       'RoleMethodAccess:create',
       'RoleMethodAccess:delete',
-      'meta.MetaService:read',
-      'meta.MetaModel:read',
-      'MetaService:read',
-      'MetaModel:read',
+      ...META_FIXTURE_RECORD_RULE_ALLOW,
     ],
   };
 }

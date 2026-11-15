@@ -28,7 +28,6 @@ export type RepositoryFieldRuleDeps = {
   userId?: string;
   requestContext: unknown;
   normalizeCompanyIds: () => string[];
-  isControlPlaneMetaModel: () => boolean;
   isFieldRuleControlPlaneModel: () => boolean;
   withRecordRuleBypass: <T>(fn: () => Promise<T>) => Promise<T>;
   withFieldRuleBypass: <T>(fn: () => Promise<T>) => Promise<T>;
@@ -127,10 +126,6 @@ export async function getRepositoryFieldRuleSpec(params: RepositoryFieldRuleDeps
     return { denyReadFields: [], denyWriteFields: [], reason: 'field_rule_disabled' };
   }
 
-  if (params.isControlPlaneMetaModel()) {
-    return { denyReadFields: [], denyWriteFields: [], reason: 'control_plane_meta_model' };
-  }
-
   if (params.isFieldRuleControlPlaneModel()) {
     return { denyReadFields: [], denyWriteFields: [], reason: 'field_rule_control_plane_model' };
   }
@@ -184,7 +179,6 @@ export async function getRepositoryFieldRuleSpec(params: RepositoryFieldRuleDeps
 
 export async function assertRepositoryFieldRuleWriteAllowed(params: RepositoryFieldRuleDeps & { payload: SelectResult }): Promise<void> {
   if (!repositoryFieldRuleEnabled()) return;
-  if (params.isControlPlaneMetaModel()) return;
   if (params.isFieldRuleControlPlaneModel()) return;
   if (getFieldRuleBypassDepth() > 0) return;
 
@@ -222,17 +216,13 @@ export async function assertRepositoryFieldRuleWriteAllowed(params: RepositoryFi
   );
 }
 
-export type RepositoryFieldRuleSelectionDeps = Pick<RepositoryFieldRuleDeps, 'isControlPlaneMetaModel'>;
-
 export async function pruneRepositorySelectionTreeForFieldRule(
-  params: RepositoryFieldRuleSelectionDeps,
   meta: ModelMetadata,
   node: SelectionNode,
   denyCache: Map<unknown, string[]>
 ): Promise<void> {
   if (!node) return;
   if (!repositoryFieldRuleEnabled()) return;
-  if (params.isControlPlaneMetaModel()) return;
 
   const getDeny = async (ctor: unknown): Promise<string[]> => {
     if (!ctor || typeof ctor !== 'function') return [];
@@ -274,7 +264,7 @@ export async function pruneRepositorySelectionTreeForFieldRule(
     if (typeof targetCtor !== 'function') continue;
 
     const targetMeta = MetadataStorage.instance.getModelMetadata(targetCtor as ModelCtor<BaseModel>);
-    await pruneRepositorySelectionTreeForFieldRule(params, targetMeta, entry.node, denyCache);
+    await pruneRepositorySelectionTreeForFieldRule(targetMeta, entry.node, denyCache);
 
     if (!entry.node.columns.size) entry.node.columns.add('Id');
   }

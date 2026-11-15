@@ -517,28 +517,6 @@ test('repository root read aggregate facades delegate through assembled deps and
   expect(queries[0]?.ordered).toEqual([{ field: 'Name', order: 'asc' }]);
 });
 
-test('repository root control-plane model guards classify meta models correctly', () => {
-  const byFullName = createRepositoryHarness({
-    fullModelName: 'meta.MetaModel',
-    application: 'demo',
-    modelName: 'Model',
-  });
-  const byAppAndName = createRepositoryHarness({
-    fullModelName: 'demo.Model',
-    application: 'meta',
-    modelName: 'MetaConfig',
-  });
-  const normalModel = createRepositoryHarness({
-    fullModelName: 'demo.Model',
-    application: 'demo',
-    modelName: 'Model',
-  });
-
-  expect((byFullName as any).isControlPlaneMetaModel()).toBe(true);
-  expect((byAppAndName as any).isControlPlaneMetaModel()).toBe(true);
-  expect((normalModel as any).isControlPlaneMetaModel()).toBe(false);
-});
-
 test('repository root field-rule control-plane guard matches exact model contract', () => {
   const byFullName = createRepositoryHarness({
     fullModelName: 'auth.RoleFieldRule',
@@ -585,7 +563,6 @@ test('repository root createRecordRuleDeps composes policy values from repositor
   const calls: Record<string, number> = {
     normalizeCompanyIds: 0,
     normalizeCompanyIdForWrite: 0,
-    isControlPlaneMetaModel: 0,
     recordRuleEnabled: 0,
     getRecordRuleBypassDepth: 0,
     withRecordRuleBypass: 0,
@@ -599,10 +576,6 @@ test('repository root createRecordRuleDeps composes policy values from repositor
   repository.normalizeCompanyIdForWrite = () => {
     calls.normalizeCompanyIdForWrite += 1;
     return 'company_a';
-  };
-  repository.isControlPlaneMetaModel = () => {
-    calls.isControlPlaneMetaModel += 1;
-    return false;
   };
   repository.recordRuleEnabled = () => {
     calls.recordRuleEnabled += 1;
@@ -624,7 +597,6 @@ test('repository root createRecordRuleDeps composes policy values from repositor
   const deps = repository.createRecordRuleDeps();
   expect(deps.normalizeCompanyIds()).toEqual(['company_a']);
   expect(deps.normalizeCompanyIdForWrite()).toBe('company_a');
-  expect(deps.isControlPlaneMetaModel()).toBe(false);
   expect(deps.recordRuleEnabled()).toBe(true);
   expect(deps.getRecordRuleBypassDepth()).toBe(0);
   expect(await deps.withRecordRuleBypass(async () => 'ok')).toBe('ok');
@@ -633,7 +605,6 @@ test('repository root createRecordRuleDeps composes policy values from repositor
   expect(calls).toEqual({
     normalizeCompanyIds: 1,
     normalizeCompanyIdForWrite: 1,
-    isControlPlaneMetaModel: 1,
     recordRuleEnabled: 1,
     getRecordRuleBypassDepth: 1,
     withRecordRuleBypass: 1,
@@ -645,7 +616,6 @@ test('repository root createFieldRuleDeps composes policy values from repository
   const repository = createRepositoryHarness();
   const calls: Record<string, number> = {
     normalizeCompanyIds: 0,
-    isControlPlaneMetaModel: 0,
     isFieldRuleControlPlaneModel: 0,
     withRecordRuleBypass: 0,
     withFieldRuleBypass: 0,
@@ -655,10 +625,6 @@ test('repository root createFieldRuleDeps composes policy values from repository
   repository.normalizeCompanyIds = () => {
     calls.normalizeCompanyIds += 1;
     return ['company_a', 'company_b'];
-  };
-  repository.isControlPlaneMetaModel = () => {
-    calls.isControlPlaneMetaModel += 1;
-    return false;
   };
   repository.isFieldRuleControlPlaneModel = () => {
     calls.isFieldRuleControlPlaneModel += 1;
@@ -679,7 +645,6 @@ test('repository root createFieldRuleDeps composes policy values from repository
 
   const deps = repository.createFieldRuleDeps();
   expect(deps.normalizeCompanyIds()).toEqual(['company_a', 'company_b']);
-  expect(deps.isControlPlaneMetaModel()).toBe(false);
   expect(deps.isFieldRuleControlPlaneModel()).toBe(true);
   expect(await deps.withRecordRuleBypass(async () => 'rr-ok')).toBe('rr-ok');
   expect(await deps.withFieldRuleBypass(async () => 'fr-ok')).toBe('fr-ok');
@@ -687,7 +652,6 @@ test('repository root createFieldRuleDeps composes policy values from repository
 
   expect(calls).toEqual({
     normalizeCompanyIds: 1,
-    isControlPlaneMetaModel: 1,
     isFieldRuleControlPlaneModel: 1,
     withRecordRuleBypass: 1,
     withFieldRuleBypass: 1,
@@ -2161,16 +2125,21 @@ test('repository root count propagates record-rule compilation failures and skip
   expect(executeCalled).toBe(0);
 });
 
-test('repository root count bypasses record-rule coordinator for control-plane meta model', async () => {
+test('repository root count applies record-rule for meta models (no app-wide bypass)', async () => {
   const repository = createRepositoryHarness({
     fullModelName: 'meta.MetaRuntime',
     application: 'meta',
     modelName: 'MetaRuntime',
   });
   const { db, queries } = createFakeDb();
-  const calls: Record<string, any> = {};
+  const calls: Record<string, any> = { recordRule: 0 };
 
   repository.db = db;
+  repository.applyRecordRuleToCondition = async (condition: any, op: string) => {
+    calls.recordRule += 1;
+    calls.recordRuleOp = op;
+    return { And: [condition, ['Id', '!=', '__denied__']] };
+  };
   repository.applyDefaultLayers = (condition: any) => {
     calls.defaultLayers = condition;
     return { And: [condition, ['DeletedAt', 'is', null]] };
@@ -2185,12 +2154,24 @@ test('repository root count bypasses record-rule coordinator for control-plane m
   const total = await repository.count(['Name', '=', 'demo'] as any);
 
   expect(total).toBe(2);
-  expect(calls.defaultLayers).toEqual(['Name', '=', 'demo']);
+  expect(calls.recordRule).toBe(1);
+  expect(calls.recordRuleOp).toBe('read');
+  expect(calls.defaultLayers).toEqual({
+    And: [
+      ['Name', '=', 'demo'],
+      ['Id', '!=', '__denied__'],
+    ],
+  });
   expect(calls.convertCondition).toEqual({
     eb: 'fake-eb',
     condition: {
       And: [
-        ['Name', '=', 'demo'],
+        {
+          And: [
+            ['Name', '=', 'demo'],
+            ['Id', '!=', '__denied__'],
+          ],
+        },
         ['DeletedAt', 'is', null],
       ],
     },
@@ -2923,15 +2904,7 @@ test('repository root createReadAggregateDeps delegates dialect resolution throu
   expect(calls.getDialect).toBe(1);
 });
 
-test('repository root control-plane guards support fallback model name fields and record-rule bypass keeps condition', async () => {
-  const byNameFallback = createRepositoryHarness({
-    fullModelName: '',
-    application: 'meta',
-    modelName: '',
-    name: 'MetaFallback',
-  });
-  expect((byNameFallback as any).isControlPlaneMetaModel()).toBe(true);
-
+test('repository root field-rule control-plane guard supports name fallback and absent names', () => {
   const byFieldRuleNameFallback = createRepositoryHarness({
     fullModelName: '',
     application: 'auth',
@@ -2940,21 +2913,73 @@ test('repository root control-plane guards support fallback model name fields an
   });
   expect((byFieldRuleNameFallback as any).isFieldRuleControlPlaneModel()).toBe(true);
 
-  const condition = ['Name', '=', 'demo'] as any;
-  const bypassed = await (byNameFallback as any).applyRecordRuleToCondition(condition, 'read');
-  expect(bypassed).toEqual(condition);
-});
-
-test('repository root control-plane guards return false when app/model names are absent', () => {
   const repository = createRepositoryHarness({
     fullModelName: 'demo.Model',
     application: undefined,
     modelName: undefined,
     name: undefined,
   });
-
-  expect((repository as any).isControlPlaneMetaModel()).toBe(false);
   expect((repository as any).isFieldRuleControlPlaneModel()).toBe(false);
+});
+
+test('repository root applyRecordRuleToCondition evaluates meta models through coordinator (no app-wide bypass)', async () => {
+  const repository = createRepositoryHarness({
+    fullModelName: 'meta.MetaModel',
+    application: 'meta',
+    modelName: 'MetaModel',
+  });
+  const condition = ['Name', '=', 'demo'] as any;
+  const calls: Array<{ condition: unknown; op: string }> = [];
+
+  (repository as any).createRecordRuleCoordinatorDeps = () => ({
+    meta: (repository as any).meta,
+    userId: 'user_1',
+    recordRuleEnabled: () => true,
+    getRecordRuleEnvelope: async (op: string) => {
+      calls.push({ condition, op });
+      return { kind: 'false', reason: 'no_grant_write_deny' };
+    },
+    replaceRecordRuleTokens: (c: unknown) => c,
+    getReqMethodMeta: () => ({ fullMethod: '', method: '', companyMode: '', recordRuleMode: '', fieldRuleMode: '' }),
+    getCompanyScopeFacts: () => ({ activeCompanyId: '', enabledCompanyIds: [] }),
+    emitAuthzDecisionSummary: () => {},
+    permissionDenied: (code: string, message: string) => new Error(`${code}:${message}`),
+    countConditionMatches: async () => 0,
+  });
+
+  let message = '';
+  try {
+    await (repository as any).applyRecordRuleToCondition(condition, 'write');
+  } catch (error) {
+    message = String((error as Error)?.message || error);
+  }
+  expect(message.includes('record_rule_denied')).toBe(true);
+  expect(calls).toEqual([{ condition, op: 'write' }]);
+});
+
+test('repository root applyRecordRuleToCondition keeps condition under record-rule bypass depth', async () => {
+  const repository = createRepositoryHarness({
+    fullModelName: 'meta.MetaModel',
+    application: 'meta',
+    modelName: 'MetaModel',
+  });
+  const condition = ['Name', '=', 'demo'] as any;
+
+  (repository as any).createRecordRuleCoordinatorDeps = () => ({
+    meta: (repository as any).meta,
+    userId: 'user_1',
+    recordRuleEnabled: () => true,
+    getRecordRuleEnvelope: async () => ({ kind: 'true', reason: 'record_rule_bypass' }),
+    replaceRecordRuleTokens: (c: unknown) => c,
+    getReqMethodMeta: () => ({ fullMethod: '', method: '', companyMode: '', recordRuleMode: '', fieldRuleMode: '' }),
+    getCompanyScopeFacts: () => ({ activeCompanyId: '', enabledCompanyIds: [] }),
+    emitAuthzDecisionSummary: () => {},
+    permissionDenied: (code: string, message: string) => new Error(`${code}:${message}`),
+    countConditionMatches: async () => 0,
+  });
+
+  const kept = await (repository as any).applyRecordRuleToCondition(condition, 'read');
+  expect(kept).toEqual(condition);
 });
 
 test('repository root search falls back to meta order when options orderBy is invalid or missing', async () => {
@@ -3465,8 +3490,7 @@ test('repository wrappers delegate auth/company helpers through facade methods',
   await (repository as any).assertRecordRuleAllCreatedAllowed(['ROW-1'], { kind: 'true' } as any);
 
   (repository as any).createFieldRuleDeps = () => ({
-    isControlPlaneMetaModel: () => true,
-    isFieldRuleControlPlaneModel: () => false,
+    isFieldRuleControlPlaneModel: () => true,
   });
 
   await (repository as any).assertFieldRuleWriteAllowed({ Name: 'n1' });

@@ -8,7 +8,6 @@ import {
   createRepositoryCompanyScopeQueryDeps,
   createRepositoryFieldRuleDeps,
   createRepositoryFieldRulePolicyDeps,
-  createRepositoryFieldRuleSelectionDeps,
   createRepositoryRecordRuleCoordinatorDeps,
   createRepositoryRecordRuleCoordinatorPolicyDeps,
   createRepositoryRecordRuleDeps,
@@ -63,7 +62,6 @@ test('repository authz deps delegate record rule deps unchanged', async () => {
   const calls = {
     companies: 0,
     companyId: 0,
-    control: 0,
     enabled: 0,
     bypassDepth: 0,
     bypass: 0,
@@ -82,10 +80,6 @@ test('repository authz deps delegate record rule deps unchanged', async () => {
     normalizeCompanyIdForWrite() {
       calls.companyId += 1;
       return 'company_a';
-    },
-    isControlPlaneMetaModel() {
-      calls.control += 1;
-      return false;
     },
     recordRuleEnabled() {
       calls.enabled += 1;
@@ -107,7 +101,6 @@ test('repository authz deps delegate record rule deps unchanged', async () => {
 
   expect(deps.normalizeCompanyIds()).toEqual(['company_a']);
   expect(deps.normalizeCompanyIdForWrite()).toBe('company_a');
-  expect(deps.isControlPlaneMetaModel()).toBe(false);
   expect(deps.recordRuleEnabled()).toBe(true);
   expect(deps.getRecordRuleBypassDepth()).toBe(0);
   expect(await deps.withRecordRuleBypass(async () => 'ok')).toBe('ok');
@@ -115,7 +108,6 @@ test('repository authz deps delegate record rule deps unchanged', async () => {
   expect(calls).toEqual({
     companies: 1,
     companyId: 1,
-    control: 1,
     enabled: 1,
     bypassDepth: 1,
     bypass: 1,
@@ -127,7 +119,6 @@ test('repository authz deps delegate record rule policy deps unchanged', async (
   const calls = {
     normalizeCompanies: 0,
     normalizeCompanyId: 0,
-    control: 0,
     enabled: 0,
     bypassDepth: 0,
     bypass: 0,
@@ -145,10 +136,6 @@ test('repository authz deps delegate record rule policy deps unchanged', async (
     normalizeCompanyIdForWrite() {
       calls.normalizeCompanyId += 1;
       return 'company_a';
-    },
-    isControlPlaneMetaModel() {
-      calls.control += 1;
-      return false;
     },
     recordRuleEnabled() {
       calls.enabled += 1;
@@ -173,7 +160,6 @@ test('repository authz deps delegate record rule policy deps unchanged', async (
   expect(deps.requestContext).toEqual({ activeCompanyId: 'company_a' });
   expect(deps.normalizeCompanyIds()).toEqual(['company_a']);
   expect(deps.normalizeCompanyIdForWrite()).toBe('company_a');
-  expect(deps.isControlPlaneMetaModel()).toBe(false);
   expect(deps.recordRuleEnabled()).toBe(true);
   expect(deps.getRecordRuleBypassDepth()).toBe(0);
   expect(await deps.withRecordRuleBypass(async () => 'ok')).toBe('ok');
@@ -182,7 +168,6 @@ test('repository authz deps delegate record rule policy deps unchanged', async (
   expect(calls).toEqual({
     normalizeCompanies: 1,
     normalizeCompanyId: 1,
-    control: 1,
     enabled: 1,
     bypassDepth: 1,
     bypass: 1,
@@ -321,7 +306,6 @@ test('repository authz deps delegate record rule coordinator policy deps unchang
 test('repository authz deps delegate field rule deps unchanged', async () => {
   const calls = {
     normalize: 0,
-    control: 0,
     fieldControl: 0,
     recordBypass: 0,
     fieldBypass: 0,
@@ -335,10 +319,6 @@ test('repository authz deps delegate field rule deps unchanged', async () => {
     normalizeCompanyIds() {
       calls.normalize += 1;
       return ['company_a'];
-    },
-    isControlPlaneMetaModel() {
-      calls.control += 1;
-      return false;
     },
     isFieldRuleControlPlaneModel() {
       calls.fieldControl += 1;
@@ -359,7 +339,6 @@ test('repository authz deps delegate field rule deps unchanged', async () => {
   });
 
   expect(deps.normalizeCompanyIds()).toEqual(['company_a']);
-  expect(deps.isControlPlaneMetaModel()).toBe(false);
   expect(deps.isFieldRuleControlPlaneModel()).toBe(true);
   expect(await deps.withRecordRuleBypass(async () => 'rr')).toBe('rr');
   expect(await deps.withFieldRuleBypass(async () => 'fr')).toBe('fr');
@@ -367,7 +346,6 @@ test('repository authz deps delegate field rule deps unchanged', async () => {
 
   expect(calls).toEqual({
     normalize: 1,
-    control: 1,
     fieldControl: 1,
     recordBypass: 1,
     fieldBypass: 1,
@@ -375,8 +353,7 @@ test('repository authz deps delegate field rule deps unchanged', async () => {
   });
 });
 
-test('repository authz deps delegate field rule policy and selection deps unchanged', async () => {
-  const summaries: Array<Record<string, any>> = [];
+test('repository authz deps delegate field rule policy deps unchanged', async () => {
   const denied = new Error('denied');
   const fieldDeps = createRepositoryFieldRulePolicyDeps({
     meta: { fullModelName: 'auth.Role' } as any,
@@ -384,9 +361,6 @@ test('repository authz deps delegate field rule policy and selection deps unchan
     requestContext: { activeCompanyId: 'company_a' },
     normalizeCompanyIds() {
       return ['company_a'];
-    },
-    isControlPlaneMetaModel() {
-      return false;
     },
     isFieldRuleControlPlaneModel() {
       return true;
@@ -401,20 +375,12 @@ test('repository authz deps delegate field rule policy and selection deps unchan
       return denied;
     },
   });
-  const selectionDeps = createRepositoryFieldRuleSelectionDeps({
-    isControlPlaneMetaModel() {
-      return true;
-    },
-  });
 
   expect(fieldDeps.normalizeCompanyIds()).toEqual(['company_a']);
-  expect(fieldDeps.isControlPlaneMetaModel()).toBe(false);
   expect(fieldDeps.isFieldRuleControlPlaneModel()).toBe(true);
   expect(await fieldDeps.withRecordRuleBypass(async () => 'rr')).toBe('rr');
   expect(await fieldDeps.withFieldRuleBypass(async () => 'fr')).toBe('fr');
   expect(fieldDeps.permissionDenied('field_rule_denied', 'denied')).toBe(denied);
-  expect(selectionDeps.isControlPlaneMetaModel()).toBe(true);
-  expect(summaries).toEqual([]);
 });
 
 test('repository authz deps delegate company scope deps unchanged', async () => {
