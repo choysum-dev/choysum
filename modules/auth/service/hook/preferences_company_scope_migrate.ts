@@ -4,6 +4,7 @@
 type ChoysumDb = {
   execute?: (sql: string, params: string) => Promise<unknown>;
   query?: (sql: string, params: string) => Promise<string>;
+  dialectName?: string;
 };
 
 type AuthUserScopeRow = {
@@ -102,15 +103,55 @@ function hasStoredEnabled(raw: unknown): boolean {
   return parseIdList(raw).length > 0;
 }
 
+function parseQueryRows(raw: unknown): unknown[] {
+  const parsed = typeof raw === 'string' ? JSON.parse(String(raw || '[]')) : raw;
+  return Array.isArray(parsed) ? parsed : [];
+}
+
+/**
+ * Catalog probe for leftover auth_user.preferences. Prefer this over SELECTing the
+ * column: a missing-column SELECT still logs ERROR in the QuickJS db bridge.
+ */
+async function authUserPreferencesColumnExists(db: ChoysumDb): Promise<boolean> {
+  if (!db.query) return false;
+  const dialect = String(db.dialectName || 'sqlite').toLowerCase();
+  try {
+    if (dialect === 'postgres' || dialect === 'postgresql') {
+      const raw = await db.query(
+        `SELECT 1 AS ok FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = 'auth_user' AND column_name = 'preferences' LIMIT 1`,
+        '[]',
+      );
+      return parseQueryRows(raw).length > 0;
+    }
+    if (dialect === 'mysql') {
+      const raw = await db.query(
+        `SELECT 1 AS ok FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'auth_user' AND column_name = 'preferences' LIMIT 1`,
+        '[]',
+      );
+      return parseQueryRows(raw).length > 0;
+    }
+    const raw = await db.query('PRAGMA table_info(auth_user)', '[]');
+    return parseQueryRows(raw).some(row => {
+      const name = String((row as { name?: unknown; Name?: unknown })?.name ?? (row as { Name?: unknown })?.Name ?? '').trim();
+      return name === 'preferences';
+    });
+  } catch {
+    // Catalog unavailable — treat as absent so we do not SELECT a dropped column.
+    return false;
+  }
+}
+
 /**
  * Copy Preferences.activeCompanyId / enabledCompanyIds into first-class columns
  * when those columns are still empty. Values outside CompanyId ∪ CompanyIds are
  * dropped so a stale preference cannot seed an unauthorized active company.
- * No-ops when the leftover Preferences column is already gone.
+ * No-ops when the leftover Preferences column is already gone (catalog probe).
  */
 export async function migratePreferencesCompanyScopeToColumns(): Promise<void> {
   const db = resolveDb();
   if (!db?.query || !db?.execute) return;
+
+  if (!(await authUserPreferencesColumnExists(db))) return;
 
   let rows: AuthUserScopeRow[] = [];
   try {
@@ -118,10 +159,9 @@ export async function migratePreferencesCompanyScopeToColumns(): Promise<void> {
       'SELECT id, preferences, active_company_id, enabled_company_ids, company_id, company_ids FROM auth_user WHERE preferences IS NOT NULL',
       '[]',
     );
-    const parsed = JSON.parse(String(raw || '[]'));
-    rows = Array.isArray(parsed) ? parsed : [];
+    rows = parseQueryRows(raw) as AuthUserScopeRow[];
   } catch (err) {
-    // Preferences column already dropped, or table unavailable on this dialect.
+    // Unexpected query failure after a positive catalog hit.
     console.warn('[auth] preferences company-scope migrate skipped', err);
     return;
   }

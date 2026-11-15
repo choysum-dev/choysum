@@ -3,13 +3,28 @@
 
 import { migratePreferencesCompanyScopeToColumns } from './preferences_company_scope_migrate';
 
+type QueryFn = (sql: string, params: string) => Promise<string>;
+
+function withPreferencesColumn(rowQuery: QueryFn): QueryFn {
+  return async (sql, params) => {
+    if (sql.includes('PRAGMA table_info') || sql.includes('information_schema.columns')) {
+      if (sql.includes('PRAGMA')) {
+        return JSON.stringify([{ name: 'preferences' }]);
+      }
+      return JSON.stringify([{ ok: 1 }]);
+    }
+    return rowQuery(sql, params);
+  };
+}
+
 test('migratePreferencesCompanyScopeToColumns: copies Preferences scope into empty columns', async () => {
   const executes: Array<{ sql: string; params: string }> = [];
   const prev = (globalThis as any).$choysum;
   (globalThis as any).$choysum = {
     ...(prev || {}),
     db: {
-      query: async () =>
+      dialectName: 'sqlite',
+      query: withPreferencesColumn(async () =>
         JSON.stringify([
           {
             id: 'u1',
@@ -23,6 +38,7 @@ test('migratePreferencesCompanyScopeToColumns: copies Preferences scope into emp
             company_ids: JSON.stringify(['c2']),
           },
         ]),
+      ),
       execute: async (sql: string, params: string) => {
         executes.push({ sql, params });
       },
@@ -49,7 +65,8 @@ test('migratePreferencesCompanyScopeToColumns: drops out-of-scope Preferences co
   (globalThis as any).$choysum = {
     ...(prev || {}),
     db: {
-      query: async () =>
+      dialectName: 'sqlite',
+      query: withPreferencesColumn(async () =>
         JSON.stringify([
           {
             id: 'u_bad',
@@ -63,6 +80,7 @@ test('migratePreferencesCompanyScopeToColumns: drops out-of-scope Preferences co
             company_ids: '[]',
           },
         ]),
+      ),
       execute: async (sql: string, params: string) => {
         executes.push({ sql, params });
       },
@@ -85,7 +103,8 @@ test('migratePreferencesCompanyScopeToColumns: keeps existing EnabledCompanyIds'
   (globalThis as any).$choysum = {
     ...(prev || {}),
     db: {
-      query: async () =>
+      dialectName: 'sqlite',
+      query: withPreferencesColumn(async () =>
         JSON.stringify([
           {
             id: 'u2',
@@ -100,6 +119,7 @@ test('migratePreferencesCompanyScopeToColumns: keeps existing EnabledCompanyIds'
             company_ids: JSON.stringify(['c_new']),
           },
         ]),
+      ),
       execute: async (sql: string, params: string) => {
         executes.push({ sql, params });
       },
@@ -122,7 +142,8 @@ test('migratePreferencesCompanyScopeToColumns: rewrites enabled when active is o
   (globalThis as any).$choysum = {
     ...(prev || {}),
     db: {
-      query: async () =>
+      dialectName: 'sqlite',
+      query: withPreferencesColumn(async () =>
         JSON.stringify([
           {
             id: 'u3',
@@ -136,6 +157,7 @@ test('migratePreferencesCompanyScopeToColumns: rewrites enabled when active is o
             company_ids: JSON.stringify(['c_keep']),
           },
         ]),
+      ),
       execute: async (sql: string, params: string) => {
         executes.push({ sql, params });
       },
@@ -162,7 +184,8 @@ test('migratePreferencesCompanyScopeToColumns: ignores out-of-scope stored activ
   (globalThis as any).$choysum = {
     ...(prev || {}),
     db: {
-      query: async () =>
+      dialectName: 'sqlite',
+      query: withPreferencesColumn(async () =>
         JSON.stringify([
           {
             id: 'u_stale_active',
@@ -177,6 +200,7 @@ test('migratePreferencesCompanyScopeToColumns: ignores out-of-scope stored activ
             company_ids: '[]',
           },
         ]),
+      ),
       execute: async (sql: string, params: string) => {
         executes.push({ sql, params });
       },
@@ -206,11 +230,17 @@ test('migratePreferencesCompanyScopeToColumns: no-ops without db or preferences 
     (globalThis as any).$choysum = prev;
   }
 
+  const queries: string[] = [];
   (globalThis as any).$choysum = {
     ...(prev || {}),
     db: {
-      query: async () => {
-        throw new Error('no such column: preferences');
+      dialectName: 'postgres',
+      query: async (sql: string) => {
+        queries.push(sql);
+        if (sql.includes('information_schema.columns')) {
+          return JSON.stringify([]);
+        }
+        throw new Error('should not SELECT preferences when column is absent');
       },
       execute: async () => {
         throw new Error('should not run');
@@ -222,4 +252,33 @@ test('migratePreferencesCompanyScopeToColumns: no-ops without db or preferences 
   } finally {
     (globalThis as any).$choysum = prev;
   }
+  expect(queries.some(sql => sql.includes('information_schema.columns'))).toBe(true);
+  expect(queries.every(sql => !/\bpreferences\b/.test(sql) || sql.includes('column_name'))).toBe(true);
+});
+
+test('migratePreferencesCompanyScopeToColumns: postgres catalog probe then selects preferences', async () => {
+  const queries: string[] = [];
+  const prev = (globalThis as any).$choysum;
+  (globalThis as any).$choysum = {
+    ...(prev || {}),
+    db: {
+      dialectName: 'postgres',
+      query: async (sql: string) => {
+        queries.push(sql);
+        if (sql.includes('information_schema.columns')) {
+          return JSON.stringify([{ ok: 1 }]);
+        }
+        return JSON.stringify([]);
+      },
+      execute: async () => undefined,
+    },
+  };
+  try {
+    await migratePreferencesCompanyScopeToColumns();
+  } finally {
+    (globalThis as any).$choysum = prev;
+  }
+  expect(queries[0]).toContain('information_schema.columns');
+  expect(queries[0]).toContain("column_name = 'preferences'");
+  expect(queries.some(sql => sql.startsWith('SELECT id, preferences'))).toBe(true);
 });
