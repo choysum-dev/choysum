@@ -12,7 +12,7 @@ import { createEmptyQueryState } from '@/web/web/query/state';
 import type { DataSetSnapshot } from '@/web/web/query/types';
 import { clearFieldsByStore } from '@/web/web/query/utils/registry/field';
 import { clearMetricsByStore } from '@/web/web/query/utils/registry/metric';
-import { registerStoreFactory, createModelStore } from '@/web/web/stores/registry';
+import { registerStoreFactory } from '@/web/web/stores/registry';
 import { webApiService } from '@/core/web/client';
 import { {{.Model.Name}}Service } from '../service';
 import { useI18nStore } from '@/web/web/stores/i18nStore';
