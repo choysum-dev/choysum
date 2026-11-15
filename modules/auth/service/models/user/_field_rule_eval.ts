@@ -58,6 +58,16 @@ type FieldRuleDecision = {
   permWrite: 'allow' | 'deny' | null;
 };
 
+type FieldRuleEvalMaterial = {
+  applicationId: string;
+  modelId: string;
+  modelNameWant: string;
+  fieldNames: string[];
+  fieldNameById: Map<string, string>;
+  fieldIdSet: Set<string>;
+  rules: Awaited<ReturnType<typeof RoleFieldRule.Search>>;
+};
+
 function getFieldRuleReqState(): Record<string, unknown> | undefined {
   const req = getCurrentReq();
   return req ? getOrInitReqServiceState(req) : undefined;
@@ -107,14 +117,20 @@ function denyAllNonSystemFields(fieldNames: string[], reason: string, hitRuleIds
  *
  * Deny-by-default: no matching allow ⇒ field enters deny lists.
  * More-specific scope wins; same-scope deny-wins; read-deny ⇒ write-deny.
+ *
+ * Permission-graph reads (meta + RoleFieldRule) run under bypass — same need as
+ * evaluateRecordRuleCondition wrapping RoleRecordRule.Search. In-memory partition
+ * and per-field decisions run outside bypass.
  */
 export async function evaluateFieldRules(input: FieldRuleEvalInput): Promise<FieldRuleEvalResult> {
-  // Permission-graph reads (meta + RoleFieldRule) must bypass RR/FR, matching
-  // evaluateRecordRuleCondition and GetFieldRuleSpec's outer wrap.
-  return await withPermissionGraphBypass(async () => evaluateFieldRulesUnderBypass(input));
+  const loaded = await withPermissionGraphBypass(async () => loadFieldRuleEvalMaterial(input));
+  if (loaded.kind === 'early') return loaded.result;
+  return decideFieldRulesFromMaterial(loaded.material);
 }
 
-async function evaluateFieldRulesUnderBypass(input: FieldRuleEvalInput): Promise<FieldRuleEvalResult> {
+async function loadFieldRuleEvalMaterial(
+  input: FieldRuleEvalInput
+): Promise<{ kind: 'early'; result: FieldRuleEvalResult } | { kind: 'decide'; material: FieldRuleEvalMaterial }> {
   const modelNameWant = String(input.modelName || '').trim();
   const [applicationId, modelId] = await Promise.all([
     resolveApplicationId(input.appName),
@@ -150,11 +166,11 @@ async function evaluateFieldRulesUnderBypass(input: FieldRuleEvalInput): Promise
 
   if (fieldIdsByName.size === 0) {
     // Nothing to deny (system fields are never listed).
-    return { denyReadFields: [], denyWriteFields: [], reason: 'no_fields_deny_by_default' };
+    return { kind: 'early', result: { denyReadFields: [], denyWriteFields: [], reason: 'no_fields_deny_by_default' } };
   }
 
   if (input.roleIds.length === 0) {
-    return denyAllNonSystemFields(fieldNames, 'no_roles_deny_by_default');
+    return { kind: 'early', result: denyAllNonSystemFields(fieldNames, 'no_roles_deny_by_default') };
   }
 
   // Load rules
@@ -216,8 +232,25 @@ async function evaluateFieldRulesUnderBypass(input: FieldRuleEvalInput): Promise
   );
 
   if (!rules || rules.length === 0) {
-    return denyAllNonSystemFields(fieldNames, 'no_field_rules_deny_by_default');
+    return { kind: 'early', result: denyAllNonSystemFields(fieldNames, 'no_field_rules_deny_by_default') };
   }
+
+  return {
+    kind: 'decide',
+    material: {
+      applicationId,
+      modelId,
+      modelNameWant,
+      fieldNames,
+      fieldNameById,
+      fieldIdSet,
+      rules,
+    },
+  };
+}
+
+function decideFieldRulesFromMaterial(material: FieldRuleEvalMaterial): FieldRuleEvalResult {
+  const { applicationId, modelId, modelNameWant, fieldNames, fieldNameById, fieldIdSet, rules } = material;
 
   // Partition by scope
   const fieldRulesByFieldName = new Map<string, FieldRuleDecision[]>();

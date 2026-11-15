@@ -9,7 +9,10 @@ import type MetaApplicationModel from '@/meta/service/models/application';
 import type MetaUiResourceModel from '@/meta/service/models/ui_resource';
 import type MetaUiResourceMenuRouteModel from '@/meta/service/models/ui_resource_menu_route';
 import type MetaUiResourceRouteActionModel from '@/meta/service/models/ui_resource_route_action';
-import { META_FIXTURE_RECORD_RULE_ALLOW } from './_meta_fixture_allow';
+import {
+  META_FIXTURE_RECORD_RULE_ALLOW,
+  META_FIXTURE_RECORD_RULE_ALLOW_UI_MUTATE,
+} from './_meta_fixture_allow';
 
 const MetaApplication = createServiceByModel<typeof MetaApplicationModel>('meta.MetaApplication');
 const MetaUiResource = createServiceByModel<typeof MetaUiResourceModel>('meta.MetaUiResource');
@@ -81,9 +84,7 @@ function setupAllowlistForFixtures(): void {
       'RoleUiResource:delete',
 
       ...META_FIXTURE_RECORD_RULE_ALLOW,
-
-
-
+      ...META_FIXTURE_RECORD_RULE_ALLOW_UI_MUTATE,
     ],
   });
 }

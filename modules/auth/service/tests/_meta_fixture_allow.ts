@@ -2,9 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /**
- * Entry allowlist entries for reading/writing meta IR tables from auth unit fixtures.
+ * Entry allowlist entries for reading meta IR tables from auth unit fixtures.
  * After removing repository app-wide meta RR bypass, fixture Searches must either
  * run under withPermissionGraphBypass or list these models on the entry allowlist.
+ *
+ * Prefer this read-only list. Tests that Create/Write/Delete MetaUiResource* rows
+ * should also spread META_FIXTURE_RECORD_RULE_ALLOW_UI_MUTATE.
  */
 export const META_FIXTURE_RECORD_RULE_ALLOW: string[] = [
   'meta.MetaApplication:read',
@@ -18,26 +21,30 @@ export const META_FIXTURE_RECORD_RULE_ALLOW: string[] = [
   'meta.MetaModelData:read',
   'MetaModelData:read',
   'meta.MetaUiResource:read',
+  'MetaUiResource:read',
+  'meta.MetaUiResourceMenuRoute:read',
+  'MetaUiResourceMenuRoute:read',
+  'meta.MetaUiResourceRouteAction:read',
+  'MetaUiResourceRouteAction:read',
+];
+
+/** Extra allowlist entries for fixtures that mutate MetaUiResource* rows. */
+export const META_FIXTURE_RECORD_RULE_ALLOW_UI_MUTATE: string[] = [
   'meta.MetaUiResource:write',
   'meta.MetaUiResource:create',
   'meta.MetaUiResource:delete',
-  'MetaUiResource:read',
   'MetaUiResource:write',
   'MetaUiResource:create',
   'MetaUiResource:delete',
-  'meta.MetaUiResourceMenuRoute:read',
   'meta.MetaUiResourceMenuRoute:write',
   'meta.MetaUiResourceMenuRoute:create',
   'meta.MetaUiResourceMenuRoute:delete',
-  'MetaUiResourceMenuRoute:read',
   'MetaUiResourceMenuRoute:write',
   'MetaUiResourceMenuRoute:create',
   'MetaUiResourceMenuRoute:delete',
-  'meta.MetaUiResourceRouteAction:read',
   'meta.MetaUiResourceRouteAction:write',
   'meta.MetaUiResourceRouteAction:create',
   'meta.MetaUiResourceRouteAction:delete',
-  'MetaUiResourceRouteAction:read',
   'MetaUiResourceRouteAction:write',
   'MetaUiResourceRouteAction:create',
   'MetaUiResourceRouteAction:delete',

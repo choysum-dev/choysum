@@ -15,7 +15,10 @@ import type MetaUiResourceModel from '@/meta/service/models/ui_resource';
 import type MetaUiResourceMenuRouteModel from '@/meta/service/models/ui_resource_menu_route';
 import type MetaUiResourceRouteActionModel from '@/meta/service/models/ui_resource_route_action';
 import { withPermissionGraphBypass } from '@/core/service/api/authz_bypass';
-import { META_FIXTURE_RECORD_RULE_ALLOW } from './_meta_fixture_allow';
+import {
+  META_FIXTURE_RECORD_RULE_ALLOW,
+  META_FIXTURE_RECORD_RULE_ALLOW_UI_MUTATE,
+} from './_meta_fixture_allow';
 import { metaApplicationId, metaModelId } from './_meta_ids';
 
 const MetaService = createServiceByModel<typeof MetaServiceModel>('meta.MetaService');
@@ -133,6 +136,7 @@ function setupAllowlistForFixtures(): void {
 
       // meta
       ...META_FIXTURE_RECORD_RULE_ALLOW,
+      ...META_FIXTURE_RECORD_RULE_ALLOW_UI_MUTATE,
     ],
   });
 }
