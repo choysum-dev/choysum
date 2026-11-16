@@ -98,19 +98,26 @@ func sqliteRewriteTable(db *gorm.DB, table string, rewrite sqliteTableRewrite) e
 	createSQL := fmt.Sprintf("CREATE TABLE %s (%s)", qTmp, strings.Join(decls, ", "))
 	insertSQL := fmt.Sprintf("INSERT INTO %s SELECT %s FROM %s", qTmp, strings.Join(selectParts, ", "), qTable)
 
-	// Pin one pool connection: PRAGMA foreign_keys is per-connection and a no-op
-	// inside a transaction, so OFF/ON must share the connection used for DROP.
-	err = db.Connection(func(connDB *gorm.DB) error {
+	// One connection for FK pragma + DDL. Reuse an open tx connection (upgrade
+	// scripts often run inside Transactor.Required); otherwise pin via Connection.
+	return sqliteRunOnOneConn(db, func(connDB *gorm.DB) error {
 		fkWasOn, err := sqliteReadForeignKeys(connDB)
 		if err != nil {
 			return err
 		}
+		fkDisabled := false
 		if fkWasOn {
 			if err := helperExec(connDB, "PRAGMA foreign_keys=OFF"); err != nil {
 				return fmt.Errorf("disable foreign_keys for rewrite: %w", err)
 			}
-			defer func() { _ = helperExec(connDB, "PRAGMA foreign_keys=ON") }()
+			fkDisabled = true
 		}
+		// Restore before this callback returns so the pooled conn is never released with FK off.
+		defer func() {
+			if fkDisabled {
+				_ = helperExec(connDB, "PRAGMA foreign_keys=ON")
+			}
+		}()
 
 		txErr := connDB.Transaction(func(tx *gorm.DB) error {
 			_ = helperExec(tx, "DROP TABLE IF EXISTS "+qTmp)
@@ -157,7 +164,21 @@ func sqliteRewriteTable(db *gorm.DB, table string, rewrite sqliteTableRewrite) e
 		}
 		return nil
 	})
-	return err
+}
+
+// sqliteRunOnOneConn runs fn on a single SQLite connection. If db is already bound
+// to an open transaction, reuses it (avoids "database is locked" from a second pool
+// conn). Otherwise pins a pool connection for the duration of fn.
+func sqliteRunOnOneConn(db *gorm.DB, fn func(*gorm.DB) error) error {
+	if db == nil {
+		return fmt.Errorf("db is nil")
+	}
+	if db.Statement != nil {
+		if _, ok := db.Statement.ConnPool.(gorm.TxCommitter); ok {
+			return fn(db)
+		}
+	}
+	return db.Connection(fn)
 }
 
 func sqliteColumnDecl(ct gorm.ColumnType, dst string, rewrite sqliteTableRewrite) string {
@@ -182,7 +203,8 @@ func sqliteColumnDecl(ct gorm.ColumnType, dst string, rewrite sqliteTableRewrite
 	decl := quoteIdent("sqlite", dst) + " " + typeName
 	if isPK {
 		decl += " PRIMARY KEY"
-		if ai, ok := ct.AutoIncrement(); ok && ai {
+		// SQLite only allows AUTOINCREMENT on INTEGER PRIMARY KEY.
+		if ai, ok := ct.AutoIncrement(); ok && ai && strings.EqualFold(typeName, "INTEGER") {
 			decl += " AUTOINCREMENT"
 		}
 	} else if notNull {
@@ -281,8 +303,16 @@ func sqliteRewriteObjectSQL(sql string, rewrite sqliteTableRewrite) (string, boo
 	}
 	lower := strings.ToLower(sql)
 	if rewrite.Drop != nil {
+		// Match columns in the definition body (after first '('), not the object name
+		// (e.g. idx_gone_created must not be skipped when dropping column "gone").
+		body := lower
+		if i := strings.Index(lower, "("); i >= 0 {
+			body = lower[i:]
+		} else if i := strings.Index(lower, " of "); i >= 0 {
+			body = lower[i:]
+		}
 		for col := range rewrite.Drop {
-			if sqliteSQLMentionsColumn(lower, strings.ToLower(col)) {
+			if sqliteSQLMentionsColumn(body, strings.ToLower(col)) {
 				return "", false
 			}
 		}

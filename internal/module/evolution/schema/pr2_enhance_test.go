@@ -228,6 +228,24 @@ func TestLiveColumnTypeName(t *testing.T) {
 	if _, err := liveColumnTypeName(nil, "t", "missing"); err == nil {
 		t.Fatal("missing")
 	}
+	getColumnTypes = func(*gorm.DB, string) ([]gorm.ColumnType, error) {
+		return []gorm.ColumnType{
+			fakeColumnTypeAI{fakeColumnType: fakeColumnType{name: "id", dbType: "int"}, ai: true, aiOK: true},
+		}, nil
+	}
+	if !liveColumnIsAutoIncrement(nil, "t", "id") {
+		t.Fatal("expected auto increment")
+	}
+	if liveColumnIsAutoIncrement(nil, "t", "missing") {
+		t.Fatal("missing col")
+	}
+	decl := sqliteColumnDecl(fakeColumnTypeAI{
+		fakeColumnType: fakeColumnType{name: "id", dbType: "TEXT", primaryKey: true, primaryKeySet: true, primaryKeyOK: true},
+		ai:             true, aiOK: true,
+	}, "id", sqliteTableRewrite{})
+	if strings.Contains(decl, "AUTOINCREMENT") {
+		t.Fatalf("non-integer PK must not get AUTOINCREMENT: %s", decl)
+	}
 }
 
 type fakeColumnTypeWithDecimal struct {
@@ -373,6 +391,12 @@ func TestSqliteRewriteHelpers(t *testing.T) {
 		Drop: map[string]struct{}{"gone": {}},
 	}); ok {
 		t.Fatal("drop should skip")
+	}
+	sql, ok = sqliteRewriteObjectSQL(`CREATE INDEX idx_gone_created ON t (created)`, sqliteTableRewrite{
+		Drop: map[string]struct{}{"gone": {}},
+	})
+	if !ok || !strings.Contains(sql, "idx_gone_created") {
+		t.Fatalf("index name containing column token must be kept: ok=%v sql=%q", ok, sql)
 	}
 	if !sqliteSQLMentionsColumn(`create index idx on t ("gone")`, "gone") {
 		t.Fatal("quoted mention")
