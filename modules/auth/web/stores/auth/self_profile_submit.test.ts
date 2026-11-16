@@ -38,8 +38,8 @@ function deps(overrides?: Partial<Parameters<typeof runSelfProfileSubmit>[0]>) {
       refreshToken: async () => {
         calls.push('refreshToken');
       },
-      afterLocaleChange: async () => {
-        calls.push('afterLocaleChange');
+      afterLangChange: async () => {
+        calls.push('afterLangChange');
       },
       onSuccess: () => {
         calls.push('success');
@@ -70,7 +70,7 @@ test('runSelfProfileSubmit: defaultSubmit then language/token side effects', asy
     'appearance:dark:compact',
     'apply:lang-1',
     'refreshToken',
-    'afterLocaleChange',
+    'afterLangChange',
     'success',
   ]);
 });
@@ -90,7 +90,7 @@ test('runSelfProfileSubmit: normalizes ManyToOne LanguageId before side effects'
     'appearance:light:standard',
     'apply:lang-obj',
     'refreshToken',
-    'afterLocaleChange',
+    'afterLangChange',
     'success',
   ]);
 });
@@ -135,7 +135,7 @@ test('runSelfProfileSubmit: applyLanguage failure still refreshes and succeeds',
     'appearance:dark:compact',
     'apply:lang-1',
     'refreshToken',
-    'afterLocaleChange',
+    'afterLangChange',
     'success',
   ]);
 });
@@ -155,6 +155,7 @@ test('runSelfProfileSubmit: refreshToken failure after Write still succeeds', as
     'appearance:dark:compact',
     'apply:lang-1',
     'refreshToken',
+    'afterLangChange',
     'success',
   ]);
 });

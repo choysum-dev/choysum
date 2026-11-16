@@ -150,7 +150,7 @@ test('base.language: Create with format fields succeeds', async () => {
       Grouping: '[3,0]',
       DateFormat: 'YYYY-MM-DD',
       TimeFormat: 'HH:mm:ss',
-      FirstDayOfWeek: 1,
+      FirstDayOfWeek: '1',
       CurrencySymbolPosition: 'before' as any,
       CurrencySymbolSpacing: false,
     } as any,
@@ -163,19 +163,25 @@ test('base.language: Create with format fields succeeds', async () => {
   expect(Number((created as any).FirstDayOfWeek)).toBe(1);
 });
 
-test('base.language: PersonNameFormat normalizes invalid templates on create', async () => {
+test('base.language: PersonNameFormat rejects invalid templates', async () => {
   const code = `p_${companyCode8()}`.slice(0, 16);
-  const created = await Language.Create(
-    {
-      Name: uid('LangPersonName'),
-      Code: code,
-      Direction: 'ltr' as any,
-      IsActive: true,
-      PersonNameFormat: 'no-tokens-here',
-    } as any,
-    ['Id', 'PersonNameFormat'] as any
-  );
-  expect(String((created as any).PersonNameFormat)).toBe('{FirstName} {LastName}');
+  let caught: any;
+  try {
+    await Language.Create(
+      {
+        Name: uid('LangPersonName'),
+        Code: code,
+        Direction: 'ltr' as any,
+        IsActive: true,
+        PersonNameFormat: 'no-tokens-here',
+      } as any,
+      ['Id', 'PersonNameFormat'] as any
+    );
+  } catch (err) {
+    caught = err;
+  }
+  expect(!!caught).toBe(true);
+  expect(String(caught?.message || caught || '')).toMatch(/FirstName|LastName|Person name format/i);
 });
 
 test('base.language: GetActiveLanguages projects PersonNameFormat', async () => {

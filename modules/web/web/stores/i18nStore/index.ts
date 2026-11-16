@@ -4,20 +4,24 @@
 import { defineStore, type PiniaPluginContext } from 'pinia';
 import { ref, computed, shallowRef } from 'vue';
 import { isClient } from '@vueuse/core';
-import dayjs from 'dayjs';
-import { SUPPORTED_LOCALES } from './locales';
-import { DEFAULT_ACTIVE_UI_KEYS } from './activeUiKeys';
-import { SupportedLocale, DateTimeFormatType } from './types';
-import { detectBestUiKey, updateDocumentDirection, formatDateTime, formatNumber, formatCurrency, getDateTimeFormats, getNumberFormats } from './utils';
-import { loadDayjsLocale, loadVueI18nMessages } from './loader';
-import { uiKeyToLang, langToUiKey } from './lang';
+import { DEFAULT_ACTIVE_LANGS } from './activeLangs';
+import { EN_US_FORMAT_DEFAULTS, type ActiveLanguageRow, type DateTimeFormatType } from './types';
+import {
+  detectBestLang,
+  updateDocumentDirection,
+  formatDateTime,
+  formatNumber,
+  formatCurrency,
+  getDateTimeFormats,
+  getNumberFormats,
+} from './utils';
+import { bcp47FromCode } from './bcp47';
 import { fetchWebTranslations, type TerminologyLoadResult } from './terminologyLoader';
-import { resolveLocaleRemountMode, softLocaleRemount } from './localeRemount';
 import { revalidateTerminologyCatalog } from './terminologyRevalidate';
-import { shouldNoopSetUiKey } from './setUiKeyGuard';
+import { shouldNoopSetLang } from './setLangGuard';
 import { createModelStore } from '@/web/web/stores/registry';
 import {
-  collectActiveLanguageFormats,
+  collectActiveLanguages,
   resolveFormatConfig,
   type LanguageFormatOverlay,
 } from './languageFormat';
@@ -35,13 +39,14 @@ export function setI18nCreateStoreForTests(fn: CreateModelStore | null): void {
 
 // Re-export types for external consumers.
 export * from './types';
-export { SUPPORTED_LOCALES } from './locales';
-export { uiKeyToLang, langToUiKey } from './lang';
+export { bcp47FromCode } from './bcp47';
+export { DEFAULT_ACTIVE_LANGS } from './activeLangs';
 export { fetchWebTranslations } from './terminologyLoader';
-export { shouldNoopSetUiKey } from './setUiKeyGuard';
+export { shouldNoopSetLang } from './setLangGuard';
+export { detectBestLang, matchBestLang } from './utils';
 
 export { componentHintFromScope } from './componentHint';
-export { afterLocaleChange, resolveLocaleRemountMode, softLocaleRemount } from './localeRemount';
+export { afterLangChange } from './langRemount';
 export {
   resolveFormatConfig,
   formatNumberFromConfig,
@@ -49,75 +54,60 @@ export {
   formatCurrencyFromConfig,
   parseGrouping,
   applyGrouping,
+  collectActiveLanguages,
+  overlayFromActiveLanguageRow,
   type LanguageFormatOverlay,
 } from './languageFormat';
 
 export type { TerminologyLoadResult } from './terminologyLoader';
-export type { SupportedLocale };
+export type { ActiveLanguageRow };
 
 /**
- * I18n state store.
+ * I18n state store — identity is POSIX Language.Code.
  */
 export const useI18nStore = defineStore(
   'choysum.web.i18n',
   () => {
-    const localeCode = ref<SupportedLocale | null>(null);
+    const lang = ref<string | null>(null);
 
-    // Initialization state.
     const isInitialized = ref(false);
-
-    // Cache of loaded locale resources.
-    const loadedLocales = shallowRef<Record<string, any>>({});
-
-    // Current loading state.
     const isLoading = ref(false);
 
-    // Terminology catalogHash by lang (for Gateway hash negotiation).
     const terminologyHashByLang = ref<Record<string, string>>({});
-
-    // Last Gateway load result (consumed by app.ts for mergeLocaleMessage).
     const lastTerminologyLoad = shallowRef<TerminologyLoadResult | null>(null);
 
-    // Bumped by reload/revalidate so a slower older response cannot overwrite newer state.
     let terminologyCatalogGeneration = 0;
-    // Bumped by setUiKey so a slower older switch cannot overwrite the latest locale.
-    let setUiKeyGeneration = 0;
-    // Non-null while a setUiKey that will change localeCode is in flight.
-    let pendingUiKey: string | null = null;
+    let setLangGeneration = 0;
+    let activeLanguagesGeneration = 0;
+    let pendingLang: string | null = null;
 
-    // Language switcher codes (Language.IsActive ∩ format catalog; fallback DEFAULT_ACTIVE_UI_KEYS).
-    const activeUiKeys = ref<string[]>([...DEFAULT_ACTIVE_UI_KEYS]);
+    const activeLanguages = ref<ActiveLanguageRow[]>([]);
+    const formatByCode = ref<Record<string, LanguageFormatOverlay>>({});
 
-    // Format overlays keyed by POSIX Language.Code (from GetActiveLanguages).
-    const languageFormatByCode = ref<Record<string, LanguageFormatOverlay>>({});
+    const activeCodes = computed(() =>
+      activeLanguages.value.map(r => r.Code).filter(Boolean)
+    );
 
-    // Current locale config, combining the code with its metadata.
-    const currentLocale = computed(() => {
+    const activeLanguage = computed(() => {
       const code =
-        localeCode.value && localeCode.value in SUPPORTED_LOCALES
-          ? localeCode.value
-          : detectBestUiKey(activeUiKeys.value);
+        lang.value && activeCodes.value.includes(lang.value)
+          ? lang.value
+          : detectBestLang(activeCodes.value.length ? activeCodes.value : [...DEFAULT_ACTIVE_LANGS]);
 
-      const config = SUPPORTED_LOCALES[code];
-      const language = languageFormatByCode.value[uiKeyToLang(code)] || null;
-      const resolved = resolveFormatConfig(
-        config.numberFormat,
-        config.dateTimeFormat,
-        language,
-      );
+      const row = activeLanguages.value.find(r => r.Code === code) || null;
+      const overlay = formatByCode.value[code] || null;
+      const resolved = resolveFormatConfig(overlay);
+      const defaults = EN_US_FORMAT_DEFAULTS;
 
       return {
         code,
-        ...config,
+        name: row?.Name || overlay?.Name || code,
+        textDirection: (row?.Direction || overlay?.Direction || 'ltr') as 'ltr' | 'rtl',
+        bcp47: bcp47FromCode(code),
         numberFormat: resolved.numberFormat,
         dateTimeFormat: resolved.dateTimeFormat,
         currencyFormat: {
-          ...(config.currencyFormat || {
-            symbol: '$',
-            position: 'before' as const,
-            code: 'USD',
-            decimalDigits: 2,
-          }),
+          ...defaults.currencyFormat,
           ...(resolved.currencyCodeOverride ? { code: resolved.currencyCodeOverride } : {}),
           ...(resolved.currencySymbolPosition ? { position: resolved.currencySymbolPosition } : {}),
           ...(resolved.currencySymbolSpacing != null ? { spacing: resolved.currencySymbolSpacing } : {}),
@@ -125,76 +115,76 @@ export const useI18nStore = defineStore(
       };
     });
 
-    const terminologyLang = computed(() => uiKeyToLang(currentLocale.value.code));
+    const bcp47Locale = computed(() => activeLanguage.value.bcp47);
 
     /**
-     * Set the application locale (format UI + Gateway terminology).
-     * Same locale after initialize is a no-op (no translations / GetActiveLanguages refetch).
+     * Set the application language (POSIX Language.Code + Gateway terminology).
+     * Same lang after initialize is a no-op.
      */
-    async function setUiKey(locale: string) {
-      // Check whether the locale is supported for format metadata.
-      if (!(locale in SUPPORTED_LOCALES)) {
-        console.warn(`Locale ${locale} is not supported`);
+    async function setLang(code: string) {
+      const next = String(code || '').trim();
+      if (!next) {
+        console.warn('setLang: empty language code');
         return false;
       }
 
-      // Skip only when already on this locale and no other switch is pending.
+      const inActive = activeCodes.value.includes(next);
       if (
-        shouldNoopSetUiKey({
-          locale,
-          currentLocaleCode: localeCode.value,
+        inActive &&
+        shouldNoopSetLang({
+          lang: next,
+          currentLang: lang.value,
           isInitialized: isInitialized.value,
         }) &&
-        pendingUiKey == null
+        pendingLang == null
       ) {
         return true;
       }
 
-      const generation = ++setUiKeyGeneration;
-      pendingUiKey = locale;
+      const generation = ++setLangGeneration;
+      pendingLang = next;
       isLoading.value = true;
 
       try {
-        // Load resources on demand when they are not cached yet.
-        if (!loadedLocales.value[locale]) {
-          await loadDayjsLocale(locale);
-
-          // Cache that dayjs locale resources were loaded for this UI key.
-          loadedLocales.value = {
-            ...loadedLocales.value,
-            [locale]: true,
-          };
+        if (!inActive) {
+          await loadActiveLanguages();
+          if (generation !== setLangGeneration) {
+            return false;
+          }
+          const allowed = activeCodes.value.length ? activeCodes.value : [...DEFAULT_ACTIVE_LANGS];
+          if (!allowed.includes(next)) {
+            console.warn(`Language ${next} is not in the active set`);
+            return false;
+          }
         }
 
-        // Load terminology from host Gateway (S4-1); failures fall back to msgid.
-        const lang = uiKeyToLang(locale);
-        const prevHash = terminologyHashByLang.value[lang] || '';
+        const prevHash = terminologyHashByLang.value[next] || '';
         try {
-          const res = await fetchWebTranslations(lang, prevHash || undefined);
-          if (generation !== setUiKeyGeneration) {
+          const res = await fetchWebTranslations(next, prevHash || undefined);
+          if (generation !== setLangGeneration) {
             return false;
           }
           if (res.hash) {
             terminologyHashByLang.value = {
               ...terminologyHashByLang.value,
-              [lang]: res.hash,
+              [next]: res.hash,
             };
           }
           lastTerminologyLoad.value = {
             lang: res.lang,
-            locale: res.locale || locale,
+            bcp47: res.bcp47 || bcp47FromCode(next),
             hash: res.hash,
             unchanged: res.unchanged,
             messages: res.unchanged ? null : res.messages,
           };
         } catch (error) {
-          if (generation !== setUiKeyGeneration) {
+          if (generation !== setLangGeneration) {
             return false;
           }
           console.warn('Failed to load terminology from Gateway; falling back to msgid', error);
           lastTerminologyLoad.value = {
-            lang,
-            locale,
+            lang: next,
+            bcp47: bcp47FromCode(next),
             hash: prevHash,
             unchanged: false,
             messages: null,
@@ -202,58 +192,57 @@ export const useI18nStore = defineStore(
           };
         }
 
-        // Refresh Language format overlays when switching UI key (P2 runtime authority).
         if (isClient) {
           try {
-            await loadActiveUiKeysFromServer();
+            await loadActiveLanguages();
           } catch {
-            // Best-effort; catalog fallbacks remain.
+            // Best-effort; EN_US defaults remain.
           }
         }
 
-        // Yield so a concurrent setUiKey can win before we mutate localeCode.
         await Promise.resolve();
-        if (generation !== setUiKeyGeneration) {
+        if (generation !== setLangGeneration) {
           return false;
         }
 
-        // Update the active locale.
-        localeCode.value = locale as SupportedLocale;
+        if (activeCodes.value.length && !activeCodes.value.includes(next)) {
+          console.warn(`Language ${next} is not in the active set`);
+          if (generation === setLangGeneration) {
+            lastTerminologyLoad.value = null;
+            // Revert any hash written for this rejected code so a later activation
+            // does not short-circuit with unchanged:true / null messages.
+            if (prevHash) {
+              terminologyHashByLang.value = {
+                ...terminologyHashByLang.value,
+                [next]: prevHash,
+              };
+            } else {
+              const updated = { ...terminologyHashByLang.value };
+              delete updated[next];
+              terminologyHashByLang.value = updated;
+            }
+          }
+          return false;
+        }
 
-        // Configure the dayjs locale.
-        const dayjsLocaleCode = SUPPORTED_LOCALES[locale as SupportedLocale].dayjsLocaleCode;
-        dayjs.locale(dayjsLocaleCode);
+        lang.value = next;
 
-        // Update the document direction on the client only.
         if (isClient) {
-          updateDocumentDirection(currentLocale.value.textDirection);
+          updateDocumentDirection(activeLanguage.value.textDirection);
         }
 
         return true;
       } catch (error) {
-        console.error('Failed to set locale:', error);
+        console.error('Failed to set language:', error);
         return false;
       } finally {
-        if (generation === setUiKeyGeneration) {
-          pendingUiKey = null;
+        if (generation === setLangGeneration) {
+          pendingLang = null;
           isLoading.value = false;
         }
       }
     }
 
-    /**
-     * Restrict the language switcher to active terminology locales.
-     */
-    function setActiveUiKeys(codes: string[]) {
-      const next = codes
-        .map(c => String(c || '').trim())
-        .filter(c => c && c in SUPPORTED_LOCALES);
-      activeUiKeys.value = next.length > 0 ? next : [...DEFAULT_ACTIVE_UI_KEYS];
-    }
-
-    /**
-     * Wrapped date and time formatter.
-     */
     function wrappedFormatDateTime(
       date: Date | string | number,
       options?: {
@@ -263,24 +252,26 @@ export const useI18nStore = defineStore(
         timeZone?: string;
       }
     ): string {
-      return formatDateTime(date, currentLocale.value.dateTimeFormat, options);
+      return formatDateTime(date, activeLanguage.value.dateTimeFormat, {
+        ...options,
+        bcp47: activeLanguage.value.bcp47,
+      });
     }
 
-    /**
-     * Wrapped number formatter.
-     */
     function wrappedFormatNumber(value: number, options?: { digits?: number }) {
-      return formatNumber(value, currentLocale.value.code, currentLocale.value.numberFormat, options);
+      return formatNumber(
+        value,
+        activeLanguage.value.bcp47,
+        activeLanguage.value.numberFormat,
+        options
+      );
     }
 
-    /**
-     * Wrapped currency formatter.
-     */
     function wrappedFormatCurrency(value: number, currencyCode?: string) {
-      const loc = currentLocale.value;
+      const loc = activeLanguage.value;
       return formatCurrency(
         value,
-        loc.code,
+        loc.bcp47,
         {
           ...loc.currencyFormat,
           thousandsSeparator: loc.numberFormat?.thousandsSeparator,
@@ -291,46 +282,38 @@ export const useI18nStore = defineStore(
       );
     }
 
-    /**
-     * Wrapped accessor for date and time format config.
-     */
     function wrappedGetDateTimeFormats() {
-      return getDateTimeFormats(currentLocale.value.code, currentLocale.value.dateTimeFormat);
+      return getDateTimeFormats(activeLanguage.value.code, activeLanguage.value.dateTimeFormat);
     }
 
-    /**
-     * Wrapped accessor for number format config.
-     */
     function wrappedGetNumberFormats() {
-      return getNumberFormats(currentLocale.value.code, currentLocale.value.numberFormat, currentLocale.value.currencyFormat);
+      return getNumberFormats(
+        activeLanguage.value.code,
+        activeLanguage.value.numberFormat,
+        activeLanguage.value.currencyFormat
+      );
     }
 
-    /**
-     * Reload terminology for the current (or given) locale from Gateway and
-     * refresh lastTerminologyLoad for vue-i18n merge (post terminology form save).
-     */
-    async function reloadTerminology(locale?: string): Promise<TerminologyLoadResult | null> {
-      const targetLocale = String(locale || localeCode.value || '').trim();
-      if (!targetLocale || !(targetLocale in SUPPORTED_LOCALES)) {
+    async function reloadTerminology(targetLang?: string): Promise<TerminologyLoadResult | null> {
+      const next = String(targetLang || lang.value || '').trim();
+      if (!next) {
         return null;
       }
-      const lang = uiKeyToLang(targetLocale);
       const generation = ++terminologyCatalogGeneration;
-      // Force catalog refresh: omit client hash so Gateway always returns messages.
       try {
-        const res = await fetchWebTranslations(lang, undefined);
+        const res = await fetchWebTranslations(next, undefined);
         if (generation !== terminologyCatalogGeneration) {
           return null;
         }
         if (res.hash) {
           terminologyHashByLang.value = {
             ...terminologyHashByLang.value,
-            [lang]: res.hash,
+            [next]: res.hash,
           };
         }
         const load: TerminologyLoadResult = {
           lang: res.lang,
-          locale: res.locale || targetLocale,
+          bcp47: res.bcp47 || bcp47FromCode(next),
           hash: res.hash,
           unchanged: false,
           messages: res.messages ?? {},
@@ -343,9 +326,9 @@ export const useI18nStore = defineStore(
           return null;
         }
         const load: TerminologyLoadResult = {
-          lang,
-          locale: targetLocale,
-          hash: terminologyHashByLang.value[lang] || '',
+          lang: next,
+          bcp47: bcp47FromCode(next),
+          hash: terminologyHashByLang.value[next] || '',
           unchanged: false,
           messages: null,
           gatewayError: true,
@@ -355,26 +338,19 @@ export const useI18nStore = defineStore(
       }
     }
 
-    /**
-     * Revalidate Gateway catalog with prevHash (visibility / pageshow after po hotreload).
-     * Merges only when catalogHash changed; then soft-remounts scoped stores.
-     */
     async function revalidateTerminologyIfStale(): Promise<TerminologyLoadResult | null> {
       if (!isInitialized.value) {
         return null;
       }
-      // currentLocale always resolves to a supported UI key when falling back.
-      const targetLocale =
-        localeCode.value && localeCode.value in SUPPORTED_LOCALES
-          ? localeCode.value
-          : currentLocale.value.code;
-      const lang = uiKeyToLang(targetLocale);
-      const prevHash = terminologyHashByLang.value[lang] || '';
+      const next =
+        lang.value && activeCodes.value.includes(lang.value)
+          ? lang.value
+          : activeLanguage.value.code;
+      const prevHash = terminologyHashByLang.value[next] || '';
       const generation = ++terminologyCatalogGeneration;
       try {
         const load = await revalidateTerminologyCatalog({
-          lang,
-          locale: targetLocale,
+          lang: next,
           prevHash,
         });
         if (generation !== terminologyCatalogGeneration) {
@@ -383,16 +359,11 @@ export const useI18nStore = defineStore(
         if (load.hash) {
           terminologyHashByLang.value = {
             ...terminologyHashByLang.value,
-            [lang]: load.hash,
+            [next]: load.hash,
           };
         }
         if (!load.unchanged) {
           lastTerminologyLoad.value = load;
-          // Soft remount is experimental; default mode only merges via lastTerminologyLoad.
-          // Unconditional destroyAll on pageshow/visibility races auth e2e and live SPA state.
-          if (resolveLocaleRemountMode() === 'remount') {
-            await softLocaleRemount();
-          }
         }
         return load;
       } catch (error) {
@@ -406,125 +377,137 @@ export const useI18nStore = defineStore(
 
     /**
      * Load active languages from base.Language/GetActiveLanguages (gRPC-Web).
-     * Also caches format overlays for number/date runtime (P2).
-     * Failures keep DEFAULT_ACTIVE_UI_KEYS and catalog format fallbacks.
      */
-    async function loadActiveUiKeysFromServer() {
+    async function loadActiveLanguages(): Promise<boolean> {
+      const generation = ++activeLanguagesGeneration;
       try {
         const languageStore = createModelStoreImpl('base.Language');
         const rows = await (languageStore as any).GetActiveLanguages();
-        const { formats, uiKeys } = collectActiveLanguageFormats(rows);
-        languageFormatByCode.value = formats;
-        setActiveUiKeys(uiKeys);
+        if (generation !== activeLanguagesGeneration) {
+          return false;
+        }
+        const { rows: nextRows, byCode } = collectActiveLanguages(rows);
+        formatByCode.value = byCode;
+        activeLanguages.value =
+          nextRows.length > 0
+            ? nextRows
+            : DEFAULT_ACTIVE_LANGS.map(code => ({ Code: code }));
+        return true;
       } catch (error) {
+        if (generation !== activeLanguagesGeneration) {
+          return false;
+        }
         console.warn('Failed to load active languages; using defaults', error);
-        languageFormatByCode.value = {};
-        setActiveUiKeys([...DEFAULT_ACTIVE_UI_KEYS]);
+        if (activeLanguages.value.length === 0) {
+          formatByCode.value = {};
+          activeLanguages.value = DEFAULT_ACTIVE_LANGS.map(code => ({ Code: code }));
+        }
+        return false;
       }
     }
 
-    /**
-     * Initialize locale resources.
-     */
     async function initialize() {
       if (isInitialized.value) {
         return;
       }
 
-      if (isClient) {
-        await loadActiveUiKeysFromServer();
-      }
+      // Capture before the first await so a concurrent setLang cannot be clobbered.
+      const initSetLangGen = setLangGeneration;
+      try {
+        const loaded = isClient ? await loadActiveLanguages() : true;
 
-      // Detect only when localeCode is missing or invalid for the active set.
-      if (!localeCode.value || !(localeCode.value in SUPPORTED_LOCALES) || !activeUiKeys.value.includes(localeCode.value)) {
-        // Honor manual localStorage session: only auto-detect when unset/invalid.
-        if (!localeCode.value || !(localeCode.value in SUPPORTED_LOCALES)) {
-          localeCode.value = detectBestUiKey(activeUiKeys.value);
-        } else if (!activeUiKeys.value.includes(localeCode.value)) {
-          localeCode.value = detectBestUiKey(activeUiKeys.value);
+        if (setLangGeneration !== initSetLangGen) {
+          return;
         }
+
+        const allowed = activeCodes.value.length ? activeCodes.value : [...DEFAULT_ACTIVE_LANGS];
+        let langToSet = lang.value;
+
+        if (!langToSet || !allowed.includes(langToSet)) {
+          if (!langToSet) {
+            langToSet = detectBestLang(allowed);
+          } else if (loaded) {
+            langToSet = detectBestLang(allowed);
+          } else if (!activeLanguages.value.some(r => r.Code === langToSet)) {
+            activeLanguages.value = [...activeLanguages.value, { Code: langToSet }];
+          }
+        }
+
+        // Bounded retries while this initialize still owns setLangGeneration.
+        // setLang bumps the counter on entry; ownership is initSetLangGen + attempts.
+        let attempts = 0;
+        const ownsSetLang = () => setLangGeneration === initSetLangGen + attempts;
+
+        let ok = await setLang(langToSet);
+        attempts += 1;
+        if (!ok && ownsSetLang()) {
+          const allowedNow = activeCodes.value.length ? activeCodes.value : [...DEFAULT_ACTIVE_LANGS];
+          ok = await setLang(detectBestLang(allowedNow));
+          attempts += 1;
+        }
+        if (!ok && ownsSetLang()) {
+          const allowedNow = activeCodes.value.length ? activeCodes.value : [...DEFAULT_ACTIVE_LANGS];
+          lang.value = allowedNow.includes('en_US') ? 'en_US' : allowedNow[0] || 'en_US';
+        }
+
+        if (isClient && ownsSetLang()) {
+          updateDocumentDirection(activeLanguage.value.textDirection);
+        }
+      } finally {
+        if (!lang.value) {
+          const allowedNow = activeCodes.value.length ? activeCodes.value : [...DEFAULT_ACTIVE_LANGS];
+          lang.value = allowedNow.includes('en_US') ? 'en_US' : allowedNow[0] || 'en_US';
+        }
+        isInitialized.value = true;
       }
-
-      // During SSR, preload only the default locale.
-      if (!isClient && localeCode.value === 'en') {
-        await loadDayjsLocale('en');
-        loadedLocales.value = { en: true };
-        return;
-      }
-
-      // Load the current locale resources on the client.
-      await setUiKey(localeCode.value);
-
-      // Sync the document direction during client initialization.
-      if (isClient) {
-        updateDocumentDirection(currentLocale.value.textDirection);
-      }
-
-      // Ensure post-async state changes are captured so Pinia tracking reacts correctly.
-      isInitialized.value = true;
     }
 
-    // Store state and public methods.
     return {
-      // Core state.
-      currentLocale,
+      lang,
+      activeLanguage,
+      bcp47Locale,
       isInitialized,
-      localeCode,
-      initialize,
-      terminologyLang,
+      isLoading,
       terminologyHashByLang,
       lastTerminologyLoad,
-      activeUiKeys,
-      languageFormatByCode,
-      // Locale support information.
-      supportedLocales: Object.keys(SUPPORTED_LOCALES) as SupportedLocale[],
-
-      // Locale management methods.
-      setUiKey,
-      setActiveUiKeys,
-      loadActiveUiKeysFromServer,
+      activeLanguages,
+      formatByCode,
+      initialize,
+      setLang,
+      loadActiveLanguages,
       reloadTerminology,
       revalidateTerminologyIfStale,
-
-      // Formatting helpers.
       formatDateTime: wrappedFormatDateTime,
       formatNumber: wrappedFormatNumber,
       formatCurrency: wrappedFormatCurrency,
-
-      // Vue I18n integration methods.
-      loadVueI18nMessages,
       getDateTimeFormats: wrappedGetDateTimeFormats,
       getNumberFormats: wrappedGetNumberFormats,
-
-      // Utility methods.
-      getFirstDayOfWeek: () => currentLocale.value.dateTimeFormat?.firstDayOfWeek ?? 1,
-      /** PersonNameFormat for a POSIX Language.Code, or the current UI language when omitted. */
+      getFirstDayOfWeek: () => activeLanguage.value.dateTimeFormat?.firstDayOfWeek ?? 1,
       getPersonNameFormat: (posixCode?: string) => {
-        const code = String(posixCode || '').trim() || uiKeyToLang(currentLocale.value.code);
-        const raw = languageFormatByCode.value[code]?.PersonNameFormat;
+        const code = String(posixCode || '').trim() || activeLanguage.value.code;
+        const raw = formatByCode.value[code]?.PersonNameFormat;
         return raw != null ? String(raw) : undefined;
       },
     };
   },
   {
-    // Persistence config.
     persist: {
       key: 'choysum.web.i18n',
       storage: localStorage,
-      pick: ['localeCode'], // Persist only the locale code.
-      afterHydrate: (ctx: PiniaPluginContext) => {
-        if (ctx.store.$id === 'choysum.web.i18n') {
-          const i18nStore = ctx.store;
-          // Set critical attributes such as direction immediately to avoid flicker.
-          const code = i18nStore.localeCode;
-          if (code && isClient && SUPPORTED_LOCALES[code]) {
-            updateDocumentDirection(SUPPORTED_LOCALES[code].textDirection);
-          }
-
-          // Start the full initialization flow without blocking.
-          i18nStore.initialize();
-        }
-      },
+      pick: ['lang'],
+      afterHydrate: runI18nPersistAfterHydrate,
     },
   }
 );
+
+/** Pinia persist hook: start language initialization after rehydrate. */
+export function runI18nAfterHydrate(store: { $id?: string; initialize?: () => unknown }): void {
+  if (store.$id === 'choysum.web.i18n' && typeof store.initialize === 'function') {
+    void store.initialize();
+  }
+}
+
+/** Persist plugin adapter for {@link runI18nAfterHydrate}. */
+export function runI18nPersistAfterHydrate(ctx: PiniaPluginContext): void {
+  runI18nAfterHydrate(ctx.store);
+}

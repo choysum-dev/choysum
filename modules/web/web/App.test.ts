@@ -14,7 +14,7 @@ describe('App', () => {
   test('mounts router-view with toaster, confirm host, and dialog host', async () => {
     const pinia = createPinia();
     setActivePinia(pinia);
-    useI18nStore().localeCode = 'en';
+    useI18nStore().lang = 'en_US';
 
     stubSfc(Toaster as any, {
       name: 'Toaster',

@@ -31,23 +31,21 @@ export async function terminologyCodeFromLanguageId(
 
 /**
  * Apply a User.LanguageId to the FE i18n store.
- * When getCurrentUiKey returns the same uiKey as the preferred language, setUiKey is skipped
+ * When getCurrentLang returns the same POSIX code as the preferred language, setLang is skipped
  * (avoids re-fetching translations / active languages on Preferences open / loadUser).
  * Best-effort: callers wrap this when login/auth must continue on i18n failure.
  */
 export async function applyUserLanguagePreference(opts: {
   languageId: unknown;
   browseLanguage: (id: string, fields: string[]) => Promise<{ Code?: string; IsActive?: boolean } | null | undefined>;
-  setUiKey: (uiKey: string) => Promise<unknown> | unknown;
-  langToUiKey: (terminologyLang: string) => string;
-  getCurrentUiKey?: () => string | null | undefined;
+  setLang: (lang: string) => Promise<unknown> | unknown;
+  getCurrentLang?: () => string | null | undefined;
 }): Promise<void> {
   const preferredLang = await terminologyCodeFromLanguageId(opts.languageId, opts.browseLanguage);
   if (!preferredLang) return;
-  const uiKey = opts.langToUiKey(preferredLang);
-  const current = opts.getCurrentUiKey?.();
-  if (current != null && String(current) === uiKey) {
+  const current = opts.getCurrentLang?.();
+  if (current != null && String(current) === preferredLang) {
     return;
   }
-  await opts.setUiKey(uiKey);
+  await opts.setLang(preferredLang);
 }

@@ -25,32 +25,32 @@ export function shouldMergeTerminology(load: TerminologyLoadResult | null | unde
 }
 
 type CatalogMergerOptions = {
-  merge: (locale: string, messages: TerminologyLoadResult['messages']) => void;
+  merge: (lang: string, messages: TerminologyLoadResult['messages']) => void;
   notify: () => void;
 };
 
 /**
- * Applies each successful Gateway catalog exactly once per locale + catalogHash.
+ * Applies each successful Gateway catalog exactly once per lang + catalogHash.
  * Identity is recorded only after merge succeeds, so failed merges can retry.
  */
 export function createTerminologyCatalogMerger({ merge, notify }: CatalogMergerOptions) {
   const mergedCatalogs = new Set<string>();
 
-  return (load: TerminologyLoadResult | null | undefined, fallbackLocale: string): boolean => {
+  return (load: TerminologyLoadResult | null | undefined, fallbackLang: string): boolean => {
     if (!shouldMergeTerminology(load) || !load?.messages) {
       return false;
     }
 
-    const locale = String(load.locale || fallbackLocale).trim();
-    if (!locale) {
+    const lang = String(load.lang || fallbackLang).trim();
+    if (!lang) {
       return false;
     }
-    const identity = `${locale}\0${load.hash.trim()}`;
+    const identity = `${lang}\0${load.hash.trim()}`;
     if (mergedCatalogs.has(identity)) {
       return false;
     }
 
-    merge(locale, load.messages);
+    merge(lang, load.messages);
     mergedCatalogs.add(identity);
     notify();
     return true;

@@ -238,7 +238,7 @@ import {
 } from '@/web';
 import { createTranslate } from '@/web/web/i18n';
 import { useAuthStore } from '@/auth/web/stores/auth';
-import { useI18nStore, langToUiKey, afterLocaleChange, softLocaleRemount } from '@/web/web/stores/i18nStore';
+import { afterLangChange, useI18nStore } from '@/web/web/stores/i18nStore';
 import { createModelStore } from '@/web/web/stores/registry';
 import {
   applyUserLanguagePreference,
@@ -394,7 +394,7 @@ async function openAndLoad() {
 
   const lang = await resolveSelfProfileSeedLanguageId({
     languageId: currentUser.value?.LanguageId,
-    sessionTerminologyLang: i18nStore.terminologyLang,
+    sessionTerminologyLang: i18nStore.activeLanguage.code,
     searchLanguageByCode: async code => {
       const rows = (await (languageStore as any).Search(
         { And: [['Code', '=', code], ['IsActive', '=', true]] } as any,
@@ -469,9 +469,8 @@ async function onPreferencesSubmit(ctx: {
         applyUserLanguagePreference({
           languageId,
           browseLanguage: (id, fields) => (languageStore as any).Browse(id, fields),
-          setUiKey: k => i18nStore.setUiKey(k),
-          langToUiKey,
-          getCurrentUiKey: () => i18nStore.localeCode,
+          setLang: k => i18nStore.setLang(k),
+          getCurrentLang: () => i18nStore.lang,
         }),
       applyAppearance: (theme, density) => {
         const applied = applyUserAppearance(theme, density);
@@ -482,7 +481,7 @@ async function onPreferencesSubmit(ctx: {
         openedDensity = applied.density;
       },
       refreshToken: () => authStore.refreshToken(true),
-      afterLocaleChange: () => afterLocaleChange({ remount: softLocaleRemount }),
+      afterLangChange: () => afterLangChange(),
       onSuccess: () => {
         openedTheme = lastAppliedTheme;
         openedDensity = lastAppliedDensity;

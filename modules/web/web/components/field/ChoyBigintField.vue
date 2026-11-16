@@ -223,7 +223,7 @@ function toDisplayText(v: any) {
   if (v == null || v === '') return '';
   const text = typeof v === 'string' ? v : String(v);
   try {
-    return formatGroupedNumericString(text, useI18nStore().currentLocale?.numberFormat);
+    return formatGroupedNumericString(text, useI18nStore().activeLanguage?.numberFormat);
   } catch {
     return text;
   }
