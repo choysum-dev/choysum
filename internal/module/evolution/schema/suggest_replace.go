@@ -41,9 +41,45 @@ func FormatReplaceColumnSuggestions(plan SchemaPlan) []string {
 		out = append(out,
 			fmt.Sprintf("// ReplaceColumn for %s.%s (%s)", table, col, detail),
 			fmt.Sprintf("$choysum.schema.replaceColumnPre(%q, %q);", table, col),
-			fmt.Sprintf("$choysum.schema.replaceColumnCopyCast(%q, %q, %q, %q);", table, obsolete, col, "int_to_varchar"),
-			fmt.Sprintf("$choysum.schema.replaceColumnDropObsolete(%q, %q);", table, col),
 		)
+		if kind, ok := suggestCopyCastKind(detail); ok {
+			out = append(out, fmt.Sprintf("$choysum.schema.replaceColumnCopyCast(%q, %q, %q, %q);", table, obsolete, col, kind))
+		} else {
+			out = append(out, fmt.Sprintf("// choose replaceColumnCopyCast kind or custom SQL for %s.%s", table, col))
+		}
+		out = append(out, fmt.Sprintf("$choysum.schema.replaceColumnDropObsolete(%q, %q);", table, col))
 	}
 	return out
+}
+
+// suggestCopyCastKind picks a built-in CopyCast kind from the plan detail, or ok=false
+// when authors must supply an explicit conversion (e.g. varchar → int).
+func suggestCopyCastKind(detail string) (kind string, ok bool) {
+	d := strings.ToLower(strings.TrimSpace(detail))
+	if d == "" {
+		return "", false
+	}
+	if strings.Contains(d, "narrow size") {
+		return "as_text", true
+	}
+	target := d
+	for _, sep := range []string{"→", "->"} {
+		if i := strings.LastIndex(d, sep); i >= 0 {
+			target = strings.TrimSpace(d[i+len(sep):])
+			break
+		}
+	}
+	if strings.Contains(target, "varchar") || strings.Contains(target, "text") || strings.Contains(target, "char") {
+		src := d
+		if i := strings.Index(d, "→"); i >= 0 {
+			src = strings.TrimSpace(d[:i])
+		} else if i := strings.Index(d, "->"); i >= 0 {
+			src = strings.TrimSpace(d[:i])
+		}
+		if strings.Contains(src, "int") {
+			return "int_to_varchar", true
+		}
+		return "as_text", true
+	}
+	return "", false
 }

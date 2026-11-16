@@ -4,8 +4,10 @@
 package schema
 
 import (
+	"crypto/sha1"
 	"fmt"
 	"strings"
+	"time"
 
 	"gorm.io/gorm"
 )
@@ -23,6 +25,9 @@ func isSQLiteDialect(dialect string) bool {
 }
 
 // sqliteRewriteTable rebuilds table under rewrite rules. Caller must use sqlite dialect.
+// Runs create/copy/drop/rename in one transaction. Temporarily disables foreign_keys when
+// needed so DROP TABLE cannot cascade-delete child rows; restores indexes/triggers that
+// still apply after rename/drop.
 func sqliteRewriteTable(db *gorm.DB, table string, rewrite sqliteTableRewrite) error {
 	if db == nil {
 		return fmt.Errorf("db is nil")
@@ -37,6 +42,15 @@ func sqliteRewriteTable(db *gorm.DB, table string, rewrite sqliteTableRewrite) e
 	}
 	if len(types) == 0 {
 		return fmt.Errorf("table %s has no columns", table)
+	}
+
+	indexSQLs, err := sqliteListMasterSQLs(db, "index", table)
+	if err != nil {
+		return err
+	}
+	triggerSQLs, err := sqliteListMasterSQLs(db, "trigger", table)
+	if err != nil {
+		return err
 	}
 
 	type colDef struct {
@@ -65,29 +79,7 @@ func sqliteRewriteTable(db *gorm.DB, table string, rewrite sqliteTableRewrite) e
 				dst = strings.TrimSpace(to)
 			}
 		}
-		typeName := strings.TrimSpace(ct.DatabaseTypeName())
-		if typeName == "" {
-			typeName = "TEXT"
-		}
-		notNull := false
-		if n, ok := ct.Nullable(); ok && !n {
-			notNull = true
-		}
-		if pk, ok := ct.PrimaryKey(); ok && pk {
-			notNull = true
-		}
-		if rewrite.ForceNotNull != nil {
-			if _, ok := rewrite.ForceNotNull[strings.ToLower(src)]; ok {
-				notNull = true
-			}
-			if _, ok := rewrite.ForceNotNull[strings.ToLower(dst)]; ok {
-				notNull = true
-			}
-		}
-		decl := quoteIdent("sqlite", dst) + " " + typeName
-		if notNull {
-			decl += " NOT NULL"
-		}
+		decl := sqliteColumnDecl(ct, dst, rewrite)
 		cols = append(cols, colDef{srcName: src, dstName: dst, decl: decl})
 		selectParts = append(selectParts, quoteIdent("sqlite", src))
 	}
@@ -95,11 +87,7 @@ func sqliteRewriteTable(db *gorm.DB, table string, rewrite sqliteTableRewrite) e
 		return fmt.Errorf("rewrite of %s would leave no columns", table)
 	}
 
-	tmp := "choysum_rw_" + strings.ReplaceAll(table, `"`, "")
-	// Keep temp name short / safe.
-	if len(tmp) > 60 {
-		tmp = tmp[:60]
-	}
+	tmp := sqliteRewriteTempName(table)
 	qTable := quoteIdent("sqlite", table)
 	qTmp := quoteIdent("sqlite", tmp)
 
@@ -108,20 +96,242 @@ func sqliteRewriteTable(db *gorm.DB, table string, rewrite sqliteTableRewrite) e
 		decls = append(decls, c.decl)
 	}
 	createSQL := fmt.Sprintf("CREATE TABLE %s (%s)", qTmp, strings.Join(decls, ", "))
-	if err := helperExec(db, createSQL); err != nil {
-		return fmt.Errorf("create rewrite table %s: %w", tmp, err)
-	}
 	insertSQL := fmt.Sprintf("INSERT INTO %s SELECT %s FROM %s", qTmp, strings.Join(selectParts, ", "), qTable)
-	if err := helperExec(db, insertSQL); err != nil {
-		_ = helperExec(db, "DROP TABLE IF EXISTS "+qTmp)
-		return fmt.Errorf("copy into rewrite table %s: %w", tmp, err)
+
+	fkWasOn, err := sqliteReadForeignKeys(db)
+	if err != nil {
+		return err
 	}
-	if err := helperExec(db, "DROP TABLE "+qTable); err != nil {
-		_ = helperExec(db, "DROP TABLE IF EXISTS "+qTmp)
-		return fmt.Errorf("drop original %s: %w", table, err)
+	if fkWasOn {
+		if err := helperExec(db, "PRAGMA foreign_keys=OFF"); err != nil {
+			return fmt.Errorf("disable foreign_keys for rewrite: %w", err)
+		}
+		defer func() { _ = helperExec(db, "PRAGMA foreign_keys=ON") }()
 	}
-	if err := helperExec(db, fmt.Sprintf("ALTER TABLE %s RENAME TO %s", qTmp, qTable)); err != nil {
-		return fmt.Errorf("rename rewrite table to %s: %w", table, err)
+
+	err = db.Transaction(func(tx *gorm.DB) error {
+		_ = helperExec(tx, "DROP TABLE IF EXISTS "+qTmp)
+		if err := helperExec(tx, createSQL); err != nil {
+			return fmt.Errorf("create rewrite table %s: %w", tmp, err)
+		}
+		if err := helperExec(tx, insertSQL); err != nil {
+			_ = helperExec(tx, "DROP TABLE IF EXISTS "+qTmp)
+			return fmt.Errorf("copy into rewrite table %s: %w", tmp, err)
+		}
+		if err := helperExec(tx, "DROP TABLE "+qTable); err != nil {
+			_ = helperExec(tx, "DROP TABLE IF EXISTS "+qTmp)
+			return fmt.Errorf("drop original %s: %w", table, err)
+		}
+		if err := helperExec(tx, fmt.Sprintf("ALTER TABLE %s RENAME TO %s", qTmp, qTable)); err != nil {
+			return fmt.Errorf("rename rewrite table to %s: %w", table, err)
+		}
+		for _, sql := range indexSQLs {
+			rewritten, ok := sqliteRewriteObjectSQL(sql, rewrite)
+			if !ok {
+				continue
+			}
+			if err := helperExec(tx, rewritten); err != nil {
+				return fmt.Errorf("restore index after rewrite of %s: %w", table, err)
+			}
+		}
+		for _, sql := range triggerSQLs {
+			rewritten, ok := sqliteRewriteObjectSQL(sql, rewrite)
+			if !ok {
+				continue
+			}
+			if err := helperExec(tx, rewritten); err != nil {
+				return fmt.Errorf("restore trigger after rewrite of %s: %w", table, err)
+			}
+		}
+		if err := sqliteCheckForeignKeys(tx); err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		_ = helperExec(db, "DROP TABLE IF EXISTS "+qTmp)
+		return err
 	}
 	return nil
+}
+
+func sqliteColumnDecl(ct gorm.ColumnType, dst string, rewrite sqliteTableRewrite) string {
+	typeName := strings.TrimSpace(ct.DatabaseTypeName())
+	if typeName == "" {
+		typeName = "TEXT"
+	}
+	isPK := false
+	if pk, ok := ct.PrimaryKey(); ok && pk {
+		isPK = true
+	}
+	notNull := isPK
+	if n, ok := ct.Nullable(); ok && !n {
+		notNull = true
+	}
+	src := strings.TrimSpace(ct.Name())
+	if rewrite.ForceNotNull != nil {
+		if _, ok := rewrite.ForceNotNull[strings.ToLower(src)]; ok {
+			notNull = true
+		}
+		if _, ok := rewrite.ForceNotNull[strings.ToLower(dst)]; ok {
+			notNull = true
+		}
+	}
+	decl := quoteIdent("sqlite", dst) + " " + typeName
+	if isPK {
+		decl += " PRIMARY KEY"
+		if ai, ok := ct.AutoIncrement(); ok && ai {
+			decl += " AUTOINCREMENT"
+		}
+	} else if notNull {
+		decl += " NOT NULL"
+	}
+	if def, ok := ct.DefaultValue(); ok {
+		def = strings.TrimSpace(def)
+		if def != "" {
+			decl += " DEFAULT " + def
+		}
+	}
+	return decl
+}
+
+// Overridable seams for error-path tests.
+var (
+	sqliteListMasterSQLs   = sqliteMasterSQLs
+	sqliteReadForeignKeys  = sqliteForeignKeysEnabled
+	sqliteCheckForeignKeys = sqliteForeignKeyCheck
+)
+
+func sqliteRewriteTempName(table string) string {
+	sum := sha1.Sum([]byte(strings.TrimSpace(table) + fmt.Sprintf("-%d", time.Now().UnixNano())))
+	return fmt.Sprintf("choysum_rw_%x", sum[:10])
+}
+
+func sqliteMasterSQLs(db *gorm.DB, kind, table string) ([]string, error) {
+	var rows []string
+	if err := db.Raw(
+		`SELECT sql FROM sqlite_master WHERE type = ? AND tbl_name = ? AND sql IS NOT NULL`,
+		kind, table,
+	).Scan(&rows).Error; err != nil {
+		return nil, fmt.Errorf("list %s for %s: %w", kind, table, err)
+	}
+	return rows, nil
+}
+
+func sqliteForeignKeysEnabled(db *gorm.DB) (bool, error) {
+	var on int
+	if err := db.Raw("PRAGMA foreign_keys").Scan(&on).Error; err != nil {
+		return false, fmt.Errorf("read foreign_keys pragma: %w", err)
+	}
+	return on != 0, nil
+}
+
+func sqliteForeignKeyCheck(db *gorm.DB) error {
+	var violations []struct {
+		Table  string
+		Rowid  int64
+		Parent string
+		Fkid   int64
+	}
+	if err := db.Raw("PRAGMA foreign_key_check").Scan(&violations).Error; err != nil {
+		return fmt.Errorf("foreign_key_check: %w", err)
+	}
+	if len(violations) > 0 {
+		return fmt.Errorf("foreign_key_check failed after rewrite (%d violation(s))", len(violations))
+	}
+	return nil
+}
+
+// sqliteRewriteObjectSQL adjusts CREATE INDEX/TRIGGER SQL for dropped/renamed columns.
+// Returns ok=false when the object references a dropped column.
+func sqliteRewriteObjectSQL(sql string, rewrite sqliteTableRewrite) (string, bool) {
+	sql = strings.TrimSpace(sql)
+	if sql == "" {
+		return "", false
+	}
+	lower := strings.ToLower(sql)
+	if rewrite.Drop != nil {
+		for col := range rewrite.Drop {
+			if sqliteSQLMentionsColumn(lower, strings.ToLower(col)) {
+				return "", false
+			}
+		}
+	}
+	out := sql
+	if rewrite.Rename != nil {
+		for from, to := range rewrite.Rename {
+			out = sqliteReplaceIdent(out, from, to)
+		}
+	}
+	return out, true
+}
+
+func sqliteSQLMentionsColumn(lowerSQL, colLower string) bool {
+	if colLower == "" {
+		return false
+	}
+	// Match quoted or bare identifiers without treating substrings as hits.
+	patterns := []string{`"` + colLower + `"`, "`" + colLower + "`", "[" + colLower + "]"}
+	for _, p := range patterns {
+		if strings.Contains(lowerSQL, p) {
+			return true
+		}
+	}
+	for i := 0; i < len(lowerSQL); {
+		idx := strings.Index(lowerSQL[i:], colLower)
+		if idx < 0 {
+			return false
+		}
+		idx += i
+		beforeOK := idx == 0 || !isIdentByte(lowerSQL[idx-1])
+		after := idx + len(colLower)
+		afterOK := after >= len(lowerSQL) || !isIdentByte(lowerSQL[after])
+		if beforeOK && afterOK {
+			return true
+		}
+		i = idx + len(colLower)
+	}
+	return false
+}
+
+func sqliteReplaceIdent(sql, from, to string) string {
+	from = strings.TrimSpace(from)
+	to = strings.TrimSpace(to)
+	if from == "" || to == "" || strings.EqualFold(from, to) {
+		return sql
+	}
+	replacer := strings.NewReplacer(
+		`"`+from+`"`, `"`+to+`"`,
+		`"`+strings.ToLower(from)+`"`, `"`+to+`"`,
+		`"`+strings.ToUpper(from)+`"`, `"`+to+`"`,
+	)
+	out := replacer.Replace(sql)
+	// Bare identifier tokens (case-insensitive).
+	var b strings.Builder
+	lower := strings.ToLower(out)
+	fromLower := strings.ToLower(from)
+	i := 0
+	for i < len(out) {
+		idx := strings.Index(lower[i:], fromLower)
+		if idx < 0 {
+			b.WriteString(out[i:])
+			break
+		}
+		idx += i
+		beforeOK := idx == 0 || !isIdentByte(out[idx-1])
+		after := idx + len(from)
+		afterOK := after >= len(out) || !isIdentByte(out[after])
+		b.WriteString(out[i:idx])
+		if beforeOK && afterOK {
+			b.WriteString(to)
+		} else {
+			b.WriteString(out[idx:after])
+		}
+		i = after
+	}
+	return b.String()
+}
+
+func isIdentByte(c byte) bool {
+	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_'
 }

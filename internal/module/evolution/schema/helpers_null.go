@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/ettle/strcase"
 	"gorm.io/gorm"
 )
 
@@ -46,7 +45,7 @@ func SetNotNull(opts HelperOptions, table, column string) error {
 	opts.Intents.Add(Intent{
 		Kind:  IntentTightenNull,
 		Table: table,
-		Name:  strcase.ToSnake(column),
+		Name:  intentPhysicalName(column),
 	})
 	return nil
 }
@@ -111,13 +110,29 @@ func liveColumnTypeName(db *gorm.DB, table, column string) (string, error) {
 		if typeName == "" {
 			return "", fmt.Errorf("empty type for %s.%s", table, column)
 		}
-		if length, ok := ct.Length(); ok && length > 0 {
-			lower := strings.ToLower(typeName)
-			if strings.Contains(lower, "char") || strings.Contains(lower, "binary") {
-				return fmt.Sprintf("%s(%d)", typeName, length), nil
+		typeName = decorateLiveColumnType(typeName, ct)
+		if def, ok := ct.DefaultValue(); ok {
+			def = strings.TrimSpace(def)
+			if def != "" {
+				typeName += " DEFAULT " + def
 			}
 		}
 		return typeName, nil
 	}
 	return "", fmt.Errorf("column %s.%s not found", table, column)
+}
+
+func decorateLiveColumnType(typeName string, ct gorm.ColumnType) string {
+	lower := strings.ToLower(strings.TrimSpace(typeName))
+	if strings.Contains(lower, "char") || strings.Contains(lower, "binary") {
+		if length, ok := ct.Length(); ok && length > 0 {
+			return fmt.Sprintf("%s(%d)", typeName, length)
+		}
+	}
+	if lower == "decimal" || lower == "numeric" {
+		if precision, scale, ok := ct.DecimalSize(); ok {
+			return fmt.Sprintf("%s(%d,%d)", typeName, precision, scale)
+		}
+	}
+	return typeName
 }
