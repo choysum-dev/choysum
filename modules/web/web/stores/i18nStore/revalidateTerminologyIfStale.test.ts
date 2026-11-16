@@ -598,7 +598,9 @@ describe('useI18nStore.revalidateTerminologyIfStale / reloadTerminology', () => 
   test('setLang: restores previous terminology hash when rejected after reload', async () => {
     const store = useI18nStore();
     store.isInitialized = true;
-    store.activeLanguages = [{ Code: 'en_US' }];
+    store.lang = 'en_US';
+    // Start in the active set so terminology fetch runs; post-fetch reload drops it.
+    store.activeLanguages = [{ Code: 'en_US' }, { Code: 'de_DE' }];
     store.terminologyHashByLang = { de_DE: 'old-de' };
     setI18nCreateStoreForTests(
       () =>
@@ -615,6 +617,7 @@ describe('useI18nStore.revalidateTerminologyIfStale / reloadTerminology', () => 
         messages: { web: {} },
       })) as typeof fetch;
     expect(await store.setLang('de_DE')).toBe(false);
+    expect(store.lang).toBe('en_US');
     expect(store.terminologyHashByLang.de_DE).toBe('old-de');
     expect(store.lastTerminologyLoad).toBeNull();
   });
