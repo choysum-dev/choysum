@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/ettle/strcase"
 	"gorm.io/gorm"
 )
 
@@ -75,8 +74,8 @@ func RenameColumn(opts HelperOptions, table, from, to string) error {
 	opts.Intents.Add(Intent{
 		Kind:     IntentRenameColumn,
 		Table:    table,
-		Name:     strcase.ToSnake(to),
-		FromName: strcase.ToSnake(from),
+		Name:     intentPhysicalName(to),
+		FromName: intentPhysicalName(from),
 	})
 	return nil
 }

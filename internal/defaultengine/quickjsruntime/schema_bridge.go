@@ -36,6 +36,7 @@ func WithSchemaDDL(dialect string) jsengine.JsEngineOption {
 		schemaObj.Set("replaceColumnPre", engine.Ctx.NewFunction(schemaSyncFactory(engine, dialect, "replaceColumnPre")))
 		schemaObj.Set("replaceColumnCopyCast", engine.Ctx.NewFunction(schemaSyncFactory(engine, dialect, "replaceColumnCopyCast")))
 		schemaObj.Set("replaceColumnDropObsolete", engine.Ctx.NewFunction(schemaSyncFactory(engine, dialect, "replaceColumnDropObsolete")))
+		schemaObj.Set("setNotNull", engine.Ctx.NewFunction(schemaSyncFactory(engine, dialect, "setNotNull")))
 
 		choysumObj.Set("schema", schemaObj)
 		globalsObj.Set("$choysum", choysumObj)
@@ -99,6 +100,11 @@ func schemaSyncFactory(engine *quickjsengine.QuickjsEngine, dialect, method stri
 				return ctx.ThrowError(err)
 			}
 			err = schema.ReplaceColumnDropObsolete(opts, args[0].String(), args[1].String())
+		case "setNotNull":
+			if err = requireStringArgs(args, 2, "setNotNull(table, column)"); err != nil {
+				return ctx.ThrowError(err)
+			}
+			err = schema.SetNotNull(opts, args[0].String(), args[1].String())
 		default:
 			err = fmt.Errorf("unknown schema helper %s", method)
 		}

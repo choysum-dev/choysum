@@ -18,6 +18,8 @@ const (
 	IntentDropIndex      IntentKind = "drop_index"
 	IntentDropCheck      IntentKind = "drop_check"
 	IntentDropForeignKey IntentKind = "drop_foreign_key"
+	// IntentTightenNull covers guarded "tighten nullability to NOT NULL" after SetNotNull.
+	IntentTightenNull IntentKind = "tighten_null"
 )
 
 // Intent records that an upgrade script already handled (or will handle) a Manual op.
@@ -169,12 +171,18 @@ func intentOpName(op PlanOp) string {
 func intentKindForOp(op PlanOp) IntentKind {
 	kind := IntentKind(strings.ToLower(strings.TrimSpace(string(op.Kind))))
 	switch kind {
-	case IntentRenameColumn, IntentDropColumn, IntentDropIndex, IntentDropCheck, IntentDropForeignKey:
+	case IntentRenameColumn, IntentDropColumn, IntentDropIndex, IntentDropCheck, IntentDropForeignKey, IntentTightenNull:
 		return kind
+	case IntentKind(OpAlterColumn):
+		// Only null-tighten is Intent-satisfiable; never match drop intents via Detail.
+		if strings.Contains(strings.ToLower(op.Detail), "tighten nullability") {
+			return IntentTightenNull
+		}
+		return ""
 	case "":
 		// Fall through to Detail when Kind is unset (Manual leftovers).
 	default:
-		// Known non-intent kinds (e.g. alter_column) must not match drop intents via Detail.
+		// Known non-intent kinds must not match drop intents via Detail.
 		return ""
 	}
 	detail := strings.ToLower(op.Detail)

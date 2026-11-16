@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/ettle/strcase"
 	"gorm.io/gorm"
 )
 
@@ -89,7 +90,40 @@ func ReplaceColumnPre(opts HelperOptions, o ReplaceColumnOptions) error {
 	if err := dropIndexesReferencingColumn(opts, table, from); err != nil {
 		return err
 	}
-	return RenameColumn(opts, table, from, obsolete)
+	if err := renameColumnHelper(opts, table, from, obsolete); err != nil {
+		if isSQLiteDialect(opts.Dialect) {
+			if rwErr := sqliteRewriteTable(opts.DB, table, sqliteTableRewrite{
+				Rename: map[string]string{strings.ToLower(from): obsolete},
+			}); rwErr != nil {
+				return fmt.Errorf("replaceColumnPre rename %s.%s: %v; sqlite rewrite: %w", table, from, err, rwErr)
+			}
+			opts.Intents.Add(Intent{
+				Kind:     IntentRenameColumn,
+				Table:    table,
+				Name:     intentPhysicalName(obsolete),
+				FromName: intentPhysicalName(from),
+			})
+			return nil
+		}
+		return err
+	}
+	return nil
+}
+
+// renameColumnHelper is overridable in tests for the SQLite rewrite fallback path.
+var renameColumnHelper = RenameColumn
+
+// intentPhysicalName normalizes helper column names for Intent matching without
+// collapsing ReplaceColumn's "__obsolete" suffix (strcase.ToSnake would).
+func intentPhysicalName(name string) string {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return ""
+	}
+	if strings.Contains(name, ObsoleteColumnSuffix) {
+		return name
+	}
+	return strcase.ToSnake(name)
 }
 
 // ReplaceColumnCopyCast copies values from an obsolete column into the new column
@@ -153,7 +187,24 @@ func ReplaceColumnDropObsolete(opts HelperOptions, table, fromColumn string) err
 	if err := dropIndexesReferencingColumn(opts, table, obsolete); err != nil {
 		return err
 	}
-	return DropColumn(opts, table, obsolete)
+	if err := DropColumn(opts, table, obsolete); err != nil {
+		if isSQLiteDialect(opts.Dialect) {
+			// Keep DropColumn's primary-key rejection; do not rebuild around it.
+			if pkErr := rejectPrimaryKeyColumnDrop(opts.DB, table, obsolete); pkErr != nil {
+				return pkErr
+			}
+			if rwErr := sqliteRewriteTable(opts.DB, table, sqliteTableRewrite{
+				Drop: map[string]struct{}{strings.ToLower(obsolete): {}},
+			}); rwErr != nil {
+				return fmt.Errorf("replaceColumnDropObsolete %s.%s: %v; sqlite rewrite: %w", table, obsolete, err, rwErr)
+			}
+			// Match DropColumn Intent naming (raw physical name).
+			opts.Intents.Add(Intent{Kind: IntentDropColumn, Table: table, Name: obsolete})
+			return nil
+		}
+		return err
+	}
+	return nil
 }
 
 func dropIndexesReferencingColumn(opts HelperOptions, table, column string) error {
