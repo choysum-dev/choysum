@@ -65,13 +65,19 @@ func suggestCopyCastKind(detail string) (kind string, ok bool) {
 	src, target := d, d
 	for _, sep := range []string{"→", "->"} {
 		if i := strings.LastIndex(d, sep); i >= 0 {
-			src = strings.TrimSpace(d[:i])
+			left := strings.TrimSpace(d[:i])
 			target = strings.TrimSpace(d[i+len(sep):])
+			// Source of the final hop (ignore earlier arrows in multi-hop details).
+			src = left
+			if j := strings.LastIndex(left, sep); j >= 0 {
+				src = strings.TrimSpace(left[j+len(sep):])
+			} else {
+				src = strings.TrimSpace(strings.TrimPrefix(left, "type change"))
+			}
 			break
 		}
 	}
 	if strings.Contains(target, "varchar") || strings.Contains(target, "text") || strings.Contains(target, "char") {
-		src = strings.TrimSpace(strings.TrimPrefix(src, "type change"))
 		if sourceLooksLikeIntegerType(src) {
 			return "int_to_varchar", true
 		}

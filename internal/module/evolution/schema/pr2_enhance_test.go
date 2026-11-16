@@ -61,7 +61,7 @@ func TestSuggestCopyCastKind(t *testing.T) {
 		{"type change print → text", "as_text", true},
 		{"type change interval → varchar", "as_text", true},
 		{"type change note → int → varchar", "int_to_varchar", true},
-		{"type change int → note → text", "as_text", true},
+		{"type change int → varchar → text", "as_text", true},
 	}
 	for _, tc := range cases {
 		kind, ok := suggestCopyCastKind(tc.detail)
