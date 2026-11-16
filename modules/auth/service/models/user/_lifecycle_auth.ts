@@ -3,7 +3,6 @@
 
 import { withContext, getContextClientTimezone } from '@/core/service/api/context';
 import { createServiceByModel } from '@/core/service/rpc';
-import { pool, type AppSettingModelCtor } from '@/core/service';
 import { isIanaTimezone } from '@/core/service/utils/datetime';
 import { resolveChoysum } from '@/core/service/runtime/choysum_runtime';
 import { newAuthError, AuthErrCode, GrpcCode } from '../../error';
@@ -14,18 +13,12 @@ import Session from '../session';
 import Token from '../token';
 import UserRole from '../user_role';
 import { hashPassword, verifyPassword, withPermissionGraphBypass } from './_authz_shared';
-import { withRecordRuleAndFieldRuleBypass } from '@/core/service/api/authz_bypass';
-import {
-  PERSIST_BROWSER_TIMEZONE_KEY,
-} from './persist_browser_timezone_key';
 import type User from './user';
-
-export { PERSIST_BROWSER_TIMEZONE_KEY } from './persist_browser_timezone_key';
 
 const CompanyService = createServiceByModel<typeof Company>('base.Company');
 
 /**
- * D20: when User.Timezone is empty, return a valid baggage client IANA to persist.
+ * When User.Timezone is empty, return a valid baggage client IANA to persist.
  * Never returns a value when the user already has a timezone or clientTz is missing/invalid.
  */
 export function resolveTimezoneToPersist(
@@ -42,22 +35,9 @@ export function resolveTimezoneToPersist(
   return candidate;
 }
 
-async function isPersistBrowserTimezoneEnabled(isPersistEnabled?: () => Promise<boolean>): Promise<boolean> {
-  if (isPersistEnabled) {
-    return await isPersistEnabled();
-  }
-  // System/internal read: no terminal-user Logical grant for AppSetting on base.user.
-  // Silent RR+FR bypass (Method ACL does not apply to in-process pool calls).
-  const flag = await withRecordRuleAndFieldRuleBypass(() =>
-    pool<AppSettingModelCtor>('auth', 'AppSetting').Get(PERSIST_BROWSER_TIMEZONE_KEY, '1')
-  );
-  return flag === '1';
-}
-
 /**
- * Persist browser/client IANA onto User when Timezone is empty (D20).
- * Honors AppSetting `persist_browser_timezone` (default on). When off, skips write
- * without failing Login/Register.
+ * Persist browser/client IANA onto User when Timezone is empty (Login/Register).
+ * Fixed product behavior: empty user timezone + valid clientTz → write once.
  * Returns the user (possibly reloaded) so token metadata sees the new value.
  */
 export async function persistBrowserTimezoneIfEmpty<T extends { Id: string; Timezone?: string | null }>(
@@ -66,8 +46,6 @@ export async function persistBrowserTimezoneIfEmpty<T extends { Id: string; Time
     updateTimezone: (userId: string, timezone: string) => Promise<void>;
     reloadUser?: (userId: string) => Promise<T>;
     clientTimezone?: string | null;
-    /** Test override; production reads AppSetting via pool. */
-    isPersistEnabled?: () => Promise<boolean>;
   }
 ): Promise<T> {
   const clientTz = deps.clientTimezone !== undefined ? deps.clientTimezone : getContextClientTimezone();
@@ -80,16 +58,9 @@ export async function persistBrowserTimezoneIfEmpty<T extends { Id: string; Time
     return user;
   }
 
-  const wrote = await withPermissionGraphBypass(async () => {
-    if (!(await isPersistBrowserTimezoneEnabled(deps.isPersistEnabled))) {
-      return false;
-    }
+  await withPermissionGraphBypass(async () => {
     await deps.updateTimezone(userId, next);
-    return true;
   });
-  if (!wrote) {
-    return user;
-  }
   if (deps.reloadUser) {
     return await deps.reloadUser(userId);
   }

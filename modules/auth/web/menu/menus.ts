@@ -13,23 +13,17 @@ const { _lt } = createTranslate('auth', { scope: 'web/menu/menus' });
  *
  * Keep menu visibility concerns separate from route registration.
  */
-/** Settings → auth: Settings / Parameters then platform catalogs. */
+/** Settings → auth: Parameters then platform catalogs. */
 export const authSettingsAppMenu: MenuItem = defineMenu('auth.menu.settings_app', {
   title: _lt('auth'),
   sequence: 20,
   parentMenu: 'web.menu.settings',
   defaultRoles: ['sys.admin'],
   children: [
-    defineMenu('auth.menu.settings_page', {
-      title: _lt('Settings'),
-      path: '/auth/settings',
-      sequence: 10,
-      defaultRoles: ['sys.admin'],
-    }),
     defineMenu('auth.menu.app_settings_parameters', {
       title: _lt('Parameters'),
       path: '/web/app-settings/auth',
-      sequence: 20,
+      sequence: 10,
       defaultRoles: ['sys.admin'],
     }),
     defineMenu('auth.menu.terminology', {

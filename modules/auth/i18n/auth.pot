@@ -899,65 +899,65 @@ msgctxt "service/models/user"
 msgid "enabledCompanyIds must be a string[] or omitted"
 msgstr ""
 
-#: service/models/user/_field_rule_eval.ts:119
+#: service/models/user/_field_rule_eval.ts:153
 msgctxt "service/models/user/_field_rule_eval"
 msgid "Model does not exist"
 msgstr ""
 
-#: service/models/user/_lifecycle_auth.ts:264
-#: service/models/user/_lifecycle_auth.ts:354
+#: service/models/user/_lifecycle_auth.ts:235
+#: service/models/user/_lifecycle_auth.ts:325
 msgctxt "service/models/user/_lifecycle_auth"
 msgid "Account is disabled"
 msgstr ""
 
-#: service/models/user/_lifecycle_auth.ts:146
+#: service/models/user/_lifecycle_auth.ts:117
 msgctxt "service/models/user/_lifecycle_auth"
 msgid "Email is already registered"
 msgstr ""
 
-#: service/models/user/_lifecycle_auth.ts:340
-#: service/models/user/_lifecycle_auth.ts:374
+#: service/models/user/_lifecycle_auth.ts:311
+#: service/models/user/_lifecycle_auth.ts:345
 msgctxt "service/models/user/_lifecycle_auth"
 msgid "Invalid token payload: missing user id"
 msgstr ""
 
-#: service/models/user/_lifecycle_auth.ts:188
+#: service/models/user/_lifecycle_auth.ts:159
 msgctxt "service/models/user/_lifecycle_auth"
 msgid "Registration failed: Main Company (Code=MAIN) was not found"
 msgstr ""
 
-#: service/models/user/_lifecycle_auth.ts:208
+#: service/models/user/_lifecycle_auth.ts:179
 msgctxt "service/models/user/_lifecycle_auth"
 msgid "Registration failed: base.user role is not initialized; load auth bootstrap data first"
 msgstr ""
 
-#: service/models/user/_lifecycle_auth.ts:348
+#: service/models/user/_lifecycle_auth.ts:319
 msgctxt "service/models/user/_lifecycle_auth"
 msgid "User not found"
 msgstr ""
 
-#: service/models/user/_lifecycle_auth.ts:248
-#: service/models/user/_lifecycle_auth.ts:255
+#: service/models/user/_lifecycle_auth.ts:219
+#: service/models/user/_lifecycle_auth.ts:226
 msgctxt "service/models/user/_lifecycle_auth"
 msgid "User not found or password is incorrect"
 msgstr ""
 
-#: service/models/user/_lifecycle_auth.ts:162
+#: service/models/user/_lifecycle_auth.ts:133
 msgctxt "service/models/user/_lifecycle_auth"
 msgid "User registration failed: missing user id"
 msgstr ""
 
-#: service/models/user/_lifecycle_auth.ts:107
+#: service/models/user/_lifecycle_auth.ts:78
 msgctxt "service/models/user/_lifecycle_auth"
 msgid "Username and password are required"
 msgstr ""
 
-#: service/models/user/_lifecycle_auth.ts:134
+#: service/models/user/_lifecycle_auth.ts:105
 msgctxt "service/models/user/_lifecycle_auth"
 msgid "Username is already in use"
 msgstr ""
 
-#: service/models/user/_lifecycle_auth.ts:127
+#: service/models/user/_lifecycle_auth.ts:98
 msgctxt "service/models/user/_lifecycle_auth"
 msgid "Username is required"
 msgstr ""
@@ -1223,7 +1223,7 @@ msgctxt "web/dialogs/preferences/PreferencesDialog"
 msgid "Display timezone; empty uses browser timezone on first login."
 msgstr ""
 
-#: web/dialogs/preferences/PreferencesDialog.vue:277
+#: web/dialogs/preferences/PreferencesDialog.vue:276
 msgctxt "web/dialogs/preferences/PreferencesDialog"
 msgid "Failed to update preferences"
 msgstr ""
@@ -1268,7 +1268,7 @@ msgctxt "web/dialogs/preferences/PreferencesDialog"
 msgid "Preferences"
 msgstr ""
 
-#: web/dialogs/preferences/PreferencesDialog.vue:271
+#: web/dialogs/preferences/PreferencesDialog.vue:270
 msgctxt "web/dialogs/preferences/PreferencesDialog"
 msgid "Preferences updated"
 msgstr ""
@@ -1324,77 +1324,72 @@ msgctxt "web/dialogs/preferences/PreferencesDialog"
 msgid "Using current session language"
 msgstr ""
 
-#: web/menu/menus.ts:58
+#: web/menu/menus.ts:52
 msgctxt "web/menu/menus"
 msgid "Access Control"
 msgstr ""
 
-#: web/menu/menus.ts:74
+#: web/menu/menus.ts:68
 msgctxt "web/menu/menus"
 msgid "Access Rules"
 msgstr ""
 
-#: web/menu/menus.ts:48
+#: web/menu/menus.ts:42
 msgctxt "web/menu/menus"
 msgid "Field Defaults"
 msgstr ""
 
-#: web/menu/menus.ts:83
+#: web/menu/menus.ts:77
 msgctxt "web/menu/menus"
 msgid "Field Rules"
 msgstr ""
 
-#: web/menu/menus.ts:88
+#: web/menu/menus.ts:82
 msgctxt "web/menu/menus"
 msgid "Method Access"
 msgstr ""
 
-#: web/menu/menus.ts:30
+#: web/menu/menus.ts:24
 msgctxt "web/menu/menus"
 msgid "Parameters"
 msgstr ""
 
-#: web/menu/menus.ts:42
+#: web/menu/menus.ts:36
 msgctxt "web/menu/menus"
 msgid "Property Definitions"
 msgstr ""
 
-#: web/menu/menus.ts:78
+#: web/menu/menus.ts:72
 msgctxt "web/menu/menus"
 msgid "Record Rules"
 msgstr ""
 
-#: web/menu/menus.ts:68
+#: web/menu/menus.ts:62
 msgctxt "web/menu/menus"
 msgid "Role List"
 msgstr ""
 
-#: web/menu/menus.ts:100
+#: web/menu/menus.ts:94
 msgctxt "web/menu/menus"
 msgid "Session List"
 msgstr ""
 
-#: web/menu/menus.ts:24
-msgctxt "web/menu/menus"
-msgid "Settings"
-msgstr ""
-
-#: web/menu/menus.ts:105
+#: web/menu/menus.ts:99
 msgctxt "web/menu/menus"
 msgid "Token List"
 msgstr ""
 
-#: web/menu/menus.ts:36
+#: web/menu/menus.ts:30
 msgctxt "web/menu/menus"
 msgid "Translations"
 msgstr ""
 
-#: web/menu/menus.ts:93
+#: web/menu/menus.ts:87
 msgctxt "web/menu/menus"
 msgid "UI Resource Grants"
 msgstr ""
 
-#: web/menu/menus.ts:63
+#: web/menu/menus.ts:57
 msgctxt "web/menu/menus"
 msgid "User List"
 msgstr ""
@@ -1402,51 +1397,6 @@ msgstr ""
 #: web/menu/menus.ts:18
 msgctxt "web/menu/menus"
 msgid "auth"
-msgstr ""
-
-#: web/pages/AuthSettings.vue:5
-msgctxt "web/pages/AuthSettings"
-msgid "Browser"
-msgstr ""
-
-#: web/pages/AuthSettings.vue:8
-msgctxt "web/pages/AuthSettings"
-msgid "Browser timezone"
-msgstr ""
-
-#: web/pages/auth_settings_page.ts:122
-msgctxt "web/pages/AuthSettings"
-msgid "Load failed"
-msgstr ""
-
-#: web/pages/AuthSettings.vue:8
-msgctxt "web/pages/AuthSettings"
-msgid "On sign-in, fill an empty user timezone from the browser."
-msgstr ""
-
-#: web/pages/AuthSettings.vue:25
-msgctxt "web/pages/AuthSettings"
-msgid "Parameters View"
-msgstr ""
-
-#: web/pages/auth_settings_page.ts:143
-msgctxt "web/pages/AuthSettings"
-msgid "Save failed"
-msgstr ""
-
-#: web/pages/auth_settings_page.ts:139
-msgctxt "web/pages/AuthSettings"
-msgid "Saved successfully"
-msgstr ""
-
-#: web/pages/AuthSettings.vue:24
-msgctxt "web/pages/AuthSettings"
-msgid "Settings View"
-msgstr ""
-
-#: web/pages/AuthSettings.vue:19
-msgctxt "web/pages/AuthSettings"
-msgid "Settings: auth"
 msgstr ""
 
 #: web/pages/Login.vue:9
@@ -2144,7 +2094,7 @@ msgctxt "web/route/routes"
 msgid "Record Rule List"
 msgstr ""
 
-#: web/route/routes.ts:450
+#: web/route/routes.ts:430
 msgctxt "web/route/routes"
 msgid "Register"
 msgstr ""
@@ -2167,11 +2117,6 @@ msgstr ""
 #: web/route/routes.ts:123
 msgctxt "web/route/routes"
 msgid "Session Management"
-msgstr ""
-
-#: web/route/routes.ts:430
-msgctxt "web/route/routes"
-msgid "Settings: auth"
 msgstr ""
 
 #: web/route/routes.ts:184
@@ -2219,107 +2164,107 @@ msgctxt "web/route/routes"
 msgid "User List"
 msgstr ""
 
-#: web/stores/auth/actions.ts:573
+#: web/stores/auth/actions.ts:572
 msgctxt "web/stores/auth/actions"
 msgid "Cannot load user details: missing userId"
 msgstr ""
 
-#: web/stores/auth/actions.ts:293
+#: web/stores/auth/actions.ts:292
 msgctxt "web/stores/auth/actions"
 msgid "CompleteInitialSetup returned an invalid response"
 msgstr ""
 
-#: web/stores/auth/actions.ts:723
+#: web/stores/auth/actions.ts:721
 msgctxt "web/stores/auth/actions"
 msgid "Failed to initialize auth"
 msgstr ""
 
-#: web/stores/auth/actions.ts:268
+#: web/stores/auth/actions.ts:267
 msgctxt "web/stores/auth/actions"
 msgid "Failed to load initial setup options"
 msgstr ""
 
-#: web/stores/auth/actions.ts:236
+#: web/stores/auth/actions.ts:235
 msgctxt "web/stores/auth/actions"
 msgid "Failed to load initial setup state"
 msgstr ""
 
-#: web/stores/auth/actions.ts:160
+#: web/stores/auth/actions.ts:159
 msgctxt "web/stores/auth/actions"
 msgid "Failed to load permission state"
 msgstr ""
 
-#: web/stores/auth/actions.ts:643
+#: web/stores/auth/actions.ts:641
 msgctxt "web/stores/auth/actions"
 msgid "Failed to load user details"
 msgstr ""
 
-#: web/stores/auth/actions.ts:553
+#: web/stores/auth/actions.ts:552
 msgctxt "web/stores/auth/actions"
 msgid "Failed to refresh token"
 msgstr ""
 
-#: web/stores/auth/actions.ts:209
+#: web/stores/auth/actions.ts:208
 msgctxt "web/stores/auth/actions"
 msgid "Failed to switch company scope"
 msgstr ""
 
-#: web/stores/auth/actions.ts:260
+#: web/stores/auth/actions.ts:259
 msgctxt "web/stores/auth/actions"
 msgid "GetInitialSetupOptions returned an invalid response"
 msgstr ""
 
-#: web/stores/auth/actions.ts:304
+#: web/stores/auth/actions.ts:303
 msgctxt "web/stores/auth/actions"
 msgid "Initial setup failed"
 msgstr ""
 
-#: web/stores/auth/actions.ts:393
+#: web/stores/auth/actions.ts:392
 msgctxt "web/stores/auth/actions"
 msgid "Invalid login response"
 msgstr ""
 
-#: web/stores/auth/actions.ts:422
+#: web/stores/auth/actions.ts:421
 msgctxt "web/stores/auth/actions"
 msgid "Login failed"
 msgstr ""
 
-#: web/stores/auth/actions.ts:459
+#: web/stores/auth/actions.ts:458
 msgctxt "web/stores/auth/actions"
 msgid "Logout failed, but local state was cleared"
 msgstr ""
 
-#: web/stores/auth/actions.ts:483
+#: web/stores/auth/actions.ts:482
 msgctxt "web/stores/auth/actions"
 msgid "No refresh token is available"
 msgstr ""
 
-#: web/stores/auth/actions.ts:173
+#: web/stores/auth/actions.ts:172
 msgctxt "web/stores/auth/actions"
 msgid "Not authenticated; cannot switch company scope"
 msgstr ""
 
-#: web/stores/auth/actions.ts:511
+#: web/stores/auth/actions.ts:510
 msgctxt "web/stores/auth/actions"
 msgid "RefreshTokens returned an invalid response"
 msgstr ""
 
-#: web/stores/auth/actions.ts:339
+#: web/stores/auth/actions.ts:338
 msgctxt "web/stores/auth/actions"
 msgid "Register returned an invalid response"
 msgstr ""
 
-#: web/stores/auth/actions.ts:346
+#: web/stores/auth/actions.ts:345
 msgctxt "web/stores/auth/actions"
 msgid "Registration failed"
 msgstr ""
 
-#: web/stores/auth/actions.ts:448
+#: web/stores/auth/actions.ts:447
 msgctxt "web/stores/auth/actions"
 msgid "Server-side logout failed, but local state was cleared"
 msgstr ""
 
-#: web/stores/auth/actions.ts:184
+#: web/stores/auth/actions.ts:183
 msgctxt "web/stores/auth/actions"
 msgid "SwitchCompanyScope returned an invalid response"
 msgstr ""

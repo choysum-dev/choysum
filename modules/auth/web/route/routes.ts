@@ -419,26 +419,6 @@ export const appRoutes: RouteRecordRaw[] = [
       requiresAuth: true,
       appSettingApplication: 'auth',
       viewKind: 'list',
-      viewPaths: {
-        settings: '/auth/settings',
-        list: '/web/app-settings/auth',
-      },
-    },
-  }),
-  defineRoute('auth.route.settings', {
-    sequence: 71,
-    title: _lt('Settings: auth'),
-    path: 'auth/settings',
-    name: 'AuthSettings',
-    component: () => import('../pages/AuthSettings.vue'),
-    defaultRoles: ['sys.admin'],
-    meta: {
-      requiresAuth: true,
-      viewKind: 'settings',
-      viewPaths: {
-        settings: '/auth/settings',
-        list: '/web/app-settings/auth',
-      },
     },
   }),
 ];
