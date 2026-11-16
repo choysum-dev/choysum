@@ -116,7 +116,7 @@ func sqliteRewriteTable(db *gorm.DB, table string, rewrite sqliteTableRewrite) e
 			if stillOn {
 				// PRAGMA foreign_keys is a no-op inside an open transaction; refuse when
 				// DROP could cascade to referencing tables.
-				referenced, refErr := sqliteTableIsReferenced(connDB, table)
+				referenced, refErr := sqliteTableIsReferencedFn(connDB, table)
 				if refErr != nil {
 					return refErr
 				}
@@ -228,6 +228,8 @@ func sqliteColumnDecl(ct gorm.ColumnType, dst string, rewrite sqliteTableRewrite
 	} else if notNull {
 		decl += " NOT NULL"
 	}
+	// SQLite's ColumnType.DefaultValue returns the SQL literal/expression already
+	// suitable for DDL (e.g. 'x', 1, CURRENT_TIMESTAMP); append verbatim.
 	if def, ok := ct.DefaultValue(); ok {
 		def = strings.TrimSpace(def)
 		if def != "" {
@@ -267,9 +269,14 @@ func sqliteBareTypeName(raw string) string {
 
 // Overridable seams for error-path tests.
 var (
-	sqliteListMasterSQLs   = sqliteMasterSQLs
-	sqliteReadForeignKeys  = sqliteForeignKeysEnabled
-	sqliteCheckForeignKeys = sqliteForeignKeyCheck
+	sqliteListMasterSQLs      = sqliteMasterSQLs
+	sqliteReadForeignKeys     = sqliteForeignKeysEnabled
+	sqliteCheckForeignKeys    = sqliteForeignKeyCheck
+	sqliteTableIsReferencedFn = sqliteTableIsReferenced
+	sqliteScanForeignKeyList  = func(db *gorm.DB, name string, dest any) error {
+		q := fmt.Sprintf("PRAGMA foreign_key_list(%s)", quoteIdent("sqlite", name))
+		return db.Raw(q).Scan(dest).Error
+	}
 )
 
 func sqliteRewriteTempName(table string) string {
@@ -292,8 +299,7 @@ func sqliteTableIsReferenced(db *gorm.DB, table string) (bool, error) {
 		var rows []struct {
 			Table string
 		}
-		q := fmt.Sprintf("PRAGMA foreign_key_list(%s)", quoteIdent("sqlite", name))
-		if err := db.Raw(q).Scan(&rows).Error; err != nil {
+		if err := sqliteScanForeignKeyList(db, name, &rows); err != nil {
 			return false, fmt.Errorf("foreign_key_list %s: %w", name, err)
 		}
 		for _, row := range rows {

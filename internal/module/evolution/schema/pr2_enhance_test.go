@@ -439,6 +439,98 @@ func TestSqliteRewriteTable_RefuseWhenFKPragmaIgnoredAndReferenced(t *testing.T)
 	}
 }
 
+func TestSqliteRewriteTable_LeafOKWhenFKPragmaIgnored(t *testing.T) {
+	t.Parallel()
+	runtimeScope := newSchemaTestScope(t)
+	db := runtimeScope.Session().DB
+	_ = db.Exec(`PRAGMA foreign_keys=ON`)
+	if err := db.Exec(`CREATE TABLE rw_leaf (id integer PRIMARY KEY, name text)`).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Exec(`INSERT INTO rw_leaf (id, name) VALUES (1, 'a')`).Error; err != nil {
+		t.Fatal(err)
+	}
+	err := db.Transaction(func(tx *gorm.DB) error {
+		return sqliteRewriteTable(tx, "rw_leaf", sqliteTableRewrite{
+			ForceNotNull: map[string]struct{}{"name": {}},
+		})
+	})
+	if err != nil {
+		t.Fatalf("leaf rewrite under open tx: %v", err)
+	}
+}
+
+func TestSqliteRewriteTable_FKStillOnSeamErrors(t *testing.T) {
+	// Not parallel: stubs sqliteReadForeignKeys / sqliteTableIsReferencedFn.
+	runtimeScope := newSchemaTestScope(t)
+	db := runtimeScope.Session().DB
+	if err := db.Exec(`CREATE TABLE rw_still (a integer)`).Error; err != nil {
+		t.Fatal(err)
+	}
+	origFK := sqliteReadForeignKeys
+	origRef := sqliteTableIsReferencedFn
+	t.Cleanup(func() {
+		sqliteReadForeignKeys = origFK
+		sqliteTableIsReferencedFn = origRef
+	})
+
+	reads := 0
+	sqliteReadForeignKeys = func(*gorm.DB) (bool, error) {
+		reads++
+		if reads == 1 {
+			return true, nil
+		}
+		return false, fmt.Errorf("still-on read boom")
+	}
+	if err := sqliteRewriteTable(db, "rw_still", sqliteTableRewrite{ForceNotNull: map[string]struct{}{"a": {}}}); err == nil || !strings.Contains(err.Error(), "still-on read boom") {
+		t.Fatalf("stillErr: %v", err)
+	}
+
+	reads = 0
+	sqliteReadForeignKeys = func(*gorm.DB) (bool, error) {
+		reads++
+		return true, nil // was on, and still on after OFF
+	}
+	sqliteTableIsReferencedFn = func(*gorm.DB, string) (bool, error) {
+		return false, fmt.Errorf("ref check boom")
+	}
+	if err := sqliteRewriteTable(db, "rw_still", sqliteTableRewrite{ForceNotNull: map[string]struct{}{"a": {}}}); err == nil || !strings.Contains(err.Error(), "ref check boom") {
+		t.Fatalf("refErr: %v", err)
+	}
+}
+
+func TestSqliteTableIsReferenced_Errors(t *testing.T) {
+	// Not parallel: stubs sqliteScanForeignKeyList; also closes the shared test db.
+	runtimeScope := newSchemaTestScope(t)
+	db := runtimeScope.Session().DB
+	if err := db.Exec(`CREATE TABLE ref_a (id integer PRIMARY KEY)`).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Exec(`CREATE TABLE ref_b (id integer)`).Error; err != nil {
+		t.Fatal(err)
+	}
+	origScan := sqliteScanForeignKeyList
+	t.Cleanup(func() { sqliteScanForeignKeyList = origScan })
+	sqliteScanForeignKeyList = func(*gorm.DB, string, any) error {
+		return fmt.Errorf("fk list boom")
+	}
+	if _, err := sqliteTableIsReferenced(db, "ref_a"); err == nil || !strings.Contains(err.Error(), "foreign_key_list") {
+		t.Fatalf("fk list err: %v", err)
+	}
+	sqliteScanForeignKeyList = origScan
+
+	sqlDB, err := db.DB()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := sqlDB.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := sqliteTableIsReferenced(db, "any"); err == nil {
+		t.Fatal("expected list-tables error on closed db")
+	}
+}
+
 func TestSqliteRewriteHelpers(t *testing.T) {
 	t.Parallel()
 	if got := sqliteRewriteTempName("a b/c"); !strings.HasPrefix(got, "choysum_rw_") || len(got) > 40 {
