@@ -4,11 +4,10 @@
 /** Shell locale menu: set language then remount when the switch succeeds. */
 export async function shellLanguageSelect(
   code: string,
-  currentCode: string,
   setLang: (lang: string) => Promise<boolean>,
   remount: () => Promise<void>,
 ): Promise<void> {
-  if (!code || code === currentCode) {
+  if (!code) {
     return;
   }
   const ok = await setLang(code);

@@ -76,20 +76,20 @@ function resolveI18nStore(): ReturnType<typeof useI18nStore> | null {
 }
 
 const rows = computed((): ActiveLanguageRow[] => {
-  const fromStore = i18nStore?.activeLanguages;
+  const fromStore = resolveI18nStore()?.activeLanguages;
   if (Array.isArray(fromStore) && fromStore.length) {
     return fromStore;
   }
   return DEFAULT_ACTIVE_LANGS.map(code => ({ Code: code, Name: code }));
 });
 
-const currentCode = computed(() => i18nStore?.activeLanguage.code || 'en_US');
+const currentCode = computed(() => resolveI18nStore()?.activeLanguage.code || 'en_US');
 
 async function onSelect(code: string) {
   const store = resolveI18nStore();
   if (!store) {
     return;
   }
-  await shellLanguageSelect(code, currentCode.value, c => store.setLang(c), afterLangChange);
+  await shellLanguageSelect(code, c => store.setLang(c), afterLangChange);
 }
 </script>

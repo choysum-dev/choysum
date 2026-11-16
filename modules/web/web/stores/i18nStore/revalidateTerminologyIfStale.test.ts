@@ -267,6 +267,7 @@ describe('useI18nStore.revalidateTerminologyIfStale / reloadTerminology', () => 
     const store = useI18nStore();
     store.isInitialized = true;
     store.lang = 'en_US';
+    store.activeLanguages = [{ Code: 'en_US' }];
     let calls = 0;
     globalThis.fetch = (async () => {
       calls += 1;
@@ -508,6 +509,83 @@ describe('useI18nStore.revalidateTerminologyIfStale / reloadTerminology', () => 
       })) as typeof fetch;
     expect(await store.setLang('de_DE')).toBe(false);
     expect(store.lang).not.toBe('de_DE');
+  });
+
+  test('setLang: supersede during loadActiveLanguages before terminology fetch', async () => {
+    const store = useI18nStore();
+    store.isInitialized = true;
+    store.lang = 'en_US';
+    store.activeLanguages = [{ Code: 'en_US' }];
+    let releaseLanguages!: () => void;
+    const languagesGate = new Promise<void>(resolve => {
+      releaseLanguages = resolve;
+    });
+    let languageCalls = 0;
+    setI18nCreateStoreForTests(
+      () =>
+        ({
+          GetActiveLanguages: async () => {
+            languageCalls += 1;
+            if (languageCalls === 1) {
+              await languagesGate;
+            }
+            return [
+              { Code: 'en_US' },
+              { Code: 'zh_CN' },
+            ];
+          },
+        }) as any,
+    );
+    globalThis.fetch = (async (_input, init) => {
+      const url = String(init?.body || '');
+      void url;
+      return jsonResponse({
+        lang: 'zh_CN',
+        bcp47: 'zh-CN',
+        hash: 'zh',
+        unchanged: true,
+        messages: null,
+      });
+    }) as typeof fetch;
+
+    const first = store.setLang('zh_CN');
+    const second = store.setLang('en_US');
+    releaseLanguages();
+    expect(await first).toBe(false);
+    expect(await second).toBe(true);
+    expect(store.lang).toBe('en_US');
+  });
+
+  test('initialize: falls back when setLang rejects and assign allowed lang', async () => {
+    const store = useI18nStore();
+    store.lang = 'zh_CN';
+    store.activeLanguages = [];
+    let languageCalls = 0;
+    setI18nCreateStoreForTests(
+      () =>
+        ({
+          GetActiveLanguages: async () => {
+            languageCalls += 1;
+            if (languageCalls === 1) {
+              throw new Error('offline');
+            }
+            return [{ Code: 'en_US' }];
+          },
+        }) as any,
+    );
+    globalThis.fetch = (async () =>
+      jsonResponse({
+        lang: 'zh_CN',
+        bcp47: 'zh-CN',
+        hash: 'zh',
+        unchanged: true,
+        messages: null,
+      })) as typeof fetch;
+
+    await store.initialize();
+    expect(store.isInitialized).toBe(true);
+    expect(store.lang).toBe('en_US');
+    expect(languageCalls).toBeGreaterThanOrEqual(2);
   });
 
   test('initialize: keeps persisted lang when active load fails', async () => {

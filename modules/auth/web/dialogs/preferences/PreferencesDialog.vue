@@ -470,7 +470,6 @@ async function onPreferencesSubmit(ctx: {
           languageId,
           browseLanguage: (id, fields) => (languageStore as any).Browse(id, fields),
           setLang: k => i18nStore.setLang(k),
-          loadActiveLanguages: () => i18nStore.loadActiveLanguages(),
           getCurrentLang: () => i18nStore.lang,
         }),
       applyAppearance: (theme, density) => {

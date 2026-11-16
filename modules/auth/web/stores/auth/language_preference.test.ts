@@ -138,20 +138,15 @@ test('applyUserLanguagePreference: calls setLang when getCurrentLang omitted', a
   expect(setLangCalls).toEqual(['zh_CN']);
 });
 
-test('applyUserLanguagePreference: reloads active languages and retries setLang when first returns false', async () => {
+test('applyUserLanguagePreference: single setLang when preference resolves', async () => {
   const order: string[] = [];
-  let attempts = 0;
   await applyUserLanguagePreference({
     languageId: 'lang_zh',
     browseLanguage: async () => ({ Code: 'zh_CN' }),
     setLang: async key => {
-      attempts += 1;
-      order.push(`setLang:${key}:${attempts}`);
-      return attempts > 1;
-    },
-    loadActiveLanguages: async () => {
-      order.push('loadActive');
+      order.push(`setLang:${key}`);
+      return false;
     },
   });
-  expect(order).toEqual(['setLang:zh_CN:1', 'loadActive', 'setLang:zh_CN:2']);
+  expect(order).toEqual(['setLang:zh_CN']);
 });

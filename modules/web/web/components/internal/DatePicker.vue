@@ -47,7 +47,7 @@ SPDX-License-Identifier: Apache-2.0
         <CalendarRoot
           v-slot="{ weekDays, grid }"
           v-model="calendarValue"
-          :locale="calendarLocale"
+          :locale="resolveCalendarLocale()"
           :min-value="datePickerMinValue"
           :max-value="datePickerMaxValue"
           class="choy-date-picker__calendar"
@@ -137,8 +137,7 @@ import { Calendar, ChevronLeft, ChevronRight, X } from 'lucide-vue-next';
 import { CalendarDate } from '@internationalized/date';
 import { cn, type ClassValue } from '../../lib/utils';
 import { createTranslate } from '@/web/web/i18n';
-import { useI18nStore } from '@/web/web/stores/i18nStore';
-import { calendarLocaleFromBcp47 } from './calendarLocale';
+import { resolveCalendarLocale } from './calendarLocale';
 import Button from '../vendor/ui/button/Button.vue';
 import Popover from '../vendor/ui/popover/Popover.vue';
 import PopoverContent from '../vendor/ui/popover/PopoverContent.vue';
@@ -181,15 +180,6 @@ const props = withDefaults(
 const modelValue = defineModel<string | null>({ default: null });
 const open = ref(false);
 
-function resolveCalendarLocale(): string {
-  try {
-    return calendarLocaleFromBcp47(useI18nStore().bcp47Locale);
-  } catch {
-    return 'en-US';
-  }
-}
-
-const calendarLocale = computed(() => resolveCalendarLocale());
 const effectivePlaceholder = computed(() => props.placeholder || _t('Select date'));
 const showClear = computed(
   () => props.clearable && !!String(modelValue.value ?? '').trim() && !props.disabled,

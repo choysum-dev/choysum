@@ -31,7 +31,6 @@ export type AuthActionDeps = {
   importI18nStore?: () => Promise<{
     useI18nStore: () => {
       setLang: (lang: string) => Promise<unknown> | unknown;
-      loadActiveLanguages?: () => Promise<unknown> | unknown;
       lang?: string | null;
     };
   }>;
@@ -630,7 +629,6 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
           languageId: (user as any)?.LanguageId,
           browseLanguage,
           setLang: key => i18nStore.setLang(key),
-          loadActiveLanguages: () => i18nStore.loadActiveLanguages?.() ?? Promise.resolve(),
           getCurrentLang: () => i18nStore.lang ?? null,
         });
       } catch {

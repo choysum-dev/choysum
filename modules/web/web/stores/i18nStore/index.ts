@@ -127,16 +127,9 @@ export const useI18nStore = defineStore(
         return false;
       }
 
-      if (!activeCodes.value.includes(next)) {
-        await loadActiveLanguages();
-      }
-      const allowed = activeCodes.value.length ? activeCodes.value : [...DEFAULT_ACTIVE_LANGS];
-      if (!allowed.includes(next)) {
-        console.warn(`Language ${next} is not in the active set`);
-        return false;
-      }
-
+      const inActive = activeCodes.value.includes(next);
       if (
+        inActive &&
         shouldNoopSetLang({
           lang: next,
           currentLang: lang.value,
@@ -147,9 +140,28 @@ export const useI18nStore = defineStore(
         return true;
       }
 
-      const generation = ++setLangGeneration;
-      pendingLang = next;
-      isLoading.value = true;
+      let generation: number;
+
+      if (!inActive) {
+        generation = ++setLangGeneration;
+        pendingLang = next;
+        isLoading.value = true;
+        await loadActiveLanguages();
+        if (generation !== setLangGeneration) {
+          return false;
+        }
+        const allowed = activeCodes.value.length ? activeCodes.value : [...DEFAULT_ACTIVE_LANGS];
+        if (!allowed.includes(next)) {
+          console.warn(`Language ${next} is not in the active set`);
+          pendingLang = null;
+          isLoading.value = false;
+          return false;
+        }
+      } else {
+        generation = ++setLangGeneration;
+        pendingLang = next;
+        isLoading.value = true;
+      }
 
       try {
         const prevHash = terminologyHashByLang.value[next] || '';
@@ -398,7 +410,15 @@ export const useI18nStore = defineStore(
         }
       }
 
-      await setLang(langToSet);
+      let ok = await setLang(langToSet);
+      if (!ok) {
+        const allowedNow = activeCodes.value.length ? activeCodes.value : [...DEFAULT_ACTIVE_LANGS];
+        ok = await setLang(detectBestLang(allowedNow));
+      }
+      if (!ok) {
+        const allowedNow = activeCodes.value.length ? activeCodes.value : [...DEFAULT_ACTIVE_LANGS];
+        lang.value = allowedNow.includes('en_US') ? 'en_US' : allowedNow[0] || 'en_US';
+      }
 
       if (isClient) {
         updateDocumentDirection(activeLanguage.value.textDirection);

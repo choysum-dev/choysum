@@ -15,6 +15,7 @@ test('getDateTimeFormats: builds POSIX-keyed Intl skeletons', () => {
   const formats = getDateTimeFormats('en_US', { shortDate: 'MM/DD/YYYY' });
   expect(formats.en_US.short.year).toBe('numeric');
   expect(formats.en_US.longTime.hour12).toBe(true);
+  expect(getDateTimeFormats('de_DE', {}).de_DE.longTime.hour12).toBe(false);
 });
 
 test('getNumberFormats: decimal, currency, and percent entries', () => {
@@ -28,35 +29,96 @@ test('getNumberFormats: decimal, currency, and percent entries', () => {
   expect(formats.zh_CN.percent.style).toBe('percent');
 });
 
+test('formatDateTime: date and time literals use dayjs patterns', () => {
+  const config = {
+    shortDate: 'YYYY-MM-DD',
+    shortTime: 'HH:mm',
+    longTime: 'HH:mm:ss',
+  };
+  const d = new Date(2026, 0, 15, 9, 30, 5);
+  expect(formatDateTime(d, config, { type: 'date' })).toBe('2026-01-15');
+  expect(formatDateTime(d, config, { type: 'time' })).toBe('09:30');
+  expect(formatDateTime(d, config, { type: 'time', isLong: true })).toBe('09:30:05');
+});
+
 test('formatDateTime: relative uses Intl.RelativeTimeFormat when available', () => {
   if (typeof Intl.RelativeTimeFormat !== 'function') {
     return;
   }
+  let out = '';
+  let hostUnsupported = false;
   try {
     const now = Date.now();
-    const out = formatDateTime(now - 60_000, {}, {
+    out = formatDateTime(now - 60_000, {}, {
       type: 'relative',
       bcp47: 'en-US',
     });
-    expect(String(out)).not.toBe('');
   } catch {
-    // QuickJS host may lack timezone conversion for relative formatting.
+    hostUnsupported = true;
   }
+  if (hostUnsupported) {
+    return;
+  }
+  expect(String(out)).not.toBe('');
 });
 
 test('formatDateTime: relative falls back when tag invalid', () => {
   if (typeof Intl.RelativeTimeFormat !== 'function') {
     return;
   }
+  let out = '';
+  let hostUnsupported = false;
   try {
-    const out = formatDateTime(Date.now(), {}, {
+    out = formatDateTime(Date.now(), {}, {
       type: 'relative',
       bcp47: 'not-a-real-bcp47-tag-###',
     });
-    expect(String(out)).not.toBe('');
   } catch {
-    // QuickJS host may lack timezone conversion for relative formatting.
+    hostUnsupported = true;
   }
+  if (hostUnsupported) {
+    return;
+  }
+  expect(String(out)).not.toBe('');
+});
+
+test('formatDateTime: relative spans minute hour day week month year units', () => {
+  if (typeof Intl.RelativeTimeFormat !== 'function') {
+    return;
+  }
+  const now = Date.now();
+  const deltas = [
+    30_000,
+    120_000,
+    3_600_000,
+    86_400_000,
+    604_800_000,
+    2_592_000_000,
+    31_536_000_000,
+  ];
+  for (const delta of deltas) {
+    let out = '';
+    let hostUnsupported = false;
+    try {
+      out = formatDateTime(now - delta, {}, { type: 'relative', bcp47: 'en-US' });
+    } catch {
+      hostUnsupported = true;
+    }
+    if (hostUnsupported) {
+      return;
+    }
+    expect(String(out)).not.toBe('');
+  }
+});
+
+test('formatNumber: config path with separators', () => {
+  const out = formatNumber(1234.5, 'en-US', {
+    thousandsSeparator: ',',
+    decimalSeparator: '.',
+    grouping: [3, 0],
+    decimalDigits: 2,
+  });
+  expect(out).toBe('1,234.50');
 });
 
 test('formatNumber: Intl fallback when config lacks separators', () => {
@@ -66,6 +128,24 @@ test('formatNumber: Intl fallback when config lacks separators', () => {
 
 test('formatNumber: returns string on Intl failure', () => {
   expect(formatNumber(9.99, '', {}, { digits: 1 })).toBe('9.99');
+});
+
+test('formatCurrency: config path with symbol placement', () => {
+  const out = formatCurrency(
+    12.5,
+    'en-US',
+    {
+      thousandsSeparator: ',',
+      decimalSeparator: '.',
+      grouping: [3, 0],
+      decimalDigits: 2,
+      position: 'before',
+      spacing: true,
+      code: 'USD',
+    },
+    'USD',
+  );
+  expect(out).toBe('USD 12.50');
 });
 
 test('formatCurrency: Intl fallback', () => {
