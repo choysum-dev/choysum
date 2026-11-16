@@ -205,12 +205,20 @@ func sqliteBareTypeName(raw string) string {
 		return "TEXT"
 	}
 	upper := strings.ToUpper(typeName)
-	for _, kw := range []string{" PRIMARY KEY", " AUTOINCREMENT", " NOT NULL", " DEFAULT "} {
-		if i := strings.Index(upper, kw); i >= 0 {
-			typeName = strings.TrimSpace(typeName[:i])
-			upper = strings.ToUpper(typeName)
+	cutAt := len(typeName)
+	for _, kw := range []string{"PRIMARY KEY", "AUTOINCREMENT", "NOT NULL", "DEFAULT"} {
+		i := strings.Index(upper, kw)
+		if i < 0 {
+			continue
+		}
+		if i > 0 && upper[i-1] != ' ' && upper[i-1] != '\t' {
+			continue
+		}
+		if i < cutAt {
+			cutAt = i
 		}
 	}
+	typeName = strings.TrimSpace(typeName[:cutAt])
 	if typeName == "" {
 		return "TEXT"
 	}
