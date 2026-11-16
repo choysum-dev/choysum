@@ -48,6 +48,15 @@ test('languages.json sampled mappings', () => {
   expect(byCode.ko_KR?.PersonNameFormat).toBe('{LastName}{FirstName}');
   expect(byCode.ar_001?.Direction).toBe('rtl');
   expect(byCode.fr_FR?.DateFormat).toBe('DD/MM/YYYY');
+  // Basque keeps native literals; escape them so dayjs does not eat e/k/o/a as tokens.
+  expect(byCode.eu_ES?.DateFormat).toBe('ddd, YYYY.[eko] MMM[ren] DD[a]');
+});
+
+test('languages.json xml_id and Code are unique', () => {
+  const names = catalog.map(r => r.name);
+  const codes = catalog.map(r => r.values.Code);
+  expect(new Set(names).size).toBe(names.length);
+  expect(new Set(codes).size).toBe(codes.length);
 });
 
 test('package.json registers languages.json after bootstrap', () => {

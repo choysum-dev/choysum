@@ -734,7 +734,7 @@
         "DecimalSeparator": ",",
         "ThousandSeparator": "",
         "Grouping": "[]",
-        "DateFormat": "ddd, YYYY.eko MMMren DDa",
+        "DateFormat": "ddd, YYYY.[eko] MMM[ren] DD[a]",
         "TimeFormat": "HH:mm:ss",
         "FirstDayOfWeek": 1,
         "PersonNameFormat": "{FirstName} {LastName}"

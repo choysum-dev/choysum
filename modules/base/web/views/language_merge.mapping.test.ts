@@ -41,6 +41,7 @@ test('languages.json + bootstrap: POSIX languages and no Locale entity', () => {
 
   const order = bootData.records.map(r => r.name);
   expect(order.indexOf('language_zh_cn')).toBeLessThan(order.indexOf('language_en_us'));
+  expect(order.indexOf('language_en_us')).toBeLessThan(order.indexOf('currency_cny'));
 
   const catalogById = Object.fromEntries(langData.records.map(r => [r.name, r]));
   expect(catalogById.language_en_us).toBeUndefined();
