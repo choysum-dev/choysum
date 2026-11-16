@@ -10,5 +10,6 @@ export function bcp47FromCode(code: string): string {
   if (!raw) {
     return 'en-US';
   }
-  return raw.replace(/_/g, '-');
+  const base = raw.split(/[.@]/)[0];
+  return base.replace(/_/g, '-') || 'en-US';
 }

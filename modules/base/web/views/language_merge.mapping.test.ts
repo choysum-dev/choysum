@@ -73,7 +73,8 @@ test('FE i18n store exports POSIX identity helpers (no legacy uiKey adapters)', 
   expect(Object.keys(bcp47)).toContain('bcp47FromCode');
 
   expect(Object.keys(utils)).toContain('detectBestLang');
-  expect(Object.keys(utils)).toContain('looksLikeLegacyUiKey');
+  expect(Object.keys(utils)).toContain('matchBestLang');
+  expect(Object.keys(utils)).not.toContain('looksLikeLegacyUiKey');
   expect(Object.keys(utils)).not.toContain('detectBestUiKey');
   expect(Object.keys(utils)).not.toContain('detectBestLocale');
 

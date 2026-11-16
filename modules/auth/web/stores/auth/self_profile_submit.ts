@@ -77,9 +77,14 @@ export async function runSelfProfileSubmit(opts: {
 
   try {
     await opts.refreshToken();
+  } catch {
+    // Token refresh is best-effort after Write.
+  }
+
+  try {
     await opts.afterLangChange();
   } catch {
-    // Token/locale remount is best-effort after Write; still close as saved.
+    // Locale remount is best-effort after Write.
   }
 
   opts.onSuccess();

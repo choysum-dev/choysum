@@ -138,6 +138,7 @@ import { CalendarDate } from '@internationalized/date';
 import { cn, type ClassValue } from '../../lib/utils';
 import { createTranslate } from '@/web/web/i18n';
 import { useI18nStore } from '@/web/web/stores/i18nStore';
+import { calendarLocaleFromBcp47 } from './calendarLocale';
 import Button from '../vendor/ui/button/Button.vue';
 import Popover from '../vendor/ui/popover/Popover.vue';
 import PopoverContent from '../vendor/ui/popover/PopoverContent.vue';
@@ -182,7 +183,7 @@ const open = ref(false);
 
 function resolveCalendarLocale(): string {
   try {
-    return String(useI18nStore().bcp47Locale || '').trim() || 'en-US';
+    return calendarLocaleFromBcp47(useI18nStore().bcp47Locale);
   } catch {
     return 'en-US';
   }

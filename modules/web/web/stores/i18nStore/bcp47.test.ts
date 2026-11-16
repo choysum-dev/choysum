@@ -13,3 +13,8 @@ test('bcp47FromCode: empty falls back to en-US', () => {
   expect(bcp47FromCode('')).toBe('en-US');
   expect(bcp47FromCode('   ')).toBe('en-US');
 });
+
+test('bcp47FromCode: strips POSIX codeset and modifier before mapping', () => {
+  expect(bcp47FromCode('zh_CN.UTF-8')).toBe('zh-CN');
+  expect(bcp47FromCode('en_US@collation=phonebook')).toBe('en-US');
+});

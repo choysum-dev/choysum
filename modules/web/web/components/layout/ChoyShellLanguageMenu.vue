@@ -49,6 +49,7 @@ import {
   DropdownMenuTrigger as ChoyDropdownMenuTrigger,
 } from '../vendor/ui/dropdown-menu';
 import { afterLangChange, useI18nStore } from '../../stores/i18nStore';
+import { shellLanguageSelect } from './shellLanguageSelect';
 import { DEFAULT_ACTIVE_LANGS } from '../../stores/i18nStore/activeLangs';
 import type { ActiveLanguageRow } from '../../stores/i18nStore/types';
 
@@ -63,6 +64,17 @@ try {
   i18nStore = null;
 }
 
+function resolveI18nStore(): ReturnType<typeof useI18nStore> | null {
+  if (i18nStore) {
+    return i18nStore;
+  }
+  try {
+    return useI18nStore();
+  } catch {
+    return null;
+  }
+}
+
 const rows = computed((): ActiveLanguageRow[] => {
   const fromStore = i18nStore?.activeLanguages;
   if (Array.isArray(fromStore) && fromStore.length) {
@@ -74,12 +86,10 @@ const rows = computed((): ActiveLanguageRow[] => {
 const currentCode = computed(() => i18nStore?.activeLanguage.code || 'en_US');
 
 async function onSelect(code: string) {
-  if (!i18nStore || code === currentCode.value) {
+  const store = resolveI18nStore();
+  if (!store) {
     return;
   }
-  const ok = await i18nStore.setLang(code);
-  if (ok) {
-    await afterLangChange();
-  }
+  await shellLanguageSelect(code, currentCode.value, c => store.setLang(c), afterLangChange);
 }
 </script>

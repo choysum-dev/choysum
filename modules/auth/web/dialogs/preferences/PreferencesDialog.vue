@@ -394,7 +394,7 @@ async function openAndLoad() {
 
   const lang = await resolveSelfProfileSeedLanguageId({
     languageId: currentUser.value?.LanguageId,
-    sessionTerminologyLang: i18nStore.lang || i18nStore.activeLanguage.code,
+    sessionTerminologyLang: i18nStore.activeLanguage.code,
     searchLanguageByCode: async code => {
       const rows = (await (languageStore as any).Search(
         { And: [['Code', '=', code], ['IsActive', '=', true]] } as any,
@@ -470,6 +470,7 @@ async function onPreferencesSubmit(ctx: {
           languageId,
           browseLanguage: (id, fields) => (languageStore as any).Browse(id, fields),
           setLang: k => i18nStore.setLang(k),
+          loadActiveLanguages: () => i18nStore.loadActiveLanguages(),
           getCurrentLang: () => i18nStore.lang,
         }),
       applyAppearance: (theme, density) => {

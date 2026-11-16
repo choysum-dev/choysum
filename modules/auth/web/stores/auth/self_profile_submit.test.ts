@@ -155,6 +155,7 @@ test('runSelfProfileSubmit: refreshToken failure after Write still succeeds', as
     'appearance:dark:compact',
     'apply:lang-1',
     'refreshToken',
+    'afterLangChange',
     'success',
   ]);
 });

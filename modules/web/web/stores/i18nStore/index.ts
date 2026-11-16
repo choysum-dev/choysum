@@ -8,7 +8,6 @@ import { DEFAULT_ACTIVE_LANGS } from './activeLangs';
 import { EN_US_FORMAT_DEFAULTS, type ActiveLanguageRow, type DateTimeFormatType } from './types';
 import {
   detectBestLang,
-  looksLikeLegacyUiKey,
   updateDocumentDirection,
   formatDateTime,
   formatNumber,
@@ -44,7 +43,7 @@ export { bcp47FromCode } from './bcp47';
 export { DEFAULT_ACTIVE_LANGS } from './activeLangs';
 export { fetchWebTranslations } from './terminologyLoader';
 export { shouldNoopSetLang } from './setLangGuard';
-export { detectBestLang, looksLikeLegacyUiKey } from './utils';
+export { detectBestLang, matchBestLang } from './utils';
 
 export { componentHintFromScope } from './componentHint';
 export { afterLangChange } from './langRemount';
@@ -123,8 +122,16 @@ export const useI18nStore = defineStore(
      */
     async function setLang(code: string) {
       const next = String(code || '').trim();
+      if (!next) {
+        console.warn(`Language ${next} is not in the active set`);
+        return false;
+      }
+
+      if (!activeCodes.value.includes(next)) {
+        await loadActiveLanguages();
+      }
       const allowed = activeCodes.value.length ? activeCodes.value : [...DEFAULT_ACTIVE_LANGS];
-      if (!next || !allowed.includes(next)) {
+      if (!allowed.includes(next)) {
         console.warn(`Language ${next} is not in the active set`);
         return false;
       }
@@ -189,6 +196,11 @@ export const useI18nStore = defineStore(
 
         await Promise.resolve();
         if (generation !== setLangGeneration) {
+          return false;
+        }
+
+        if (activeCodes.value.length && !activeCodes.value.includes(next)) {
+          console.warn(`Language ${next} is not in the active set`);
           return false;
         }
 
@@ -345,7 +357,7 @@ export const useI18nStore = defineStore(
     /**
      * Load active languages from base.Language/GetActiveLanguages (gRPC-Web).
      */
-    async function loadActiveLanguages() {
+    async function loadActiveLanguages(): Promise<boolean> {
       try {
         const languageStore = createModelStoreImpl('base.Language');
         const rows = await (languageStore as any).GetActiveLanguages();
@@ -355,10 +367,14 @@ export const useI18nStore = defineStore(
           nextRows.length > 0
             ? nextRows
             : DEFAULT_ACTIVE_LANGS.map(code => ({ Code: code }));
+        return true;
       } catch (error) {
         console.warn('Failed to load active languages; using defaults', error);
-        formatByCode.value = {};
-        activeLanguages.value = DEFAULT_ACTIVE_LANGS.map(code => ({ Code: code }));
+        if (activeLanguages.value.length === 0) {
+          formatByCode.value = {};
+          activeLanguages.value = DEFAULT_ACTIVE_LANGS.map(code => ({ Code: code }));
+        }
+        return false;
       }
     }
 
@@ -367,24 +383,22 @@ export const useI18nStore = defineStore(
         return;
       }
 
-      if (looksLikeLegacyUiKey(lang.value)) {
-        lang.value = null;
-      }
-
-      if (isClient) {
-        await loadActiveLanguages();
-      }
+      const loaded = isClient ? await loadActiveLanguages() : true;
 
       const allowed = activeCodes.value.length ? activeCodes.value : [...DEFAULT_ACTIVE_LANGS];
-      if (!lang.value || !allowed.includes(lang.value)) {
-        lang.value = detectBestLang(allowed);
+      let langToSet = lang.value;
+
+      if (!langToSet || !allowed.includes(langToSet)) {
+        if (!langToSet) {
+          langToSet = detectBestLang(allowed);
+        } else if (loaded) {
+          langToSet = detectBestLang(allowed);
+        } else if (!activeLanguages.value.some(r => r.Code === langToSet)) {
+          activeLanguages.value = [...activeLanguages.value, { Code: langToSet }];
+        }
       }
 
-      if (!isClient) {
-        return;
-      }
-
-      await setLang(lang.value);
+      await setLang(langToSet);
 
       if (isClient) {
         updateDocumentDirection(activeLanguage.value.textDirection);
@@ -429,13 +443,7 @@ export const useI18nStore = defineStore(
       afterHydrate: (ctx: PiniaPluginContext) => {
         if (ctx.store.$id === 'choysum.web.i18n') {
           const i18nStore = ctx.store;
-          if (looksLikeLegacyUiKey(i18nStore.lang)) {
-            i18nStore.lang = null;
-          }
-          if (isClient) {
-            updateDocumentDirection('ltr');
-          }
-          i18nStore.initialize();
+          void i18nStore.initialize();
         }
       },
     },

@@ -456,6 +456,7 @@ test('setupApp > merges terminology catalog updates from the i18n store', async 
   });
 
   store.lang = 'zh_CN';
+  activeLanguage.code = 'zh_CN';
   lastTerminologyLoad.value = {
     lang: 'zh_CN',
     bcp47: 'zh-CN',

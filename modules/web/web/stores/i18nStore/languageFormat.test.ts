@@ -99,6 +99,30 @@ test('languageFormat (P2): formats currency from a pre-quantized string without 
   ).toBe('USD 9,007,199,254,740,993.12');
 });
 
+test('overlayFromActiveLanguageRow: maps Direction rtl and ltr', () => {
+  expect(overlayFromActiveLanguageRow({ Direction: 'rtl' }).Direction).toBe('rtl');
+  expect(overlayFromActiveLanguageRow({ Direction: 'LTR' }).Direction).toBe('ltr');
+  expect(overlayFromActiveLanguageRow({ direction: 'rtl' }).Direction).toBe('rtl');
+  expect(overlayFromActiveLanguageRow({}).Direction).toBeUndefined();
+});
+
+test('formatCurrencyFromConfig: pads fractional digits in string input', () => {
+  expect(
+    formatCurrencyFromConfig(
+      '12.5',
+      {
+        thousandsSeparator: ',',
+        decimalSeparator: '.',
+        grouping: [3, 0],
+        decimalDigits: 2,
+        position: 'before',
+        spacing: false,
+      },
+      'USD',
+    ),
+  ).toBe('USD12.50');
+});
+
 test('overlayFromActiveLanguageRow: prefers PascalCase PersonNameFormat', () => {
   expect(
     overlayFromActiveLanguageRow({

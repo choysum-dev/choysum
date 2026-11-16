@@ -103,7 +103,7 @@ function resolveDraftLang(): string {
   const fromProp = String(props.draftLang || '').trim();
   if (fromProp) return fromProp;
   try {
-    return String(useI18nStore().lang || useI18nStore().activeLanguage.code || '').trim();
+    return String(useI18nStore().activeLanguage.code || '').trim();
   } catch {
     return '';
   }

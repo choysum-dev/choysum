@@ -469,4 +469,73 @@ describe('useI18nStore.revalidateTerminologyIfStale / reloadTerminology', () => 
     expect(load?.hash).toBe('remount');
     expect(store.lastTerminologyLoad?.hash).toBe('remount');
   });
+
+  test('loadActiveLanguages: preserves rows on failure when already populated', async () => {
+    const store = useI18nStore();
+    store.activeLanguages = [{ Code: 'zh_CN', Name: 'Chinese' }];
+    store.formatByCode = { zh_CN: { PersonNameFormat: '{LastName}' } };
+    setI18nCreateStoreForTests(
+      () =>
+        ({
+          GetActiveLanguages: async () => {
+            throw new Error('offline');
+          },
+        }) as any,
+    );
+    const ok = await store.loadActiveLanguages();
+    expect(ok).toBe(false);
+    expect(store.activeLanguages.map(r => r.Code)).toEqual(['zh_CN']);
+    expect(store.formatByCode.zh_CN?.PersonNameFormat).toBe('{LastName}');
+  });
+
+  test('setLang: returns false when code stays outside active set after reload', async () => {
+    const store = useI18nStore();
+    store.isInitialized = true;
+    store.activeLanguages = [{ Code: 'en_US' }];
+    setI18nCreateStoreForTests(
+      () =>
+        ({
+          GetActiveLanguages: async () => [{ Code: 'en_US' }],
+        }) as any,
+    );
+    globalThis.fetch = (async () =>
+      jsonResponse({
+        lang: 'de_DE',
+        bcp47: 'de-DE',
+        hash: 'de',
+        unchanged: true,
+        messages: null,
+      })) as typeof fetch;
+    expect(await store.setLang('de_DE')).toBe(false);
+    expect(store.lang).not.toBe('de_DE');
+  });
+
+  test('initialize: keeps persisted lang when active load fails', async () => {
+    const store = useI18nStore();
+    store.lang = 'zh_CN';
+    store.activeLanguages = [];
+    let loadCalls = 0;
+    setI18nCreateStoreForTests(
+      () =>
+        ({
+          GetActiveLanguages: async () => {
+            loadCalls += 1;
+            throw new Error('offline');
+          },
+        }) as any,
+    );
+    globalThis.fetch = (async () =>
+      jsonResponse({
+        lang: 'zh_CN',
+        bcp47: 'zh-CN',
+        hash: 'zh',
+        unchanged: true,
+        messages: null,
+      })) as typeof fetch;
+    await store.initialize();
+    expect(loadCalls).toBeGreaterThanOrEqual(1);
+    expect(store.isInitialized).toBe(true);
+    expect(store.activeLanguages.some(r => r.Code === 'zh_CN')).toBe(true);
+    expect(store.lang).toBe('zh_CN');
+  });
 });

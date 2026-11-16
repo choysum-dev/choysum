@@ -39,6 +39,7 @@ export async function applyUserLanguagePreference(opts: {
   languageId: unknown;
   browseLanguage: (id: string, fields: string[]) => Promise<{ Code?: string; IsActive?: boolean } | null | undefined>;
   setLang: (lang: string) => Promise<unknown> | unknown;
+  loadActiveLanguages?: () => Promise<unknown> | unknown;
   getCurrentLang?: () => string | null | undefined;
 }): Promise<void> {
   const preferredLang = await terminologyCodeFromLanguageId(opts.languageId, opts.browseLanguage);
@@ -47,5 +48,9 @@ export async function applyUserLanguagePreference(opts: {
   if (current != null && String(current) === preferredLang) {
     return;
   }
-  await opts.setLang(preferredLang);
+  const result = await opts.setLang(preferredLang);
+  if (result === false && opts.loadActiveLanguages) {
+    await opts.loadActiveLanguages();
+    await opts.setLang(preferredLang);
+  }
 }

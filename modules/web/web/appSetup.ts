@@ -139,7 +139,7 @@ export function setupApp(app: ChoysumWebApp, deps: SetupAppDeps = {}): void {
     }
     const tz = resolveTz(userTz, detectBrowserTz());
     return {
-      lang: i18nStore.lang || i18nStore.activeLanguage.code,
+      lang: i18nStore.activeLanguage.code,
       bcp47: i18nStore.bcp47Locale,
       ...(tz ? { tz } : {}),
     };
@@ -197,7 +197,7 @@ export function setupApp(app: ChoysumWebApp, deps: SetupAppDeps = {}): void {
   watch(
     () => i18nStore.lastTerminologyLoad,
     terminology => {
-      mergeTerminologyCatalog(terminology, i18nStore.lang || i18nStore.activeLanguage.code);
+      mergeTerminologyCatalog(terminology, i18nStore.activeLanguage.code);
     }
   );
 

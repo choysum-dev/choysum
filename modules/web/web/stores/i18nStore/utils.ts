@@ -17,50 +17,61 @@ function toPosixCandidate(tag: string): string {
     .replace(/-/g, '_');
 }
 
+function normalizeCatalog(allowedCodes?: readonly string[]): string[] {
+  return allowedCodes?.length && allowedCodes.some(c => String(c || '').trim())
+    ? allowedCodes.map(c => String(c).trim()).filter(Boolean)
+    : ['en_US'];
+}
+
+function catalogFallback(catalog: string[]): string {
+  return catalog.includes('en_US') ? 'en_US' : catalog[0] || 'en_US';
+}
+
 /**
- * Detect the best matching active Language.Code from navigator preferences.
+ * Pick the best catalog Language.Code for browser preferred tags (case-insensitive).
  */
-export function detectBestLang(allowedCodes?: readonly string[]): string {
-  if (!isClient) {
+export function matchBestLang(preferredTags: readonly string[], allowedCodes: readonly string[]): string {
+  const catalog = allowedCodes.map(c => String(c).trim()).filter(Boolean);
+  if (!catalog.length) {
     return 'en_US';
   }
+  const byLower = new Map<string, string>();
+  for (const code of catalog) {
+    byLower.set(code.toLowerCase(), code);
+  }
 
-  const catalog =
-    allowedCodes?.length && allowedCodes.some(c => String(c || '').trim())
-      ? allowedCodes.map(c => String(c).trim()).filter(Boolean)
-      : ['en_US'];
-  const preferredLanguages = usePreferredLanguages();
-
-  for (const pref of preferredLanguages.value || []) {
+  for (const pref of preferredTags || []) {
     const posix = toPosixCandidate(pref);
-    if (catalog.includes(posix)) {
-      return posix;
+    const exact = byLower.get(posix.toLowerCase());
+    if (exact) {
+      return exact;
     }
-    const mainLang = posix.split('_')[0];
-    const matched = catalog.find(code => code === mainLang || code.startsWith(`${mainLang}_`));
+    const mainLang = posix.split('_')[0]?.toLowerCase() || '';
+    if (!mainLang) {
+      continue;
+    }
+    const matched = catalog.find(code => {
+      const lower = code.toLowerCase();
+      return lower === mainLang || lower.startsWith(`${mainLang}_`);
+    });
     if (matched) {
       return matched;
     }
   }
 
-  return catalog.includes('en_US') ? 'en_US' : catalog[0] || 'en_US';
+  return catalogFallback(catalog);
 }
 
 /**
- * True when a persisted value looks like a legacy short UI key (en / zh-CN), not POSIX.
+ * Detect the best matching active Language.Code from navigator preferences.
  */
-export function looksLikeLegacyUiKey(code: string | null | undefined): boolean {
-  const raw = String(code || '').trim();
-  if (!raw) {
-    return true;
+export function detectBestLang(allowedCodes?: readonly string[]): string {
+  const catalog = normalizeCatalog(allowedCodes);
+  if (!isClient) {
+    return catalogFallback(catalog);
   }
-  if (raw.includes('-')) {
-    return true;
-  }
-  if (!raw.includes('_') && raw.length <= 3) {
-    return true;
-  }
-  return false;
+  const preferredLanguages = usePreferredLanguages();
+  return matchBestLang(preferredLanguages.value || [], catalog);
 }
 
 /**

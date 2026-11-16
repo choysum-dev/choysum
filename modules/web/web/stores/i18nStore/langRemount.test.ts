@@ -10,3 +10,15 @@ test('afterLangChange: calls injected reload', async () => {
   } });
   expect(reloaded).toBe(true);
 });
+
+test('afterLangChange: calls location.reload when no injection', async () => {
+  let reloaded = false;
+  const prev = globalThis.location;
+  (globalThis as any).location = { reload: () => { reloaded = true; } };
+  try {
+    await afterLangChange();
+    expect(reloaded).toBe(true);
+  } finally {
+    (globalThis as any).location = prev;
+  }
+});

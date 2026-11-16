@@ -42,4 +42,5 @@ describe('ChoyShellLanguageMenu', () => {
     expect(mounted.q('[data-testid=choy-shell-locale]')).not.toBeNull();
     mounted.unmount();
   });
+
 });

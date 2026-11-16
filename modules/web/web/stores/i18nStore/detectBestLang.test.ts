@@ -1,16 +1,25 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { detectBestLang, looksLikeLegacyUiKey } from './utils';
+import { detectBestLang, matchBestLang } from './utils';
 
-test('looksLikeLegacyUiKey: detects short and hyphen UI keys', () => {
-  expect(looksLikeLegacyUiKey('en')).toBe(true);
-  expect(looksLikeLegacyUiKey('zh-CN')).toBe(true);
-  expect(looksLikeLegacyUiKey('')).toBe(true);
-  expect(looksLikeLegacyUiKey('zh_CN')).toBe(false);
-  expect(looksLikeLegacyUiKey('en_US')).toBe(false);
+test('matchBestLang: empty preferred returns catalog fallback', () => {
+  expect(matchBestLang([], ['zh_CN', 'en_US'])).toBe('en_US');
+  expect(matchBestLang([], ['zh_CN'])).toBe('zh_CN');
+  expect(matchBestLang([], [])).toBe('en_US');
 });
 
-test('detectBestLang: matches navigator prefs against allowed POSIX codes', () => {
-  expect(detectBestLang(['en_US', 'zh_CN'])).toBe('en_US');
+test('matchBestLang: case-insensitive exact match returns catalog code', () => {
+  expect(matchBestLang(['en-us'], ['en_GB', 'en_US'])).toBe('en_US');
+  expect(matchBestLang(['EN-us'], ['en_GB', 'en_US'])).toBe('en_US');
+});
+
+test('matchBestLang: prefix match on language subtag', () => {
+  expect(matchBestLang(['zh'], ['en_US', 'zh_CN'])).toBe('zh_CN');
+  expect(matchBestLang(['zh-Hans'], ['en_US', 'zh_CN'])).toBe('zh_CN');
+});
+
+test('detectBestLang: SSR-style catalog fallback without navigator', () => {
+  expect(detectBestLang(['fr_FR', 'en_US'])).toBe('en_US');
+  expect(detectBestLang(['fr_FR'])).toBe('fr_FR');
 });

@@ -120,6 +120,11 @@ function setUiLang(lang: string) {
   const i18n = pinia._s.get('i18n-fe-stub');
   expect(!!i18n).toBe(true);
   i18n!.lang = lang;
+  const active = i18n!.activeLanguage as { code?: string; bcp47?: string } | undefined;
+  if (active) {
+    active.code = lang;
+    active.bcp47 = String(lang).replace(/_/g, '-');
+  }
 }
 
 function fieldInput(wrapper: { find: (sel: string) => any }, selector: string) {
