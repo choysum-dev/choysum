@@ -144,8 +144,8 @@ import {
 defineOptions({ name: 'LanguageFormView', inheritAttrs: true });
 const { _t, _lt } = createTranslate('base', { scope: 'web/views/LanguageFormView' });
 const requiredRules = computed(() => [{ required: true, message: _t('Required') }]);
-const personNameFormatRules = computed(() =>
-  createPersonNameFormatRules(_t('Person name format must include {FirstName} and/or {LastName}'))
+const personNameFormatRules = createPersonNameFormatRules(
+  _t('Person name format must include {FirstName} and/or {LastName}')
 );
 const props = withDefaults(
   defineProps<{ store?: ModelStore<Language>; recordId?: string; viewMode?: ViewMode; showHeader?: boolean; createAction?: string | RouteLocationRaw }>(),
