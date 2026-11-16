@@ -80,7 +80,7 @@ func applySetNotNull(opts HelperOptions, table, column string) error {
 	case "mysql", "mariadb":
 		// MODIFY COLUMN replaces the full definition; we preserve type/length/decimal,
 		// DEFAULT, and AUTO_INCREMENT only (not COMMENT/COLLATE/ON UPDATE).
-		typeName, err := liveColumnTypeName(opts.DB, table, column, true)
+		typeName, err := liveColumnTypeName(opts.DB, table, column, true, dialect)
 		if err != nil {
 			return err
 		}
@@ -95,7 +95,7 @@ func applySetNotNull(opts HelperOptions, table, column string) error {
 		return nil
 	case "sqlserver":
 		// T-SQL ALTER COLUMN does not accept a DEFAULT clause in the type string.
-		typeName, err := liveColumnTypeName(opts.DB, table, column, false)
+		typeName, err := liveColumnTypeName(opts.DB, table, column, false, dialect)
 		if err != nil {
 			return err
 		}
@@ -113,7 +113,7 @@ func applySetNotNull(opts HelperOptions, table, column string) error {
 	}
 }
 
-func liveColumnTypeName(db *gorm.DB, table, column string, withDefault bool) (string, error) {
+func liveColumnTypeName(db *gorm.DB, table, column string, withDefault bool, dialect string) (string, error) {
 	types, err := getColumnTypes(db, table)
 	if err != nil {
 		return "", fmt.Errorf("inspect %s.%s: %w", table, column, err)
@@ -131,7 +131,8 @@ func liveColumnTypeName(db *gorm.DB, table, column string, withDefault bool) (st
 		}
 		typeName = decorateLiveColumnType(typeName, ct)
 		if withDefault {
-			if def := appendableColumnDefault(ct.DefaultValue()); def != "" {
+			rawDef, defOK := ct.DefaultValue()
+			if def := formatLiveColumnDefault(dialect, typeName, rawDef, defOK); def != "" {
 				typeName += " DEFAULT " + def
 			}
 		}
@@ -140,18 +141,76 @@ func liveColumnTypeName(db *gorm.DB, table, column string, withDefault bool) (st
 	return "", fmt.Errorf("column %s.%s not found", table, column)
 }
 
-// appendableColumnDefault returns a DDL-ready DEFAULT value from driver metadata, or
-// "" to omit the clause. Drivers typically return literals/expressions (0, 'x',
-// CURRENT_TIMESTAMP); literal NULL is skipped (equivalent to no default).
-func appendableColumnDefault(def string, ok bool) string {
+// formatLiveColumnDefault turns driver ColumnType.DefaultValue into a DDL fragment,
+// or "" to omit DEFAULT. MySQL's gorm driver strips surrounding quotes from string
+// defaults, so stringish types are re-quoted here.
+func formatLiveColumnDefault(dialect, typeName, def string, ok bool) string {
 	if !ok {
 		return ""
 	}
 	def = strings.TrimSpace(def)
+	switch strings.ToLower(strings.TrimSpace(dialect)) {
+	case "mysql", "mariadb":
+		return formatMySQLColumnDefault(typeName, def)
+	default:
+		// SQLite and others typically return DDL-ready literals/expressions.
+		if def == "" || strings.EqualFold(def, "NULL") {
+			return ""
+		}
+		return def
+	}
+}
+
+func formatMySQLColumnDefault(typeName, def string) string {
+	if looksLikeSQLDefaultExpr(def) {
+		return def
+	}
+	if isStringishSQLType(typeName) {
+		// Driver metadata is unquoted; empty Valid default means ''.
+		return quoteMySQLStringLiteral(def)
+	}
 	if def == "" || strings.EqualFold(def, "NULL") {
 		return ""
 	}
 	return def
+}
+
+func looksLikeSQLDefaultExpr(def string) bool {
+	if def == "" {
+		return false
+	}
+	if strings.HasPrefix(def, "(") {
+		return true
+	}
+	upper := strings.ToUpper(def)
+	switch {
+	case strings.HasPrefix(upper, "CURRENT_"),
+		strings.HasPrefix(upper, "LOCALTIME"),
+		strings.HasPrefix(upper, "LOCALTIMESTAMP"),
+		strings.HasPrefix(upper, "NOW("):
+		return true
+	default:
+		return false
+	}
+}
+
+func isStringishSQLType(typeName string) bool {
+	lower := strings.ToLower(typeName)
+	for _, tok := range []string{"char", "text", "blob", "binary", "enum", "set", "json"} {
+		if strings.Contains(lower, tok) {
+			return true
+		}
+	}
+	return false
+}
+
+func quoteMySQLStringLiteral(s string) string {
+	return "'" + strings.ReplaceAll(s, "'", "''") + "'"
+}
+
+// appendableColumnDefault is the SQLite/passthrough helper used by table rewrite.
+func appendableColumnDefault(def string, ok bool) string {
+	return formatLiveColumnDefault("sqlite", "", def, ok)
 }
 
 // normalizeMySQLTypeName rewrites driver forms like "UNSIGNED INT" to "INT UNSIGNED".

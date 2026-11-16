@@ -105,29 +105,6 @@ func sqliteRewriteTable(db *gorm.DB, table string, rewrite sqliteTableRewrite) e
 			return fkErr
 		}
 		fkDisabled := false
-		if fkWasOn {
-			if offErr := helperExec(connDB, "PRAGMA foreign_keys=OFF"); offErr != nil {
-				return fmt.Errorf("disable foreign_keys for rewrite: %w", offErr)
-			}
-			stillOn, stillErr := sqliteReadForeignKeys(connDB)
-			if stillErr != nil {
-				return stillErr
-			}
-			if stillOn {
-				// PRAGMA foreign_keys is a no-op inside an open transaction; leave
-				// fkDisabled false so defer does not toggle the shared tx connection.
-				// Refuse when DROP could cascade to referencing tables.
-				referenced, refErr := sqliteTableIsReferencedFn(connDB, table)
-				if refErr != nil {
-					return refErr
-				}
-				if referenced {
-					return fmt.Errorf("sqlite rewrite: foreign_keys still ON (pragma ignored inside a transaction) while other tables reference %s", table)
-				}
-			} else {
-				fkDisabled = true
-			}
-		}
 		// Restore before this callback returns so the pooled conn is never released with FK off.
 		defer func() {
 			if !fkDisabled {
@@ -137,6 +114,31 @@ func sqliteRewriteTable(db *gorm.DB, table string, rewrite sqliteTableRewrite) e
 				err = fmt.Errorf("restore foreign_keys after rewrite: %w", restoreErr)
 			}
 		}()
+		if fkWasOn {
+			if offErr := helperExec(connDB, "PRAGMA foreign_keys=OFF"); offErr != nil {
+				return fmt.Errorf("disable foreign_keys for rewrite: %w", offErr)
+			}
+			// Assume OFF took effect until the verification read proves otherwise, so a
+			// failed read still restores before the pinned connection is released.
+			fkDisabled = true
+			stillOn, stillErr := sqliteReadForeignKeys(connDB)
+			if stillErr != nil {
+				return stillErr
+			}
+			if stillOn {
+				// PRAGMA foreign_keys is a no-op inside an open transaction; leave
+				// fkDisabled false so defer does not toggle the shared tx connection.
+				// Refuse when DROP could cascade to referencing tables.
+				fkDisabled = false
+				referenced, refErr := sqliteTableIsReferencedFn(connDB, table)
+				if refErr != nil {
+					return refErr
+				}
+				if referenced {
+					return fmt.Errorf("sqlite rewrite: foreign_keys still ON (pragma ignored inside a transaction) while other tables reference %s", table)
+				}
+			}
+		}
 
 		txErr := connDB.Transaction(func(tx *gorm.DB) error {
 			_ = helperExec(tx, "DROP TABLE IF EXISTS "+qTmp)
@@ -152,6 +154,7 @@ func sqliteRewriteTable(db *gorm.DB, table string, rewrite sqliteTableRewrite) e
 				return fmt.Errorf("drop original %s: %w", table, err)
 			}
 			if err := helperExec(tx, fmt.Sprintf("ALTER TABLE %s RENAME TO %s", qTmp, qTable)); err != nil {
+				_ = helperExec(tx, "DROP TABLE IF EXISTS "+qTmp)
 				return fmt.Errorf("rename rewrite table to %s: %w", table, err)
 			}
 			for _, sql := range indexSQLs {
@@ -288,7 +291,8 @@ func sqliteRewriteTempName(table string) string {
 // sqliteTableIsReferenced reports whether any other table has a foreign key to table.
 func sqliteTableIsReferenced(db *gorm.DB, table string) (bool, error) {
 	var names []string
-	if err := db.Raw(`SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'`).Scan(&names).Error; err != nil {
+	// Escape '_' so LIKE matches the literal prefix sqlite_, not sqliteX...
+	if err := db.Raw(`SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite\_%' ESCAPE '\'`).Scan(&names).Error; err != nil {
 		return false, fmt.Errorf("list tables for fk refs: %w", err)
 	}
 	want := strings.ToLower(strings.TrimSpace(table))

@@ -202,7 +202,7 @@ func TestLiveColumnTypeName(t *testing.T) {
 	getColumnTypes = func(*gorm.DB, string) ([]gorm.ColumnType, error) {
 		return nil, fmt.Errorf("inspect boom")
 	}
-	if _, err := liveColumnTypeName(nil, "t", "c", true); err == nil || !strings.Contains(err.Error(), "inspect boom") {
+	if _, err := liveColumnTypeName(nil, "t", "c", true, "mysql"); err == nil || !strings.Contains(err.Error(), "inspect boom") {
 		t.Fatalf("inspect: %v", err)
 	}
 	getColumnTypes = func(*gorm.DB, string) ([]gorm.ColumnType, error) {
@@ -219,30 +219,66 @@ func TestLiveColumnTypeName(t *testing.T) {
 				precision: 12, scale: 4, ok: true,
 			},
 			fakeColumnType{name: "code", dbType: "varchar", length: 32, lengthOK: true},
+			fakeColumnTypeWithDefault{
+				fakeColumnType: fakeColumnType{name: "status", dbType: "varchar", length: 20, lengthOK: true},
+				def:            "pending", // gorm mysql strips quotes
+				defOK:          true,
+			},
+			fakeColumnTypeWithDefault{
+				fakeColumnType: fakeColumnType{name: "note", dbType: "text"},
+				def:            "", // '' after strip
+				defOK:          true,
+			},
+			fakeColumnTypeWithDefault{
+				fakeColumnType: fakeColumnType{name: "word", dbType: "varchar", length: 8, lengthOK: true},
+				def:            "NULL", // literal string NULL after strip of 'NULL'
+				defOK:          true,
+			},
+			fakeColumnTypeWithDefault{
+				fakeColumnType: fakeColumnType{name: "ts", dbType: "datetime"},
+				def:            "CURRENT_TIMESTAMP",
+				defOK:          true,
+			},
 			fakeColumnType{name: "raw", dbType: "int"},
 			fakeColumnType{name: "u", dbType: "UNSIGNED INT"},
 		}, nil
 	}
-	if _, err := liveColumnTypeName(nil, "t", "empty", true); err == nil || !strings.Contains(err.Error(), "empty type") {
+	if _, err := liveColumnTypeName(nil, "t", "empty", true, "mysql"); err == nil || !strings.Contains(err.Error(), "empty type") {
 		t.Fatalf("empty type: %v", err)
 	}
-	got, err := liveColumnTypeName(nil, "t", "amt", true)
+	got, err := liveColumnTypeName(nil, "t", "amt", true, "mysql")
 	if err != nil || got != "DECIMAL(12,4) DEFAULT 1.5" {
 		t.Fatalf("decimal+default: %q %v", got, err)
 	}
-	got, err = liveColumnTypeName(nil, "t", "amt", false)
+	got, err = liveColumnTypeName(nil, "t", "amt", false, "mysql")
 	if err != nil || got != "DECIMAL(12,4)" {
 		t.Fatalf("decimal no default: %q %v", got, err)
 	}
-	got, err = liveColumnTypeName(nil, "t", "code", true)
+	got, err = liveColumnTypeName(nil, "t", "code", true, "mysql")
 	if err != nil || got != "varchar(32)" {
 		t.Fatalf("varchar: %q %v", got, err)
 	}
-	got, err = liveColumnTypeName(nil, "t", "raw", true)
+	got, err = liveColumnTypeName(nil, "t", "status", true, "mysql")
+	if err != nil || got != "varchar(20) DEFAULT 'pending'" {
+		t.Fatalf("mysql string default: %q %v", got, err)
+	}
+	got, err = liveColumnTypeName(nil, "t", "note", true, "mysql")
+	if err != nil || got != "text DEFAULT ''" {
+		t.Fatalf("mysql empty string default: %q %v", got, err)
+	}
+	got, err = liveColumnTypeName(nil, "t", "word", true, "mysql")
+	if err != nil || got != "varchar(8) DEFAULT 'NULL'" {
+		t.Fatalf("mysql literal NULL string: %q %v", got, err)
+	}
+	got, err = liveColumnTypeName(nil, "t", "ts", true, "mysql")
+	if err != nil || got != "datetime DEFAULT CURRENT_TIMESTAMP" {
+		t.Fatalf("mysql expr default: %q %v", got, err)
+	}
+	got, err = liveColumnTypeName(nil, "t", "raw", true, "mysql")
 	if err != nil || got != "int" {
 		t.Fatalf("raw: %q %v", got, err)
 	}
-	if _, err := liveColumnTypeName(nil, "t", "missing", true); err == nil {
+	if _, err := liveColumnTypeName(nil, "t", "missing", true, "mysql"); err == nil {
 		t.Fatal("missing")
 	}
 	if got := normalizeMySQLTypeName("UNSIGNED INT"); got != "INT UNSIGNED" {
@@ -291,6 +327,21 @@ func TestLiveColumnTypeName(t *testing.T) {
 	}
 	if got := appendableColumnDefault("'x'", true); got != "'x'" {
 		t.Fatalf("keep literal: %q", got)
+	}
+	if got := quoteMySQLStringLiteral("a'b"); got != "'a''b'" {
+		t.Fatalf("quote: %q", got)
+	}
+	if got := formatMySQLColumnDefault("int", "NULL"); got != "" {
+		t.Fatalf("non-string NULL: %q", got)
+	}
+	if got := formatMySQLColumnDefault("int", ""); got != "" {
+		t.Fatalf("non-string empty: %q", got)
+	}
+	if got := formatMySQLColumnDefault("int", "(UUID())"); got != "(UUID())" {
+		t.Fatalf("expr paren: %q", got)
+	}
+	if !looksLikeSQLDefaultExpr("LOCALTIME") || !looksLikeSQLDefaultExpr("NOW()") {
+		t.Fatal("expr prefixes")
 	}
 }
 
@@ -454,6 +505,19 @@ func TestSqliteRewriteTable_RefuseWhenFKPragmaIgnoredAndReferenced(t *testing.T)
 	if err == nil || !strings.Contains(err.Error(), "pragma ignored") {
 		t.Fatalf("expected pragma-ignored refusal, got %v", err)
 	}
+
+	// LIKE '_' is a wildcard; ensure sqliteXchild is still scanned as a user table.
+	if err := db.Exec(`CREATE TABLE sqliteXchild (id integer, parent_id integer REFERENCES rw_parent(id) ON DELETE CASCADE)`).Error; err != nil {
+		t.Fatal(err)
+	}
+	err = db.Transaction(func(tx *gorm.DB) error {
+		return sqliteRewriteTable(tx, "rw_parent", sqliteTableRewrite{
+			ForceNotNull: map[string]struct{}{"id": {}},
+		})
+	})
+	if err == nil || !strings.Contains(err.Error(), "pragma ignored") {
+		t.Fatalf("expected refusal with sqliteXchild ref, got %v", err)
+	}
 }
 
 func TestSqliteRewriteTable_LeafOKWhenFKPragmaIgnored(t *testing.T) {
@@ -491,6 +555,15 @@ func TestSqliteRewriteTable_FKStillOnSeamErrors(t *testing.T) {
 		sqliteTableIsReferencedFn = origRef
 	})
 
+	origExec := helperExec
+	t.Cleanup(func() { helperExec = origExec })
+	restored := false
+	helperExec = func(db *gorm.DB, sql string) error {
+		if strings.EqualFold(strings.TrimSpace(sql), "PRAGMA foreign_keys=ON") {
+			restored = true
+		}
+		return origExec(db, sql)
+	}
 	reads := 0
 	sqliteReadForeignKeys = func(*gorm.DB) (bool, error) {
 		reads++
@@ -502,6 +575,10 @@ func TestSqliteRewriteTable_FKStillOnSeamErrors(t *testing.T) {
 	if err := sqliteRewriteTable(db, "rw_still", sqliteTableRewrite{ForceNotNull: map[string]struct{}{"a": {}}}); err == nil || !strings.Contains(err.Error(), "still-on read boom") {
 		t.Fatalf("stillErr: %v", err)
 	}
+	if !restored {
+		t.Fatal("expected foreign_keys restore after verification-read failure")
+	}
+	helperExec = origExec
 
 	reads = 0
 	sqliteReadForeignKeys = func(*gorm.DB) (bool, error) {
