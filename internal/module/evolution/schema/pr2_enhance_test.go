@@ -410,6 +410,9 @@ func TestSqliteRewriteHelpers(t *testing.T) {
 	if got := sqliteBareTypeName(" PRIMARY KEY"); got != "TEXT" {
 		t.Fatalf("constraint-only bare: %q", got)
 	}
+	if got := sqliteBareTypeName("FOODEFAULT"); got != "FOODEFAULT" {
+		t.Fatalf("embedded keyword must stay: %q", got)
+	}
 }
 
 func TestSqliteRewriteTable_ExecFailurePaths(t *testing.T) {
