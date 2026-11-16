@@ -98,6 +98,9 @@ func TestMigrateSchema_TypeChangeFailsValidate(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "schema plan has guarded/manual operations") {
 		t.Fatalf("expected guarded plan error, got %v", err)
 	}
+	if !strings.Contains(err.Error(), "ReplaceColumn") {
+		t.Fatalf("expected ReplaceColumn hint, got %v", err)
+	}
 }
 
 func TestValidatePlan_RejectsGuarded(t *testing.T) {
@@ -118,6 +121,9 @@ func TestValidatePlan_RejectsGuarded(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "sales_order") {
 		t.Fatalf("expected table in error, got %v", err)
+	}
+	if !strings.Contains(err.Error(), "ReplaceColumn") {
+		t.Fatalf("expected ReplaceColumn hint, got %v", err)
 	}
 }
 

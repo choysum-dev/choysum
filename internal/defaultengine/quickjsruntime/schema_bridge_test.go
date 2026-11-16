@@ -35,10 +35,14 @@ func TestWithSchemaDDL_RecreatesNonObjectChoysum(t *testing.T) {
 	if err := WithSchemaDDL("sqlite")(engine); err != nil {
 		t.Fatal(err)
 	}
-	v := engine.Ctx.Eval(`typeof $choysum.schema.renameColumn`)
-	defer v.Free()
-	if v.IsException() || v.String() != "function" {
-		t.Fatalf("schema helpers missing: %v %s", engine.Ctx.Exception(), v.String())
+	for _, name := range []string{
+		"renameColumn", "replaceColumnPre", "replaceColumnCopyCast", "replaceColumnDropObsolete",
+	} {
+		v := engine.Ctx.Eval(`typeof $choysum.schema.` + name)
+		if v.IsException() || v.String() != "function" {
+			t.Fatalf("schema helper %s missing: %v %s", name, engine.Ctx.Exception(), v.String())
+		}
+		v.Free()
 	}
 }
 
@@ -103,12 +107,27 @@ func TestWithSchemaDDL_Helpers(t *testing.T) {
 		fail(`$choysum.schema.dropIndex('bridge_tbl')`)
 		fail(`$choysum.schema.dropCheck('bridge_tbl')`)
 		fail(`$choysum.schema.dropForeignKey('bridge_tbl')`)
+		fail(`$choysum.schema.replaceColumnPre('bridge_tbl')`)
+		fail(`$choysum.schema.replaceColumnCopyCast('bridge_tbl')`)
+		fail(`$choysum.schema.replaceColumnDropObsolete('bridge_tbl')`)
 		fail(`$choysum.schema.dropColumn('bridge_tbl', null)`)
 		fail(`$choysum.schema.renameColumn('bridge_tbl', 1, 'new_code')`)
 
 		call(`$choysum.schema.renameColumn('bridge_tbl','old_code','new_code')`)
 		call(`$choysum.schema.dropIndex('bridge_tbl','idx_bridge_tbl_keep')`)
 		call(`$choysum.schema.dropColumn('bridge_tbl','keep')`)
+		if err := txScope.Session().Exec(`CREATE TABLE bridge_replace (code_val integer)`).Error; err != nil {
+			return err
+		}
+		if err := txScope.Session().Exec(`INSERT INTO bridge_replace (code_val) VALUES (3)`).Error; err != nil {
+			return err
+		}
+		call(`$choysum.schema.replaceColumnPre('bridge_replace','code_val')`)
+		if err := txScope.Session().Exec(`ALTER TABLE bridge_replace ADD COLUMN code_val text`).Error; err != nil {
+			return err
+		}
+		call(`$choysum.schema.replaceColumnCopyCast('bridge_replace','code_val__obsolete','code_val','int_to_varchar')`)
+		call(`$choysum.schema.replaceColumnDropObsolete('bridge_replace','code_val')`)
 		if err := txScope.Session().Exec(`CREATE TABLE bridge_idx (code text)`).Error; err != nil {
 			return err
 		}

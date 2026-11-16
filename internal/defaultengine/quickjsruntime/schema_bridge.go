@@ -33,6 +33,9 @@ func WithSchemaDDL(dialect string) jsengine.JsEngineOption {
 		schemaObj.Set("dropIndex", engine.Ctx.NewFunction(schemaSyncFactory(engine, dialect, "dropIndex")))
 		schemaObj.Set("dropCheck", engine.Ctx.NewFunction(schemaSyncFactory(engine, dialect, "dropCheck")))
 		schemaObj.Set("dropForeignKey", engine.Ctx.NewFunction(schemaSyncFactory(engine, dialect, "dropForeignKey")))
+		schemaObj.Set("replaceColumnPre", engine.Ctx.NewFunction(schemaSyncFactory(engine, dialect, "replaceColumnPre")))
+		schemaObj.Set("replaceColumnCopyCast", engine.Ctx.NewFunction(schemaSyncFactory(engine, dialect, "replaceColumnCopyCast")))
+		schemaObj.Set("replaceColumnDropObsolete", engine.Ctx.NewFunction(schemaSyncFactory(engine, dialect, "replaceColumnDropObsolete")))
 
 		choysumObj.Set("schema", schemaObj)
 		globalsObj.Set("$choysum", choysumObj)
@@ -72,6 +75,30 @@ func schemaSyncFactory(engine *quickjsengine.QuickjsEngine, dialect, method stri
 				return ctx.ThrowError(err)
 			}
 			err = schema.DropForeignKey(opts, args[0].String(), args[1].String())
+		case "replaceColumnPre":
+			if err = requireStringArgs(args, 2, "replaceColumnPre(table, fromColumn, toColumn?)"); err != nil {
+				return ctx.ThrowError(err)
+			}
+			toCol := ""
+			if len(args) >= 3 {
+				if args[2] == nil || !args[2].IsString() {
+					return ctx.ThrowError(fmt.Errorf("replaceColumnPre: argument 3 must be a string when provided"))
+				}
+				toCol = args[2].String()
+			}
+			err = schema.ReplaceColumnPre(opts, schema.ReplaceColumnOptions{
+				Table: args[0].String(), FromColumn: args[1].String(), ToColumn: toCol,
+			})
+		case "replaceColumnCopyCast":
+			if err = requireStringArgs(args, 4, "replaceColumnCopyCast(table, fromObsolete, toColumn, kind)"); err != nil {
+				return ctx.ThrowError(err)
+			}
+			err = schema.ReplaceColumnCopyCast(opts, args[0].String(), args[1].String(), args[2].String(), args[3].String())
+		case "replaceColumnDropObsolete":
+			if err = requireStringArgs(args, 2, "replaceColumnDropObsolete(table, fromColumn)"); err != nil {
+				return ctx.ThrowError(err)
+			}
+			err = schema.ReplaceColumnDropObsolete(opts, args[0].String(), args[1].String())
 		default:
 			err = fmt.Errorf("unknown schema helper %s", method)
 		}
