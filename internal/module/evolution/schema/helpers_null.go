@@ -130,19 +130,28 @@ func liveColumnTypeName(db *gorm.DB, table, column string, withDefault bool) (st
 			return "", fmt.Errorf("empty type for %s.%s", table, column)
 		}
 		typeName = decorateLiveColumnType(typeName, ct)
-		// DefaultValue is appended verbatim: MySQL/SQLite drivers typically return a
-		// DDL-ready literal or expression (e.g. 0, 'x', CURRENT_TIMESTAMP).
 		if withDefault {
-			if def, ok := ct.DefaultValue(); ok {
-				def = strings.TrimSpace(def)
-				if def != "" {
-					typeName += " DEFAULT " + def
-				}
+			if def := appendableColumnDefault(ct.DefaultValue()); def != "" {
+				typeName += " DEFAULT " + def
 			}
 		}
 		return typeName, nil
 	}
 	return "", fmt.Errorf("column %s.%s not found", table, column)
+}
+
+// appendableColumnDefault returns a DDL-ready DEFAULT value from driver metadata, or
+// "" to omit the clause. Drivers typically return literals/expressions (0, 'x',
+// CURRENT_TIMESTAMP); literal NULL is skipped (equivalent to no default).
+func appendableColumnDefault(def string, ok bool) string {
+	if !ok {
+		return ""
+	}
+	def = strings.TrimSpace(def)
+	if def == "" || strings.EqualFold(def, "NULL") {
+		return ""
+	}
+	return def
 }
 
 // normalizeMySQLTypeName rewrites driver forms like "UNSIGNED INT" to "INT UNSIGNED".

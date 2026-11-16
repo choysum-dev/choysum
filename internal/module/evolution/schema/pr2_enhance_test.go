@@ -275,6 +275,23 @@ func TestLiveColumnTypeName(t *testing.T) {
 	if strings.Contains(decl, "AUTOINCREMENT") {
 		t.Fatalf("non-integer PK must not get AUTOINCREMENT: %s", decl)
 	}
+	nullDef := sqliteColumnDecl(fakeColumnTypeWithDefault{
+		fakeColumnType: fakeColumnType{name: "c", dbType: "text", nullable: true, nullableOK: true},
+		def:            "NULL",
+		defOK:          true,
+	}, "c", sqliteTableRewrite{})
+	if strings.Contains(strings.ToUpper(nullDef), "DEFAULT") {
+		t.Fatalf("literal NULL default must be omitted: %s", nullDef)
+	}
+	if got := appendableColumnDefault("", false); got != "" {
+		t.Fatalf("missing default: %q", got)
+	}
+	if got := appendableColumnDefault("  null  ", true); got != "" {
+		t.Fatalf("NULL default: %q", got)
+	}
+	if got := appendableColumnDefault("'x'", true); got != "'x'" {
+		t.Fatalf("keep literal: %q", got)
+	}
 }
 
 type fakeColumnTypeWithDecimal struct {

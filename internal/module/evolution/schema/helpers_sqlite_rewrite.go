@@ -231,13 +231,8 @@ func sqliteColumnDecl(ct gorm.ColumnType, dst string, rewrite sqliteTableRewrite
 	} else if notNull {
 		decl += " NOT NULL"
 	}
-	// SQLite's ColumnType.DefaultValue returns the SQL literal/expression already
-	// suitable for DDL (e.g. 'x', 1, CURRENT_TIMESTAMP); append verbatim.
-	if def, ok := ct.DefaultValue(); ok {
-		def = strings.TrimSpace(def)
-		if def != "" {
-			decl += " DEFAULT " + def
-		}
+	if def := appendableColumnDefault(ct.DefaultValue()); def != "" {
+		decl += " DEFAULT " + def
 	}
 	return decl
 }
