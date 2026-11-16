@@ -209,6 +209,18 @@ export const useI18nStore = defineStore(
           console.warn(`Language ${next} is not in the active set`);
           if (generation === setLangGeneration) {
             lastTerminologyLoad.value = null;
+            // Revert any hash written for this rejected code so a later activation
+            // does not short-circuit with unchanged:true / null messages.
+            if (prevHash) {
+              terminologyHashByLang.value = {
+                ...terminologyHashByLang.value,
+                [next]: prevHash,
+              };
+            } else {
+              const updated = { ...terminologyHashByLang.value };
+              delete updated[next];
+              terminologyHashByLang.value = updated;
+            }
           }
           return false;
         }

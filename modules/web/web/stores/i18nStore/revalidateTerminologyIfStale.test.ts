@@ -574,6 +574,7 @@ describe('useI18nStore.revalidateTerminologyIfStale / reloadTerminology', () => 
     const store = useI18nStore();
     store.isInitialized = true;
     store.activeLanguages = [{ Code: 'en_US' }];
+    store.terminologyHashByLang = {};
     setI18nCreateStoreForTests(
       () =>
         ({
@@ -590,6 +591,32 @@ describe('useI18nStore.revalidateTerminologyIfStale / reloadTerminology', () => 
       })) as typeof fetch;
     expect(await store.setLang('de_DE')).toBe(false);
     expect(store.lang).not.toBe('de_DE');
+    expect(store.lastTerminologyLoad).toBeNull();
+    expect(store.terminologyHashByLang.de_DE).toBeUndefined();
+  });
+
+  test('setLang: restores previous terminology hash when rejected after reload', async () => {
+    const store = useI18nStore();
+    store.isInitialized = true;
+    store.activeLanguages = [{ Code: 'en_US' }];
+    store.terminologyHashByLang = { de_DE: 'old-de' };
+    setI18nCreateStoreForTests(
+      () =>
+        ({
+          GetActiveLanguages: async () => [{ Code: 'en_US' }],
+        }) as any,
+    );
+    globalThis.fetch = (async () =>
+      jsonResponse({
+        lang: 'de_DE',
+        bcp47: 'de-DE',
+        hash: 'new-de',
+        unchanged: false,
+        messages: { web: {} },
+      })) as typeof fetch;
+    expect(await store.setLang('de_DE')).toBe(false);
+    expect(store.terminologyHashByLang.de_DE).toBe('old-de');
+    expect(store.lastTerminologyLoad).toBeNull();
   });
 
   test('setLang: supersede during loadActiveLanguages before terminology fetch', async () => {

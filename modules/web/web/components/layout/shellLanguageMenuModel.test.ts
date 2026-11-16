@@ -53,4 +53,27 @@ describe('shellLanguageMenuModel', () => {
     await runLanguageMenuSelect('zh_CN', stub, async () => undefined);
     expect(called).toBe('zh_CN');
   });
+
+  test('runLanguageMenuSelect: swallows remount errors', async () => {
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const store = useI18nStore();
+    const stub = {
+      ...store,
+      setLang: async () => true,
+    } as typeof store;
+    const prevError = console.error;
+    const errors: unknown[] = [];
+    console.error = (...args: unknown[]) => {
+      errors.push(args[0]);
+    };
+    try {
+      await runLanguageMenuSelect('zh_CN', stub, async () => {
+        throw new Error('reload boom');
+      });
+      expect(String(errors[0] || '')).toMatch(/Failed to select language/);
+    } finally {
+      console.error = prevError;
+    }
+  });
 });

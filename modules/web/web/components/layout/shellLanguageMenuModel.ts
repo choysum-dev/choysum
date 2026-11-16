@@ -31,5 +31,9 @@ export async function runLanguageMenuSelect(
   if (!store) {
     return;
   }
-  await shellLanguageSelect(code, c => store.setLang(c), remount);
+  try {
+    await shellLanguageSelect(code, c => store.setLang(c), remount);
+  } catch (error) {
+    console.error('Failed to select language:', error);
+  }
 }
