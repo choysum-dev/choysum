@@ -281,6 +281,8 @@ var (
 
 func sqliteRewriteTempName(table string) string {
 	// Deterministic per table so DROP IF EXISTS reclaims leftovers from a crashed run.
+	// Same-table rewrites must be serialized (upgrade scripts are); concurrent rewrites
+	// of one table would share this name.
 	sum := sha1.Sum([]byte(strings.TrimSpace(table)))
 	return fmt.Sprintf("choysum_rw_%x", sum[:10])
 }

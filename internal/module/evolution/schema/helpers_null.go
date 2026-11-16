@@ -29,17 +29,29 @@ func SetNotNull(opts HelperOptions, table, column string) error {
 		return fmt.Errorf("setNotNull: column %s.%s not found", table, column)
 	}
 
-	qTable := quoteIdent(opts.Dialect, table)
-	qCol := quoteIdent(opts.Dialect, column)
-	var nulls int64
-	if err := opts.DB.Raw(fmt.Sprintf("SELECT COUNT(*) FROM %s WHERE %s IS NULL", qTable, qCol)).Scan(&nulls).Error; err != nil {
-		return fmt.Errorf("setNotNull count nulls %s.%s: %w", table, column, err)
+	// Count NULLs then apply DDL. Non-SQLite dialects run both in one transaction so a
+	// concurrent NULL insert cannot race the check. SQLite skips the outer transaction:
+	// rewrite must disable foreign_keys outside an open txn, and the rewritten NOT NULL
+	// column still rejects NULLs on INSERT.
+	run := func(db *gorm.DB) error {
+		txOpts := opts
+		txOpts.DB = db
+		qTable := quoteIdent(opts.Dialect, table)
+		qCol := quoteIdent(opts.Dialect, column)
+		var nulls int64
+		if err := db.Raw(fmt.Sprintf("SELECT COUNT(*) FROM %s WHERE %s IS NULL", qTable, qCol)).Scan(&nulls).Error; err != nil {
+			return fmt.Errorf("setNotNull count nulls %s.%s: %w", table, column, err)
+		}
+		if nulls > 0 {
+			return fmt.Errorf("setNotNull: %s.%s still has %d NULL row(s)", table, column, nulls)
+		}
+		return applySetNotNull(txOpts, table, column)
 	}
-	if nulls > 0 {
-		return fmt.Errorf("setNotNull: %s.%s still has %d NULL row(s)", table, column, nulls)
-	}
-
-	if err := applySetNotNull(opts, table, column); err != nil {
+	if isSQLiteDialect(opts.Dialect) {
+		if err := run(opts.DB); err != nil {
+			return err
+		}
+	} else if err := opts.DB.Transaction(func(tx *gorm.DB) error { return run(tx) }); err != nil {
 		return err
 	}
 	opts.Intents.Add(Intent{
@@ -118,6 +130,8 @@ func liveColumnTypeName(db *gorm.DB, table, column string, withDefault bool) (st
 			return "", fmt.Errorf("empty type for %s.%s", table, column)
 		}
 		typeName = decorateLiveColumnType(typeName, ct)
+		// DefaultValue is appended verbatim: MySQL/SQLite drivers typically return a
+		// DDL-ready literal or expression (e.g. 0, 'x', CURRENT_TIMESTAMP).
 		if withDefault {
 			if def, ok := ct.DefaultValue(); ok {
 				def = strings.TrimSpace(def)
