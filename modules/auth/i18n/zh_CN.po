@@ -881,62 +881,62 @@ msgctxt "service/models/user"
 msgid "enabledCompanyIds must be a string[] or omitted"
 msgstr "enabledCompanyIds 必须是 string[] 或省略"
 
-#: service/models/user/_field_rule_eval.ts:119
+#: service/models/user/_field_rule_eval.ts:153
 msgctxt "service/models/user/_field_rule_eval"
 msgid "Model does not exist"
 msgstr "模型不存在"
 
-#: service/models/user/_lifecycle_auth.ts:264 service/models/user/_lifecycle_auth.ts:354
+#: service/models/user/_lifecycle_auth.ts:235 service/models/user/_lifecycle_auth.ts:325
 msgctxt "service/models/user/_lifecycle_auth"
 msgid "Account is disabled"
 msgstr "账户已禁用"
 
-#: service/models/user/_lifecycle_auth.ts:146
+#: service/models/user/_lifecycle_auth.ts:117
 msgctxt "service/models/user/_lifecycle_auth"
 msgid "Email is already registered"
 msgstr "邮箱已被注册"
 
-#: service/models/user/_lifecycle_auth.ts:340 service/models/user/_lifecycle_auth.ts:374
+#: service/models/user/_lifecycle_auth.ts:311 service/models/user/_lifecycle_auth.ts:345
 msgctxt "service/models/user/_lifecycle_auth"
 msgid "Invalid token payload: missing user id"
 msgstr "无效的令牌载荷：缺少用户 ID"
 
-#: service/models/user/_lifecycle_auth.ts:188
+#: service/models/user/_lifecycle_auth.ts:159
 msgctxt "service/models/user/_lifecycle_auth"
 msgid "Registration failed: Main Company (Code=MAIN) was not found"
 msgstr "注册失败：未找到主公司（Code=MAIN）"
 
-#: service/models/user/_lifecycle_auth.ts:208
+#: service/models/user/_lifecycle_auth.ts:179
 msgctxt "service/models/user/_lifecycle_auth"
 msgid "Registration failed: base.user role is not initialized; load auth bootstrap data first"
 msgstr "注册失败：base.user 角色未初始化，请先加载 auth 引导数据"
 
-#: service/models/user/_lifecycle_auth.ts:348
+#: service/models/user/_lifecycle_auth.ts:319
 msgctxt "service/models/user/_lifecycle_auth"
 msgid "User not found"
 msgstr "用户不存在"
 
-#: service/models/user/_lifecycle_auth.ts:248 service/models/user/_lifecycle_auth.ts:255
+#: service/models/user/_lifecycle_auth.ts:219 service/models/user/_lifecycle_auth.ts:226
 msgctxt "service/models/user/_lifecycle_auth"
 msgid "User not found or password is incorrect"
 msgstr "用户不存在或密码错误"
 
-#: service/models/user/_lifecycle_auth.ts:162
+#: service/models/user/_lifecycle_auth.ts:133
 msgctxt "service/models/user/_lifecycle_auth"
 msgid "User registration failed: missing user id"
 msgstr "用户注册失败：缺少用户 ID"
 
-#: service/models/user/_lifecycle_auth.ts:107
+#: service/models/user/_lifecycle_auth.ts:78
 msgctxt "service/models/user/_lifecycle_auth"
 msgid "Username and password are required"
 msgstr "用户名和密码不能为空"
 
-#: service/models/user/_lifecycle_auth.ts:134
+#: service/models/user/_lifecycle_auth.ts:105
 msgctxt "service/models/user/_lifecycle_auth"
 msgid "Username is already in use"
 msgstr "用户名已被占用"
 
-#: service/models/user/_lifecycle_auth.ts:127
+#: service/models/user/_lifecycle_auth.ts:98
 msgctxt "service/models/user/_lifecycle_auth"
 msgid "Username is required"
 msgstr "用户名不能为空"
@@ -1196,7 +1196,7 @@ msgctxt "web/dialogs/preferences/PreferencesDialog"
 msgid "Display timezone; empty uses browser timezone on first login."
 msgstr "显示时区；为空时首次登录会使用浏览器时区。"
 
-#: web/dialogs/preferences/PreferencesDialog.vue:277
+#: web/dialogs/preferences/PreferencesDialog.vue:276
 msgctxt "web/dialogs/preferences/PreferencesDialog"
 msgid "Failed to update preferences"
 msgstr "更新偏好设置失败"
@@ -1241,7 +1241,7 @@ msgctxt "web/dialogs/preferences/PreferencesDialog"
 msgid "Preferences"
 msgstr "偏好设置"
 
-#: web/dialogs/preferences/PreferencesDialog.vue:271
+#: web/dialogs/preferences/PreferencesDialog.vue:270
 msgctxt "web/dialogs/preferences/PreferencesDialog"
 msgid "Preferences updated"
 msgstr "偏好设置已更新"
@@ -1296,77 +1296,72 @@ msgctxt "web/dialogs/preferences/PreferencesDialog"
 msgid "Using current session language"
 msgstr "当前使用会话语言"
 
-#: web/menu/menus.ts:58
+#: web/menu/menus.ts:52
 msgctxt "web/menu/menus"
 msgid "Access Control"
 msgstr "访问控制"
 
-#: web/menu/menus.ts:74
+#: web/menu/menus.ts:68
 msgctxt "web/menu/menus"
 msgid "Access Rules"
 msgstr "授权规则"
 
-#: web/menu/menus.ts:48
+#: web/menu/menus.ts:42
 msgctxt "web/menu/menus"
 msgid "Field Defaults"
 msgstr "字段默认值"
 
-#: web/menu/menus.ts:83
+#: web/menu/menus.ts:77
 msgctxt "web/menu/menus"
 msgid "Field Rules"
 msgstr "字段规则"
 
-#: web/menu/menus.ts:88
+#: web/menu/menus.ts:82
 msgctxt "web/menu/menus"
 msgid "Method Access"
 msgstr "方法访问"
 
-#: web/menu/menus.ts:30
+#: web/menu/menus.ts:24
 msgctxt "web/menu/menus"
 msgid "Parameters"
 msgstr "参数"
 
-#: web/menu/menus.ts:42
+#: web/menu/menus.ts:36
 msgctxt "web/menu/menus"
 msgid "Property Definitions"
 msgstr "属性定义"
 
-#: web/menu/menus.ts:78
+#: web/menu/menus.ts:72
 msgctxt "web/menu/menus"
 msgid "Record Rules"
 msgstr "记录规则"
 
-#: web/menu/menus.ts:68
+#: web/menu/menus.ts:62
 msgctxt "web/menu/menus"
 msgid "Role List"
 msgstr "角色列表"
 
-#: web/menu/menus.ts:100
+#: web/menu/menus.ts:94
 msgctxt "web/menu/menus"
 msgid "Session List"
 msgstr "会话列表"
 
-#: web/menu/menus.ts:24
-msgctxt "web/menu/menus"
-msgid "Settings"
-msgstr "设置"
-
-#: web/menu/menus.ts:105
+#: web/menu/menus.ts:99
 msgctxt "web/menu/menus"
 msgid "Token List"
 msgstr "令牌列表"
 
-#: web/menu/menus.ts:36
+#: web/menu/menus.ts:30
 msgctxt "web/menu/menus"
 msgid "Translations"
 msgstr "翻译"
 
-#: web/menu/menus.ts:93
+#: web/menu/menus.ts:87
 msgctxt "web/menu/menus"
 msgid "UI Resource Grants"
 msgstr "UI 资源授权"
 
-#: web/menu/menus.ts:63
+#: web/menu/menus.ts:57
 msgctxt "web/menu/menus"
 msgid "User List"
 msgstr "用户列表"
@@ -1375,51 +1370,6 @@ msgstr "用户列表"
 msgctxt "web/menu/menus"
 msgid "auth"
 msgstr "auth"
-
-#: web/pages/AuthSettings.vue:5
-msgctxt "web/pages/AuthSettings"
-msgid "Browser"
-msgstr "浏览器"
-
-#: web/pages/AuthSettings.vue:8
-msgctxt "web/pages/AuthSettings"
-msgid "Browser timezone"
-msgstr "浏览器时区"
-
-#: web/pages/auth_settings_page.ts:122
-msgctxt "web/pages/AuthSettings"
-msgid "Load failed"
-msgstr "加载失败"
-
-#: web/pages/AuthSettings.vue:8
-msgctxt "web/pages/AuthSettings"
-msgid "On sign-in, fill an empty user timezone from the browser."
-msgstr "登录时，若用户时区为空则从浏览器写入。"
-
-#: web/pages/AuthSettings.vue:25
-msgctxt "web/pages/AuthSettings"
-msgid "Parameters View"
-msgstr "参数视图"
-
-#: web/pages/auth_settings_page.ts:143
-msgctxt "web/pages/AuthSettings"
-msgid "Save failed"
-msgstr "保存失败"
-
-#: web/pages/auth_settings_page.ts:139
-msgctxt "web/pages/AuthSettings"
-msgid "Saved successfully"
-msgstr "保存成功"
-
-#: web/pages/AuthSettings.vue:24
-msgctxt "web/pages/AuthSettings"
-msgid "Settings View"
-msgstr "设置视图"
-
-#: web/pages/AuthSettings.vue:19
-msgctxt "web/pages/AuthSettings"
-msgid "Settings: auth"
-msgstr "设置：auth"
 
 #: web/pages/Login.vue:9
 msgctxt "web/pages/Login"
@@ -2106,7 +2056,7 @@ msgctxt "web/route/routes"
 msgid "Record Rule List"
 msgstr "记录规则列表"
 
-#: web/route/routes.ts:450
+#: web/route/routes.ts:430
 msgctxt "web/route/routes"
 msgid "Register"
 msgstr "注册"
@@ -2130,11 +2080,6 @@ msgstr "会话详情"
 msgctxt "web/route/routes"
 msgid "Session Management"
 msgstr "会话管理"
-
-#: web/route/routes.ts:430
-msgctxt "web/route/routes"
-msgid "Settings: auth"
-msgstr "设置：auth"
 
 #: web/route/routes.ts:184
 msgctxt "web/route/routes"
@@ -2181,107 +2126,107 @@ msgctxt "web/route/routes"
 msgid "User List"
 msgstr "用户列表"
 
-#: web/stores/auth/actions.ts:573
+#: web/stores/auth/actions.ts:572
 msgctxt "web/stores/auth/actions"
 msgid "Cannot load user details: missing userId"
 msgstr "无法加载用户详情：缺少 userId"
 
-#: web/stores/auth/actions.ts:293
+#: web/stores/auth/actions.ts:292
 msgctxt "web/stores/auth/actions"
 msgid "CompleteInitialSetup returned an invalid response"
 msgstr "CompleteInitialSetup 返回了无效响应"
 
-#: web/stores/auth/actions.ts:723
+#: web/stores/auth/actions.ts:721
 msgctxt "web/stores/auth/actions"
 msgid "Failed to initialize auth"
 msgstr "初始化认证失败"
 
-#: web/stores/auth/actions.ts:268
+#: web/stores/auth/actions.ts:267
 msgctxt "web/stores/auth/actions"
 msgid "Failed to load initial setup options"
 msgstr "加载初始设置选项失败"
 
-#: web/stores/auth/actions.ts:236
+#: web/stores/auth/actions.ts:235
 msgctxt "web/stores/auth/actions"
 msgid "Failed to load initial setup state"
 msgstr "加载初始设置状态失败"
 
-#: web/stores/auth/actions.ts:160
+#: web/stores/auth/actions.ts:159
 msgctxt "web/stores/auth/actions"
 msgid "Failed to load permission state"
 msgstr "加载权限状态失败"
 
-#: web/stores/auth/actions.ts:643
+#: web/stores/auth/actions.ts:641
 msgctxt "web/stores/auth/actions"
 msgid "Failed to load user details"
 msgstr "加载用户详情失败"
 
-#: web/stores/auth/actions.ts:553
+#: web/stores/auth/actions.ts:552
 msgctxt "web/stores/auth/actions"
 msgid "Failed to refresh token"
 msgstr "刷新令牌失败"
 
-#: web/stores/auth/actions.ts:209
+#: web/stores/auth/actions.ts:208
 msgctxt "web/stores/auth/actions"
 msgid "Failed to switch company scope"
 msgstr "切换公司范围失败"
 
-#: web/stores/auth/actions.ts:260
+#: web/stores/auth/actions.ts:259
 msgctxt "web/stores/auth/actions"
 msgid "GetInitialSetupOptions returned an invalid response"
 msgstr "GetInitialSetupOptions 返回了无效响应"
 
-#: web/stores/auth/actions.ts:304
+#: web/stores/auth/actions.ts:303
 msgctxt "web/stores/auth/actions"
 msgid "Initial setup failed"
 msgstr "初始设置失败"
 
-#: web/stores/auth/actions.ts:393
+#: web/stores/auth/actions.ts:392
 msgctxt "web/stores/auth/actions"
 msgid "Invalid login response"
 msgstr "登录响应无效"
 
-#: web/stores/auth/actions.ts:422
+#: web/stores/auth/actions.ts:421
 msgctxt "web/stores/auth/actions"
 msgid "Login failed"
 msgstr "登录失败"
 
-#: web/stores/auth/actions.ts:459
+#: web/stores/auth/actions.ts:458
 msgctxt "web/stores/auth/actions"
 msgid "Logout failed, but local state was cleared"
 msgstr "退出失败，但本地状态已清除"
 
-#: web/stores/auth/actions.ts:483
+#: web/stores/auth/actions.ts:482
 msgctxt "web/stores/auth/actions"
 msgid "No refresh token is available"
 msgstr "没有可用的刷新令牌"
 
-#: web/stores/auth/actions.ts:173
+#: web/stores/auth/actions.ts:172
 msgctxt "web/stores/auth/actions"
 msgid "Not authenticated; cannot switch company scope"
 msgstr "未登录，无法切换公司范围"
 
-#: web/stores/auth/actions.ts:511
+#: web/stores/auth/actions.ts:510
 msgctxt "web/stores/auth/actions"
 msgid "RefreshTokens returned an invalid response"
 msgstr "刷新令牌返回了无效响应"
 
-#: web/stores/auth/actions.ts:339
+#: web/stores/auth/actions.ts:338
 msgctxt "web/stores/auth/actions"
 msgid "Register returned an invalid response"
 msgstr "注册返回了无效响应"
 
-#: web/stores/auth/actions.ts:346
+#: web/stores/auth/actions.ts:345
 msgctxt "web/stores/auth/actions"
 msgid "Registration failed"
 msgstr "注册失败"
 
-#: web/stores/auth/actions.ts:448
+#: web/stores/auth/actions.ts:447
 msgctxt "web/stores/auth/actions"
 msgid "Server-side logout failed, but local state was cleared"
 msgstr "服务端退出失败，但本地状态已清除"
 
-#: web/stores/auth/actions.ts:184
+#: web/stores/auth/actions.ts:183
 msgctxt "web/stores/auth/actions"
 msgid "SwitchCompanyScope returned an invalid response"
 msgstr "切换公司范围返回了无效响应"
@@ -3227,9 +3172,49 @@ msgstr "启用"
 #~ msgid "Update preferences"
 #~ msgstr "更新偏好设置"
 
+#~ msgctxt "web/menu/menus"
+#~ msgid "Settings"
+#~ msgstr "设置"
+
+#~ msgctxt "web/pages/AuthSettings"
+#~ msgid "Browser"
+#~ msgstr "浏览器"
+
+#~ msgctxt "web/pages/AuthSettings"
+#~ msgid "Browser timezone"
+#~ msgstr "浏览器时区"
+
+#~ msgctxt "web/pages/AuthSettings"
+#~ msgid "Load failed"
+#~ msgstr "加载失败"
+
+#~ msgctxt "web/pages/AuthSettings"
+#~ msgid "On sign-in, fill an empty user timezone from the browser."
+#~ msgstr "登录时，若用户时区为空则从浏览器写入。"
+
+#~ msgctxt "web/pages/AuthSettings"
+#~ msgid "Parameters View"
+#~ msgstr "参数视图"
+
 #~ msgctxt "web/pages/AuthSettings"
 #~ msgid "Persist browser timezone"
 #~ msgstr "持久化浏览器时区"
+
+#~ msgctxt "web/pages/AuthSettings"
+#~ msgid "Save failed"
+#~ msgstr "保存失败"
+
+#~ msgctxt "web/pages/AuthSettings"
+#~ msgid "Saved successfully"
+#~ msgstr "保存成功"
+
+#~ msgctxt "web/pages/AuthSettings"
+#~ msgid "Settings View"
+#~ msgstr "设置视图"
+
+#~ msgctxt "web/pages/AuthSettings"
+#~ msgid "Settings: auth"
+#~ msgstr "设置：auth"
 
 #~ msgctxt "web/pages/AuthSettings"
 #~ msgid "When off, login does not write the browser timezone onto an empty User.Timezone."
@@ -3314,6 +3299,10 @@ msgstr "启用"
 #~ msgctxt "web/route/routes"
 #~ msgid "Settings"
 #~ msgstr "设置"
+
+#~ msgctxt "web/route/routes"
+#~ msgid "Settings: auth"
+#~ msgstr "设置：auth"
 
 #~ msgctxt "web/views/TokenKanbanView"
 #~ msgid "Icon View"

@@ -607,7 +607,7 @@ export default class User extends AttachmentOwnerMixin {
         },
       });
 
-      // D20: persist browser IANA when registration left Timezone empty.
+      // Persist browser IANA when registration left Timezone empty.
       await persistBrowserTimezoneIfEmpty(
         { Id: userId, Timezone: created?.Timezone ?? userData?.Timezone },
         {
@@ -666,7 +666,7 @@ export default class User extends AttachmentOwnerMixin {
     const user = validateLoginCandidateOrThrow((users || [])[0], usernameOrEmail, password);
 
     try {
-      // D20: first login with empty User.Timezone + baggage clientTz → persist and refresh metadata.
+      // First login with empty User.Timezone + baggage clientTz → persist and refresh metadata.
       const loginUser = await persistBrowserTimezoneIfEmpty(user, {
         updateTimezone: async (uid, timezone) => {
           await this.UpdateById(uid, { Timezone: timezone });
