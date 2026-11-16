@@ -31,6 +31,9 @@ test('languages.json is inactive catalog only (bootstrap owns en_US/zh_CN)', () 
   const codes = catalog.map(r => r.values.Code);
   expect(codes).not.toContain('en_US');
   expect(codes).not.toContain('zh_CN');
+  // Catalog loads after bootstrap; colliding xml_ids would overwrite bootstrap rows.
+  const bootNames = new Set(bootRecords.map(r => r.name));
+  expect(catalog.every(r => !bootNames.has(r.name))).toBe(true);
 });
 
 test('bootstrap owns default-active Language rows', () => {
