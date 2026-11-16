@@ -128,6 +128,12 @@ func TestWithSchemaDDL_Helpers(t *testing.T) {
 		}
 		call(`$choysum.schema.replaceColumnCopyCast('bridge_replace','code_val__obsolete','code_val','int_to_varchar')`)
 		call(`$choysum.schema.replaceColumnDropObsolete('bridge_replace','code_val')`)
+
+		if err := txScope.Session().Exec(`CREATE TABLE bridge_replace2 (old_code integer)`).Error; err != nil {
+			return err
+		}
+		call(`$choysum.schema.replaceColumnPre('bridge_replace2','old_code','status_code')`)
+		fail(`$choysum.schema.replaceColumnPre('bridge_replace2','old_code', 1)`)
 		if err := txScope.Session().Exec(`CREATE TABLE bridge_idx (code text)`).Error; err != nil {
 			return err
 		}

@@ -11,7 +11,7 @@ import (
 // replaceColumnHint is appended when ValidatePlan rejects incompatible in-place column changes.
 const replaceColumnHint = "hint: incompatible in-place change; use ReplaceColumn " +
 	"($choysum.schema.replaceColumnPre / replaceColumnCopyCast / replaceColumnDropObsolete; " +
-	"see .dev/docs/meta/schema_column_replace_plan.md). " +
+	"copy kinds: int_to_varchar, as_text). " +
 	"Target @Field must be nullable for this upgrade."
 
 // ValidatePlan fails closed on any Guarded or Manual op unless an Intent already covers it.

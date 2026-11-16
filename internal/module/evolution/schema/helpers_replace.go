@@ -11,6 +11,7 @@ import (
 )
 
 // ObsoleteColumnSuffix is appended to a live column name during ReplaceColumnPre.
+// The suffix is reserved for ReplaceColumn; authors must not declare business columns with it.
 const ObsoleteColumnSuffix = "__obsolete"
 
 // ObsoleteColumnName returns the bypass column name for a ReplaceColumn flow.
@@ -31,6 +32,7 @@ type ReplaceColumnOptions struct {
 
 // ReplaceColumnPre renames FromColumn to ObsoleteColumnName(FromColumn) so Migrate
 // can Auto-add ToColumn with the desired physical type. Registers Intent via RenameColumn.
+// Indexes on FromColumn are dropped first so SQLite can rename/drop and Migrate can recreate.
 func ReplaceColumnPre(opts HelperOptions, o ReplaceColumnOptions) error {
 	if err := opts.validate(); err != nil {
 		return err
@@ -60,11 +62,17 @@ func ReplaceColumnPre(opts HelperOptions, o ReplaceColumnOptions) error {
 	}
 
 	if hasObsolete {
-		if hasFrom {
-			return fmt.Errorf("replaceColumnPre: obsolete column %s.%s already exists", table, obsolete)
+		if !hasFrom {
+			// Pre already applied (live column renamed; Migrate may still need to add ToColumn).
+			return nil
 		}
-		// Pre already applied (live column renamed; Migrate may still need to add ToColumn).
-		return nil
+		// Same-name replacement after Migrate: live From/To exists again beside __obsolete
+		// (e.g. Post CopyCast failed). Allow Pre retry as a no-op so Post can resume.
+		// When ToColumn differs, From should not still exist after a successful Pre.
+		if strings.EqualFold(from, to) {
+			return nil
+		}
+		return fmt.Errorf("replaceColumnPre: obsolete column %s.%s already exists", table, obsolete)
 	}
 	if !hasFrom {
 		if hasTo {
@@ -76,6 +84,9 @@ func ReplaceColumnPre(opts HelperOptions, o ReplaceColumnOptions) error {
 	// hasFrom && !hasObsolete: either a fresh ReplaceColumn or a completed cycle
 	// (FromColumn == ToColumn). Helpers cannot tell those apart without Desired;
 	// callers must not re-run Pre after DropObsolete when names coincide.
+	if err := dropIndexesReferencingColumn(opts, table, from); err != nil {
+		return err
+	}
 	return RenameColumn(opts, table, from, obsolete)
 }
 
@@ -136,7 +147,42 @@ func ReplaceColumnDropObsolete(opts HelperOptions, table, fromColumn string) err
 	if !has {
 		return nil
 	}
+	if err := dropIndexesReferencingColumn(opts, table, obsolete); err != nil {
+		return err
+	}
 	return DropColumn(opts, table, obsolete)
+}
+
+func dropIndexesReferencingColumn(opts HelperOptions, table, column string) error {
+	indexes, err := getIndexes(opts.DB, table)
+	if err != nil {
+		return fmt.Errorf("list indexes on %s: %w", table, err)
+	}
+	for _, idx := range indexes {
+		if idx == nil {
+			continue
+		}
+		cols := idx.Columns()
+		hit := false
+		for _, c := range cols {
+			if strings.EqualFold(strings.TrimSpace(c), column) {
+				hit = true
+				break
+			}
+		}
+		if !hit {
+			continue
+		}
+		name := strings.TrimSpace(idx.Name())
+		if name == "" {
+			continue
+		}
+		sql := dropIndexSQL(opts.Dialect, table, name)
+		if err := helperExec(opts.DB, sql); err != nil {
+			return fmt.Errorf("drop index %s on %s for column %s: %w", name, table, column, err)
+		}
+	}
+	return nil
 }
 
 func helperHasColumn(db *gorm.DB, table, column string) (bool, error) {
