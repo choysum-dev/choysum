@@ -140,6 +140,10 @@ func sqliteRewriteTable(db *gorm.DB, table string, rewrite sqliteTableRewrite) e
 			}
 		}
 
+		if prepErr := sqlitePrepareRewriteTempFn(connDB, table, tmp); prepErr != nil {
+			return prepErr
+		}
+
 		txErr := connDB.Transaction(func(tx *gorm.DB) error {
 			_ = helperExec(tx, "DROP TABLE IF EXISTS "+qTmp)
 			if err := helperExec(tx, createSQL); err != nil {
@@ -271,22 +275,41 @@ func sqliteBareTypeName(raw string) string {
 
 // Overridable seams for error-path tests.
 var (
-	sqliteListMasterSQLs      = sqliteMasterSQLs
-	sqliteReadForeignKeys     = sqliteForeignKeysEnabled
-	sqliteCheckForeignKeys    = sqliteForeignKeyCheck
-	sqliteTableIsReferencedFn = sqliteTableIsReferenced
-	sqliteScanForeignKeyList  = func(db *gorm.DB, name string, dest any) error {
+	sqliteListMasterSQLs       = sqliteMasterSQLs
+	sqliteReadForeignKeys      = sqliteForeignKeysEnabled
+	sqliteCheckForeignKeys     = sqliteForeignKeyCheck
+	sqliteTableIsReferencedFn  = sqliteTableIsReferenced
+	sqlitePrepareRewriteTempFn = sqlitePrepareRewriteTemp
+	sqliteScanForeignKeyList   = func(db *gorm.DB, name string, dest any) error {
 		q := fmt.Sprintf("PRAGMA foreign_key_list(%s)", quoteIdent("sqlite", name))
 		return db.Raw(q).Scan(dest).Error
 	}
 )
 
 func sqliteRewriteTempName(table string) string {
-	// Deterministic per table so DROP IF EXISTS reclaims leftovers from a crashed run.
-	// Same-table rewrites must be serialized (upgrade scripts are); concurrent rewrites
-	// of one table would share this name.
+	// Deterministic per table so a crashed run's leftover can be detected.
+	// Same-table rewrites must be serialized (upgrade scripts are); concurrent
+	// rewrites of one table would share this name.
 	sum := sha1.Sum([]byte(strings.TrimSpace(table)))
 	return fmt.Sprintf("choysum_rw_%x", sum[:10])
+}
+
+// sqlitePrepareRewriteTemp clears a disposable leftover temp table, or refuses when
+// the leftover may be the only surviving copy (original table missing).
+func sqlitePrepareRewriteTemp(db *gorm.DB, table, tmp string) error {
+	if db == nil || strings.TrimSpace(tmp) == "" {
+		return fmt.Errorf("sqlite rewrite temp prepare: db/tmp required")
+	}
+	if !db.Migrator().HasTable(tmp) {
+		return nil
+	}
+	if !db.Migrator().HasTable(table) {
+		return fmt.Errorf("sqlite rewrite: leftover table %s exists but %s is missing; rename %s to %s (or inspect) before retry", tmp, table, tmp, table)
+	}
+	if err := helperExec(db, "DROP TABLE IF EXISTS "+quoteIdent("sqlite", tmp)); err != nil {
+		return fmt.Errorf("drop leftover rewrite table %s: %w", tmp, err)
+	}
+	return nil
 }
 
 // sqliteTableIsReferenced reports whether any other table has a foreign key to table.

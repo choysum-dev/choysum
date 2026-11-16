@@ -48,6 +48,8 @@ func SetNotNull(opts HelperOptions, table, column string) error {
 		return applySetNotNull(txOpts, table, column)
 	}
 	if isSQLiteDialect(opts.Dialect) {
+		// NULL count is not in the same txn as the rewrite (FK pragma must toggle
+		// outside an open txn). A racing NULL insert surfaces as a copy failure.
 		if err := run(opts.DB); err != nil {
 			return err
 		}

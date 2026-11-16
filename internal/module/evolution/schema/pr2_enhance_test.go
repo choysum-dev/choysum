@@ -587,6 +587,67 @@ func TestSqliteRewriteTable_LeafOKWhenFKPragmaIgnored(t *testing.T) {
 	}
 }
 
+func TestSqlitePrepareRewriteTemp(t *testing.T) {
+	// Not parallel: stubs helperExec / sqlitePrepareRewriteTempFn.
+	if err := sqlitePrepareRewriteTemp(nil, "t", "tmp"); err == nil {
+		t.Fatal("nil db")
+	}
+	runtimeScope := newSchemaTestScope(t)
+	db := runtimeScope.Session().DB
+	tmp := sqliteRewriteTempName("rw_orphan")
+	if err := db.Exec(fmt.Sprintf(`CREATE TABLE %s (id integer)`, quoteIdent("sqlite", tmp))).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := sqlitePrepareRewriteTemp(db, "rw_orphan", tmp); err == nil || !strings.Contains(err.Error(), "leftover") {
+		t.Fatalf("orphan leftover: %v", err)
+	}
+	if err := db.Exec(`CREATE TABLE rw_both (id integer)`).Error; err != nil {
+		t.Fatal(err)
+	}
+	tmpBoth := sqliteRewriteTempName("rw_both")
+	if err := db.Exec(fmt.Sprintf(`CREATE TABLE %s (id integer)`, quoteIdent("sqlite", tmpBoth))).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := sqlitePrepareRewriteTemp(db, "rw_both", tmpBoth); err != nil {
+		t.Fatalf("disposable leftover: %v", err)
+	}
+	if db.Migrator().HasTable(tmpBoth) {
+		t.Fatal("disposable leftover should be dropped")
+	}
+	if err := sqliteRewriteTable(db, "rw_both", sqliteTableRewrite{ForceNotNull: map[string]struct{}{"id": {}}}); err != nil {
+		t.Fatalf("rewrite after leftover clear: %v", err)
+	}
+
+	if err := db.Exec(`CREATE TABLE rw_drop_tmp (id integer)`).Error; err != nil {
+		t.Fatal(err)
+	}
+	tmpDrop := sqliteRewriteTempName("rw_drop_tmp")
+	if err := db.Exec(fmt.Sprintf(`CREATE TABLE %s (id integer)`, quoteIdent("sqlite", tmpDrop))).Error; err != nil {
+		t.Fatal(err)
+	}
+	origExec := helperExec
+	t.Cleanup(func() { helperExec = origExec })
+	helperExec = func(db *gorm.DB, sql string) error {
+		if strings.Contains(strings.ToUpper(sql), "DROP TABLE IF EXISTS") && strings.Contains(sql, tmpDrop) {
+			return fmt.Errorf("forced leftover drop fail")
+		}
+		return origExec(db, sql)
+	}
+	if err := sqlitePrepareRewriteTemp(db, "rw_drop_tmp", tmpDrop); err == nil || !strings.Contains(err.Error(), "drop leftover") {
+		t.Fatalf("drop leftover: %v", err)
+	}
+	helperExec = origExec
+
+	origPrep := sqlitePrepareRewriteTempFn
+	t.Cleanup(func() { sqlitePrepareRewriteTempFn = origPrep })
+	sqlitePrepareRewriteTempFn = func(*gorm.DB, string, string) error {
+		return fmt.Errorf("prep boom")
+	}
+	if err := sqliteRewriteTable(db, "rw_both", sqliteTableRewrite{ForceNotNull: map[string]struct{}{"id": {}}}); err == nil || !strings.Contains(err.Error(), "prep boom") {
+		t.Fatalf("prep seam: %v", err)
+	}
+}
+
 func TestSqliteRewriteTable_FKStillOnSeamErrors(t *testing.T) {
 	// Not parallel: stubs sqliteReadForeignKeys / sqliteTableIsReferencedFn.
 	runtimeScope := newSchemaTestScope(t)
