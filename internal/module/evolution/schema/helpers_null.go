@@ -136,7 +136,11 @@ func liveColumnTypeName(db *gorm.DB, table, column string, withDefault bool, dia
 		typeName = decorateLiveColumnType(typeName, ct)
 		if withDefault {
 			rawDef, defOK := ct.DefaultValue()
-			if def := formatLiveColumnDefault(dialect, typeName, rawDef, defOK); def != "" {
+			escapeBS := false
+			if isMySQLFamily(dialect) {
+				escapeBS = mysqlEscapesBackslash(db)
+			}
+			if def := formatLiveColumnDefault(dialect, typeName, rawDef, defOK, escapeBS); def != "" {
 				typeName += " DEFAULT " + def
 			}
 		}
@@ -145,18 +149,48 @@ func liveColumnTypeName(db *gorm.DB, table, column string, withDefault bool, dia
 	return "", fmt.Errorf("column %s.%s not found", table, column)
 }
 
+func isMySQLFamily(dialect string) bool {
+	switch strings.ToLower(strings.TrimSpace(dialect)) {
+	case "mysql", "mariadb":
+		return true
+	default:
+		return false
+	}
+}
+
+// mysqlSessionSQLMode is overridable in tests.
+var mysqlSessionSQLMode = func(db *gorm.DB) (string, error) {
+	var mode string
+	err := db.Raw("SELECT @@SESSION.sql_mode").Scan(&mode).Error
+	return mode, err
+}
+
+// mysqlEscapesBackslash reports whether string literals need backslash escaping
+// (true unless SESSION sql_mode includes NO_BACKSLASH_ESCAPES).
+func mysqlEscapesBackslash(db *gorm.DB) bool {
+	if db == nil {
+		return true
+	}
+	mode, err := mysqlSessionSQLMode(db)
+	if err != nil {
+		return true
+	}
+	return !strings.Contains(strings.ToUpper(mode), "NO_BACKSLASH_ESCAPES")
+}
+
 // formatLiveColumnDefault turns driver ColumnType.DefaultValue into a DDL fragment,
 // or "" to omit DEFAULT. MySQL's gorm driver strips surrounding quotes from string
-// defaults, so stringish types are re-quoted here.
-func formatLiveColumnDefault(dialect, typeName, def string, ok bool) string {
+// defaults, so stringish types are re-quoted here without TrimSpace (preserves
+// leading/trailing spaces in literals).
+func formatLiveColumnDefault(dialect, typeName, def string, ok bool, escapeBackslash bool) string {
 	if !ok {
 		return ""
 	}
-	def = strings.TrimSpace(def)
 	switch strings.ToLower(strings.TrimSpace(dialect)) {
 	case "mysql", "mariadb":
-		return formatMySQLColumnDefault(typeName, def)
+		return formatMySQLColumnDefault(typeName, def, escapeBackslash)
 	default:
+		def = strings.TrimSpace(def)
 		// SQLite and others typically return DDL-ready literals/expressions.
 		if def == "" || strings.EqualFold(def, "NULL") {
 			return ""
@@ -165,13 +199,15 @@ func formatLiveColumnDefault(dialect, typeName, def string, ok bool) string {
 	}
 }
 
-func formatMySQLColumnDefault(typeName, def string) string {
+func formatMySQLColumnDefault(typeName, def string, escapeBackslash bool) string {
+	// Stringish columns: always quote the driver value as a literal. Do not infer
+	// expressions from contents (e.g. DEFAULT '(1)' must stay '(1)', not (1)).
+	if isStringishSQLType(typeName) {
+		return quoteMySQLStringLiteral(def, escapeBackslash)
+	}
+	def = strings.TrimSpace(def)
 	if looksLikeSQLDefaultExpr(def) {
 		return def
-	}
-	if isStringishSQLType(typeName) {
-		// Driver metadata is unquoted; empty Valid default means ''.
-		return quoteMySQLStringLiteral(def)
 	}
 	if def == "" || strings.EqualFold(def, "NULL") {
 		return ""
@@ -208,13 +244,17 @@ func isStringishSQLType(typeName string) bool {
 	return false
 }
 
-func quoteMySQLStringLiteral(s string) string {
-	return "'" + strings.ReplaceAll(s, "'", "''") + "'"
+func quoteMySQLStringLiteral(s string, escapeBackslash bool) string {
+	if escapeBackslash {
+		s = strings.ReplaceAll(s, `\`, `\\`)
+	}
+	s = strings.ReplaceAll(s, `'`, `''`)
+	return "'" + s + "'"
 }
 
 // appendableColumnDefault is the SQLite/passthrough helper used by table rewrite.
 func appendableColumnDefault(def string, ok bool) string {
-	return formatLiveColumnDefault("sqlite", "", def, ok)
+	return formatLiveColumnDefault("sqlite", "", def, ok, false)
 }
 
 // normalizeMySQLTypeName rewrites driver forms like "UNSIGNED INT" to "INT UNSIGNED".

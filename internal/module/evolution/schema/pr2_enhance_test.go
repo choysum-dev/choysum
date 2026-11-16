@@ -331,20 +331,63 @@ func TestLiveColumnTypeName(t *testing.T) {
 	if got := appendableColumnDefault("'x'", true); got != "'x'" {
 		t.Fatalf("keep literal: %q", got)
 	}
-	if got := quoteMySQLStringLiteral("a'b"); got != "'a''b'" {
+	if got := quoteMySQLStringLiteral("a'b", true); got != "'a''b'" {
 		t.Fatalf("quote: %q", got)
 	}
-	if got := formatMySQLColumnDefault("int", "NULL"); got != "" {
+	if got := quoteMySQLStringLiteral(`a\b`, true); got != `'a\\b'` {
+		t.Fatalf("backslash escape: %q", got)
+	}
+	if got := quoteMySQLStringLiteral(`a\b`, false); got != `'a\b'` {
+		t.Fatalf("no backslash escape: %q", got)
+	}
+	if got := quoteMySQLStringLiteral(`a\'b`, true); got != `'a\\''b'` {
+		t.Fatalf("backslash+quote: %q", got)
+	}
+	if got := formatMySQLColumnDefault("int", "NULL", true); got != "" {
 		t.Fatalf("non-string NULL: %q", got)
 	}
-	if got := formatMySQLColumnDefault("int", ""); got != "" {
+	if got := formatMySQLColumnDefault("int", "", true); got != "" {
 		t.Fatalf("non-string empty: %q", got)
 	}
-	if got := formatMySQLColumnDefault("int", "(UUID())"); got != "(UUID())" {
+	if got := formatMySQLColumnDefault("int", "(UUID())", true); got != "(UUID())" {
 		t.Fatalf("expr paren: %q", got)
+	}
+	if got := formatMySQLColumnDefault("varchar(8)", "(1)", true); got != "'(1)'" {
+		t.Fatalf("string literal paren: %q", got)
+	}
+	if got := formatMySQLColumnDefault("varchar(20)", " pending ", true); got != "' pending '" {
+		t.Fatalf("preserve spaces: %q", got)
 	}
 	if !looksLikeSQLDefaultExpr("LOCALTIME") || !looksLikeSQLDefaultExpr("NOW()") {
 		t.Fatal("expr prefixes")
+	}
+	if !mysqlEscapesBackslash(nil) {
+		t.Fatal("nil db assumes backslash escapes")
+	}
+	if isMySQLFamily("postgres") || !isMySQLFamily("MariaDB") {
+		t.Fatal("isMySQLFamily")
+	}
+	runtimeScope := newSchemaTestScope(t)
+	// SQLite rejects @@SESSION.sql_mode; helper must fail closed to escaping-on.
+	if !mysqlEscapesBackslash(runtimeScope.Session().DB) {
+		t.Fatal("sql_mode probe failure should assume backslash escapes")
+	}
+	origMode := mysqlSessionSQLMode
+	t.Cleanup(func() { mysqlSessionSQLMode = origMode })
+	mysqlSessionSQLMode = func(*gorm.DB) (string, error) {
+		return "STRICT_TRANS_TABLES,NO_BACKSLASH_ESCAPES", nil
+	}
+	if mysqlEscapesBackslash(runtimeScope.Session().DB) {
+		t.Fatal("NO_BACKSLASH_ESCAPES should disable backslash escaping")
+	}
+	mysqlSessionSQLMode = func(*gorm.DB) (string, error) {
+		return "STRICT_TRANS_TABLES", nil
+	}
+	if !mysqlEscapesBackslash(runtimeScope.Session().DB) {
+		t.Fatal("default sql_mode should escape backslashes")
+	}
+	if !targetLooksLikeTextType("character varying") || targetLooksLikeTextType("integer") {
+		t.Fatal("targetLooksLikeTextType")
 	}
 }
 

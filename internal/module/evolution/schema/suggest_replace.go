@@ -76,7 +76,7 @@ func suggestCopyCastKind(detail string) (kind string, ok bool) {
 			break
 		}
 	}
-	if strings.Contains(target, "varchar") || strings.Contains(target, "text") || strings.Contains(target, "char") {
+	if targetLooksLikeTextType(target) {
 		if sourceLooksLikeIntegerType(src) {
 			return "int_to_varchar", true
 		}
@@ -89,6 +89,16 @@ func sourceLooksLikeIntegerType(src string) bool {
 	// Longer tokens first so "integer" wins over bare "int".
 	for _, tok := range []string{"integer", "bigint", "smallint", "tinyint", "int"} {
 		if sqliteSQLMentionsColumn(strings.ToLower(src), tok) {
+			return true
+		}
+	}
+	return false
+}
+
+func targetLooksLikeTextType(target string) bool {
+	// Longer tokens first so "varchar"/"character" win over bare "char".
+	for _, tok := range []string{"nvarchar", "varchar", "character", "nchar", "text", "char"} {
+		if sqliteSQLMentionsColumn(strings.ToLower(target), tok) {
 			return true
 		}
 	}
