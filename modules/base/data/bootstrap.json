@@ -16,7 +16,7 @@
         "Grouping": "[3,0]",
         "DateFormat": "YYYY-MM-DD",
         "TimeFormat": "HH:mm:ss",
-        "FirstDayOfWeek": 1,
+        "FirstDayOfWeek": "1",
         "CurrencySymbolPosition": "before",
         "CurrencySymbolSpacing": false,
         "PersonNameFormat": "{LastName}{FirstName}"
@@ -38,7 +38,7 @@
         "Grouping": "[3,0]",
         "DateFormat": "MM/DD/YYYY",
         "TimeFormat": "HH:mm:ss",
-        "FirstDayOfWeek": 0,
+        "FirstDayOfWeek": "0",
         "CurrencySymbolPosition": "before",
         "CurrencySymbolSpacing": false,
         "PersonNameFormat": "{FirstName} {LastName}"

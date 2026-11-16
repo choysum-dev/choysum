@@ -11,7 +11,11 @@ import {
   formatDateWithLanguage,
   formatNumberWithLanguage,
 } from './_language_format';
-import { DEFAULT_PERSON_NAME_FORMAT, normalizePersonNameFormat } from '@/core/service/utils/person_name';
+import {
+  DEFAULT_PERSON_NAME_FORMAT,
+  isValidPersonNameFormat,
+  normalizePersonNameFormat,
+} from '@/core/service/utils/person_name';
 
 export type LanguageFormatKind = 'number' | 'date' | 'time' | 'datetime';
 
@@ -104,6 +108,9 @@ export default class Language extends BaseModel {
     type: 'varchar',
     size: 8,
     string: _lt('Thousands Separator', { scope: 'base.model.Language.fields' }),
+    help: _lt('Clear the value for no thousands separator. Whitespace (space / NBSP) is allowed.', {
+      scope: 'base.model.Language.fields',
+    }),
   })
   ThousandSeparator?: string;
 
@@ -289,8 +296,17 @@ export default class Language extends BaseModel {
       this.CurrencySymbolSpacing = assertCurrencySymbolSpacing(this.CurrencySymbolSpacing);
     }
     if (this.PersonNameFormat !== undefined) {
-      // Empty/invalid templates normalize to the default (do not store blanks).
-      this.PersonNameFormat = normalizePersonNameFormat(this.PersonNameFormat);
+      const text = String(this.PersonNameFormat ?? '').trim();
+      if (!isValidPersonNameFormat(text)) {
+        raiseDomainError(
+          'base',
+          'InvalidArgument',
+          _t('Person name format must include {FirstName} and/or {LastName}', {
+            scope: 'service/models/language',
+          })
+        );
+      }
+      this.PersonNameFormat = text;
     }
 
     // Refuse deactivating the last active language (update path only).

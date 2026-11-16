@@ -32,7 +32,7 @@ import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
-import { ChoyBooleanField, ChoyListView, ChoySearchView, ChoySelectionField, ChoyTableColumn, ChoyVarcharField} from '@/web';
+import { ChoyBooleanField, ChoyListView, ChoySearchView, ChoySelectionField, ChoyTableColumn, ChoyVarcharField } from '@/web';
 import type { RowEventPayload } from '@/web';
 
 defineOptions({ name: 'LanguageListView', inheritAttrs: true });

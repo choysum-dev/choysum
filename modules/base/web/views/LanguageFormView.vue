@@ -12,7 +12,7 @@ SPDX-License-Identifier: Apache-2.0
     @update-success="onLanguageSaved"
     @create-success="onLanguageSaved"
   >
-    <template #default="{ formData, viewMode: mode }">
+    <template #default="{ viewMode: mode }">
       <div data-anchor="choy.form.sheet" class="min-h-full space-y-8">
         <section class="space-y-4" data-testid="language-form-identity">
           <h3 class="text-base font-semibold tracking-tight text-foreground">{{ _t('Language Information') }}</h3>
@@ -63,76 +63,25 @@ SPDX-License-Identifier: Apache-2.0
           <h3 class="text-base font-semibold tracking-tight text-foreground">{{ _t('Number Format') }}</h3>
           <ChoyGrid :cols="12">
             <ChoyCol :span="4">
-              <ChoyVarcharField :store="store" prop="DecimalSeparator" :placeholder="'.'" />
-              <div class="mt-1.5 flex flex-wrap gap-1.5">
-                <button
-                  v-for="preset in decimalSeparatorPresets"
-                  :key="`dec-${preset}`"
-                  type="button"
-                  class="rounded-md border border-border bg-background px-2 py-0.5 text-xs text-muted-foreground hover:text-foreground"
-                  data-testid="language-decimal-preset"
-                  @click="applyPreset(formData, 'DecimalSeparator', preset)"
-                >
-                  {{ preset }}
-                </button>
-              </div>
+              <ChoyVarcharField :store="store" prop="DecimalSeparator" />
             </ChoyCol>
             <ChoyCol :span="4">
-              <ChoyVarcharField :store="store" prop="ThousandSeparator" :placeholder="','" />
-              <div class="mt-1.5 flex flex-wrap gap-1.5">
-                <button
-                  v-for="preset in thousandSeparatorPresets"
-                  :key="`thou-${preset.label}`"
-                  type="button"
-                  class="rounded-md border border-border bg-background px-2 py-0.5 text-xs text-muted-foreground hover:text-foreground"
-                  data-testid="language-thousand-preset"
-                  @click="applyPreset(formData, 'ThousandSeparator', preset.value)"
-                >
-                  {{ preset.label }}
-                </button>
-              </div>
+              <ChoyVarcharField :store="store" prop="ThousandSeparator" />
             </ChoyCol>
             <ChoyCol :span="4">
               <ChoySelectionField :store="store" prop="Grouping" />
             </ChoyCol>
           </ChoyGrid>
-          <p class="text-sm text-muted-foreground" data-testid="language-preview-number">
-            {{ _t('Preview') }}: {{ numberPreview(formData) }}
-          </p>
         </section>
 
         <section class="space-y-4" data-testid="language-form-datetime">
           <h3 class="text-base font-semibold tracking-tight text-foreground">{{ _t('Date & Time') }}</h3>
           <ChoyGrid :cols="12">
             <ChoyCol :span="4">
-              <ChoyVarcharField :store="store" prop="DateFormat" :placeholder="'YYYY-MM-DD'" />
-              <div class="mt-1.5 flex flex-wrap gap-1.5">
-                <button
-                  v-for="preset in dateFormatPresets"
-                  :key="preset"
-                  type="button"
-                  class="rounded-md border border-border bg-background px-2 py-0.5 text-xs text-muted-foreground hover:text-foreground"
-                  data-testid="language-date-preset"
-                  @click="applyPreset(formData, 'DateFormat', preset)"
-                >
-                  {{ preset }}
-                </button>
-              </div>
+              <ChoyVarcharField :store="store" prop="DateFormat" />
             </ChoyCol>
             <ChoyCol :span="4">
-              <ChoyVarcharField :store="store" prop="TimeFormat" :placeholder="'HH:mm:ss'" />
-              <div class="mt-1.5 flex flex-wrap gap-1.5">
-                <button
-                  v-for="preset in timeFormatPresets"
-                  :key="preset"
-                  type="button"
-                  class="rounded-md border border-border bg-background px-2 py-0.5 text-xs text-muted-foreground hover:text-foreground"
-                  data-testid="language-time-preset"
-                  @click="applyPreset(formData, 'TimeFormat', preset)"
-                >
-                  {{ preset }}
-                </button>
-              </div>
+              <ChoyVarcharField :store="store" prop="TimeFormat" />
             </ChoyCol>
             <ChoyCol :span="4">
               <ChoySelectionField
@@ -142,9 +91,6 @@ SPDX-License-Identifier: Apache-2.0
               />
             </ChoyCol>
           </ChoyGrid>
-          <p class="text-sm text-muted-foreground" data-testid="language-preview-datetime">
-            {{ _t('Preview') }}: {{ datePreview(formData) }} · {{ timePreview(formData) }}
-          </p>
         </section>
 
         <section class="space-y-4" data-testid="language-form-currency-name">
@@ -157,19 +103,14 @@ SPDX-License-Identifier: Apache-2.0
               <ChoyBooleanField :store="store" prop="CurrencySymbolSpacing" />
             </ChoyCol>
             <ChoyCol :span="4">
-              <ChoySelectionField
+              <ChoyVarcharField
                 :store="store"
                 prop="PersonNameFormat"
-                :selection="personNameSelection"
+                :rules="personNameFormatRules"
+                placeholder="{FirstName} {LastName}"
               />
             </ChoyCol>
           </ChoyGrid>
-          <p class="text-sm text-muted-foreground" data-testid="language-preview-currency">
-            {{ _t('Currency preview') }}: {{ currencyPreview(formData) }}
-          </p>
-          <p class="text-sm text-muted-foreground" data-testid="language-preview-person-name">
-            {{ _t('Person name preview') }}: {{ personNamePreview(formData) }}
-          </p>
         </section>
       </div>
     </template>
@@ -195,23 +136,25 @@ import {
   ChoyVarcharField,
 } from '@/web';
 import type { ChoyViewMode as ViewMode } from '@/web';
-import {
-  DATE_FORMAT_PRESETS,
-  DECIMAL_SEPARATOR_PRESETS,
-  isLanguageCodeReadonly,
-  previewCurrency,
-  previewDate,
-  previewNumber,
-  previewPersonName,
-  previewTime,
-  PERSON_NAME_SELECTION,
-  TIME_FORMAT_PRESETS,
-  type LanguageFormPreviewSource,
-} from './languageFormHelpers';
+import { isValidPersonNameFormat } from '@/core/service/utils/person_name';
+import { isLanguageCodeReadonly } from './languageFormHelpers';
 
 defineOptions({ name: 'LanguageFormView', inheritAttrs: true });
 const { _t, _lt } = createTranslate('base', { scope: 'web/views/LanguageFormView' });
 const requiredRules = computed(() => [{ required: true, message: _t('Required') }]);
+const personNameFormatRules = computed(() => [
+  {
+    validator: (_rule: unknown, value: unknown, cb: (error?: Error) => void) => {
+      if (!isValidPersonNameFormat(value)) {
+        return cb(
+          new Error(_t('Person name format must include {FirstName} and/or {LastName}'))
+        );
+      }
+      cb();
+    },
+    trigger: ['change', 'blur'],
+  },
+]);
 const props = withDefaults(
   defineProps<{ store?: ModelStore<Language>; recordId?: string; viewMode?: ViewMode; showHeader?: boolean; createAction?: string | RouteLocationRaw }>(),
   { showHeader: true, createAction: undefined }
@@ -220,42 +163,6 @@ const languageActions = defineModelActions('base.Language', { entityTitle: _lt('
 const { hasAction } = usePermission();
 const store = resolvePageStore(props.store, 'LanguageFormView');
 const { recordId, viewMode, showHeader, createAction } = props;
-
-const dateFormatPresets = DATE_FORMAT_PRESETS;
-const timeFormatPresets = TIME_FORMAT_PRESETS;
-const decimalSeparatorPresets = DECIMAL_SEPARATOR_PRESETS;
-const thousandSeparatorPresets = [
-  { value: ',', label: ',' },
-  { value: '.', label: '.' },
-  { value: ' ', label: '␣' },
-  { value: "'", label: "'" },
-  { value: '', label: '∅' },
-] as const;
-const personNameSelection = [...PERSON_NAME_SELECTION];
-
-function applyPreset(formData: Record<string, unknown>, path: string, value: string) {
-  formData[path] = value;
-}
-
-function asPreviewSource(formData: Record<string, unknown> | null | undefined): LanguageFormPreviewSource {
-  return (formData || {}) as LanguageFormPreviewSource;
-}
-
-function numberPreview(formData: Record<string, unknown>) {
-  return previewNumber(asPreviewSource(formData));
-}
-function currencyPreview(formData: Record<string, unknown>) {
-  return previewCurrency(asPreviewSource(formData));
-}
-function datePreview(formData: Record<string, unknown>) {
-  return previewDate(asPreviewSource(formData));
-}
-function timePreview(formData: Record<string, unknown>) {
-  return previewTime(asPreviewSource(formData));
-}
-function personNamePreview(formData: Record<string, unknown>) {
-  return previewPersonName(asPreviewSource(formData));
-}
 
 /** Refresh FE format overlays so list/number displays pick up Language field changes. */
 async function onLanguageSaved() {
