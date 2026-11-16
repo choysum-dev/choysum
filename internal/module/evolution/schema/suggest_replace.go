@@ -76,6 +76,7 @@ func suggestCopyCastKind(detail string) (kind string, ok bool) {
 		} else if i := strings.Index(d, "->"); i >= 0 {
 			src = strings.TrimSpace(d[:i])
 		}
+		src = strings.TrimSpace(strings.TrimPrefix(src, "type change"))
 		if sourceLooksLikeIntegerType(src) {
 			return "int_to_varchar", true
 		}

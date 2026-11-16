@@ -59,6 +59,7 @@ func TestSuggestCopyCastKind(t *testing.T) {
 		{"type change text → integer", "", false},
 		{"type change point → varchar", "as_text", true},
 		{"type change print → text", "as_text", true},
+		{"type change interval → varchar", "as_text", true},
 	}
 	for _, tc := range cases {
 		kind, ok := suggestCopyCastKind(tc.detail)
@@ -292,17 +293,17 @@ func TestLiveColumnTypeName(t *testing.T) {
 			fakeColumnTypeAI{fakeColumnType: fakeColumnType{name: "id", dbType: "int"}, ai: true, aiOK: true},
 		}, nil
 	}
-	if !liveColumnIsAutoIncrement(nil, "t", "id") {
-		t.Fatal("expected auto increment")
+	if ai, err := liveColumnIsAutoIncrement(nil, "t", "id"); err != nil || !ai {
+		t.Fatalf("expected auto increment: %v %v", ai, err)
 	}
-	if liveColumnIsAutoIncrement(nil, "t", "missing") {
-		t.Fatal("missing col")
+	if ai, err := liveColumnIsAutoIncrement(nil, "t", "missing"); err != nil || ai {
+		t.Fatalf("missing col: %v %v", ai, err)
 	}
 	getColumnTypes = func(*gorm.DB, string) ([]gorm.ColumnType, error) {
 		return nil, fmt.Errorf("ai inspect boom")
 	}
-	if liveColumnIsAutoIncrement(nil, "t", "id") {
-		t.Fatal("inspect err should be false")
+	if ai, err := liveColumnIsAutoIncrement(nil, "t", "id"); err == nil || !strings.Contains(err.Error(), "ai inspect boom") || ai {
+		t.Fatalf("inspect err: %v %v", ai, err)
 	}
 	decl := sqliteColumnDecl(fakeColumnTypeAI{
 		fakeColumnType: fakeColumnType{name: "id", dbType: "TEXT", primaryKey: true, primaryKeySet: true, primaryKeyOK: true},
@@ -913,6 +914,17 @@ func TestApplySetNotNull_TypeInspectErrors(t *testing.T) {
 	}
 	if err := applySetNotNull(HelperOptions{DB: db, Dialect: "sqlserver", Intents: NewMemoryIntentBag()}, "t", "c"); err == nil || !strings.Contains(err.Error(), "type boom") {
 		t.Fatalf("sqlserver inspect: %v", err)
+	}
+	calls := 0
+	getColumnTypes = func(*gorm.DB, string) ([]gorm.ColumnType, error) {
+		calls++
+		if calls == 1 {
+			return []gorm.ColumnType{fakeColumnType{name: "c", dbType: "int"}}, nil
+		}
+		return nil, fmt.Errorf("ai boom")
+	}
+	if err := applySetNotNull(HelperOptions{DB: db, Dialect: "mysql", Intents: NewMemoryIntentBag()}, "t", "c"); err == nil || !strings.Contains(err.Error(), "auto_increment") {
+		t.Fatalf("mysql ai inspect: %v", err)
 	}
 }
 

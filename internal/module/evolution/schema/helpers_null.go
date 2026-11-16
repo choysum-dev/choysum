@@ -85,7 +85,11 @@ func applySetNotNull(opts HelperOptions, table, column string) error {
 			return err
 		}
 		typeName = normalizeMySQLTypeName(typeName)
-		if liveColumnIsAutoIncrement(opts.DB, table, column) {
+		ai, aiErr := liveColumnIsAutoIncrement(opts.DB, table, column)
+		if aiErr != nil {
+			return fmt.Errorf("setNotNull mysql auto_increment: %w", aiErr)
+		}
+		if ai {
 			typeName += " AUTO_INCREMENT"
 		}
 		sql := fmt.Sprintf("ALTER TABLE %s MODIFY COLUMN %s %s NOT NULL", qTable, qCol, typeName)
@@ -227,19 +231,19 @@ func normalizeMySQLTypeName(typeName string) string {
 	return typeName
 }
 
-func liveColumnIsAutoIncrement(db *gorm.DB, table, column string) bool {
+func liveColumnIsAutoIncrement(db *gorm.DB, table, column string) (bool, error) {
 	types, err := getColumnTypes(db, table)
 	if err != nil {
-		return false
+		return false, err
 	}
 	for _, ct := range types {
 		if ct == nil || !strings.EqualFold(strings.TrimSpace(ct.Name()), column) {
 			continue
 		}
 		ai, ok := ct.AutoIncrement()
-		return ok && ai
+		return ok && ai, nil
 	}
-	return false
+	return false, nil
 }
 
 func decorateLiveColumnType(typeName string, ct gorm.ColumnType) string {
