@@ -57,6 +57,8 @@ func TestSuggestCopyCastKind(t *testing.T) {
 		{"type change varchar → text", "as_text", true},
 		{"type change varchar → int", "", false},
 		{"type change text → integer", "", false},
+		{"type change point → varchar", "as_text", true},
+		{"type change print → text", "as_text", true},
 	}
 	for _, tc := range cases {
 		kind, ok := suggestCopyCastKind(tc.detail)
@@ -162,12 +164,22 @@ func TestApplySetNotNull_DialectsViaStub(t *testing.T) {
 		}, nil
 	}
 
+	amtTypes := getColumnTypes
 	for _, dialect := range []string{"postgres", "postgresql", "mysql", "mariadb", "sqlserver", "oracle"} {
 		opts := HelperOptions{DB: db, Dialect: dialect, Intents: bag}
 		if err := applySetNotNull(opts, "t", "amt"); err != nil {
 			t.Fatalf("%s: %v", dialect, err)
 		}
 	}
+	getColumnTypes = func(*gorm.DB, string) ([]gorm.ColumnType, error) {
+		return []gorm.ColumnType{
+			fakeColumnTypeAI{fakeColumnType: fakeColumnType{name: "id", dbType: "int"}, ai: true, aiOK: true},
+		}, nil
+	}
+	if err := applySetNotNull(HelperOptions{DB: db, Dialect: "mysql", Intents: bag}, "t", "id"); err != nil {
+		t.Fatalf("mysql auto_increment: %v", err)
+	}
+	getColumnTypes = amtTypes
 	helperExec = func(*gorm.DB, string) error { return fmt.Errorf("exec boom") }
 	if err := applySetNotNull(HelperOptions{DB: db, Dialect: "postgres", Intents: bag}, "t", "amt"); err == nil || !strings.Contains(err.Error(), "exec boom") {
 		t.Fatalf("postgres exec err: %v", err)
@@ -190,7 +202,7 @@ func TestLiveColumnTypeName(t *testing.T) {
 	getColumnTypes = func(*gorm.DB, string) ([]gorm.ColumnType, error) {
 		return nil, fmt.Errorf("inspect boom")
 	}
-	if _, err := liveColumnTypeName(nil, "t", "c"); err == nil || !strings.Contains(err.Error(), "inspect boom") {
+	if _, err := liveColumnTypeName(nil, "t", "c", true); err == nil || !strings.Contains(err.Error(), "inspect boom") {
 		t.Fatalf("inspect: %v", err)
 	}
 	getColumnTypes = func(*gorm.DB, string) ([]gorm.ColumnType, error) {
@@ -208,25 +220,36 @@ func TestLiveColumnTypeName(t *testing.T) {
 			},
 			fakeColumnType{name: "code", dbType: "varchar", length: 32, lengthOK: true},
 			fakeColumnType{name: "raw", dbType: "int"},
+			fakeColumnType{name: "u", dbType: "UNSIGNED INT"},
 		}, nil
 	}
-	if _, err := liveColumnTypeName(nil, "t", "empty"); err == nil || !strings.Contains(err.Error(), "empty type") {
+	if _, err := liveColumnTypeName(nil, "t", "empty", true); err == nil || !strings.Contains(err.Error(), "empty type") {
 		t.Fatalf("empty type: %v", err)
 	}
-	got, err := liveColumnTypeName(nil, "t", "amt")
+	got, err := liveColumnTypeName(nil, "t", "amt", true)
 	if err != nil || got != "DECIMAL(12,4) DEFAULT 1.5" {
 		t.Fatalf("decimal+default: %q %v", got, err)
 	}
-	got, err = liveColumnTypeName(nil, "t", "code")
+	got, err = liveColumnTypeName(nil, "t", "amt", false)
+	if err != nil || got != "DECIMAL(12,4)" {
+		t.Fatalf("decimal no default: %q %v", got, err)
+	}
+	got, err = liveColumnTypeName(nil, "t", "code", true)
 	if err != nil || got != "varchar(32)" {
 		t.Fatalf("varchar: %q %v", got, err)
 	}
-	got, err = liveColumnTypeName(nil, "t", "raw")
+	got, err = liveColumnTypeName(nil, "t", "raw", true)
 	if err != nil || got != "int" {
 		t.Fatalf("raw: %q %v", got, err)
 	}
-	if _, err := liveColumnTypeName(nil, "t", "missing"); err == nil {
+	if _, err := liveColumnTypeName(nil, "t", "missing", true); err == nil {
 		t.Fatal("missing")
+	}
+	if got := normalizeMySQLTypeName("UNSIGNED INT"); got != "INT UNSIGNED" {
+		t.Fatalf("unsigned normalize: %q", got)
+	}
+	if got := normalizeMySQLTypeName(""); got != "" {
+		t.Fatalf("empty normalize: %q", got)
 	}
 	getColumnTypes = func(*gorm.DB, string) ([]gorm.ColumnType, error) {
 		return []gorm.ColumnType{
@@ -238,6 +261,12 @@ func TestLiveColumnTypeName(t *testing.T) {
 	}
 	if liveColumnIsAutoIncrement(nil, "t", "missing") {
 		t.Fatal("missing col")
+	}
+	getColumnTypes = func(*gorm.DB, string) ([]gorm.ColumnType, error) {
+		return nil, fmt.Errorf("ai inspect boom")
+	}
+	if liveColumnIsAutoIncrement(nil, "t", "id") {
+		t.Fatal("inspect err should be false")
 	}
 	decl := sqliteColumnDecl(fakeColumnTypeAI{
 		fakeColumnType: fakeColumnType{name: "id", dbType: "TEXT", primaryKey: true, primaryKeySet: true, primaryKeyOK: true},
@@ -367,6 +396,25 @@ func TestSqliteRewriteTable_ErrorPaths(t *testing.T) {
 	}
 }
 
+func TestSqliteRunOnOneConn(t *testing.T) {
+	t.Parallel()
+	if err := sqliteRunOnOneConn(nil, func(*gorm.DB) error { return nil }); err == nil {
+		t.Fatal("nil db")
+	}
+	runtimeScope := newSchemaTestScope(t)
+	db := runtimeScope.Session().DB
+	if err := db.Transaction(func(tx *gorm.DB) error {
+		return sqliteRunOnOneConn(tx, func(connDB *gorm.DB) error {
+			if connDB != tx {
+				t.Fatal("expected reuse of tx handle")
+			}
+			return nil
+		})
+	}); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestSqliteRewriteHelpers(t *testing.T) {
 	t.Parallel()
 	if got := sqliteRewriteTempName("a b/c"); !strings.HasPrefix(got, "choysum_rw_") || len(got) > 40 {
@@ -397,6 +445,11 @@ func TestSqliteRewriteHelpers(t *testing.T) {
 	})
 	if !ok || !strings.Contains(sql, "idx_gone_created") {
 		t.Fatalf("index name containing column token must be kept: ok=%v sql=%q", ok, sql)
+	}
+	if _, ok := sqliteRewriteObjectSQL(`CREATE TRIGGER trg AFTER UPDATE OF gone ON t BEGIN SELECT 1; END`, sqliteTableRewrite{
+		Drop: map[string]struct{}{"gone": {}},
+	}); ok {
+		t.Fatal("OF clause drop should skip trigger")
 	}
 	if !sqliteSQLMentionsColumn(`create index idx on t ("gone")`, "gone") {
 		t.Fatal("quoted mention")
@@ -499,7 +552,20 @@ func TestSqliteRewriteTable_ExecFailurePaths(t *testing.T) {
 	if err := sqliteRewriteTable(db, "rw_fail", sqliteTableRewrite{ForceNotNull: map[string]struct{}{"b": {}}}); err == nil || !strings.Contains(err.Error(), "foreign_keys") {
 		t.Fatalf("fk off: %v", err)
 	}
+
+	helperExec = func(db *gorm.DB, sql string) error {
+		if strings.EqualFold(strings.TrimSpace(sql), "PRAGMA foreign_keys=ON") {
+			return fmt.Errorf("forced fk on fail")
+		}
+		return origExec(db, sql)
+	}
+	sqliteReadForeignKeys = func(*gorm.DB) (bool, error) { return true, nil }
+	t.Cleanup(func() { sqliteReadForeignKeys = sqliteForeignKeysEnabled })
+	if err := sqliteRewriteTable(db, "rw_fail", sqliteTableRewrite{ForceNotNull: map[string]struct{}{"b": {}}}); err == nil || !strings.Contains(err.Error(), "restore foreign_keys") {
+		t.Fatalf("fk on restore: %v", err)
+	}
 	helperExec = origExec
+	sqliteReadForeignKeys = sqliteForeignKeysEnabled
 }
 
 func TestSqliteRewriteTable_RestoreTriggerAndIndexFail(t *testing.T) {

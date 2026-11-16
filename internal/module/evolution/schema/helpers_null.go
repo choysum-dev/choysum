@@ -66,10 +66,11 @@ func applySetNotNull(opts HelperOptions, table, column string) error {
 		}
 		return nil
 	case "mysql", "mariadb":
-		typeName, err := liveColumnTypeName(opts.DB, table, column)
+		typeName, err := liveColumnTypeName(opts.DB, table, column, true)
 		if err != nil {
 			return err
 		}
+		typeName = normalizeMySQLTypeName(typeName)
 		if liveColumnIsAutoIncrement(opts.DB, table, column) {
 			typeName += " AUTO_INCREMENT"
 		}
@@ -79,7 +80,8 @@ func applySetNotNull(opts HelperOptions, table, column string) error {
 		}
 		return nil
 	case "sqlserver":
-		typeName, err := liveColumnTypeName(opts.DB, table, column)
+		// T-SQL ALTER COLUMN does not accept a DEFAULT clause in the type string.
+		typeName, err := liveColumnTypeName(opts.DB, table, column, false)
 		if err != nil {
 			return err
 		}
@@ -97,7 +99,7 @@ func applySetNotNull(opts HelperOptions, table, column string) error {
 	}
 }
 
-func liveColumnTypeName(db *gorm.DB, table, column string) (string, error) {
+func liveColumnTypeName(db *gorm.DB, table, column string, withDefault bool) (string, error) {
 	types, err := getColumnTypes(db, table)
 	if err != nil {
 		return "", fmt.Errorf("inspect %s.%s: %w", table, column, err)
@@ -114,15 +116,31 @@ func liveColumnTypeName(db *gorm.DB, table, column string) (string, error) {
 			return "", fmt.Errorf("empty type for %s.%s", table, column)
 		}
 		typeName = decorateLiveColumnType(typeName, ct)
-		if def, ok := ct.DefaultValue(); ok {
-			def = strings.TrimSpace(def)
-			if def != "" {
-				typeName += " DEFAULT " + def
+		if withDefault {
+			if def, ok := ct.DefaultValue(); ok {
+				def = strings.TrimSpace(def)
+				if def != "" {
+					typeName += " DEFAULT " + def
+				}
 			}
 		}
 		return typeName, nil
 	}
 	return "", fmt.Errorf("column %s.%s not found", table, column)
+}
+
+// normalizeMySQLTypeName rewrites driver forms like "UNSIGNED INT" to "INT UNSIGNED".
+func normalizeMySQLTypeName(typeName string) string {
+	typeName = strings.TrimSpace(typeName)
+	if typeName == "" {
+		return typeName
+	}
+	upper := strings.ToUpper(typeName)
+	const prefix = "UNSIGNED "
+	if strings.HasPrefix(upper, prefix) {
+		return strings.TrimSpace(typeName[len(prefix):]) + " UNSIGNED"
+	}
+	return typeName
 }
 
 func liveColumnIsAutoIncrement(db *gorm.DB, table, column string) bool {

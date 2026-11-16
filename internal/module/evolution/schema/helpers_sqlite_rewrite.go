@@ -100,22 +100,25 @@ func sqliteRewriteTable(db *gorm.DB, table string, rewrite sqliteTableRewrite) e
 
 	// One connection for FK pragma + DDL. Reuse an open tx connection (upgrade
 	// scripts often run inside Transactor.Required); otherwise pin via Connection.
-	return sqliteRunOnOneConn(db, func(connDB *gorm.DB) error {
-		fkWasOn, err := sqliteReadForeignKeys(connDB)
-		if err != nil {
-			return err
+	return sqliteRunOnOneConn(db, func(connDB *gorm.DB) (err error) {
+		fkWasOn, fkErr := sqliteReadForeignKeys(connDB)
+		if fkErr != nil {
+			return fkErr
 		}
 		fkDisabled := false
 		if fkWasOn {
-			if err := helperExec(connDB, "PRAGMA foreign_keys=OFF"); err != nil {
-				return fmt.Errorf("disable foreign_keys for rewrite: %w", err)
+			if offErr := helperExec(connDB, "PRAGMA foreign_keys=OFF"); offErr != nil {
+				return fmt.Errorf("disable foreign_keys for rewrite: %w", offErr)
 			}
 			fkDisabled = true
 		}
 		// Restore before this callback returns so the pooled conn is never released with FK off.
 		defer func() {
-			if fkDisabled {
-				_ = helperExec(connDB, "PRAGMA foreign_keys=ON")
+			if !fkDisabled {
+				return
+			}
+			if restoreErr := helperExec(connDB, "PRAGMA foreign_keys=ON"); restoreErr != nil && err == nil {
+				err = fmt.Errorf("restore foreign_keys after rewrite: %w", restoreErr)
 			}
 		}()
 
@@ -174,7 +177,7 @@ func sqliteRunOnOneConn(db *gorm.DB, fn func(*gorm.DB) error) error {
 		return fmt.Errorf("db is nil")
 	}
 	if db.Statement != nil {
-		if _, ok := db.Statement.ConnPool.(gorm.TxCommitter); ok {
+		if tx, ok := db.Statement.ConnPool.(gorm.TxCommitter); ok && tx != nil {
 			return fn(db)
 		}
 	}
