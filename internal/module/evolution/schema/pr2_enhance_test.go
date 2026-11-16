@@ -415,10 +415,37 @@ func TestSqliteRunOnOneConn(t *testing.T) {
 	}
 }
 
+func TestSqliteRewriteTable_RefuseWhenFKPragmaIgnoredAndReferenced(t *testing.T) {
+	t.Parallel()
+	runtimeScope := newSchemaTestScope(t)
+	db := runtimeScope.Session().DB
+	_ = db.Exec(`PRAGMA foreign_keys=ON`)
+	if err := db.Exec(`CREATE TABLE rw_parent (id integer PRIMARY KEY)`).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Exec(`CREATE TABLE rw_child (id integer, parent_id integer REFERENCES rw_parent(id) ON DELETE CASCADE)`).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Exec(`INSERT INTO rw_parent (id) VALUES (1)`).Error; err != nil {
+		t.Fatal(err)
+	}
+	err := db.Transaction(func(tx *gorm.DB) error {
+		return sqliteRewriteTable(tx, "rw_parent", sqliteTableRewrite{
+			ForceNotNull: map[string]struct{}{"id": {}},
+		})
+	})
+	if err == nil || !strings.Contains(err.Error(), "pragma ignored") {
+		t.Fatalf("expected pragma-ignored refusal, got %v", err)
+	}
+}
+
 func TestSqliteRewriteHelpers(t *testing.T) {
 	t.Parallel()
 	if got := sqliteRewriteTempName("a b/c"); !strings.HasPrefix(got, "choysum_rw_") || len(got) > 40 {
 		t.Fatalf("temp name: %q", got)
+	}
+	if a, b := sqliteRewriteTempName("same_tbl"), sqliteRewriteTempName("same_tbl"); a != b {
+		t.Fatalf("temp name must be deterministic: %q vs %q", a, b)
 	}
 	if got := sqliteRewriteTempName(strings.Repeat("t", 80)); len(got) > 40 {
 		t.Fatalf("temp too long: %d %q", len(got), got)
@@ -559,13 +586,11 @@ func TestSqliteRewriteTable_ExecFailurePaths(t *testing.T) {
 		}
 		return origExec(db, sql)
 	}
-	sqliteReadForeignKeys = func(*gorm.DB) (bool, error) { return true, nil }
-	t.Cleanup(func() { sqliteReadForeignKeys = sqliteForeignKeysEnabled })
+	_ = origExec(db, "PRAGMA foreign_keys=ON")
 	if err := sqliteRewriteTable(db, "rw_fail", sqliteTableRewrite{ForceNotNull: map[string]struct{}{"b": {}}}); err == nil || !strings.Contains(err.Error(), "restore foreign_keys") {
 		t.Fatalf("fk on restore: %v", err)
 	}
 	helperExec = origExec
-	sqliteReadForeignKeys = sqliteForeignKeysEnabled
 }
 
 func TestSqliteRewriteTable_RestoreTriggerAndIndexFail(t *testing.T) {

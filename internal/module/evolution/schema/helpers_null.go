@@ -66,6 +66,8 @@ func applySetNotNull(opts HelperOptions, table, column string) error {
 		}
 		return nil
 	case "mysql", "mariadb":
+		// MODIFY COLUMN replaces the full definition; we preserve type/length/decimal,
+		// DEFAULT, and AUTO_INCREMENT only (not COMMENT/COLLATE/ON UPDATE).
 		typeName, err := liveColumnTypeName(opts.DB, table, column, true)
 		if err != nil {
 			return err

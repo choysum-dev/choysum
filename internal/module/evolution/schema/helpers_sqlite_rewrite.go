@@ -7,7 +7,6 @@ import (
 	"crypto/sha1"
 	"fmt"
 	"strings"
-	"time"
 
 	"gorm.io/gorm"
 )
@@ -110,7 +109,23 @@ func sqliteRewriteTable(db *gorm.DB, table string, rewrite sqliteTableRewrite) e
 			if offErr := helperExec(connDB, "PRAGMA foreign_keys=OFF"); offErr != nil {
 				return fmt.Errorf("disable foreign_keys for rewrite: %w", offErr)
 			}
-			fkDisabled = true
+			stillOn, stillErr := sqliteReadForeignKeys(connDB)
+			if stillErr != nil {
+				return stillErr
+			}
+			if stillOn {
+				// PRAGMA foreign_keys is a no-op inside an open transaction; refuse when
+				// DROP could cascade to referencing tables.
+				referenced, refErr := sqliteTableIsReferenced(connDB, table)
+				if refErr != nil {
+					return refErr
+				}
+				if referenced {
+					return fmt.Errorf("sqlite rewrite: foreign_keys still ON (pragma ignored inside a transaction) while other tables reference %s", table)
+				}
+			} else {
+				fkDisabled = true
+			}
 		}
 		// Restore before this callback returns so the pooled conn is never released with FK off.
 		defer func() {
@@ -258,8 +273,36 @@ var (
 )
 
 func sqliteRewriteTempName(table string) string {
-	sum := sha1.Sum([]byte(strings.TrimSpace(table) + fmt.Sprintf("-%d", time.Now().UnixNano())))
+	// Deterministic per table so DROP IF EXISTS reclaims leftovers from a crashed run.
+	sum := sha1.Sum([]byte(strings.TrimSpace(table)))
 	return fmt.Sprintf("choysum_rw_%x", sum[:10])
+}
+
+// sqliteTableIsReferenced reports whether any other table has a foreign key to table.
+func sqliteTableIsReferenced(db *gorm.DB, table string) (bool, error) {
+	var names []string
+	if err := db.Raw(`SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'`).Scan(&names).Error; err != nil {
+		return false, fmt.Errorf("list tables for fk refs: %w", err)
+	}
+	want := strings.ToLower(strings.TrimSpace(table))
+	for _, name := range names {
+		if strings.EqualFold(strings.TrimSpace(name), table) {
+			continue
+		}
+		var rows []struct {
+			Table string
+		}
+		q := fmt.Sprintf("PRAGMA foreign_key_list(%s)", quoteIdent("sqlite", name))
+		if err := db.Raw(q).Scan(&rows).Error; err != nil {
+			return false, fmt.Errorf("foreign_key_list %s: %w", name, err)
+		}
+		for _, row := range rows {
+			if strings.ToLower(strings.TrimSpace(row.Table)) == want {
+				return true, nil
+			}
+		}
+	}
+	return false, nil
 }
 
 func sqliteMasterSQLs(db *gorm.DB, kind, table string) ([]string, error) {
