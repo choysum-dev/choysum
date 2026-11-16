@@ -18,9 +18,8 @@ SPDX-License-Identifier: Apache-2.0
     <ChoyVarcharField :store="store" prop="Name" />
     <ChoyVarcharField :store="store" prop="Code" />
     <ChoySelectionField :store="store" prop="Direction" />
-    <ChoyVarcharField :store="store" prop="DecimalSeparator" />
-    <ChoyVarcharField :store="store" prop="ThousandSeparator" />
     <ChoyBooleanField :store="store" prop="IsActive" />
+    <ChoyVarcharField :store="store" prop="DateFormat" />
   </ChoyListView>
 </template>
 

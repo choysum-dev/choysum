@@ -311,12 +311,12 @@ msgctxt "base.model.Language.fields"
 msgid "Active"
 msgstr "启用"
 
-#: service/models/language.ts:142
+#: service/models/language.ts:170
 msgctxt "base.model.Language.fields"
 msgid "After amount"
 msgstr "金额后"
 
-#: service/models/language.ts:141
+#: service/models/language.ts:169
 msgctxt "base.model.Language.fields"
 msgid "Before amount"
 msgstr "金额前"
@@ -326,90 +326,165 @@ msgctxt "base.model.Language.fields"
 msgid "Code"
 msgstr "编码"
 
-#: service/models/language.ts:146
+#: service/models/language.ts:174
 msgctxt "base.model.Language.fields"
 msgid "Currency Symbol Position"
 msgstr "货币符号位置"
 
-#: service/models/language.ts:118
+#: service/models/language.ts:130
 msgctxt "base.model.Language.fields"
 msgid "Date Format"
 msgstr "日期格式"
 
-#: service/models/language.ts:93
+#: service/models/language.ts:99
 msgctxt "base.model.Language.fields"
 msgid "Decimal Separator"
 msgstr "小数分隔符"
 
-#: service/models/language.ts:109
+#: service/models/language.ts:121
 msgctxt "base.model.Language.fields"
 msgid "Digit grouping pattern, default [3,0] (thousands then none)."
 msgstr "数字分组模式，默认 [3,0]（千分位后不再分组）。"
 
-#: service/models/language.ts:86
+#: service/models/language.ts:89
 msgctxt "base.model.Language.fields"
 msgid "Direction"
 msgstr "文字方向"
 
-#: service/models/language.ts:134
+#: service/models/language.ts:159
 msgctxt "base.model.Language.fields"
 msgid "First Day of Week"
 msgstr "每周第一天"
 
-#: service/models/language.ts:108
+#: service/models/language.ts:155
+msgctxt "base.model.Language.fields"
+msgid "Friday"
+msgstr "星期五"
+
+#: service/models/language.ts:120
 msgctxt "base.model.Language.fields"
 msgid "Grouping"
 msgstr "分组"
 
-#: service/models/language.ts:82
+#: service/models/language.ts:114
+msgctxt "base.model.Language.fields"
+msgid "Indian ([3,2,0])"
+msgstr "印度式 ([3,2,0])"
+
+#: service/models/language.ts:85
 msgctxt "base.model.Language.fields"
 msgid "Left to right"
 msgstr "从左到右"
+
+#: service/models/language.ts:151
+msgctxt "base.model.Language.fields"
+msgid "Monday"
+msgstr "星期一"
 
 #: service/models/language.ts:53
 msgctxt "base.model.Language.fields"
 msgid "Name"
 msgstr "名称"
 
+#: service/models/language.ts:116
+msgctxt "base.model.Language.fields"
+msgid "None ([])"
+msgstr "无 ([])"
+
 #: service/models/language.ts:64
 msgctxt "base.model.Language.fields"
 msgid "POSIX locale code (e.g. en_US); cannot be changed after create."
 msgstr "POSIX 区域代码（如 en_US）；创建后不可更改。"
 
-#: service/models/language.ts:164
+#: service/models/language.ts:192
 msgctxt "base.model.Language.fields"
 msgid "Person Name Format"
 msgstr "姓名格式"
 
-#: service/models/language.ts:83
+#: service/models/language.ts:86
 msgctxt "base.model.Language.fields"
 msgid "Right to left"
 msgstr "从右到左"
 
-#: service/models/language.ts:153
+#: service/models/language.ts:156
+msgctxt "base.model.Language.fields"
+msgid "Saturday"
+msgstr "星期六"
+
+#: service/models/language.ts:150
+msgctxt "base.model.Language.fields"
+msgid "Sunday"
+msgstr "星期日"
+
+#: service/models/language.ts:181
 msgctxt "base.model.Language.fields"
 msgid "Symbol Spacing"
 msgstr "符号间距"
 
-#: service/models/language.ts:165
+#: service/models/language.ts:193
 msgctxt "base.model.Language.fields"
 msgid "Template using {FirstName} and {LastName}; e.g. {LastName}{FirstName} or {FirstName} {LastName}."
 msgstr "使用 {FirstName} 与 {LastName} 的模板，例如 {LastName}{FirstName} 或 {FirstName} {LastName}。"
 
-#: service/models/language.ts:100
+#: service/models/language.ts:90
+msgctxt "base.model.Language.fields"
+msgid "Text direction for UI chrome that follows this language (ltr or rtl)."
+msgstr "跟随该语言的 UI 文本方向（ltr 或 rtl）。"
+
+#: service/models/language.ts:113
+msgctxt "base.model.Language.fields"
+msgid "Thousands ([3,0])"
+msgstr "千分位 ([3,0])"
+
+#: service/models/language.ts:106
 msgctxt "base.model.Language.fields"
 msgid "Thousands Separator"
 msgstr "千位分隔符"
 
-#: service/models/language.ts:128
+#: service/models/language.ts:154
+msgctxt "base.model.Language.fields"
+msgid "Thursday"
+msgstr "星期四"
+
+#: service/models/language.ts:140
 msgctxt "base.model.Language.fields"
 msgid "Time Format"
 msgstr "时间格式"
 
-#: service/models/language.ts:119
+#: service/models/language.ts:115
 msgctxt "base.model.Language.fields"
-msgid "strftime-style pattern for dates in this language."
-msgstr "该语言下的 strftime 风格日期格式。"
+msgid "Triples ([3,3])"
+msgstr "三位一组 ([3,3])"
+
+#: service/models/language.ts:152
+msgctxt "base.model.Language.fields"
+msgid "Tuesday"
+msgstr "星期二"
+
+#: service/models/language.ts:153
+msgctxt "base.model.Language.fields"
+msgid "Wednesday"
+msgstr "星期三"
+
+#: service/models/language.ts:160
+msgctxt "base.model.Language.fields"
+msgid "Week start day for calendars (0 = Sunday … 6 = Saturday)."
+msgstr "日历周起始日（0=周日 … 6=周六）。"
+
+#: service/models/language.ts:76
+msgctxt "base.model.Language.fields"
+msgid "When enabled, the language appears in Preferences and the guest switcher. Enabling does not install PO / terminology packs."
+msgstr "启用后可在偏好设置与访客切换器中选择。启用不会安装 PO / 术语包。"
+
+#: service/models/language.ts:131
+msgctxt "base.model.Language.fields"
+msgid "dayjs pattern for dates in this language (e.g. YYYY-MM-DD)."
+msgstr "该语言的 dayjs 日期格式（例如 YYYY-MM-DD）。"
+
+#: service/models/language.ts:141
+msgctxt "base.model.Language.fields"
+msgid "dayjs pattern for times in this language (e.g. HH:mm:ss)."
+msgstr "该语言的 dayjs 时间格式（例如 HH:mm:ss）。"
 
 #: service/models/sequence.ts:130
 msgctxt "base.model.Sequence.fields"
@@ -971,27 +1046,27 @@ msgctxt "service/models/exchange_rate"
 msgid "Rate must be greater than 0"
 msgstr "Rate 必须大于 0"
 
-#: service/models/language.ts:282
+#: service/models/language.ts:310
 msgctxt "service/models/language"
 msgid "At least one language must stay active"
 msgstr "至少需要保留一门启用的语言"
 
-#: service/models/language.ts:219
+#: service/models/language.ts:247
 msgctxt "service/models/language"
 msgid "Code or LanguageId is required"
 msgstr "必须提供 Code 或 LanguageId"
 
-#: service/models/language.ts:296
+#: service/models/language.ts:324
 msgctxt "service/models/language"
 msgid "Language code cannot be changed"
 msgstr "语言代码不可修改"
 
-#: service/models/language.ts:240
+#: service/models/language.ts:268
 msgctxt "service/models/language"
 msgid "Language not found"
 msgstr "未找到语言"
 
-#: service/models/language.ts:299
+#: service/models/language.ts:327
 msgctxt "service/models/language"
 msgid "The root language en_US cannot be deactivated"
 msgstr "根语言 en_US 不可停用"
@@ -1931,45 +2006,95 @@ msgctxt "web/views/ExchangeRateListView"
 msgid "Exchange Rate"
 msgstr "汇率"
 
-#: web/views/LanguageFormView.vue:21
+#: web/views/LanguageFormView.vue:16
+msgctxt "web/views/LanguageFormView"
+msgid "Controls text direction (dir) for UI that follows this language."
+msgstr "控制跟随该语言的 UI 文本方向（dir）。"
+
+#: web/views/LanguageFormView.vue:41
 msgctxt "web/views/LanguageFormView"
 msgid "Copy Language"
 msgstr "复制语言"
 
-#: web/views/LanguageFormView.vue:21
+#: web/views/LanguageFormView.vue:41
 msgctxt "web/views/LanguageFormView"
 msgid "Create Language"
 msgstr "新建语言"
 
-#: web/views/LanguageFormView.vue:21
+#: web/views/LanguageFormView.vue:83
+msgctxt "web/views/LanguageFormView"
+msgid "Currency & Person Name"
+msgstr "货币与人名"
+
+#: web/views/LanguageFormView.vue:96
+msgctxt "web/views/LanguageFormView"
+msgid "Currency preview"
+msgstr "货币预览"
+
+#: web/views/LanguageFormView.vue:55
+msgctxt "web/views/LanguageFormView"
+msgid "Date & Time"
+msgstr "日期与时间"
+
+#: web/views/LanguageFormView.vue:41
 msgctxt "web/views/LanguageFormView"
 msgid "Delete Language"
 msgstr "删除语言"
 
-#: web/views/LanguageFormView.vue:21
+#: web/views/LanguageFormView.vue:41
 msgctxt "web/views/LanguageFormView"
 msgid "Edit Language"
 msgstr "编辑语言"
 
-#: web/views/LanguageFormView.vue:12
-msgctxt "web/views/LanguageFormView"
-msgid "Format"
-msgstr "格式"
-
 #: web/views/LanguageFormView.vue:21
+msgctxt "web/views/LanguageFormView"
+msgid "Enabling a language makes it selectable. It does not install PO / terminology packs."
+msgstr "启用语言后可选择该语言。不会安装 PO / 术语包。"
+
+#: web/views/LanguageFormView.vue:41
 msgctxt "web/views/LanguageFormView"
 msgid "Language"
 msgstr "语言"
 
-#: web/views/LanguageFormView.vue:3
+#: web/views/LanguageFormView.vue:6
 msgctxt "web/views/LanguageFormView"
 msgid "Language Information"
 msgstr "语言信息"
 
-#: web/views/LanguageFormView.vue:16
+#: web/views/LanguageFormView.vue:27
+msgctxt "web/views/LanguageFormView"
+msgid "Number Format"
+msgstr "数字格式"
+
+#: web/views/LanguageFormView.vue:12
+msgctxt "web/views/LanguageFormView"
+msgid "POSIX locale code (e.g. en_US). Catalog languages already exist — open them from the list to activate or edit."
+msgstr "POSIX 语言代码（例如 en_US）。目录语言已存在 — 请从列表打开以启用或编辑。"
+
+#: web/views/LanguageFormView.vue:13
+msgctxt "web/views/LanguageFormView"
+msgid "POSIX locale code cannot be changed after create."
+msgstr "创建后不可修改 POSIX 语言代码。"
+
+#: web/views/LanguageFormView.vue:99
+msgctxt "web/views/LanguageFormView"
+msgid "Person name preview"
+msgstr "人名预览"
+
+#: web/views/LanguageFormView.vue:50 web/views/LanguageFormView.vue:78
+msgctxt "web/views/LanguageFormView"
+msgid "Preview"
+msgstr "预览"
+
+#: web/views/LanguageFormView.vue:36
 msgctxt "web/views/LanguageFormView"
 msgid "Required"
 msgstr "必填"
+
+#: web/views/LanguageFormView.vue:12
+msgctxt "web/views/LanguageFormView"
+msgid "e.g. en_US"
+msgstr "例如 en_US"
 
 #: web/views/LanguageListView.vue:17
 msgctxt "web/views/LanguageListView"
@@ -2310,6 +2435,10 @@ msgstr "计量单位"
 #~ msgid "Shown in the app sidebar header; empty uses the product logo."
 #~ msgstr "显示在应用侧栏顶部；为空时使用产品 Logo。"
 
+#~ msgctxt "base.model.Language.fields"
+#~ msgid "strftime-style pattern for dates in this language."
+#~ msgstr "该语言下的 strftime 风格日期格式。"
+
 #~ msgctxt "service/models/company"
 #~ msgid "Invalid or inactive language: %s"
 #~ msgstr "语言无效或未启用：%s"
@@ -2321,3 +2450,7 @@ msgstr "计量单位"
 #~ msgctxt "web/route/routes"
 #~ msgid "Terminology Editor"
 #~ msgstr "术语编辑器"
+
+#~ msgctxt "web/views/LanguageFormView"
+#~ msgid "Format"
+#~ msgstr "格式"
