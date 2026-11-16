@@ -407,6 +407,9 @@ func TestSqliteRewriteHelpers(t *testing.T) {
 	if got := sqliteBareTypeName(""); got != "TEXT" {
 		t.Fatalf("empty bare: %q", got)
 	}
+	if got := sqliteBareTypeName(" PRIMARY KEY"); got != "TEXT" {
+		t.Fatalf("constraint-only bare: %q", got)
+	}
 }
 
 func TestSqliteRewriteTable_ExecFailurePaths(t *testing.T) {
