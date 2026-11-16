@@ -30,10 +30,9 @@ export type AuthActionDeps = {
   /** When set, skips dynamic import of `@/web/web/stores/i18nStore`. */
   importI18nStore?: () => Promise<{
     useI18nStore: () => {
-      setUiKey: (uiKey: string) => Promise<unknown> | unknown;
-      localeCode?: string | null;
+      setLang: (lang: string) => Promise<unknown> | unknown;
+      lang?: string | null;
     };
-    langToUiKey: (terminologyLang: string) => string;
   }>;
 };
 
@@ -613,7 +612,7 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
       }
       // Align FE UI key with the user's LanguageId (covers initAuth refresh paths; Login also applies this).
       try {
-        const { useI18nStore, langToUiKey } = await (deps?.importI18nStore
+        const { useI18nStore } = await (deps?.importI18nStore
           ? deps.importI18nStore()
           : import('@/web/web/stores/i18nStore'));
         const { applyUserLanguagePreference } = await import('./language_preference');
@@ -629,9 +628,8 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
         await applyUserLanguagePreference({
           languageId: (user as any)?.LanguageId,
           browseLanguage,
-          setUiKey: key => i18nStore.setUiKey(key),
-          langToUiKey,
-          getCurrentUiKey: () => i18nStore.localeCode ?? null,
+          setLang: key => i18nStore.setLang(key),
+          getCurrentLang: () => i18nStore.lang ?? null,
         });
       } catch {
         // Best-effort; auth must not fail because of i18n wiring.

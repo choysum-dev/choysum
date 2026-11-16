@@ -1134,8 +1134,8 @@ test('loadUser: applies LanguageId via injected language store', async () => {
   });
   const langBrowse = makeFn();
   langBrowse.resolve({ Code: 'zh_CN' });
-  const setUiKey = makeFn();
-  setUiKey.resolve(undefined);
+  const setLang = makeFn();
+  setLang.resolve(undefined);
 
   const actions = defineAuthActions(mockState as any, mockHelpers as any, {
     isClient: true,
@@ -1145,9 +1145,9 @@ test('loadUser: applies LanguageId via injected language store', async () => {
     }),
     importI18nStore: async () => ({
       useI18nStore: () => ({
-        setUiKey: setUiKey.fn,
+        setLang: setLang.fn,
+        lang: 'en_US',
       }),
-      langToUiKey: (lang: string) => `ui:${lang}`,
     }),
   });
 
@@ -1170,7 +1170,7 @@ test('loadUser: applies LanguageId via injected language store', async () => {
   ]);
   expect((mockState.currentUser.value as any)?.LanguageId).toBe('lang_zh');
   expect(langBrowse.calls.length).toBe(1);
-  expect(setUiKey.calls[0].args[0]).toBe('ui:zh_CN');
+  expect(setLang.calls[0].args[0]).toBe('zh_CN');
 });
 
 test('loadUser: swallows i18n apply failures', async () => {
@@ -1189,9 +1189,9 @@ test('loadUser: swallows i18n apply failures', async () => {
     }),
     importI18nStore: async () => ({
       useI18nStore: () => ({
-        setUiKey: async () => undefined,
+        setLang: async () => undefined,
+        lang: null,
       }),
-      langToUiKey: (lang: string) => lang,
     }),
   });
 
@@ -1208,8 +1208,8 @@ test('loadUser: still applies language when the language store is missing', asyn
     Id: 'usr_1',
     LanguageId: 'lang_zh',
   });
-  const setUiKey = makeFn();
-  setUiKey.resolve(undefined);
+  const setLang = makeFn();
+  setLang.resolve(undefined);
 
   const actions = defineAuthActions(mockState as any, mockHelpers as any, {
     isClient: true,
@@ -1218,15 +1218,15 @@ test('loadUser: still applies language when the language store is missing', asyn
     },
     importI18nStore: async () => ({
       useI18nStore: () => ({
-        setUiKey: setUiKey.fn,
+        setLang: setLang.fn,
+        lang: 'en_US',
       }),
-      langToUiKey: (lang: string) => (lang === 'zh_CN' ? 'zh-CN' : lang),
     }),
   });
 
   const ok = await actions.loadUser(true);
   expect(ok).toBe(true);
-  expect(setUiKey.calls.length).toBe(0);
+  expect(setLang.calls.length).toBe(0);
 });
 
 test('loadUser: exercises default i18nStore and Language registry imports', async () => {
@@ -1351,9 +1351,9 @@ test('initAuth: hydrates currentUser from Browse after recovering persisted toke
     }),
     importI18nStore: async () => ({
       useI18nStore: () => ({
-        setUiKey: async () => undefined,
+        setLang: async () => undefined,
+        lang: 'en_US',
       }),
-      langToUiKey: (lang: string) => lang,
     }),
   });
 

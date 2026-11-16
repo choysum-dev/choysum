@@ -213,7 +213,7 @@ function setPageError(message: string) {
 const i18nStore = useI18nStore();
 
 function uiLanguageCode(): string {
-  return String(i18nStore.terminologyLang || '');
+  return String(i18nStore.lang || i18nStore.activeLanguage.code || '');
 }
 
 async function leaveIfSetupReady(): Promise<boolean> {

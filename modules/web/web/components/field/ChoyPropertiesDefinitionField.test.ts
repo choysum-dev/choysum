@@ -872,7 +872,7 @@ describe('ChoyPropertiesDefinitionField', () => {
     const pinia = createPinia();
     setActivePinia(pinia);
     const i18n = useI18nStore();
-    i18n.localeCode = 'zh-CN';
+    i18n.lang = 'zh_CN';
 
     const binding = makeBinding({
       definition: [{ name: 'a', type: 'char', string: { en_US: 'A' } }],
@@ -885,13 +885,13 @@ describe('ChoyPropertiesDefinitionField', () => {
       expect(typeof state.editorLang).toBe('function');
       expect(state.editorLang?.()).toBe('zh_CN');
 
-      Object.defineProperty(i18n, 'terminologyLang', {
+      Object.defineProperty(i18n, 'lang', {
         configurable: true,
         get: () => '   ',
       });
       expect(state.editorLang?.()).toBe(TRANSLATED_BASE_LANG);
 
-      Object.defineProperty(i18n, 'terminologyLang', {
+      Object.defineProperty(i18n, 'lang', {
         configurable: true,
         get: () => {
           throw new Error('forced');

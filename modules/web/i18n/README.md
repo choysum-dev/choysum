@@ -41,8 +41,10 @@ retain English source text as their fallback. Vue reactivity uses
 `computed(() => _t(...))`. Process-local lazy needs use explicit closures such
 as `() => _t(...)`; no coercible lazy translation objects exist.
 
-Language switch (D9 / S6): default `location.reload`. Soft remount is experimental
-(`choysum.web.i18n.remountMode=remount`) and only clears menu/global scoped stores.
+Language identity is POSIX `Language.Code` (`en_US`, `zh_CN`). The FE store
+persists `lang`, merges Gateway catalogs under that key, and derives BCP47
+(`en-US`) only for Intl/Calendar. Language switch uses `location.reload`
+(`afterLangChange`); there is no soft remount product path.
 
 Optional admin PO download: `GET /web/i18n/po?lang=&application=&module=` (terminology List page).
 Requires a Bearer token; `application` and `module` are required. The server
@@ -52,4 +54,6 @@ terminology export as the caller so TranslationTerm Search ACL applies (403 on
 deny). Covered by handler tests for missing auth, unknown app, cross-app
 module, and path-traversal inputs.
 
-The handwritten pack under `web/web/i18n/source` is the English msgid baseline for soft UI keys. Terminology authority is this PO tree via Gateway (`_t` / `_lt`).
+The handwritten pack under `web/web/i18n/source` is the English msgid baseline
+(vue-i18n `en_US` messages). Terminology authority is this PO tree via Gateway
+(`_t` / `_lt`); missing translations fall back to msgid.

@@ -250,9 +250,9 @@ const { _t } = createTranslate('web', { scope: 'web/components/internal/DateTime
 /** Reka Calendar / Intl locale; falls back when Pinia is unavailable (FE unit mounts). */
 function resolveCalendarLocale(): string {
   try {
-    return String(useI18nStore().localeCode || '').trim() || 'en';
+    return String(useI18nStore().bcp47Locale || '').trim() || 'en-US';
   } catch {
-    return 'en';
+    return 'en-US';
   }
 }
 

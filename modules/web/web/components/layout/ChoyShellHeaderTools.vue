@@ -12,12 +12,12 @@ SPDX-License-Identifier: Apache-2.0
       class="mx-1 hidden !h-4 sm:block"
       data-testid="choy-shell-header-sep-tools"
     />
-    <ChoyShellLocaleMenu />
+    <ChoyShellLanguageMenu />
   </nav>
 </template>
 
 <script setup lang="ts">
-import ChoyShellLocaleMenu from './ChoyShellLocaleMenu.vue'
+import ChoyShellLanguageMenu from './ChoyShellLanguageMenu.vue'
 import ChoyShellThemeToggle from './ChoyShellThemeToggle.vue'
 import { Separator } from '../vendor/ui/separator'
 

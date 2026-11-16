@@ -120,7 +120,8 @@ export function create{{.Model.Name}}Store(options?: Create{{.Model.Name}}StoreO
       {
         getLang: () => {
           try {
-            return String(useI18nStore().terminologyLang || '').trim() || 'en_US';
+            const store = useI18nStore();
+            return String(store.lang || store.activeLanguage?.code || '').trim() || 'en_US';
           } catch {
             return 'en_US';
           }

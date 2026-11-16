@@ -272,7 +272,7 @@ const PropertyItemHelpTip = defineComponent({
 /** Request-lang fingerprint for Resolve; empty when Pinia is unavailable (unit stubs). */
 function currentTerminologyLang(): string {
   if (!getActivePinia()) return '';
-  return String(useI18nStore().terminologyLang || '').trim();
+  return String(useI18nStore().lang || useI18nStore().activeLanguage.code || '').trim();
 }
 
 defineSlots<{

@@ -2,52 +2,65 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { usePreferredLanguages, isClient } from '@vueuse/core';
-import dayjs, { type Dayjs } from 'dayjs';
-import relativeTime from 'dayjs/plugin/relativeTime';
-import { SUPPORTED_LOCALES } from './locales';
-import { DateTimeFormatType, SupportedLocale } from './types';
+import dayjs from 'dayjs';
+import { DateTimeFormatType } from './types';
+import { bcp47FromCode } from './bcp47';
 import { formatCurrencyFromConfig, formatNumberFromConfig } from './languageFormat';
 import { formatUtcInTimeZone, getUserTimeZone, parseUtc } from '@/web/web/utils/datetime';
 
-// Enable the relative time plugin.
-dayjs.extend(relativeTime);
-
-type DayjsWithRelativeTime = Dayjs & {
-  fromNow: (withoutSuffix?: boolean) => string;
-};
+/**
+ * Normalize a browser language tag to POSIX for matching against Language.Code.
+ */
+function toPosixCandidate(tag: string): string {
+  return String(tag || '')
+    .trim()
+    .replace(/-/g, '_');
+}
 
 /**
- * Detect the best matching system UI key.
- * When `allowedKeys` is provided (active Language ∩ catalog), prefer that set.
+ * Detect the best matching active Language.Code from navigator preferences.
  */
-export function detectBestUiKey(allowedKeys?: readonly string[]): SupportedLocale {
-  // Return the default locale on the server.
+export function detectBestLang(allowedCodes?: readonly string[]): string {
   if (!isClient) {
-    return 'en';
+    return 'en_US';
   }
 
-  const catalog = allowedKeys?.length
-    ? allowedKeys.filter(code => code in SUPPORTED_LOCALES)
-    : Object.keys(SUPPORTED_LOCALES);
+  const catalog =
+    allowedCodes?.length && allowedCodes.some(c => String(c || '').trim())
+      ? allowedCodes.map(c => String(c).trim()).filter(Boolean)
+      : ['en_US'];
   const preferredLanguages = usePreferredLanguages();
 
-  // Try matching the user's preferred language list.
-  for (const lang of preferredLanguages.value || []) {
-    // Exact match.
-    if (catalog.includes(lang)) {
-      return lang as SupportedLocale;
+  for (const pref of preferredLanguages.value || []) {
+    const posix = toPosixCandidate(pref);
+    if (catalog.includes(posix)) {
+      return posix;
     }
-
-    // Match the base language part, for example 'zh-TW' against 'zh-CN'.
-    const mainLang = lang.split('-')[0];
-    const matchedLang = catalog.find(supported => supported.startsWith(mainLang));
-
-    if (matchedLang) {
-      return matchedLang as SupportedLocale;
+    const mainLang = posix.split('_')[0];
+    const matched = catalog.find(code => code === mainLang || code.startsWith(`${mainLang}_`));
+    if (matched) {
+      return matched;
     }
   }
 
-  return (catalog.includes('en') ? 'en' : catalog[0] || 'en') as SupportedLocale;
+  return catalog.includes('en_US') ? 'en_US' : catalog[0] || 'en_US';
+}
+
+/**
+ * True when a persisted value looks like a legacy short UI key (en / zh-CN), not POSIX.
+ */
+export function looksLikeLegacyUiKey(code: string | null | undefined): boolean {
+  const raw = String(code || '').trim();
+  if (!raw) {
+    return true;
+  }
+  if (raw.includes('-')) {
+    return true;
+  }
+  if (!raw.includes('_') && raw.length <= 3) {
+    return true;
+  }
+  return false;
 }
 
 /**
@@ -56,45 +69,66 @@ export function detectBestUiKey(allowedKeys?: readonly string[]): SupportedLocal
 export function updateDocumentDirection(textDirection: string) {
   if (!isClient) return;
 
-  // Update the document direction attribute.
   document.documentElement.setAttribute('dir', textDirection);
-
-  // Always remove the RTL class to avoid style conflicts.
   document.documentElement.classList.remove('rtl');
-  // Do not add the rtl class anymore; rely on the dir attribute instead.
 
-  // Keep these direction variables because component styles depend on them.
   const isRtl = textDirection === 'rtl';
   const docStyle = document.documentElement.style;
 
-  // Base direction variables.
   docStyle.setProperty('--choy-direction', textDirection);
   docStyle.setProperty('--choy-start', isRtl ? 'right' : 'left');
   docStyle.setProperty('--choy-end', isRtl ? 'left' : 'right');
   docStyle.setProperty('--choy-text-align', isRtl ? 'right' : 'left');
-
-  // Transform and positioning variables.
   docStyle.setProperty('--choy-transform-direction', isRtl ? '100%' : '-100%');
   docStyle.setProperty('--choy-direction-transform-factor', isRtl ? '1' : '-1');
-
-  // Inline direction variables.
   docStyle.setProperty('--choy-direction-inset-start', isRtl ? 'right' : 'left');
   docStyle.setProperty('--choy-direction-inset-end', isRtl ? 'left' : 'right');
-
-  // Animation variables.
   docStyle.setProperty('--choy-direction-rotate', isRtl ? '180deg' : '0deg');
   docStyle.setProperty('--choy-direction-flip', isRtl ? '-1' : '1');
-
-  // Border direction variables.
   docStyle.setProperty('--choy-border-start-width', '1px');
   docStyle.setProperty('--choy-border-end-width', '1px');
+}
+
+type RelativeUnit = Intl.RelativeTimeFormatUnit;
+
+function pickRelativeUnit(diffMs: number): { value: number; unit: RelativeUnit } {
+  const abs = Math.abs(diffMs);
+  const sec = Math.round(diffMs / 1000);
+  const absSec = Math.abs(sec);
+  if (absSec < 60) {
+    return { value: sec, unit: 'second' };
+  }
+  const min = Math.round(sec / 60);
+  if (Math.abs(min) < 60) {
+    return { value: min, unit: 'minute' };
+  }
+  const hour = Math.round(min / 60);
+  if (Math.abs(hour) < 24) {
+    return { value: hour, unit: 'hour' };
+  }
+  const day = Math.round(hour / 24);
+  if (Math.abs(day) < 7) {
+    return { value: day, unit: 'day' };
+  }
+  const week = Math.round(day / 7);
+  if (Math.abs(week) < 5) {
+    return { value: week, unit: 'week' };
+  }
+  const month = Math.round(day / 30);
+  if (Math.abs(month) < 12) {
+    return { value: month, unit: 'month' };
+  }
+  const year = Math.round(day / 365);
+  void abs;
+  return { value: year, unit: 'year' };
 }
 
 /**
  * Format date and time values.
  *
  * - `date` / `time`: no user-timezone conversion (calendar / clock literals).
- * - `datetime` / `relative`: interpret input as UTC instant and show in user TZ.
+ * - `datetime`: interpret input as UTC instant and show in user TZ.
+ * - `relative`: Intl.RelativeTimeFormat with BCP47.
  */
 export function formatDateTime(
   date: Date | string | number,
@@ -104,13 +138,14 @@ export function formatDateTime(
     format?: string;
     isLong?: boolean;
     timeZone?: string;
+    /** BCP47 tag for relative formatting (required for type:'relative'). */
+    bcp47?: string;
   }
 ): string {
   const type = options?.type || 'date';
   const isLong = options?.isLong || false;
   const timeZone = options?.timeZone || getUserTimeZone();
 
-  // Select the most appropriate format for the requested type.
   if (type === 'relative') {
     const iso =
       date instanceof Date
@@ -118,7 +153,15 @@ export function formatDateTime(
         : typeof date === 'number'
           ? new Date(date).toISOString()
           : String(date);
-    return (parseUtc(iso).tz(timeZone) as unknown as DayjsWithRelativeTime).fromNow();
+    const targetMs = parseUtc(iso).tz(timeZone).valueOf();
+    const nowMs = Date.now();
+    const { value, unit } = pickRelativeUnit(targetMs - nowMs);
+    const tag = options?.bcp47 || 'en-US';
+    try {
+      return new Intl.RelativeTimeFormat(tag, { numeric: 'auto' }).format(value, unit);
+    } catch {
+      return new Intl.RelativeTimeFormat('en-US', { numeric: 'auto' }).format(value, unit);
+    }
   }
 
   let defaultFormat: string;
@@ -145,16 +188,17 @@ export function formatDateTime(
 
 /**
  * Format numbers.
- * Prefer Language-driven separators/grouping when present; otherwise Intl (catalog incomplete).
+ * Prefer Language-driven separators/grouping when present; otherwise Intl with BCP47.
  */
-export function formatNumber(value: number, locale: string, config: any, options?: { digits?: number }) {
+export function formatNumber(value: number, bcp47: string, config: any, options?: { digits?: number }) {
   if (config && (config.thousandsSeparator != null || config.decimalSeparator != null || config.grouping)) {
     return formatNumberFromConfig(value, config, options);
   }
   try {
     const digits = options?.digits ?? config?.decimalDigits ?? 2;
+    const tag = bcp47 || 'en-US';
 
-    return new Intl.NumberFormat(locale, {
+    return new Intl.NumberFormat(tag, {
       minimumFractionDigits: digits,
       maximumFractionDigits: digits,
     }).format(value);
@@ -167,14 +211,15 @@ export function formatNumber(value: number, locale: string, config: any, options
  * Format currency values.
  * Prefer Language-driven separators + symbol placement when separators are present.
  */
-export function formatCurrency(value: number, locale: string, config: any, currencyCode?: string) {
+export function formatCurrency(value: number, bcp47: string, config: any, currencyCode?: string) {
   if (config && (config.thousandsSeparator != null || config.decimalSeparator != null || config.grouping)) {
     return formatCurrencyFromConfig(value, config, currencyCode);
   }
   try {
     const code = currencyCode || config?.code || 'USD';
+    const tag = bcp47 || 'en-US';
 
-    return new Intl.NumberFormat(locale, {
+    return new Intl.NumberFormat(tag, {
       style: 'currency',
       currency: code,
       minimumFractionDigits: config?.decimalDigits ?? 2,
@@ -186,12 +231,13 @@ export function formatCurrency(value: number, locale: string, config: any, curre
 }
 
 /**
- * Build the date and time format config.
+ * Build the date and time format config keyed by POSIX lang.
  */
-export function getDateTimeFormats(locale: string, config: any) {
+export function getDateTimeFormats(lang: string, config: any) {
   const formats: Record<string, any> = {};
+  const bcp47 = bcp47FromCode(lang);
 
-  formats[locale] = {
+  formats[lang] = {
     short: {
       year: 'numeric',
       month: 'short',
@@ -211,7 +257,7 @@ export function getDateTimeFormats(locale: string, config: any) {
       hour: 'numeric',
       minute: 'numeric',
       second: 'numeric',
-      hour12: locale.startsWith('en'), // English locales use a 12-hour clock.
+      hour12: bcp47.startsWith('en'),
     },
   };
 
@@ -219,12 +265,12 @@ export function getDateTimeFormats(locale: string, config: any) {
 }
 
 /**
- * Build the number format config.
+ * Build the number format config keyed by POSIX lang.
  */
-export function getNumberFormats(locale: string, numberFormatConfig: any, currencyConfig: any) {
+export function getNumberFormats(lang: string, numberFormatConfig: any, currencyConfig: any) {
   const formats: Record<string, any> = {};
 
-  formats[locale] = {
+  formats[lang] = {
     currency: {
       style: 'currency',
       currency: currencyConfig?.code || 'USD',

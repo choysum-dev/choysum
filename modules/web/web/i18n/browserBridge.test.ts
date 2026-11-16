@@ -31,12 +31,12 @@ test('installBrowserI18nBridge > falls back to msgid when the bridge is not inst
 test('installBrowserI18nBridge > honors the requested terminology lang when the composer locale differs', () => {
   const i18n = createI18n({
     legacy: false,
-    locale: 'en',
+    locale: 'en_US',
     missingWarn: false,
     fallbackWarn: false,
     messages: {
-      en: {},
-      'zh-CN': projectTerminologyMessages({
+      en_US: {},
+      zh_CN: projectTerminologyMessages({
         core: {
           'web/rpc/errors': {
             'Unknown API error': '未知 API 错误',
@@ -66,11 +66,11 @@ test('installBrowserI18nBridge > exposeBrowserI18nOnWindow wires window.$i18n an
   (globalThis as { window?: unknown }).window = globalThis as any;
   const i18n = createI18n({
     legacy: false,
-    locale: 'zh-CN',
+    locale: 'zh_CN',
     missingWarn: false,
     fallbackWarn: false,
     messages: {
-      'zh-CN': projectTerminologyMessages({
+      zh_CN: projectTerminologyMessages({
         core: {
           'web/rpc/errors': {
             'Unknown API error': '未知 API 错误',
@@ -83,7 +83,7 @@ test('installBrowserI18nBridge > exposeBrowserI18nOnWindow wires window.$i18n an
   exposeBrowserI18nOnWindow(i18n.global);
   expect((globalThis as { window?: { $i18n?: unknown } }).window?.$i18n).toBe(i18n.global);
 
-  runWithRequestContextSync({ lang: 'zh_CN', locale: 'zh-CN' }, () => {
+  runWithRequestContextSync({ lang: 'zh_CN', bcp47: 'zh-CN' }, () => {
     const { _t } = createTranslate('core', { scope: 'web/rpc/errors' });
     expect(_t('Unknown API error')).toBe('未知 API 错误');
   });

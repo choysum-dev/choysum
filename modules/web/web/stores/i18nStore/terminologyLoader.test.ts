@@ -1,22 +1,8 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { uiKeyToLang, langToUiKey } from './lang';
 import { fetchWebTranslations } from './terminologyLoader';
 import { asyncFnRecorder } from '@/web/web/__tests__/mountApp';
-
-describe('uiKeyToLang / langToUiKey', () => {
-  test('maps zh-CN ↔ zh_CN and en ↔ en_US', () => {
-    expect(uiKeyToLang('zh-CN')).toBe('zh_CN');
-    expect(langToUiKey('zh_CN')).toBe('zh-CN');
-    expect(uiKeyToLang('en')).toBe('en_US');
-    expect(langToUiKey('en_US')).toBe('en');
-  });
-
-  test('does not treat locale as lang (D12d)', () => {
-    expect(uiKeyToLang('zh-CN')).not.toBe('zh-CN');
-  });
-});
 
 describe('fetchWebTranslations', () => {
   test('requests lang+hash and returns payload', async () => {
@@ -24,7 +10,7 @@ describe('fetchWebTranslations', () => {
       ok: true,
       json: async () => ({
         lang: 'zh_CN',
-        locale: 'zh-CN',
+        bcp47: 'zh-CN',
         hash: 'abc',
         unchanged: false,
         messages: { auth: { 'a@t': { Hello: '你好' } } },
@@ -39,6 +25,7 @@ describe('fetchWebTranslations', () => {
     expect(url).toContain('hash=prev');
     expect(url).not.toContain('moduleNames');
     expect(out.unchanged).toBe(false);
+    expect(out.bcp47).toBe('zh-CN');
     expect(out.messages?.auth?.['a@t']?.Hello).toBe('你好');
   });
 
@@ -47,7 +34,7 @@ describe('fetchWebTranslations', () => {
       ok: true,
       json: async () => ({
         lang: 'zh_CN',
-        locale: 'zh-CN',
+        bcp47: 'zh-CN',
         hash: 'abc',
         unchanged: true,
         messages: { should: 'ignore' },

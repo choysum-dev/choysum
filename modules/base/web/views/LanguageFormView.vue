@@ -74,7 +74,7 @@ const { recordId, viewMode, showHeader, createAction } = props;
 /** Refresh FE format overlays so list/number displays pick up Language field changes. */
 async function onLanguageSaved() {
   try {
-    await useI18nStore().loadActiveUiKeysFromServer();
+    await useI18nStore().loadActiveLanguages();
   } catch {
     // Best-effort; next full page init will reload formats.
   }

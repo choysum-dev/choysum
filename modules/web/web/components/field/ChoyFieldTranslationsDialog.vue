@@ -66,7 +66,7 @@ const props = defineProps<{
   maxLength?: number;
   /** Unsaved form value for the current UI language; applied on open. */
   draftValue?: string;
-  /** Optional lang override (e.g. zh_CN); defaults to i18n terminologyLang. */
+  /** Optional lang override (e.g. zh_CN); defaults to store lang / activeLanguage.code. */
   draftLang?: string;
 }>();
 
@@ -103,7 +103,7 @@ function resolveDraftLang(): string {
   const fromProp = String(props.draftLang || '').trim();
   if (fromProp) return fromProp;
   try {
-    return String(useI18nStore().terminologyLang || '').trim();
+    return String(useI18nStore().lang || useI18nStore().activeLanguage.code || '').trim();
   } catch {
     return '';
   }

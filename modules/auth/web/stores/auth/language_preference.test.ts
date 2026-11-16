@@ -57,7 +57,7 @@ test('terminologyCodeFromLanguageId: inactive language yields empty code', async
   expect(code).toBe('');
 });
 
-test('applyUserLanguagePreference: resolves language then setUiKey', async () => {
+test('applyUserLanguagePreference: resolves language then setLang', async () => {
   const order: string[] = [];
   await applyUserLanguagePreference({
     languageId: 'lang_zh',
@@ -65,81 +65,75 @@ test('applyUserLanguagePreference: resolves language then setUiKey', async () =>
       order.push('browse');
       return { Code: 'zh_CN' };
     },
-    setUiKey: async key => {
-      order.push(`ui:${key}`);
+    setLang: async key => {
+      order.push(`lang:${key}`);
     },
-    langToUiKey: lang => `ui:${lang}`,
   });
-  expect(order).toEqual(['browse', 'ui:ui:zh_CN']);
+  expect(order).toEqual(['browse', 'lang:zh_CN']);
 });
 
-test('applyUserLanguagePreference: propagates setUiKey rejection', async () => {
+test('applyUserLanguagePreference: propagates setLang rejection', async () => {
   let caught: unknown;
   try {
     await applyUserLanguagePreference({
       languageId: 'lang_zh',
       browseLanguage: async () => ({ Code: 'zh_CN' }),
-      setUiKey: async () => {
-        throw new Error('setUiKey failed');
+      setLang: async () => {
+        throw new Error('setLang failed');
       },
-      langToUiKey: lang => lang,
     });
   } catch (err) {
     caught = err;
   }
-  expect(String((caught as Error)?.message || '')).toContain('setUiKey failed');
+  expect(String((caught as Error)?.message || '')).toContain('setLang failed');
 });
 
-test('applyUserLanguagePreference: skips setUiKey when LanguageId has no Code', async () => {
-  const setUiKeyCalls: string[] = [];
+test('applyUserLanguagePreference: skips setLang when LanguageId has no Code', async () => {
+  const setLangCalls: string[] = [];
   await applyUserLanguagePreference({
     languageId: 'lang_missing',
     browseLanguage: async () => null,
-    setUiKey: async key => {
-      setUiKeyCalls.push(key);
+    setLang: async key => {
+      setLangCalls.push(key);
     },
-    langToUiKey: lang => lang,
   });
-  expect(setUiKeyCalls).toEqual([]);
+  expect(setLangCalls).toEqual([]);
 });
 
-test('applyUserLanguagePreference: skips setUiKey when uiKey already matches', async () => {
-  const setUiKeyCalls: string[] = [];
+test('applyUserLanguagePreference: skips setLang when POSIX code already matches', async () => {
+  const setLangCalls: string[] = [];
   await applyUserLanguagePreference({
     languageId: 'lang_zh',
     browseLanguage: async () => ({ Code: 'zh_CN' }),
-    setUiKey: async key => {
-      setUiKeyCalls.push(key);
+    setLang: async key => {
+      setLangCalls.push(key);
     },
-    langToUiKey: lang => (lang === 'zh_CN' ? 'zh-CN' : 'en'),
-    getCurrentUiKey: () => 'zh-CN',
+    getCurrentLang: () => 'zh_CN',
   });
-  expect(setUiKeyCalls).toEqual([]);
+  expect(setLangCalls).toEqual([]);
 });
 
-test('applyUserLanguagePreference: calls setUiKey when uiKey differs', async () => {
-  const setUiKeyCalls: string[] = [];
+test('applyUserLanguagePreference: calls setLang when code differs', async () => {
+  const setLangCalls: string[] = [];
   await applyUserLanguagePreference({
     languageId: 'lang_zh',
     browseLanguage: async () => ({ Code: 'zh_CN' }),
-    setUiKey: async key => {
-      setUiKeyCalls.push(key);
+    setLang: async key => {
+      setLangCalls.push(key);
     },
-    langToUiKey: lang => (lang === 'zh_CN' ? 'zh-CN' : 'en'),
-    getCurrentUiKey: () => 'en',
+    getCurrentLang: () => 'en_US',
   });
-  expect(setUiKeyCalls).toEqual(['zh-CN']);
+  expect(setLangCalls).toEqual(['zh_CN']);
 });
 
-test('applyUserLanguagePreference: calls setUiKey when getCurrentUiKey omitted', async () => {
-  const setUiKeyCalls: string[] = [];
+test('applyUserLanguagePreference: calls setLang when getCurrentLang omitted', async () => {
+  const setLangCalls: string[] = [];
   await applyUserLanguagePreference({
     languageId: 'lang_zh',
     browseLanguage: async () => ({ Code: 'zh_CN' }),
-    setUiKey: async key => {
-      setUiKeyCalls.push(key);
+    setLang: async key => {
+      setLangCalls.push(key);
     },
-    langToUiKey: lang => lang,
   });
-  expect(setUiKeyCalls).toEqual(['zh_CN']);
+  expect(setLangCalls).toEqual(['zh_CN']);
 });

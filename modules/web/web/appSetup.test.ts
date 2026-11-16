@@ -29,11 +29,10 @@ test('setupApp > registers plugins and exposes browser i18n globals', () => {
   const createTerminologyCatalogMerger = fnRecorder(() => fnRecorder());
   const pinia = { name: 'pinia' };
   const createPinia = () => ({ use: () => pinia }) as any;
-  const currentLocale = reactive({ code: 'en' });
+  const activeLanguage = reactive({ code: 'en_US', bcp47: 'en-US' });
   const lastTerminologyLoad = ref<unknown>(null);
-  const i18nLocale = ref('en');
+  const i18nLocale = ref('en_US');
   const mergeLocaleMessage = fnRecorder();
-  const loadVueI18nMessages = asyncFnRecorder(async () => null);
   const createI18n = fnRecorder(() => ({
     global: {
       locale: i18nLocale,
@@ -47,12 +46,12 @@ test('setupApp > registers plugins and exposes browser i18n globals', () => {
     createPinia,
     piniaPluginPersistedstate: (() => {}) as any,
     useI18nStore: (() => ({
-      currentLocale,
-      terminologyLang: 'en_US',
+      lang: 'en_US',
+      bcp47Locale: 'en-US',
+      activeLanguage,
       lastTerminologyLoad: lastTerminologyLoad.value,
       getDateTimeFormats: () => ({ short: {} }),
       getNumberFormats: () => ({ currency: {} }),
-      loadVueI18nMessages,
       revalidateTerminologyIfStale: async () => null,
     })) as any,
     setUserTimeZoneResolver: fnRecorder() as any,
@@ -93,20 +92,19 @@ test('setupApp > registers plugins and exposes browser i18n globals', () => {
 
 test('setupApp > skips browser i18n expose without window', () => {
   const exposeBrowserI18nOnWindow = fnRecorder();
-  const currentLocale = reactive({ code: 'en' });
-  const i18nLocale = ref('en');
+  const activeLanguage = reactive({ code: 'en_US', bcp47: 'en-US' });
+  const i18nLocale = ref('en_US');
 
   setupApp(makeApp() as any, {
     registerGlobalDirectives: fnRecorder() as any,
     createPinia: (() => ({ use: () => ({}) })) as any,
     piniaPluginPersistedstate: (() => {}) as any,
     useI18nStore: (() => ({
-      currentLocale,
-      terminologyLang: 'en_US',
+      activeLanguage,
+      lang: 'en_US',
       lastTerminologyLoad: null,
       getDateTimeFormats: () => ({}),
       getNumberFormats: () => ({}),
-      loadVueI18nMessages: async () => null,
     })) as any,
     setUserTimeZoneResolver: fnRecorder() as any,
     setGlobalRequestContextProvider: fnRecorder() as any,
@@ -133,20 +131,19 @@ test('setupApp > skips browser i18n expose without window', () => {
 
 test('setupApp > resolves user timezone from auth store', () => {
   let userTimeZoneResolver: (() => string | null) | undefined;
-  const currentLocale = reactive({ code: 'en' });
-  const i18nLocale = ref('en');
+  const activeLanguage = reactive({ code: 'en_US', bcp47: 'en-US' });
+  const i18nLocale = ref('en_US');
 
   setupApp(makeApp() as any, {
     registerGlobalDirectives: fnRecorder() as any,
     createPinia: (() => ({ use: () => ({}) })) as any,
     piniaPluginPersistedstate: (() => {}) as any,
     useI18nStore: (() => ({
-      currentLocale,
-      terminologyLang: 'en_US',
+      activeLanguage,
+      lang: 'en_US',
       lastTerminologyLoad: null,
       getDateTimeFormats: () => ({}),
       getNumberFormats: () => ({}),
-      loadVueI18nMessages: async () => null,
     })) as any,
     setUserTimeZoneResolver: ((resolver: any) => {
       userTimeZoneResolver = resolver;
@@ -178,20 +175,19 @@ test('setupApp > resolves user timezone from auth store', () => {
 
 test('setupApp > falls back to identity timezone and swallows auth lookup failures', () => {
   let userTimeZoneResolver: (() => string | null) | undefined;
-  const currentLocale = reactive({ code: 'en' });
-  const i18nLocale = ref('en');
+  const activeLanguage = reactive({ code: 'en_US', bcp47: 'en-US' });
+  const i18nLocale = ref('en_US');
 
   setupApp(makeApp() as any, {
     registerGlobalDirectives: fnRecorder() as any,
     createPinia: (() => ({ use: () => ({}) })) as any,
     piniaPluginPersistedstate: (() => {}) as any,
     useI18nStore: (() => ({
-      currentLocale,
-      terminologyLang: 'en_US',
+      activeLanguage,
+      lang: 'en_US',
       lastTerminologyLoad: null,
       getDateTimeFormats: () => ({}),
       getNumberFormats: () => ({}),
-      loadVueI18nMessages: async () => null,
     })) as any,
     setUserTimeZoneResolver: ((resolver: any) => {
       userTimeZoneResolver = resolver;
@@ -224,18 +220,18 @@ test('setupApp > falls back to identity timezone and swallows auth lookup failur
 });
 
 function baseDeps(overrides: Partial<SetupAppDeps> & Record<string, unknown> = {}): SetupAppDeps {
-  const currentLocale = reactive({ code: 'en' });
+  const activeLanguage = reactive({ code: 'en_US', bcp47: 'en-US' });
   const lastTerminologyLoad = ref<unknown>(null);
-  const i18nLocale = ref('en');
+  const i18nLocale = ref('en_US');
   const store = {
-    currentLocale,
-    terminologyLang: 'en_US',
+    activeLanguage,
+    lang: 'en_US',
+    bcp47Locale: 'en-US',
     get lastTerminologyLoad() {
       return lastTerminologyLoad.value;
     },
     getDateTimeFormats: () => ({}),
     getNumberFormats: () => ({}),
-    loadVueI18nMessages: async () => null as unknown,
     revalidateTerminologyIfStale: async () => null as unknown,
   };
   const deps: SetupAppDeps & { _store: typeof store; _lastTerminologyLoad: typeof lastTerminologyLoad; _i18nLocale: typeof i18nLocale } = {
@@ -319,13 +315,15 @@ test('setupApp > builds request context with terminology lang and resolved tz', 
       requestContextProvider = provider;
     },
   });
-  (deps as any)._store.currentLocale.code = 'zh-CN';
+  (deps as any)._store.lang = 'zh_CN';
+  (deps as any)._store.activeLanguage.code = 'zh_CN';
+  (deps as any)._store.bcp47Locale = 'zh-CN';
 
   setupApp(makeApp() as any, deps);
 
   expect(requestContextProvider?.()).toEqual({
-    locale: 'zh-CN',
-    lang: 'en_US',
+    lang: 'zh_CN',
+    bcp47: 'zh-CN',
     tz: 'Europe/Berlin',
   });
 });
@@ -368,8 +366,8 @@ test('setupApp > omits tz from request context when unresolved', () => {
   );
 
   expect(requestContextProvider?.()).toEqual({
-    locale: 'en',
     lang: 'en_US',
+    bcp47: 'en-US',
   });
 });
 
@@ -391,25 +389,24 @@ test('setupApp > swallows auth errors while building request context timezone', 
   );
 
   expect(requestContextProvider?.()).toEqual({
-    locale: 'en',
     lang: 'en_US',
+    bcp47: 'en-US',
     tz: 'UTC',
   });
 });
 
-test('setupApp > updates vue-i18n locale and legacy messages on locale change', async () => {
+test('setupApp > updates vue-i18n locale on active language change', async () => {
   const app = makeApp();
   const mergeLocaleMessage = fnRecorder();
-  const loadVueI18nMessages = asyncFnRecorder(async () => ({ legacy: 'messages' }));
-  const i18nLocale = ref('en');
-  const currentLocale = reactive({ code: 'en' });
+  const i18nLocale = ref('en_US');
+  const activeLanguage = reactive({ code: 'en_US', bcp47: 'en-US' });
   const store = {
-    currentLocale,
-    terminologyLang: 'en_US',
+    lang: 'en_US',
+    bcp47Locale: 'en-US',
+    activeLanguage,
     lastTerminologyLoad: null as unknown,
     getDateTimeFormats: () => ({}),
     getNumberFormats: () => ({}),
-    loadVueI18nMessages,
   };
 
   setupApp(app as any, {
@@ -420,69 +417,27 @@ test('setupApp > updates vue-i18n locale and legacy messages on locale change', 
     })) as any,
   });
 
-  currentLocale.code = 'zh-CN';
+  activeLanguage.code = 'zh_CN';
   await nextTick();
-  await nextTick();
 
-  expect(loadVueI18nMessages.calls.map(c => c[0])).toEqual(['zh-CN']);
-  expect(mergeLocaleMessage.calls).toEqual([['zh-CN', { legacy: 'messages' }]]);
-  expect(i18nLocale.value).toBe('zh-CN');
-});
-
-test('setupApp > warns when legacy locale messages fail to load', async () => {
-  const warns: unknown[][] = [];
-  const originalWarn = console.warn;
-  console.warn = (...args: unknown[]) => {
-    warns.push(args);
-  };
-  try {
-    const currentLocale = reactive({ code: 'en' });
-    const i18nLocale = ref('en');
-    const loadVueI18nMessages = asyncFnRecorder(async () => {
-      throw new Error('network');
-    });
-    setupApp(makeApp() as any, {
-      ...baseDeps(),
-      useI18nStore: (() => ({
-        currentLocale,
-        terminologyLang: 'en_US',
-        lastTerminologyLoad: null,
-        getDateTimeFormats: () => ({}),
-        getNumberFormats: () => ({}),
-        loadVueI18nMessages,
-      })) as any,
-      createI18n: (() => ({
-        global: { locale: i18nLocale, mergeLocaleMessage: fnRecorder() },
-      })) as any,
-    });
-
-    currentLocale.code = 'zh-CN';
-    await nextTick();
-    await nextTick();
-
-    expect(warns.length).toBe(1);
-    expect(String(warns[0][0])).toContain('Failed to load legacy locale messages for zh-CN');
-    expect(warns[0][1] instanceof Error).toBe(true);
-  } finally {
-    console.warn = originalWarn;
-  }
+  expect(i18nLocale.value).toBe('zh_CN');
+  expect(mergeLocaleMessage.calls.length).toBe(0);
 });
 
 test('setupApp > merges terminology catalog updates from the i18n store', async () => {
   const mergeLocaleMessage = fnRecorder();
   const terminologyMerger = fnRecorder();
   const lastTerminologyLoad = ref<unknown>(null);
-  const currentLocale = reactive({ code: 'en' });
-  const i18nLocale = ref('en');
+  const activeLanguage = reactive({ code: 'en_US', bcp47: 'en-US' });
+  const i18nLocale = ref('en_US');
   const store = {
-    currentLocale,
-    terminologyLang: 'en_US',
+    activeLanguage,
+    lang: 'en_US',
     get lastTerminologyLoad() {
       return lastTerminologyLoad.value;
     },
     getDateTimeFormats: () => ({}),
     getNumberFormats: () => ({}),
-    loadVueI18nMessages: async () => null,
   };
 
   setupApp(makeApp() as any, {
@@ -500,18 +455,35 @@ test('setupApp > merges terminology catalog updates from the i18n store', async 
     projectTerminologyMessages: (m: unknown) => m as any,
   });
 
-  lastTerminologyLoad.value = { auth: { menu: { Users: '用户' } } };
-  currentLocale.code = 'zh-CN';
+  store.lang = 'zh_CN';
+  lastTerminologyLoad.value = {
+    lang: 'zh_CN',
+    bcp47: 'zh-CN',
+    hash: 'h1',
+    unchanged: false,
+    messages: { auth: { menu: { Users: '用户' } } },
+  };
   await nextTick();
 
-  expect(terminologyMerger.calls).toEqual([[{ auth: { menu: { Users: '用户' } } }, 'zh-CN']]);
+  expect(terminologyMerger.calls).toEqual([
+    [
+      {
+        lang: 'zh_CN',
+        bcp47: 'zh-CN',
+        hash: 'h1',
+        unchanged: false,
+        messages: { auth: { menu: { Users: '用户' } } },
+      },
+      'zh_CN',
+    ],
+  ]);
   expect(mergeLocaleMessage.calls.length).toBeGreaterThan(0);
 });
 
 test('setupApp > uses production defaults for omitted deps', () => {
   const app = makeApp();
-  const currentLocale = reactive({ code: 'en' });
-  const i18nLocale = ref('en');
+  const activeLanguage = reactive({ code: 'en_US', bcp47: 'en-US' });
+  const i18nLocale = ref('en_US');
   const exposeBrowserI18nOnWindow = fnRecorder();
 
   setupApp(app as any, {
@@ -521,12 +493,11 @@ test('setupApp > uses production defaults for omitted deps', () => {
       return { use: () => pinia };
     }) as any,
     useI18nStore: (() => ({
-      currentLocale,
-      terminologyLang: 'en_US',
+      activeLanguage,
+      lang: 'en_US',
       lastTerminologyLoad: null,
       getDateTimeFormats: () => ({}),
       getNumberFormats: () => ({}),
-      loadVueI18nMessages: async () => null,
     })) as any,
     setUserTimeZoneResolver: fnRecorder() as any,
     setGlobalRequestContextProvider: fnRecorder() as any,
