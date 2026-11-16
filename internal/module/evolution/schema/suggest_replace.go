@@ -62,20 +62,15 @@ func suggestCopyCastKind(detail string) (kind string, ok bool) {
 	if strings.Contains(d, "narrow size") {
 		return "as_text", true
 	}
-	target := d
+	src, target := d, d
 	for _, sep := range []string{"→", "->"} {
 		if i := strings.LastIndex(d, sep); i >= 0 {
+			src = strings.TrimSpace(d[:i])
 			target = strings.TrimSpace(d[i+len(sep):])
 			break
 		}
 	}
 	if strings.Contains(target, "varchar") || strings.Contains(target, "text") || strings.Contains(target, "char") {
-		src := d
-		if i := strings.Index(d, "→"); i >= 0 {
-			src = strings.TrimSpace(d[:i])
-		} else if i := strings.Index(d, "->"); i >= 0 {
-			src = strings.TrimSpace(d[:i])
-		}
 		src = strings.TrimSpace(strings.TrimPrefix(src, "type change"))
 		if sourceLooksLikeIntegerType(src) {
 			return "int_to_varchar", true

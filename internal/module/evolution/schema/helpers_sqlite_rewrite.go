@@ -198,7 +198,8 @@ func sqliteRunOnOneConn(db *gorm.DB, fn func(*gorm.DB) error) error {
 	if db.Statement != nil {
 		if tx, ok := db.Statement.ConnPool.(gorm.TxCommitter); ok && tx != nil {
 			// Reusing the caller's tx: PRAGMA foreign_keys is a no-op inside a txn,
-			// so the rewrite must not rely on toggling it here.
+			// so the rewrite must not rely on toggling it here. The inner
+			// Transaction becomes a savepoint; on failure the caller must abort.
 			return fn(db)
 		}
 	}
