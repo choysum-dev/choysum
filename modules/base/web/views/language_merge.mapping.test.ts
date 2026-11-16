@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import bootstrap from '../../data/bootstrap.json';
+import languages from '../../data/languages.json';
 import smoke from '../../../auth/e2e/fixtures/smoke.json';
 import companyChild from '../../e2e/fixtures/company_child.json';
 import * as i18nStore from '@/web/web/stores/i18nStore';
@@ -9,43 +10,53 @@ import * as bcp47 from '@/web/web/stores/i18nStore/bcp47';
 import * as utils from '@/web/web/stores/i18nStore/utils';
 import * as languageFormat from '@/web/web/stores/i18nStore/languageFormat';
 
-test('bootstrap.json has POSIX languages and no Locale entity', () => {
-  const data = bootstrap as { records: Array<{ name: string; model: string; values: Record<string, unknown> }> };
-  const raw = JSON.stringify(data);
+test('languages.json + bootstrap: POSIX languages and no Locale entity', () => {
+  const langData = languages as { records: Array<{ name: string; model: string; values: Record<string, unknown> }> };
+  const bootData = bootstrap as { records: Array<{ name: string; model: string; values: Record<string, unknown> }> };
+  const raw = JSON.stringify(langData) + JSON.stringify(bootData);
 
   expect(raw).not.toMatch(/base\.Locale|locale_default|DefaultLocaleId|LocaleId|language_zh[^_]|Code":\s*"zh"/);
 
-  const byId = Object.fromEntries(data.records.map(r => [r.name, r]));
-  expect(byId.language_en_us?.model).toBe('Language');
-  expect(byId.language_en_us?.values.Code).toBe('en_US');
-  expect(byId.language_en_us?.values.Grouping).toBe('[3,0]');
-  expect(byId.language_en_us?.values.PersonNameFormat).toBe('{FirstName} {LastName}');
-  expect(byId.language_en_us?.values.Name).toEqual({
+  const bootById = Object.fromEntries(bootData.records.map(r => [r.name, r]));
+  expect(bootById.language_en_us?.model).toBe('Language');
+  expect(bootById.language_en_us?.values.Code).toBe('en_US');
+  expect(bootById.language_en_us?.values.Grouping).toBe('[3,0]');
+  expect(bootById.language_en_us?.values.PersonNameFormat).toBe('{FirstName} {LastName}');
+  expect(bootById.language_en_us?.values.Name).toEqual({
     en_US: 'English (US)',
     zh_CN: '英语（美国）',
   });
+  expect(bootById.language_en_us?.values.IsActive).toBe(true);
 
-  expect(byId.language_zh_cn?.model).toBe('Language');
-  expect(byId.language_zh_cn?.values.Code).toBe('zh_CN');
-  expect(byId.language_zh_cn?.values.Grouping).toBe('[3,0]');
-  expect(byId.language_zh_cn?.values.DecimalSeparator).toBe('.');
-  expect(byId.language_zh_cn?.values.PersonNameFormat).toBe('{LastName}{FirstName}');
-  expect(byId.language_zh_cn?.values.Name).toEqual({
+  expect(bootById.language_zh_cn?.model).toBe('Language');
+  expect(bootById.language_zh_cn?.values.Code).toBe('zh_CN');
+  expect(bootById.language_zh_cn?.values.Grouping).toBe('[3,0]');
+  expect(bootById.language_zh_cn?.values.DecimalSeparator).toBe('.');
+  expect(bootById.language_zh_cn?.values.PersonNameFormat).toBe('{LastName}{FirstName}');
+  expect(bootById.language_zh_cn?.values.Name).toEqual({
     en_US: 'Chinese (Simplified)',
     zh_CN: '简体中文',
   });
+  expect(bootById.language_zh_cn?.values.IsActive).toBe(true);
 
-  const order = data.records.map(r => r.name);
+  const order = bootData.records.map(r => r.name);
   expect(order.indexOf('language_zh_cn')).toBeLessThan(order.indexOf('language_en_us'));
   expect(order.indexOf('language_en_us')).toBeLessThan(order.indexOf('currency_cny'));
 
-  expect(byId.currency_cny?.values.Name).toEqual({
+  const catalogById = Object.fromEntries(langData.records.map(r => [r.name, r]));
+  expect(catalogById.language_en_us).toBeUndefined();
+  expect(catalogById.language_zh_cn).toBeUndefined();
+  expect(langData.records.length).toBeGreaterThanOrEqual(80);
+  expect(langData.records.every(r => r.values.IsActive === false)).toBe(true);
+  expect(catalogById.language_ja_jp?.values.Code).toBe('ja_JP');
+  expect(catalogById.language_ja_jp?.values.PersonNameFormat).toBe('{LastName}{FirstName}');
+
+  expect(bootById.currency_cny?.values.Name).toEqual({
     en_US: 'Chinese Yuan',
     zh_CN: '人民币',
   });
-
-  expect(byId.company_main?.values.LanguageId).toEqual({ ref: 'base.language_zh_cn' });
-  expect(byId.company_main?.values).not.toHaveProperty('LocaleId');
+  expect(bootById.company_main?.values.LanguageId).toEqual({ ref: 'base.language_zh_cn' });
+  expect(bootById.company_main?.values).not.toHaveProperty('LocaleId');
 });
 
 test('auth smoke and company child fixtures use LanguageId without LocaleId', () => {
