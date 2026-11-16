@@ -68,7 +68,6 @@ func suggestCopyCastKind(detail string) (kind string, ok bool) {
 			left := strings.TrimSpace(d[:i])
 			target = strings.TrimSpace(d[i+len(sep):])
 			// Source of the final hop (ignore earlier arrows in multi-hop details).
-			src = left
 			if j := strings.LastIndex(left, sep); j >= 0 {
 				src = strings.TrimSpace(left[j+len(sep):])
 			} else {
