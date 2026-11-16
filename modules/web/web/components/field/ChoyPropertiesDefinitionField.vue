@@ -436,7 +436,7 @@ const canMutate = computed(() => Boolean(binding.env?.isEditMode));
 function editorLang(): string {
   if (!getActivePinia()) return TRANSLATED_BASE_LANG;
   try {
-    const lang = String(useI18nStore().terminologyLang || '').trim();
+    const lang = String(useI18nStore().activeLanguage.code || '').trim();
     return lang || TRANSLATED_BASE_LANG;
   } catch {
     return TRANSLATED_BASE_LANG;

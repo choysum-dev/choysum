@@ -48,7 +48,7 @@ SPDX-License-Identifier: Apache-2.0
           <CalendarRoot
             v-slot="{ weekDays, grid }"
             v-model="calendarValue"
-            :locale="calendarLocale"
+            :locale="resolveCalendarLocale()"
             :min-value="datePickerMinValue"
             :max-value="datePickerMaxValue"
             class="choy-datetime-picker__calendar"
@@ -231,7 +231,7 @@ import { CalendarClock, ChevronLeft, ChevronRight, X } from 'lucide-vue-next';
 import { CalendarDate } from '@internationalized/date';
 import { cn, type ClassValue } from '../../lib/utils';
 import { createTranslate } from '@/web/web/i18n';
-import { useI18nStore } from '@/web/web/stores/i18nStore';
+import { resolveCalendarLocale } from './calendarLocale';
 import Button from '../vendor/ui/button/Button.vue';
 import Popover from '../vendor/ui/popover/Popover.vue';
 import PopoverContent from '../vendor/ui/popover/PopoverContent.vue';
@@ -246,17 +246,6 @@ import {
 } from './dateTimePickerHelpers';
 
 const { _t } = createTranslate('web', { scope: 'web/components/internal/DateTimePicker' });
-
-/** Reka Calendar / Intl locale; falls back when Pinia is unavailable (FE unit mounts). */
-function resolveCalendarLocale(): string {
-  try {
-    return String(useI18nStore().localeCode || '').trim() || 'en';
-  } catch {
-    return 'en';
-  }
-}
-
-const calendarLocale = computed(() => resolveCalendarLocale());
 
 const datePickerMinValue = new CalendarDate(1, 1, 1);
 const datePickerMaxValue = new CalendarDate(9999, 12, 31);

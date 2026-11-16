@@ -4,7 +4,8 @@
 import bootstrap from '../../data/bootstrap.json';
 import smoke from '../../../auth/e2e/fixtures/smoke.json';
 import companyChild from '../../e2e/fixtures/company_child.json';
-import * as lang from '@/web/web/stores/i18nStore/lang';
+import * as i18nStore from '@/web/web/stores/i18nStore';
+import * as bcp47 from '@/web/web/stores/i18nStore/bcp47';
 import * as utils from '@/web/web/stores/i18nStore/utils';
 import * as languageFormat from '@/web/web/stores/i18nStore/languageFormat';
 
@@ -58,16 +59,27 @@ test('auth smoke and company child fixtures use LanguageId without LocaleId', ()
   expect(companyChildRaw).toMatch(/base\.language_zh_cn/);
 });
 
-test('FE adapter symbols use UiKey names (no Locale product aliases)', () => {
-  expect(Object.keys(lang)).toContain('langToUiKey');
-  expect(Object.keys(lang)).toContain('uiKeyToLang');
-  expect(Object.keys(lang)).not.toContain('langToLocale');
-  expect(Object.keys(lang)).not.toContain('localeToLang');
+test('FE i18n store exports POSIX identity helpers (no legacy uiKey adapters)', () => {
+  expect(Object.keys(i18nStore)).toContain('useI18nStore');
+  expect(Object.keys(i18nStore)).toContain('afterLangChange');
+  expect(Object.keys(i18nStore)).toContain('detectBestLang');
+  expect(Object.keys(i18nStore)).toContain('bcp47FromCode');
+  expect(Object.keys(i18nStore)).toContain('shouldNoopSetLang');
+  expect(Object.keys(i18nStore)).not.toContain('langToUiKey');
+  expect(Object.keys(i18nStore)).not.toContain('uiKeyToLang');
+  expect(Object.keys(i18nStore)).not.toContain('setUiKey');
+  expect(Object.keys(i18nStore)).not.toContain('SUPPORTED_LOCALES');
 
-  expect(Object.keys(utils)).toContain('detectBestUiKey');
+  expect(Object.keys(bcp47)).toContain('bcp47FromCode');
+
+  expect(Object.keys(utils)).toContain('detectBestLang');
+  expect(Object.keys(utils)).toContain('matchBestLang');
+  expect(Object.keys(utils)).not.toContain('looksLikeLegacyUiKey');
+  expect(Object.keys(utils)).not.toContain('detectBestUiKey');
   expect(Object.keys(utils)).not.toContain('detectBestLocale');
 
   expect(Object.keys(languageFormat)).toContain('resolveFormatConfig');
+  expect(Object.keys(languageFormat)).toContain('collectActiveLanguages');
   expect(Object.keys(languageFormat)).toContain('formatNumberFromConfig');
   expect(Object.keys(languageFormat)).toContain('parseGrouping');
 });

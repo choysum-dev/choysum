@@ -34,13 +34,13 @@ function asTestComposer(composer: unknown): TestComposer {
   return composer as TestComposer;
 }
 
-function installI18n(locale = 'zh-CN'): TestComposer {
+function installI18n(locale = 'zh_CN'): TestComposer {
   const i18n = createI18n({
     legacy: false,
     locale,
     missingWarn: false,
     fallbackWarn: false,
-    messages: { en: {}, 'zh-CN': {} },
+    messages: { en_US: {}, zh_CN: {} },
     postTranslation: trackComposerMessageRevision,
   });
   const composer = asTestComposer(i18n.global);
@@ -67,7 +67,7 @@ test('createTranslate > falls back to msgid when i18n is missing', () => {
 
 test('createTranslate > uses Composer t against projected Gateway terms', () => {
   const composer = installI18n();
-  composer.mergeLocaleMessage('zh-CN', projectTerminologyMessages({
+  composer.mergeLocaleMessage('zh_CN', projectTerminologyMessages({
     web: {
       'web/pages/Home@title': {
         Hello: '你好',
@@ -92,19 +92,19 @@ test('createTranslate > uses vue-i18n locale fallback without a te preflight', (
   const reference = createTermReference('base', 'Users', { scope: 'base.route.users' });
   const composer = asTestComposer(createI18n({
     legacy: false,
-    locale: 'zh-CN',
-    fallbackLocale: 'en',
+    locale: 'zh_CN',
+    fallbackLocale: 'en_US',
     missingWarn: false,
     fallbackWarn: false,
     messages: {
-      en: projectTerminologyMessages({
+      en_US: projectTerminologyMessages({
         base: { 'base.route.users': { Users: 'People' } },
       }),
-      'zh-CN': {},
+      'zh_CN': {},
     },
   }).global);
 
-  expect(composer.te(reference.key, 'zh-CN')).toBe(false);
+  expect(composer.te(reference.key, 'zh_CN')).toBe(false);
   expect(translateTerm(composer, reference, 'Legacy users', 'en_US')).toBe('People');
 });
 
@@ -112,19 +112,19 @@ test('createTranslate > uses vue-i18n locale fallback without a te preflight whe
   const reference = createTermReference('base', 'Users', { scope: 'base.route.users' });
   const composer = asTestComposer(createI18n({
     legacy: false,
-    locale: 'zh-CN',
-    fallbackLocale: 'en',
+    locale: 'zh_CN',
+    fallbackLocale: 'en_US',
     missingWarn: false,
     fallbackWarn: false,
     messages: {
-      en: projectTerminologyMessages({
+      en_US: projectTerminologyMessages({
         base: { 'base.route.users': { Users: 'People' } },
       }),
-      'zh-CN': {},
+      'zh_CN': {},
     },
   }).global);
 
-  expect(composer.te(reference.key, 'zh-CN')).toBe(false);
+  expect(composer.te(reference.key, 'zh_CN')).toBe(false);
   expect(translateTerm(composer, reference, 'Legacy users')).toBe('People');
 });
 
@@ -148,7 +148,7 @@ test('createTranslate > reads globalThis.$i18n when window.$i18n is absent', () 
 test('createTranslate > uses explicit terminology lang when composer locale differs', () => {
   const reference = createTermReference('base', 'Users', { scope: 'base.route.users' });
   const composer: ComposerLike = {
-    t: (key, fallback, options) => (options?.locale === 'en' ? 'People' : fallback),
+    t: (key, fallback, options) => (options?.locale === 'en_US' ? 'People' : fallback),
   };
   expect(translateTerm(composer, reference, 'Legacy users', 'en_US')).toBe('People');
 });
@@ -157,12 +157,12 @@ test('createTranslate > reacts to locale changes through the caller composer', (
   const reference = createTermReference('base', 'Settings', { scope: 'base.route.settings' });
   const composer = asTestComposer(createI18n({
     legacy: false,
-    locale: 'en',
+    locale: 'en_US',
     missingWarn: false,
     fallbackWarn: false,
     messages: {
       en: {},
-      'zh-CN': projectTerminologyMessages({
+      'zh_CN': projectTerminologyMessages({
         base: { 'base.route.settings': { Settings: '设置' } },
       }),
     },
@@ -170,7 +170,7 @@ test('createTranslate > reacts to locale changes through the caller composer', (
   const title = computed(() => translateTerm(composer, reference, 'Legacy settings'));
 
   expect(title.value).toBe('Settings');
-  composer.locale.value = 'zh-CN';
+  composer.locale.value = 'zh_CN';
   expect(title.value).toBe('设置');
 });
 
@@ -180,7 +180,7 @@ test('createTranslate > reacts when the Gateway catalog is merged after the cons
   const label = computed(() => _t('User Login'));
 
   expect(label.value).toBe('User Login');
-  composer.mergeLocaleMessage('zh-CN', projectTerminologyMessages({
+  composer.mergeLocaleMessage('zh_CN', projectTerminologyMessages({
     auth: {
       'web/pages/Login': {
         'User Login': '用户登录',
@@ -194,7 +194,7 @@ test('createTranslate > reacts when the Gateway catalog is merged after the cons
 
 test('createTranslate > uses default and explicit scopes for reactive translations', () => {
   const composer = installI18n();
-  composer.mergeLocaleMessage('zh-CN', projectTerminologyMessages({
+  composer.mergeLocaleMessage('zh_CN', projectTerminologyMessages({
     auth: {
       'web/pages/Login': {
         'Welcome %s': '欢迎 %s',
@@ -251,7 +251,7 @@ test('createTranslate > caches factory-default _lt references', () => {
 
 test('createTranslate > captures the term reference before computed reevaluation', async () => {
   const composer = installI18n();
-  composer.mergeLocaleMessage('zh-CN', projectTerminologyMessages({
+  composer.mergeLocaleMessage('zh_CN', projectTerminologyMessages({
     auth: {
       'scope.at.creation': {
         Users: '用户',

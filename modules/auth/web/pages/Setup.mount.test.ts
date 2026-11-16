@@ -114,12 +114,17 @@ async function mountSetup(opts?: {
   return { wrapper, replaces, requests, logins };
 }
 
-/** Product SFCs resolve the FE-unit i18n stub store; drive its terminologyLang directly. */
+/** Product SFCs resolve the FE-unit i18n stub store; drive its lang directly. */
 function setUiLang(lang: string) {
   const pinia = getActivePinia() as unknown as { _s: Map<string, Record<string, unknown>> };
   const i18n = pinia._s.get('i18n-fe-stub');
   expect(!!i18n).toBe(true);
-  i18n!.terminologyLang = lang;
+  i18n!.lang = lang;
+  const active = i18n!.activeLanguage as { code?: string; bcp47?: string } | undefined;
+  if (active) {
+    active.code = lang;
+    active.bcp47 = String(lang).replace(/_/g, '-');
+  }
 }
 
 function fieldInput(wrapper: { find: (sel: string) => any }, selector: string) {

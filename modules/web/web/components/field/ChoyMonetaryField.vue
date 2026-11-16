@@ -207,10 +207,10 @@ function toDisplayText(v: any, getScale: () => number, record?: any) {
       formatters: {
         formatCurrencyFromConfig,
         formatFixedDecimalString,
-        numberFormat: i18n.currentLocale?.numberFormat,
+        numberFormat: i18n.activeLanguage?.numberFormat,
         currencyFormat: {
-          position: i18n.currentLocale?.currencyFormat?.position,
-          spacing: i18n.currentLocale?.currencyFormat?.spacing,
+          position: i18n.activeLanguage?.currencyFormat?.position,
+          spacing: i18n.activeLanguage?.currencyFormat?.spacing,
         },
       },
     });

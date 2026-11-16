@@ -5,10 +5,11 @@
  * FE number/date formatting driven by Language format fields.
  */
 
-import { SUPPORTED_LOCALES } from './locales';
-import { langToUiKey } from './lang';
+import { EN_US_FORMAT_DEFAULTS, type ActiveLanguageRow, type TextDirection } from './types';
 
 export type LanguageFormatOverlay = {
+  Name?: string;
+  Direction?: TextDirection;
   DecimalSeparator?: string;
   ThousandSeparator?: string;
   Grouping?: string | number[];
@@ -26,6 +27,8 @@ export type LanguageFormatOverlay = {
  */
 export function overlayFromActiveLanguageRow(row: Record<string, unknown> | null | undefined): LanguageFormatOverlay {
   const r = row || {};
+  const name = r.Name ?? r.name;
+  const direction = r.Direction ?? r.direction;
   const thousand = r.ThousandSeparator ?? r.thousandSeparator;
   const decimal = r.DecimalSeparator ?? r.decimalSeparator;
   const grouping = r.Grouping ?? r.grouping;
@@ -35,7 +38,10 @@ export function overlayFromActiveLanguageRow(row: Record<string, unknown> | null
   const symbolPos = r.CurrencySymbolPosition ?? r.currencySymbolPosition;
   const symbolSpacing = r.CurrencySymbolSpacing ?? r.currencySymbolSpacing;
   const personNameFormat = r.PersonNameFormat ?? r.personNameFormat;
+  const dirRaw = direction != null ? String(direction).trim().toLowerCase() : '';
   return {
+    Name: name != null ? String(name) : undefined,
+    Direction: dirRaw === 'rtl' ? 'rtl' : dirRaw === 'ltr' ? 'ltr' : undefined,
     DecimalSeparator: decimal != null ? String(decimal) : undefined,
     ThousandSeparator: thousand != null ? String(thousand) : undefined,
     Grouping: grouping != null ? String(grouping) : undefined,
@@ -49,23 +55,38 @@ export function overlayFromActiveLanguageRow(row: Record<string, unknown> | null
 }
 
 /**
- * Project GetActiveLanguages rows into format overlays and supported UI keys.
+ * Project GetActiveLanguages rows into full rows and format overlays keyed by POSIX Code.
  */
-export function collectActiveLanguageFormats(rows: unknown): {
-  formats: Record<string, LanguageFormatOverlay>;
-  uiKeys: string[];
+export function collectActiveLanguages(rows: unknown): {
+  rows: ActiveLanguageRow[];
+  byCode: Record<string, LanguageFormatOverlay>;
 } {
-  const formats: Record<string, LanguageFormatOverlay> = {};
-  const uiKeys = (Array.isArray(rows) ? rows : [])
-    .map((row: Record<string, unknown>) => {
-      const posix = String(row?.Code ?? row?.code ?? '').trim();
-      if (posix) {
-        formats[posix] = overlayFromActiveLanguageRow(row);
-      }
-      return langToUiKey(posix);
-    })
-    .filter((code: string) => !!code && code in SUPPORTED_LOCALES);
-  return { formats, uiKeys };
+  const byCode: Record<string, LanguageFormatOverlay> = {};
+  const out: ActiveLanguageRow[] = [];
+  for (const raw of Array.isArray(rows) ? rows : []) {
+    const row = raw as Record<string, unknown>;
+    const posix = String(row?.Code ?? row?.code ?? '').trim();
+    if (!posix) {
+      continue;
+    }
+    const overlay = overlayFromActiveLanguageRow(row);
+    byCode[posix] = overlay;
+    out.push({
+      Code: posix,
+      Name: overlay.Name,
+      Direction: overlay.Direction,
+      DecimalSeparator: overlay.DecimalSeparator,
+      ThousandSeparator: overlay.ThousandSeparator,
+      Grouping: overlay.Grouping,
+      DateFormat: overlay.DateFormat,
+      TimeFormat: overlay.TimeFormat,
+      FirstDayOfWeek: overlay.FirstDayOfWeek,
+      CurrencySymbolPosition: overlay.CurrencySymbolPosition,
+      CurrencySymbolSpacing: overlay.CurrencySymbolSpacing,
+      PersonNameFormat: overlay.PersonNameFormat,
+    });
+  }
+  return { rows: out, byCode };
 }
 
 export function parseGrouping(raw: unknown): number[] {
@@ -133,27 +154,23 @@ export function applyGrouping(integerDigits: string, grouping: number[], thousan
 }
 
 /**
- * Resolve effective number/date config: Language > catalog fallback.
+ * Resolve effective number/date config: Language overlay + EN_US cold-start defaults.
  */
-export function resolveFormatConfig(
-  catalogNumber?: { thousandsSeparator?: string; decimalSeparator?: string; grouping?: number[]; decimalDigits?: number } | null,
-  catalogDate?: { shortDate?: string; longDate?: string; shortTime?: string; longTime?: string; firstDayOfWeek?: number } | null,
-  language?: LanguageFormatOverlay | null,
-) {
-  const decimalDigits = catalogNumber?.decimalDigits ?? 2;
+export function resolveFormatConfig(language?: LanguageFormatOverlay | null) {
+  const defaults = EN_US_FORMAT_DEFAULTS;
   return {
     numberFormat: {
-      thousandsSeparator: language?.ThousandSeparator ?? catalogNumber?.thousandsSeparator ?? ',',
-      decimalSeparator: language?.DecimalSeparator ?? catalogNumber?.decimalSeparator ?? '.',
-      grouping: language?.Grouping != null ? parseGrouping(language.Grouping) : catalogNumber?.grouping ?? [3, 0],
-      decimalDigits,
+      thousandsSeparator: language?.ThousandSeparator ?? defaults.numberFormat.thousandsSeparator,
+      decimalSeparator: language?.DecimalSeparator ?? defaults.numberFormat.decimalSeparator,
+      grouping: language?.Grouping != null ? parseGrouping(language.Grouping) : defaults.numberFormat.grouping,
+      decimalDigits: defaults.numberFormat.decimalDigits,
     },
     dateTimeFormat: {
-      shortDate: language?.DateFormat || catalogDate?.shortDate || 'YYYY-MM-DD',
-      longDate: language?.DateFormat || catalogDate?.longDate || catalogDate?.shortDate || 'YYYY-MM-DD',
-      shortTime: language?.TimeFormat || catalogDate?.shortTime || 'HH:mm',
-      longTime: language?.TimeFormat || catalogDate?.longTime || catalogDate?.shortTime || 'HH:mm:ss',
-      firstDayOfWeek: language?.FirstDayOfWeek ?? catalogDate?.firstDayOfWeek ?? 1,
+      shortDate: language?.DateFormat || defaults.dateTimeFormat.shortDate,
+      longDate: language?.DateFormat || defaults.dateTimeFormat.longDate,
+      shortTime: language?.TimeFormat || defaults.dateTimeFormat.shortTime,
+      longTime: language?.TimeFormat || defaults.dateTimeFormat.longTime,
+      firstDayOfWeek: language?.FirstDayOfWeek ?? defaults.dateTimeFormat.firstDayOfWeek,
     },
     currencyCodeOverride: undefined as string | undefined,
     currencySymbolPosition: language?.CurrencySymbolPosition,

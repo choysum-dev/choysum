@@ -139,20 +139,20 @@ export function setupApp(app: ChoysumWebApp, deps: SetupAppDeps = {}): void {
     }
     const tz = resolveTz(userTz, detectBrowserTz());
     return {
-      locale: i18nStore.currentLocale.code,
-      lang: i18nStore.terminologyLang,
+      lang: i18nStore.activeLanguage.code,
+      bcp47: i18nStore.bcp47Locale,
       ...(tz ? { tz } : {}),
     };
   });
 
   const i18n = makeI18n<false, { [key: string]: any }>({
     legacy: false,
-    locale: i18nStore.currentLocale.code,
-    fallbackLocale: 'en',
+    locale: i18nStore.activeLanguage.code,
+    fallbackLocale: 'en_US',
     missingWarn: false,
     fallbackWarn: false,
     messages: {
-      en: messages,
+      en_US: messages,
     },
     postTranslation: trackRevision,
     datetimeFormats: i18nStore.getDateTimeFormats(),
@@ -187,20 +187,9 @@ export function setupApp(app: ChoysumWebApp, deps: SetupAppDeps = {}): void {
   }
 
   watch(
-    () => i18nStore.currentLocale.code,
-    async newLocale => {
-      if (newLocale !== 'en') {
-        try {
-          const legacy = await i18nStore.loadVueI18nMessages(newLocale);
-          if (legacy) {
-            i18n.global.mergeLocaleMessage(newLocale, legacy);
-          }
-        } catch (error) {
-          console.warn(`Failed to load legacy locale messages for ${newLocale}`, error);
-        }
-      }
-
-      i18n.global.locale.value = newLocale;
+    () => i18nStore.activeLanguage.code,
+    newLang => {
+      i18n.global.locale.value = newLang;
     },
     { immediate: true }
   );
@@ -208,7 +197,7 @@ export function setupApp(app: ChoysumWebApp, deps: SetupAppDeps = {}): void {
   watch(
     () => i18nStore.lastTerminologyLoad,
     terminology => {
-      mergeTerminologyCatalog(terminology, i18nStore.currentLocale.code);
+      mergeTerminologyCatalog(terminology, i18nStore.activeLanguage.code);
     }
   );
 
