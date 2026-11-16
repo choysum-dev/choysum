@@ -114,7 +114,7 @@ describe('FieldTranslationsDialog', () => {
     restoreLanguageFactory = replaceStoreFactory('base.Language', () => ({
       GetActiveLanguages: getActiveLanguages,
     }));
-    // terminologyLang is computed from locale; leave default en_US unless a test sets draftLang.
+    // Store lang defaults to en_US unless a test sets draftLang.
     void useI18nStore();
     installStubs();
   });
@@ -306,7 +306,7 @@ describe('FieldTranslationsDialog', () => {
     expect(labels.indexOf('German')).toBeGreaterThan(0);
     const ss = m.setupState() as any;
     expect(typeof ss.resolveDraftLang).toBe('function');
-    // Happy path: empty draftLang reads terminologyLang from i18n store.
+    // Happy path: empty draftLang reads lang from i18n store.
     expect(typeof ss.resolveDraftLang()).toBe('string');
     // Catch path: useI18nStore throws without an active pinia.
     setActivePinia(undefined as any);

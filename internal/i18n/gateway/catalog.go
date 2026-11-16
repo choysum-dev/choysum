@@ -46,8 +46,8 @@ func CatalogHash(appTermHashes map[string]string) string {
 	return hex.EncodeToString(sum[:8])
 }
 
-// LangToLocale maps terminology lang (zh_CN) to format locale (zh-CN).
-func LangToLocale(lang string) string {
+// LangToBCP47 maps POSIX Language.Code (zh_CN) to a BCP 47 tag (zh-CN).
+func LangToBCP47(lang string) string {
 	lang = strings.TrimSpace(lang)
 	if lang == "" {
 		return ""

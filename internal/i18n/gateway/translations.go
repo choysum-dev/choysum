@@ -128,7 +128,7 @@ func (h *handler) serveTranslations(w http.ResponseWriter, r *http.Request) {
 
 	resp := map[string]any{
 		"lang":   lang,
-		"locale": LangToLocale(lang),
+		"bcp47": LangToBCP47(lang),
 		"hash":   catalogHash,
 	}
 	if clientHash != "" && clientHash == catalogHash {

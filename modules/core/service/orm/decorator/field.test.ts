@@ -1855,6 +1855,14 @@ test('Field decorator validates selectionAdd item shapes (PR-P2-F4)', () => {
       Status!: string;
     }
     return BlankValueModel;
+  }).toThrow('must not contain leading or trailing whitespace');
+
+  expect(() => {
+    class EmptyValueModel extends BaseModel {
+      @Field({ type: 'selection', selectionAdd: [{ value: '', label: 'A' }] } as any)
+      Status!: string;
+    }
+    return EmptyValueModel;
   }).toThrow('each selectionAdd item must include a non-empty string value');
 
   expect(() => {
@@ -1869,27 +1877,47 @@ test('Field decorator validates selectionAdd item shapes (PR-P2-F4)', () => {
       Status!: string;
     }
     return WhitespaceDupModel;
-  }).toThrow('duplicate selectionAdd value');
+  }).toThrow('must not contain leading or trailing whitespace');
 
-  class TrimValueParent extends BaseModel {
-    @Field({
-      type: 'selection',
-      selection: [{ value: 'a', label: 'A' }],
-    } as any)
-    Status!: string;
-  }
-  class TrimValueChild extends TrimValueParent {
-    @Field({
-      type: 'selection',
-      selectionAdd: [{ value: ' vip ', label: 'VIP' }],
-    } as any)
-    Status!: string;
-  }
-  const trimmed = MetadataStorage.instance.getModelMetadata(TrimValueChild as any).fields.get('Status') as any;
-  expect(trimmed?.selection).toEqual([
-    { value: 'a', label: 'A' },
-    { value: 'vip', label: 'VIP' },
-  ]);
+  expect(() => {
+    class TrimValueParent extends BaseModel {
+      @Field({
+        type: 'selection',
+        selection: [{ value: 'a', label: 'A' }],
+      } as any)
+      Status!: string;
+    }
+    class TrimValueChild extends TrimValueParent {
+      @Field({
+        type: 'selection',
+        selectionAdd: [{ value: ' vip ', label: 'VIP' }],
+      } as any)
+      Status!: string;
+    }
+    return TrimValueChild;
+  }).toThrow('must not contain leading or trailing whitespace');
+
+  expect(() => {
+    class SpaceOnlySelection extends BaseModel {
+      @Field({
+        type: 'selection',
+        selection: [{ value: ' ', label: 'Space' }],
+      } as any)
+      Status!: string;
+    }
+    return SpaceOnlySelection;
+  }).toThrow('must not contain leading or trailing whitespace');
+
+  expect(() => {
+    class NbspOnlySelection extends BaseModel {
+      @Field({
+        type: 'selection',
+        selection: [{ value: '\u00a0', label: 'NBSP' }],
+      } as any)
+      Status!: string;
+    }
+    return NbspOnlySelection;
+  }).toThrow('must not contain leading or trailing whitespace');
 
   class NonArraySelectionParent extends BaseModel {}
   MetadataStorage.instance.setModelMetadata(NonArraySelectionParent as any, {

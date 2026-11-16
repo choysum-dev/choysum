@@ -113,7 +113,7 @@ function toDisplayText(v: any) {
   if (v == null) return '';
   const text = String(v);
   try {
-    return formatGroupedNumericString(text, useI18nStore().currentLocale?.numberFormat);
+    return formatGroupedNumericString(text, useI18nStore().activeLanguage?.numberFormat);
   } catch {
     return text;
   }

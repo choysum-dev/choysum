@@ -5,8 +5,8 @@
  * Request context stored as lightweight key-value pairs and encoded into W3C Baggage headers.
  * Used to carry business context such as tenant, locale, lang, and feature flags along the same trace.
  *
- * - `lang`: terminology language code (e.g. zh_CN) — used by `_t` / errors
- * - `locale`: format/region code (e.g. zh-CN) — dates/numbers; ≠ lang
+ * - `lang`: POSIX Language.Code (e.g. zh_CN) — terminology, `_t` / errors
+ * - `bcp47`: BCP 47 tag (e.g. zh-CN) — calendar/Intl formatting; ≠ lang
  */
 export type RequestContextKV = Record<string, string>;
 
@@ -25,12 +25,13 @@ let defaultProvider: (() => RequestContextKV) | undefined;
  * @example
  * ```ts
  * // Static context.
- * setGlobalRequestContextProvider({ tenant: 'acme', locale: 'zh-CN' });
+ * setGlobalRequestContextProvider({ tenant: 'acme', lang: 'zh_CN', bcp47: 'zh-CN' });
  *
  * // Dynamic context.
  * setGlobalRequestContextProvider(() => ({
  *   tenant: getCurrentTenant(),
- *   locale: navigator.language || 'zh-CN',
+ *   lang: 'en_US',
+ *   bcp47: navigator.language || 'en-US',
  * }));
  * ```
  */
@@ -59,11 +60,11 @@ const stack: RequestContextKV[] = [];
  *
  * @example
  * ```ts
- * setGlobalRequestContextProvider({ tenant: 'acme', locale: 'en' });
+ * setGlobalRequestContextProvider({ tenant: 'acme', lang: 'en_US', bcp47: 'en-US' });
  *
- * await runWithRequestContext({ locale: 'zh-CN' }, async () => {
+ * await runWithRequestContext({ lang: 'zh_CN', bcp47: 'zh-CN' }, async () => {
  *   const ctx = getCurrentRequestContext();
- *   // { tenant: 'acme', locale: 'zh-CN' }
+ *   // { tenant: 'acme', lang: 'zh_CN', bcp47: 'zh-CN' }
  * });
  * ```
  */

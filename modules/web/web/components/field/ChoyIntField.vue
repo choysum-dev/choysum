@@ -149,7 +149,7 @@ function toDisplayText(v: any): string {
   if (v == null || v === '') return '';
   const text = String(v);
   try {
-    return formatGroupedNumericString(text, useI18nStore().currentLocale?.numberFormat);
+    return formatGroupedNumericString(text, useI18nStore().activeLanguage?.numberFormat);
   } catch {
     return text;
   }

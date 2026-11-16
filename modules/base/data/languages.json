@@ -1,0 +1,1764 @@
+{
+  "records": [
+    {
+      "name": "language_am_et",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Amharic / አምሃርኛ"
+        },
+        "Code": "am_ET",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ".",
+        "ThousandSeparator": ",",
+        "Grouping": "[3,0]",
+        "DateFormat": "DD/MM/YYYY",
+        "TimeFormat": "hh:mm:ss",
+        "FirstDayOfWeek": "0",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_ar_001",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Arabic / الْعَرَبيّة"
+        },
+        "Code": "ar_001",
+        "IsActive": false,
+        "Direction": "rtl",
+        "DecimalSeparator": ".",
+        "ThousandSeparator": ",",
+        "Grouping": "[3,0]",
+        "DateFormat": "DD MMM, YYYY",
+        "TimeFormat": "hh:mm:ss A",
+        "FirstDayOfWeek": "6",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_ar_sy",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Arabic (Syria) / الْعَرَبيّة"
+        },
+        "Code": "ar_SY",
+        "IsActive": false,
+        "Direction": "rtl",
+        "DecimalSeparator": ".",
+        "ThousandSeparator": ",",
+        "Grouping": "[3,0]",
+        "DateFormat": "DD MMM, YYYY",
+        "TimeFormat": "hh:mm:ss A",
+        "FirstDayOfWeek": "6",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_az_az",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Azerbaijani / Azərbaycanca"
+        },
+        "Code": "az_AZ",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ",",
+        "ThousandSeparator": " ",
+        "Grouping": "[3,0]",
+        "DateFormat": "DD.MM.YYYY",
+        "TimeFormat": "HH:mm:ss",
+        "FirstDayOfWeek": "1",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_be_by",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Belarusian / Беларуская мова"
+        },
+        "Code": "be_BY",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ",",
+        "ThousandSeparator": " ",
+        "Grouping": "[3,0]",
+        "DateFormat": "DD.MM.YYYY",
+        "TimeFormat": "HH:mm:ss",
+        "FirstDayOfWeek": "1",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_bg_bg",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Bulgarian / български език"
+        },
+        "Code": "bg_BG",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ",",
+        "ThousandSeparator": "",
+        "Grouping": "[3,0]",
+        "DateFormat": "DD.MM.YYYY",
+        "TimeFormat": "HH,mm,ss",
+        "FirstDayOfWeek": "1",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_bn_in",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Bengali / বাংলা"
+        },
+        "Code": "bn_IN",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ",",
+        "ThousandSeparator": "",
+        "Grouping": "[]",
+        "DateFormat": "dddd DD MMM YYYY",
+        "TimeFormat": "hh:mm:ss",
+        "FirstDayOfWeek": "1",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_bs_ba",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Bosnian / bosanski jezik"
+        },
+        "Code": "bs_BA",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ",",
+        "ThousandSeparator": ".",
+        "Grouping": "[3,0]",
+        "DateFormat": "DD.MM.YYYY",
+        "TimeFormat": "HH:mm:ss",
+        "FirstDayOfWeek": "1",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_ca_es",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Catalan / Català"
+        },
+        "Code": "ca_ES",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ",",
+        "ThousandSeparator": ".",
+        "Grouping": "[3,0]",
+        "DateFormat": "DD/MM/YYYY",
+        "TimeFormat": "HH:mm:ss",
+        "FirstDayOfWeek": "1",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_cs_cz",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Czech / Čeština"
+        },
+        "Code": "cs_CZ",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ",",
+        "ThousandSeparator": " ",
+        "Grouping": "[3,0]",
+        "DateFormat": "DD.MM.YYYY",
+        "TimeFormat": "HH:mm:ss",
+        "FirstDayOfWeek": "1",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_da_dk",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Danish / Dansk"
+        },
+        "Code": "da_DK",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ",",
+        "ThousandSeparator": ".",
+        "Grouping": "[3,0]",
+        "DateFormat": "DD-MM-YYYY",
+        "TimeFormat": "HH:mm:ss",
+        "FirstDayOfWeek": "1",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_de_ch",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "German (CH) / Deutsch (CH)"
+        },
+        "Code": "de_CH",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ".",
+        "ThousandSeparator": "'",
+        "Grouping": "[3,0]",
+        "DateFormat": "DD.MM.YYYY",
+        "TimeFormat": "HH:mm:ss",
+        "FirstDayOfWeek": "1",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_de_de",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "German / Deutsch"
+        },
+        "Code": "de_DE",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ",",
+        "ThousandSeparator": ".",
+        "Grouping": "[3,0]",
+        "DateFormat": "DD.MM.YYYY",
+        "TimeFormat": "HH:mm:ss",
+        "FirstDayOfWeek": "1",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_el_gr",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Greek / Ελληνικά"
+        },
+        "Code": "el_GR",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ",",
+        "ThousandSeparator": ".",
+        "Grouping": "[]",
+        "DateFormat": "DD/MM/YYYY",
+        "TimeFormat": "hh:mm:ss A",
+        "FirstDayOfWeek": "1",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_en_au",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "English (AU)"
+        },
+        "Code": "en_AU",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ".",
+        "ThousandSeparator": ",",
+        "Grouping": "[3,0]",
+        "DateFormat": "DD/MM/YYYY",
+        "TimeFormat": "HH:mm:ss",
+        "FirstDayOfWeek": "0",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_en_ca",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "English (CA)"
+        },
+        "Code": "en_CA",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ".",
+        "ThousandSeparator": ",",
+        "Grouping": "[3,0]",
+        "DateFormat": "YYYY-MM-DD",
+        "TimeFormat": "HH:mm:ss",
+        "FirstDayOfWeek": "0",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_en_gb",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "English (UK)"
+        },
+        "Code": "en_GB",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ".",
+        "ThousandSeparator": ",",
+        "Grouping": "[3,0]",
+        "DateFormat": "DD/MM/YYYY",
+        "TimeFormat": "HH:mm:ss",
+        "FirstDayOfWeek": "1",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_en_in",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "English (IN)"
+        },
+        "Code": "en_IN",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ".",
+        "ThousandSeparator": ",",
+        "Grouping": "[3,2,0]",
+        "DateFormat": "DD/MM/YYYY",
+        "TimeFormat": "HH:mm:ss",
+        "FirstDayOfWeek": "0",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_en_nz",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "English (NZ)"
+        },
+        "Code": "en_NZ",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ".",
+        "ThousandSeparator": ",",
+        "Grouping": "[3,0]",
+        "DateFormat": "DD/MM/YYYY",
+        "TimeFormat": "HH:mm:ss",
+        "FirstDayOfWeek": "0",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_es_419",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Spanish (Latin America) / Español (América Latina)"
+        },
+        "Code": "es_419",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ",",
+        "ThousandSeparator": ".",
+        "Grouping": "[3,0]",
+        "DateFormat": "DD/MM/YYYY",
+        "TimeFormat": "HH:mm:ss",
+        "FirstDayOfWeek": "1",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_es_ar",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Spanish (AR) / Español (AR)"
+        },
+        "Code": "es_AR",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ",",
+        "ThousandSeparator": ".",
+        "Grouping": "[3,0]",
+        "DateFormat": "DD/MM/YYYY",
+        "TimeFormat": "HH:mm:ss",
+        "FirstDayOfWeek": "0",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_es_bo",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Spanish (BO) / Español (BO)"
+        },
+        "Code": "es_BO",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ",",
+        "ThousandSeparator": ".",
+        "Grouping": "[3,0]",
+        "DateFormat": "DD/MM/YYYY",
+        "TimeFormat": "HH:mm:ss",
+        "FirstDayOfWeek": "1",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_es_cl",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Spanish (CL) / Español (CL)"
+        },
+        "Code": "es_CL",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ",",
+        "ThousandSeparator": ".",
+        "Grouping": "[3,0]",
+        "DateFormat": "DD/MM/YYYY",
+        "TimeFormat": "HH:mm:ss",
+        "FirstDayOfWeek": "1",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_es_co",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Spanish (CO) / Español (CO)"
+        },
+        "Code": "es_CO",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ",",
+        "ThousandSeparator": ".",
+        "Grouping": "[3,0]",
+        "DateFormat": "DD-MM-YYYY",
+        "TimeFormat": "HH:mm:ss",
+        "FirstDayOfWeek": "0",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_es_cr",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Spanish (CR) / Español (CR)"
+        },
+        "Code": "es_CR",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ".",
+        "ThousandSeparator": ",",
+        "Grouping": "[3,0]",
+        "DateFormat": "DD/MM/YYYY",
+        "TimeFormat": "HH:mm:ss",
+        "FirstDayOfWeek": "1",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_es_do",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Spanish (DO) / Español (DO)"
+        },
+        "Code": "es_DO",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ".",
+        "ThousandSeparator": ",",
+        "Grouping": "[3,0]",
+        "DateFormat": "DD/MM/YYYY",
+        "TimeFormat": "hh:mm:ss A",
+        "FirstDayOfWeek": "1",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_es_ec",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Spanish (EC) / Español (EC)"
+        },
+        "Code": "es_EC",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ",",
+        "ThousandSeparator": ".",
+        "Grouping": "[3,0]",
+        "DateFormat": "DD/MM/YYYY",
+        "TimeFormat": "HH:mm:ss",
+        "FirstDayOfWeek": "1",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_es_es",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Spanish / Español"
+        },
+        "Code": "es_ES",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ",",
+        "ThousandSeparator": ".",
+        "Grouping": "[3,0]",
+        "DateFormat": "DD/MM/YYYY",
+        "TimeFormat": "HH:mm:ss",
+        "FirstDayOfWeek": "1",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_es_gt",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Spanish (GT) / Español (GT)"
+        },
+        "Code": "es_GT",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ".",
+        "ThousandSeparator": ",",
+        "Grouping": "[3,0]",
+        "DateFormat": "DD/MM/YYYY",
+        "TimeFormat": "HH:mm:ss",
+        "FirstDayOfWeek": "0",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_es_mx",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Spanish (MX) / Español (MX)"
+        },
+        "Code": "es_MX",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ".",
+        "ThousandSeparator": ",",
+        "Grouping": "[3,0]",
+        "DateFormat": "DD/MM/YYYY",
+        "TimeFormat": "HH:mm:ss",
+        "FirstDayOfWeek": "0",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_es_pa",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Spanish (PA) / Español (PA)"
+        },
+        "Code": "es_PA",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ".",
+        "ThousandSeparator": ",",
+        "Grouping": "[3,0]",
+        "DateFormat": "DD/MM/YYYY",
+        "TimeFormat": "HH:mm:ss",
+        "FirstDayOfWeek": "0",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_es_pe",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Spanish (PE) / Español (PE)"
+        },
+        "Code": "es_PE",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ".",
+        "ThousandSeparator": ",",
+        "Grouping": "[3,0]",
+        "DateFormat": "DD/MM/YYYY",
+        "TimeFormat": "HH:mm:ss",
+        "FirstDayOfWeek": "0",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_es_py",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Spanish (PY) / Español (PY)"
+        },
+        "Code": "es_PY",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ",",
+        "ThousandSeparator": ".",
+        "Grouping": "[3,0]",
+        "DateFormat": "DD/MM/YYYY",
+        "TimeFormat": "HH:mm:ss",
+        "FirstDayOfWeek": "0",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_es_uy",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Spanish (UY) / Español (UY)"
+        },
+        "Code": "es_UY",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ",",
+        "ThousandSeparator": ".",
+        "Grouping": "[3,0]",
+        "DateFormat": "DD/MM/YYYY",
+        "TimeFormat": "HH:mm:ss",
+        "FirstDayOfWeek": "1",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_es_ve",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Spanish (VE) / Español (VE)"
+        },
+        "Code": "es_VE",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ",",
+        "ThousandSeparator": ".",
+        "Grouping": "[3,0]",
+        "DateFormat": "DD/MM/YYYY",
+        "TimeFormat": "HH:mm:ss",
+        "FirstDayOfWeek": "0",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_et_ee",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Estonian / Eesti keel"
+        },
+        "Code": "et_EE",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ",",
+        "ThousandSeparator": " ",
+        "Grouping": "[3,0]",
+        "DateFormat": "DD.MM.YYYY",
+        "TimeFormat": "HH:mm:ss",
+        "FirstDayOfWeek": "1",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_eu_es",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Basque / Euskara"
+        },
+        "Code": "eu_ES",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ",",
+        "ThousandSeparator": "",
+        "Grouping": "[]",
+        "DateFormat": "ddd, YYYY.[eko] MMM[ren] DD[a]",
+        "TimeFormat": "HH:mm:ss",
+        "FirstDayOfWeek": "1",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_fa_ir",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Persian / فارسی"
+        },
+        "Code": "fa_IR",
+        "IsActive": false,
+        "Direction": "rtl",
+        "DecimalSeparator": ".",
+        "ThousandSeparator": ",",
+        "Grouping": "[3,0]",
+        "DateFormat": "YYYY/MM/DD",
+        "TimeFormat": "HH:mm:ss",
+        "FirstDayOfWeek": "6",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_fi_fi",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Finnish / Suomi"
+        },
+        "Code": "fi_FI",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ",",
+        "ThousandSeparator": " ",
+        "Grouping": "[3,0]",
+        "DateFormat": "DD.MM.YYYY",
+        "TimeFormat": "HH.mm.ss",
+        "FirstDayOfWeek": "1",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_fr_be",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "French (BE) / Français (BE)"
+        },
+        "Code": "fr_BE",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ",",
+        "ThousandSeparator": ".",
+        "Grouping": "[3,0]",
+        "DateFormat": "DD/MM/YYYY",
+        "TimeFormat": "HH:mm:ss",
+        "FirstDayOfWeek": "1",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_fr_ca",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "French (CA) / Français (CA)"
+        },
+        "Code": "fr_CA",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ",",
+        "ThousandSeparator": " ",
+        "Grouping": "[3,0]",
+        "DateFormat": "YYYY-MM-DD",
+        "TimeFormat": "HH:mm:ss",
+        "FirstDayOfWeek": "0",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_fr_ch",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "French (CH) / Français (CH)"
+        },
+        "Code": "fr_CH",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ".",
+        "ThousandSeparator": "'",
+        "Grouping": "[3,0]",
+        "DateFormat": "DD.MM.YYYY",
+        "TimeFormat": "HH:mm:ss",
+        "FirstDayOfWeek": "1",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_fr_fr",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "French / Français"
+        },
+        "Code": "fr_FR",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ",",
+        "ThousandSeparator": " ",
+        "Grouping": "[3,0]",
+        "DateFormat": "DD/MM/YYYY",
+        "TimeFormat": "HH:mm:ss",
+        "FirstDayOfWeek": "1",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_gl_es",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Galician / Galego"
+        },
+        "Code": "gl_ES",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ",",
+        "ThousandSeparator": "",
+        "Grouping": "[]",
+        "DateFormat": "DD/MM/YYYY",
+        "TimeFormat": "HH:mm:ss",
+        "FirstDayOfWeek": "1",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_gu_in",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Gujarati / ગુજરાતી"
+        },
+        "Code": "gu_IN",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ".",
+        "ThousandSeparator": ",",
+        "Grouping": "[]",
+        "DateFormat": "dddd DD MMM YYYY",
+        "TimeFormat": "hh:mm:ss",
+        "FirstDayOfWeek": "0",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_he_il",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Hebrew / עברית"
+        },
+        "Code": "he_IL",
+        "IsActive": false,
+        "Direction": "rtl",
+        "DecimalSeparator": ".",
+        "ThousandSeparator": ",",
+        "Grouping": "[3,0]",
+        "DateFormat": "DD/MM/YYYY",
+        "TimeFormat": "HH:mm:ss",
+        "FirstDayOfWeek": "0",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_hi_in",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Hindi / हिंदी"
+        },
+        "Code": "hi_IN",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ".",
+        "ThousandSeparator": ",",
+        "Grouping": "[3,2,0]",
+        "DateFormat": "dddd DD MMM YYYY",
+        "TimeFormat": "hh:mm:ss",
+        "FirstDayOfWeek": "0",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_hr_hr",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Croatian / hrvatski jezik"
+        },
+        "Code": "hr_HR",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ",",
+        "ThousandSeparator": ".",
+        "Grouping": "[3,0]",
+        "DateFormat": "DD.MM.YYYY",
+        "TimeFormat": "HH:mm:ss",
+        "FirstDayOfWeek": "1",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_hu_hu",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Hungarian / Magyar"
+        },
+        "Code": "hu_HU",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ",",
+        "ThousandSeparator": ".",
+        "Grouping": "[3,0]",
+        "DateFormat": "YYYY-MM-DD",
+        "TimeFormat": "HH:mm:ss",
+        "FirstDayOfWeek": "1",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_id_id",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Indonesian / Bahasa Indonesia"
+        },
+        "Code": "id_ID",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ",",
+        "ThousandSeparator": ".",
+        "Grouping": "[3,0]",
+        "DateFormat": "DD/MM/YYYY",
+        "TimeFormat": "HH:mm:ss",
+        "FirstDayOfWeek": "0",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_it_it",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Italian / Italiano"
+        },
+        "Code": "it_IT",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ",",
+        "ThousandSeparator": ".",
+        "Grouping": "[3,0]",
+        "DateFormat": "DD/MM/YYYY",
+        "TimeFormat": "HH:mm:ss",
+        "FirstDayOfWeek": "1",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_ja_jp",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Japanese / 日本語"
+        },
+        "Code": "ja_JP",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ".",
+        "ThousandSeparator": ",",
+        "Grouping": "[3,0]",
+        "DateFormat": "YYYY年MM月DD日",
+        "TimeFormat": "HH時mm分ss秒",
+        "FirstDayOfWeek": "0",
+        "PersonNameFormat": "{LastName}{FirstName}"
+      }
+    },
+    {
+      "name": "language_ka_ge",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Georgian / ქართული ენა"
+        },
+        "Code": "ka_GE",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ",",
+        "ThousandSeparator": ".",
+        "Grouping": "[3,0]",
+        "DateFormat": "MM/DD/YYYY",
+        "TimeFormat": "HH:mm:ss",
+        "FirstDayOfWeek": "1",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_kab_dz",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Kabyle / Taqbaylit"
+        },
+        "Code": "kab_DZ",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ".",
+        "ThousandSeparator": ",",
+        "Grouping": "[]",
+        "DateFormat": "MM/DD/YYYY",
+        "TimeFormat": "hh:mm:ss A",
+        "FirstDayOfWeek": "6",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_km_kh",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Khmer / ភាសាខ្មែរ"
+        },
+        "Code": "km_KH",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ".",
+        "ThousandSeparator": ",",
+        "Grouping": "[3,0]",
+        "DateFormat": "DD MMMM YYYY",
+        "TimeFormat": "HH:mm:ss",
+        "FirstDayOfWeek": "0",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_ko_kp",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Korean (KP) / 한국어 (KP)"
+        },
+        "Code": "ko_KP",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ".",
+        "ThousandSeparator": ",",
+        "Grouping": "[3,0]",
+        "DateFormat": "MM/DD/YYYY",
+        "TimeFormat": "hh:mm:ss A",
+        "FirstDayOfWeek": "1",
+        "PersonNameFormat": "{LastName}{FirstName}"
+      }
+    },
+    {
+      "name": "language_ko_kr",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Korean (KR) / 한국어 (KR)"
+        },
+        "Code": "ko_KR",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ".",
+        "ThousandSeparator": ",",
+        "Grouping": "[3,0]",
+        "DateFormat": "YYYY년 MM월 DD일",
+        "TimeFormat": "HH시 mm분 ss초",
+        "FirstDayOfWeek": "0",
+        "PersonNameFormat": "{LastName}{FirstName}"
+      }
+    },
+    {
+      "name": "language_lb_lu",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Luxembourgish"
+        },
+        "Code": "lb_LU",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ",",
+        "ThousandSeparator": " ",
+        "Grouping": "[3,0]",
+        "DateFormat": "DD/MM/YYYY",
+        "TimeFormat": "HH:mm:ss",
+        "FirstDayOfWeek": "1",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_lo_la",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Lao / ພາສາລາວ"
+        },
+        "Code": "lo_LA",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ".",
+        "ThousandSeparator": ",",
+        "Grouping": "[3,0]",
+        "DateFormat": "DD/MM/YYYY",
+        "TimeFormat": "HH:mm:ss",
+        "FirstDayOfWeek": "0",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_lt_lt",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Lithuanian / Lietuvių kalba"
+        },
+        "Code": "lt_LT",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ",",
+        "ThousandSeparator": ".",
+        "Grouping": "[3,0]",
+        "DateFormat": "YYYY-MM-DD",
+        "TimeFormat": "HH:mm:ss",
+        "FirstDayOfWeek": "1",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_lv_lv",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Latvian / latviešu valoda"
+        },
+        "Code": "lv_LV",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ",",
+        "ThousandSeparator": " ",
+        "Grouping": "[3,0]",
+        "DateFormat": "YYYY.MM.DD.",
+        "TimeFormat": "HH:mm:ss",
+        "FirstDayOfWeek": "1",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_mk_mk",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Macedonian / македонски јазик"
+        },
+        "Code": "mk_MK",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ",",
+        "ThousandSeparator": " ",
+        "Grouping": "[3,0]",
+        "DateFormat": "DD.MM.YYYY",
+        "TimeFormat": "HH:mm:ss",
+        "FirstDayOfWeek": "1",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_ml_in",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Malayalam / മലയാളം"
+        },
+        "Code": "ml_IN",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ",",
+        "ThousandSeparator": " ",
+        "Grouping": "[3,0]",
+        "DateFormat": "DD/MM/YYYY",
+        "TimeFormat": "HH:mm:ss",
+        "FirstDayOfWeek": "1",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_mn_mn",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Mongolian / монгол"
+        },
+        "Code": "mn_MN",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ".",
+        "ThousandSeparator": "'",
+        "Grouping": "[3,0]",
+        "DateFormat": "YYYY-MM-DD",
+        "TimeFormat": "HH:mm:ss",
+        "FirstDayOfWeek": "0",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_ms_my",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Malay / Bahasa Melayu"
+        },
+        "Code": "ms_MY",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ".",
+        "ThousandSeparator": ",",
+        "Grouping": "[3,0]",
+        "DateFormat": "DD/MM/YYYY",
+        "TimeFormat": "HH:mm:ss",
+        "FirstDayOfWeek": "1",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_my_mm",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Burmese / ဗမာစာ"
+        },
+        "Code": "my_MM",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ".",
+        "ThousandSeparator": ",",
+        "Grouping": "[3,3]",
+        "DateFormat": "YYYY MMM DD dddd",
+        "TimeFormat": "hh:mm:ss A",
+        "FirstDayOfWeek": "0",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_nb_no",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Norwegian Bokmål / Norsk bokmål"
+        },
+        "Code": "nb_NO",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ",",
+        "ThousandSeparator": " ",
+        "Grouping": "[3,0]",
+        "DateFormat": "DD.MM.YYYY",
+        "TimeFormat": "HH:mm:ss",
+        "FirstDayOfWeek": "1",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_nl_be",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Dutch (BE) / Nederlands (BE)"
+        },
+        "Code": "nl_BE",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ",",
+        "ThousandSeparator": ".",
+        "Grouping": "[3,0]",
+        "DateFormat": "DD-MM-YYYY",
+        "TimeFormat": "HH:mm:ss",
+        "FirstDayOfWeek": "1",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_nl_nl",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Dutch / Nederlands"
+        },
+        "Code": "nl_NL",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ",",
+        "ThousandSeparator": ".",
+        "Grouping": "[3,0]",
+        "DateFormat": "DD-MM-YYYY",
+        "TimeFormat": "HH:mm:ss",
+        "FirstDayOfWeek": "1",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_pl_pl",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Polish / Język polski"
+        },
+        "Code": "pl_PL",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ",",
+        "ThousandSeparator": "",
+        "Grouping": "[]",
+        "DateFormat": "DD.MM.YYYY",
+        "TimeFormat": "HH:mm:ss",
+        "FirstDayOfWeek": "1",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_pt_ao",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Portuguese (AO) / Português (AO)"
+        },
+        "Code": "pt_AO",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ",",
+        "ThousandSeparator": "",
+        "Grouping": "[]",
+        "DateFormat": "DD-MM-YYYY",
+        "TimeFormat": "HH:mm:ss",
+        "FirstDayOfWeek": "1",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_pt_br",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Portuguese (BR) / Português (BR)"
+        },
+        "Code": "pt_BR",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ",",
+        "ThousandSeparator": ".",
+        "Grouping": "[3,0]",
+        "DateFormat": "DD/MM/YYYY",
+        "TimeFormat": "HH:mm:ss",
+        "FirstDayOfWeek": "0",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_pt_pt",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Portuguese / Português"
+        },
+        "Code": "pt_PT",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ",",
+        "ThousandSeparator": "",
+        "Grouping": "[3,0]",
+        "DateFormat": "DD-MM-YYYY",
+        "TimeFormat": "HH:mm:ss",
+        "FirstDayOfWeek": "1",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_ro_ro",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Romanian / română"
+        },
+        "Code": "ro_RO",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ",",
+        "ThousandSeparator": ".",
+        "Grouping": "[3,0]",
+        "DateFormat": "DD.MM.YYYY",
+        "TimeFormat": "HH:mm:ss",
+        "FirstDayOfWeek": "1",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_ru_ru",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Russian / русский язык"
+        },
+        "Code": "ru_RU",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ",",
+        "ThousandSeparator": " ",
+        "Grouping": "[3,0]",
+        "DateFormat": "DD.MM.YYYY",
+        "TimeFormat": "HH:mm:ss",
+        "FirstDayOfWeek": "1",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_sk_sk",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Slovak / Slovenský jazyk"
+        },
+        "Code": "sk_SK",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ",",
+        "ThousandSeparator": " ",
+        "Grouping": "[3,0]",
+        "DateFormat": "DD.MM.YYYY",
+        "TimeFormat": "HH:mm:ss",
+        "FirstDayOfWeek": "1",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_sl_si",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Slovenian / slovenščina"
+        },
+        "Code": "sl_SI",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ",",
+        "ThousandSeparator": " ",
+        "Grouping": "[]",
+        "DateFormat": "DD. MM. YYYY",
+        "TimeFormat": "HH:mm:ss",
+        "FirstDayOfWeek": "1",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_sq_al",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Albanian / Shqip"
+        },
+        "Code": "sq_AL",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ",",
+        "ThousandSeparator": ".",
+        "Grouping": "[3,0]",
+        "DateFormat": "YYYY-MMM-DD",
+        "TimeFormat": "hh.mm.ss.",
+        "FirstDayOfWeek": "1",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_sv_se",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Swedish / Svenska"
+        },
+        "Code": "sv_SE",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ",",
+        "ThousandSeparator": " ",
+        "Grouping": "[3,0]",
+        "DateFormat": "YYYY-MM-DD",
+        "TimeFormat": "HH:mm:ss",
+        "FirstDayOfWeek": "1",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_sw",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Swahili / Kiswahili"
+        },
+        "Code": "sw",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ".",
+        "ThousandSeparator": ",",
+        "Grouping": "[3,0]",
+        "DateFormat": "DD/MM/YYYY",
+        "TimeFormat": "HH:mm:ss",
+        "FirstDayOfWeek": "1",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_te_in",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Telugu / తెలుగు"
+        },
+        "Code": "te_IN",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ".",
+        "ThousandSeparator": ",",
+        "Grouping": "[]",
+        "DateFormat": "MMMM DD dddd YYYY",
+        "TimeFormat": "Ahh.mm.ss",
+        "FirstDayOfWeek": "0",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_th_th",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Thai / ภาษาไทย"
+        },
+        "Code": "th_TH",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ".",
+        "ThousandSeparator": ",",
+        "Grouping": "[3,0]",
+        "DateFormat": "DD/MM/YYYY",
+        "TimeFormat": "HH:mm:ss",
+        "FirstDayOfWeek": "0",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_tl_ph",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Tagalog / Filipino"
+        },
+        "Code": "tl_PH",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ".",
+        "ThousandSeparator": ",",
+        "Grouping": "[3,0]",
+        "DateFormat": "MM/DD/YY",
+        "TimeFormat": "HH:mm:ss",
+        "FirstDayOfWeek": "1",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_tr_tr",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Turkish / Türkçe"
+        },
+        "Code": "tr_TR",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ",",
+        "ThousandSeparator": ".",
+        "Grouping": "[3,0]",
+        "DateFormat": "DD-MM-YYYY",
+        "TimeFormat": "HH:mm:ss",
+        "FirstDayOfWeek": "1",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_uk_ua",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Ukrainian / українська"
+        },
+        "Code": "uk_UA",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ",",
+        "ThousandSeparator": " ",
+        "Grouping": "[3,0]",
+        "DateFormat": "DD.MM.YYYY",
+        "TimeFormat": "HH:mm:ss",
+        "FirstDayOfWeek": "1",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_vi_vn",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Vietnamese / Tiếng Việt"
+        },
+        "Code": "vi_VN",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ",",
+        "ThousandSeparator": ".",
+        "Grouping": "[3,0]",
+        "DateFormat": "DD/MM/YYYY",
+        "TimeFormat": "HH:mm:ss",
+        "FirstDayOfWeek": "1",
+        "PersonNameFormat": "{FirstName} {LastName}"
+      }
+    },
+    {
+      "name": "language_zh_hk",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Chinese (HK)"
+        },
+        "Code": "zh_HK",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ".",
+        "ThousandSeparator": ",",
+        "Grouping": "[3,0]",
+        "DateFormat": "YYYY年MM月DD日 dddd",
+        "TimeFormat": "hh時mm分ss秒",
+        "FirstDayOfWeek": "0",
+        "PersonNameFormat": "{LastName}{FirstName}"
+      }
+    },
+    {
+      "name": "language_zh_tw",
+      "model": "Language",
+      "noupdate": true,
+      "values": {
+        "Name": {
+          "en_US": "Chinese (Traditional) / 繁體中文"
+        },
+        "Code": "zh_TW",
+        "IsActive": false,
+        "Direction": "ltr",
+        "DecimalSeparator": ".",
+        "ThousandSeparator": ",",
+        "Grouping": "[3,0]",
+        "DateFormat": "YYYY年MM月DD日",
+        "TimeFormat": "HH時mm分ss秒",
+        "FirstDayOfWeek": "0",
+        "PersonNameFormat": "{LastName}{FirstName}"
+      }
+    }
+  ]
+}

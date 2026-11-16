@@ -11,7 +11,11 @@ import {
   formatDateWithLanguage,
   formatNumberWithLanguage,
 } from './_language_format';
-import { DEFAULT_PERSON_NAME_FORMAT, normalizePersonNameFormat } from '@/core/service/utils/person_name';
+import {
+  DEFAULT_PERSON_NAME_FORMAT,
+  isValidPersonNameFormat,
+  normalizePersonNameFormat,
+} from '@/core/service/utils/person_name';
 
 export type LanguageFormatKind = 'number' | 'date' | 'time' | 'datetime';
 
@@ -73,6 +77,9 @@ export default class Language extends BaseModel {
     default: () => true,
     index: true,
     string: _lt('Active', { scope: 'base.model.Language.fields' }),
+    help: _lt('When enabled, the language appears in Preferences and the guest switcher. Enabling does not install PO / terminology packs.', {
+      scope: 'base.model.Language.fields',
+    }),
   })
   IsActive: boolean;
 
@@ -84,6 +91,9 @@ export default class Language extends BaseModel {
     ],
     size: 8,
     string: _lt('Direction', { scope: 'base.model.Language.fields' }),
+    help: _lt('Text direction for UI chrome that follows this language (ltr or rtl).', {
+      scope: 'base.model.Language.fields',
+    }),
   })
   Direction?: 'ltr' | 'rtl' | null;
 
@@ -98,11 +108,20 @@ export default class Language extends BaseModel {
     type: 'varchar',
     size: 8,
     string: _lt('Thousands Separator', { scope: 'base.model.Language.fields' }),
+    help: _lt('Clear the value for no thousands separator. Whitespace (space / NBSP) is allowed.', {
+      scope: 'base.model.Language.fields',
+    }),
   })
   ThousandSeparator?: string;
 
   @Field({
-    type: 'varchar',
+    type: 'selection',
+    selection: [
+      { value: '[3,0]', label: _lt('Thousands ([3,0])', { scope: 'base.model.Language.fields' }) },
+      { value: '[3,2,0]', label: _lt('Indian ([3,2,0])', { scope: 'base.model.Language.fields' }) },
+      { value: '[3,3]', label: _lt('Triples ([3,3])', { scope: 'base.model.Language.fields' }) },
+      { value: '[]', label: _lt('None ([])', { scope: 'base.model.Language.fields' }) },
+    ],
     size: 32,
     default: () => '[3,0]',
     string: _lt('Grouping', { scope: 'base.model.Language.fields' }),
@@ -116,7 +135,7 @@ export default class Language extends BaseModel {
     type: 'varchar',
     size: 32,
     string: _lt('Date Format', { scope: 'base.model.Language.fields' }),
-    help: _lt('strftime-style pattern for dates in this language.', {
+    help: _lt('dayjs pattern for dates in this language (e.g. YYYY-MM-DD).', {
       scope: 'base.model.Language.fields',
     }),
   })
@@ -126,14 +145,30 @@ export default class Language extends BaseModel {
     type: 'varchar',
     size: 32,
     string: _lt('Time Format', { scope: 'base.model.Language.fields' }),
+    help: _lt('dayjs pattern for times in this language (e.g. HH:mm:ss).', {
+      scope: 'base.model.Language.fields',
+    }),
   })
   TimeFormat?: string;
 
   @Field({
-    type: 'int',
+    type: 'selection',
+    selection: [
+      { value: '0', label: _lt('Sunday', { scope: 'base.model.Language.fields' }) },
+      { value: '1', label: _lt('Monday', { scope: 'base.model.Language.fields' }) },
+      { value: '2', label: _lt('Tuesday', { scope: 'base.model.Language.fields' }) },
+      { value: '3', label: _lt('Wednesday', { scope: 'base.model.Language.fields' }) },
+      { value: '4', label: _lt('Thursday', { scope: 'base.model.Language.fields' }) },
+      { value: '5', label: _lt('Friday', { scope: 'base.model.Language.fields' }) },
+      { value: '6', label: _lt('Saturday', { scope: 'base.model.Language.fields' }) },
+    ],
+    size: 8,
     string: _lt('First Day of Week', { scope: 'base.model.Language.fields' }),
+    help: _lt('Week start day for calendars (0 = Sunday … 6 = Saturday).', {
+      scope: 'base.model.Language.fields',
+    }),
   })
-  FirstDayOfWeek?: number;
+  FirstDayOfWeek?: string | null;
 
   @Field({
     type: 'selection',
@@ -261,8 +296,17 @@ export default class Language extends BaseModel {
       this.CurrencySymbolSpacing = assertCurrencySymbolSpacing(this.CurrencySymbolSpacing);
     }
     if (this.PersonNameFormat !== undefined) {
-      // Empty/invalid templates normalize to the default (do not store blanks).
-      this.PersonNameFormat = normalizePersonNameFormat(this.PersonNameFormat);
+      const text = String(this.PersonNameFormat ?? '').trim();
+      if (!isValidPersonNameFormat(text)) {
+        raiseDomainError(
+          'base',
+          'InvalidArgument',
+          _t('Person name format must include {FirstName} and/or {LastName}', {
+            scope: 'service/models/language',
+          })
+        );
+      }
+      this.PersonNameFormat = text;
     }
 
     // Refuse deactivating the last active language (update path only).

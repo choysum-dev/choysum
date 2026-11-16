@@ -5,11 +5,14 @@
  * Host Gateway terminology loader (GET /web/i18n/translations).
  */
 
+import { bcp47FromCode } from './bcp47';
+
 export type TerminologyMessages = Record<string, Record<string, Record<string, string>>>;
 
 export type WebTranslationsResponse = {
   lang: string;
-  locale: string;
+  /** Derived BCP47 tag (underscore → hyphen). */
+  bcp47: string;
   hash: string;
   unchanged: boolean;
   messages: TerminologyMessages | null;
@@ -63,11 +66,12 @@ export async function fetchWebTranslations(
     throw new Error(`translations gateway HTTP ${res.status}`);
   }
 
-  const body = (await res.json()) as Partial<WebTranslationsResponse>;
+  const body = (await res.json()) as Partial<WebTranslationsResponse> & { locale?: string };
   const unchanged = body.unchanged === true;
+  const bcp47 = String(body.bcp47 || body.locale || bcp47FromCode(terminologyLang));
   return {
     lang: String(body.lang || terminologyLang),
-    locale: String(body.locale || ''),
+    bcp47,
     hash: String(body.hash || ''),
     unchanged,
     messages: unchanged ? null : ((body.messages as TerminologyMessages) ?? {}),

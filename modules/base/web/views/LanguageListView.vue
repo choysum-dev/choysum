@@ -18,9 +18,8 @@ SPDX-License-Identifier: Apache-2.0
     <ChoyVarcharField :store="store" prop="Name" />
     <ChoyVarcharField :store="store" prop="Code" />
     <ChoySelectionField :store="store" prop="Direction" />
-    <ChoyVarcharField :store="store" prop="DecimalSeparator" />
-    <ChoyVarcharField :store="store" prop="ThousandSeparator" />
     <ChoyBooleanField :store="store" prop="IsActive" />
+    <ChoyVarcharField :store="store" prop="DateFormat" />
   </ChoyListView>
 </template>
 
@@ -33,7 +32,7 @@ import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
-import { ChoyBooleanField, ChoyListView, ChoySearchView, ChoySelectionField, ChoyTableColumn, ChoyVarcharField} from '@/web';
+import { ChoyBooleanField, ChoyListView, ChoySearchView, ChoySelectionField, ChoyTableColumn, ChoyVarcharField } from '@/web';
 import type { RowEventPayload } from '@/web';
 
 defineOptions({ name: 'LanguageListView', inheritAttrs: true });

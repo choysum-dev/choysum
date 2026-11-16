@@ -327,7 +327,7 @@ function toDisplayText(v: any, getFixedScale: () => number | undefined) {
   const fixedScale = getFixedScale();
   let numberFormat: { thousandsSeparator?: string; decimalSeparator?: string; grouping?: number[] } | undefined;
   try {
-    numberFormat = useI18nStore().currentLocale?.numberFormat;
+    numberFormat = useI18nStore().activeLanguage?.numberFormat;
   } catch {
     // Pinia / i18n may be unavailable in isolated mounts; fall back to plain text.
   }

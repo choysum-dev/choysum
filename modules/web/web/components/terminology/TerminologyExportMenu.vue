@@ -106,7 +106,12 @@ let loadGeneration = 0;
 
 const application = computed(() => String(props.application || '').trim());
 const canDownload = computed(
-  () => Boolean(application.value && selectedModule.value.trim() && i18nStore.terminologyLang)
+  () =>
+    Boolean(
+      application.value &&
+        selectedModule.value.trim() &&
+        (i18nStore.lang || i18nStore.activeLanguage.code)
+    )
 );
 
 watch(
@@ -172,7 +177,7 @@ function onSelectModule(event: Event, mod: string) {
 async function onDownloadPo() {
   if (!canDownload.value || downloading.value) return;
   const moduleName = selectedModule.value.trim();
-  const lang = String(i18nStore.terminologyLang || '').trim();
+  const lang = String(i18nStore.activeLanguage.code || '').trim();
   downloading.value = true;
   try {
     const blob = await downloadTerminologyPo({

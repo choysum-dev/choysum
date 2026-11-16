@@ -10,7 +10,6 @@ import { ref } from 'vue';
 import type { PostTranslationHandler, VueMessageType } from 'vue-i18n';
 
 import type { TermReference } from '@/core/service/i18n';
-import { langToUiKey } from '../stores/i18nStore/lang';
 
 export type TranslateOptions = import('@/core/service/i18n').TranslateOptions;
 export type CreateTranslateOptions = import('@/core/service/i18n').CreateTranslateOptions;
@@ -74,7 +73,7 @@ export function translateTerm(
     return defaultText;
   }
   try {
-    const locale = terminologyLang ? langToUiKey(terminologyLang) : undefined;
+    const locale = terminologyLang ? String(terminologyLang).trim() : undefined;
     const translated = locale
       ? bridge.t(reference.key, reference.src || fallback, { locale })
       : bridge.t(reference.key, reference.src || fallback);

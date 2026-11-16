@@ -22,8 +22,8 @@ func TestCatalogHashStableAndOrdered(t *testing.T) {
 	if CatalogHash(nil) != store.EmptyTermHash() {
 		t.Fatalf("empty catalogHash = %q, want %q", CatalogHash(nil), store.EmptyTermHash())
 	}
-	if LangToLocale("zh_CN") != "zh-CN" {
-		t.Fatalf("LangToLocale = %q", LangToLocale("zh_CN"))
+	if LangToBCP47("zh_CN") != "zh-CN" {
+		t.Fatalf("LangToBCP47 = %q", LangToBCP47("zh_CN"))
 	}
 }
 
@@ -127,7 +127,7 @@ func TestTranslationsMergeAndUnchanged(t *testing.T) {
 	if out["unchanged"] == true {
 		t.Fatalf("expected changed: %#v", out)
 	}
-	if out["locale"] != "zh-CN" || out["lang"] != "zh_CN" {
+	if out["bcp47"] != "zh-CN" || out["lang"] != "zh_CN" {
 		t.Fatalf("lang/locale: %#v", out)
 	}
 	messages, ok := out["messages"].(map[string]any)

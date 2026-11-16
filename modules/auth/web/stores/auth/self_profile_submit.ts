@@ -35,7 +35,7 @@ export async function runSelfProfileSubmit(opts: {
   /** Apply shell theme and density from User fields. */
   applyAppearance?: (theme: unknown, density: unknown) => void;
   refreshToken: () => Promise<unknown>;
-  afterLocaleChange: () => Promise<unknown>;
+  afterLangChange: () => Promise<unknown>;
   onSuccess: () => void;
   onError: (message: string) => void;
   failedMessage: string;
@@ -77,9 +77,14 @@ export async function runSelfProfileSubmit(opts: {
 
   try {
     await opts.refreshToken();
-    await opts.afterLocaleChange();
   } catch {
-    // Token/locale remount is best-effort after Write; still close as saved.
+    // Token refresh is best-effort after Write.
+  }
+
+  try {
+    await opts.afterLangChange();
+  } catch {
+    // Locale remount is best-effort after Write.
   }
 
   opts.onSuccess();
