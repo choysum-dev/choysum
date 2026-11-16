@@ -22,3 +22,20 @@ test('afterLangChange: calls location.reload when no injection', async () => {
     (globalThis as any).location = prev;
   }
 });
+
+test('afterLangChange: warns when location.reload is unavailable', async () => {
+  const prev = globalThis.location;
+  const warnings: unknown[] = [];
+  const prevWarn = console.warn;
+  console.warn = (...args: unknown[]) => {
+    warnings.push(args[0]);
+  };
+  (globalThis as any).location = {};
+  try {
+    await afterLangChange();
+    expect(String(warnings[0] || '')).toMatch(/location\.reload unavailable/);
+  } finally {
+    console.warn = prevWarn;
+    (globalThis as any).location = prev;
+  }
+});

@@ -124,7 +124,7 @@ export const useI18nStore = defineStore(
     async function setLang(code: string) {
       const next = String(code || '').trim();
       if (!next) {
-        console.warn(`Language ${next} is not in the active set`);
+        console.warn('setLang: empty language code');
         return false;
       }
 
@@ -399,37 +399,48 @@ export const useI18nStore = defineStore(
         return;
       }
 
-      const loaded = isClient ? await loadActiveLanguages() : true;
-
-      const allowed = activeCodes.value.length ? activeCodes.value : [...DEFAULT_ACTIVE_LANGS];
-      let langToSet = lang.value;
-
-      if (!langToSet || !allowed.includes(langToSet)) {
-        if (!langToSet) {
-          langToSet = detectBestLang(allowed);
-        } else if (loaded) {
-          langToSet = detectBestLang(allowed);
-        } else if (!activeLanguages.value.some(r => r.Code === langToSet)) {
-          activeLanguages.value = [...activeLanguages.value, { Code: langToSet }];
-        }
-      }
-
+      // Capture before the first await so a concurrent setLang cannot be clobbered.
       const initSetLangGen = setLangGeneration;
-      let ok = await setLang(langToSet);
-      if (!ok && setLangGeneration === initSetLangGen + 1) {
-        const allowedNow = activeCodes.value.length ? activeCodes.value : [...DEFAULT_ACTIVE_LANGS];
-        ok = await setLang(detectBestLang(allowedNow));
-      }
-      if (!ok && setLangGeneration === initSetLangGen + 2) {
-        const allowedNow = activeCodes.value.length ? activeCodes.value : [...DEFAULT_ACTIVE_LANGS];
-        lang.value = allowedNow.includes('en_US') ? 'en_US' : allowedNow[0] || 'en_US';
-      }
+      try {
+        const loaded = isClient ? await loadActiveLanguages() : true;
 
-      if (isClient && setLangGeneration <= initSetLangGen + 2) {
-        updateDocumentDirection(activeLanguage.value.textDirection);
-      }
+        if (setLangGeneration !== initSetLangGen) {
+          return;
+        }
 
-      isInitialized.value = true;
+        const allowed = activeCodes.value.length ? activeCodes.value : [...DEFAULT_ACTIVE_LANGS];
+        let langToSet = lang.value;
+
+        if (!langToSet || !allowed.includes(langToSet)) {
+          if (!langToSet) {
+            langToSet = detectBestLang(allowed);
+          } else if (loaded) {
+            langToSet = detectBestLang(allowed);
+          } else if (!activeLanguages.value.some(r => r.Code === langToSet)) {
+            activeLanguages.value = [...activeLanguages.value, { Code: langToSet }];
+          }
+        }
+
+        let ok = await setLang(langToSet);
+        if (!ok && setLangGeneration === initSetLangGen + 1) {
+          const allowedNow = activeCodes.value.length ? activeCodes.value : [...DEFAULT_ACTIVE_LANGS];
+          ok = await setLang(detectBestLang(allowedNow));
+        }
+        if (!ok && setLangGeneration === initSetLangGen + 2) {
+          const allowedNow = activeCodes.value.length ? activeCodes.value : [...DEFAULT_ACTIVE_LANGS];
+          lang.value = allowedNow.includes('en_US') ? 'en_US' : allowedNow[0] || 'en_US';
+        }
+
+        if (isClient && setLangGeneration <= initSetLangGen + 2) {
+          updateDocumentDirection(activeLanguage.value.textDirection);
+        }
+      } finally {
+        if (!lang.value) {
+          const allowedNow = activeCodes.value.length ? activeCodes.value : [...DEFAULT_ACTIVE_LANGS];
+          lang.value = allowedNow.includes('en_US') ? 'en_US' : allowedNow[0] || 'en_US';
+        }
+        isInitialized.value = true;
+      }
     }
 
     return {
@@ -465,12 +476,19 @@ export const useI18nStore = defineStore(
       key: 'choysum.web.i18n',
       storage: localStorage,
       pick: ['lang'],
-      afterHydrate: (ctx: PiniaPluginContext) => {
-        if (ctx.store.$id === 'choysum.web.i18n') {
-          const i18nStore = ctx.store;
-          void i18nStore.initialize();
-        }
-      },
+      afterHydrate: runI18nPersistAfterHydrate,
     },
   }
 );
+
+/** Pinia persist hook: start language initialization after rehydrate. */
+export function runI18nAfterHydrate(store: { $id?: string; initialize?: () => unknown }): void {
+  if (store.$id === 'choysum.web.i18n' && typeof store.initialize === 'function') {
+    void store.initialize();
+  }
+}
+
+/** Persist plugin adapter for {@link runI18nAfterHydrate}. */
+export function runI18nPersistAfterHydrate(ctx: PiniaPluginContext): void {
+  runI18nAfterHydrate(ctx.store);
+}

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import {
+  createRelativeTimeFormatter,
   formatCurrency,
   formatDateTime,
   formatNumber,
@@ -10,6 +11,8 @@ import {
   getNumberFormats,
   matchBestLang,
   pickRelativeUnit,
+  readPreferredLanguageTags,
+  resolveRelativeTargetMs,
   updateDocumentDirection,
 } from './utils';
 
@@ -70,24 +73,79 @@ test('pickRelativeUnit: maps millisecond deltas to units', () => {
   expect(pickRelativeUnit(45_000).value).toBeGreaterThan(0);
 });
 
-test('formatRelativeFromDiffMs: formats via Intl with invalid tag fallback', () => {
-  if (typeof Intl.RelativeTimeFormat !== 'function') {
-    return;
+test('formatRelativeFromDiffMs: uses injected formatter and invalid-tag fallback', () => {
+  const calls: string[] = [];
+  const out = formatRelativeFromDiffMs(-60_000, 'xx-BAD', tag => {
+    calls.push(tag);
+    if (tag !== 'en-US') {
+      throw new Error('bad tag');
+    }
+    return { format: (value, unit) => `${value}:${unit}` };
+  });
+  expect(calls).toEqual(['xx-BAD', 'en-US']);
+  expect(out).toMatch(/minute/);
+});
+
+test('formatRelativeFromDiffMs: plain fallback when formatter always fails', () => {
+  const out = formatRelativeFromDiffMs(-120_000, '', () => {
+    throw new Error('no intl');
+  });
+  expect(out).toMatch(/ago/);
+});
+
+test('formatRelativeFromDiffMs: default factory throws without RelativeTimeFormat support', () => {
+  const RTF = (Intl as any).RelativeTimeFormat;
+  let threw = false;
+  try {
+    createRelativeTimeFormatter('en-US');
+  } catch {
+    threw = true;
   }
-  expect(String(formatRelativeFromDiffMs(-60_000, 'en-US'))).not.toBe('');
-  expect(String(formatRelativeFromDiffMs(-60_000, 'not-a-real-bcp47-tag-###'))).not.toBe('');
+  if (typeof RTF !== 'function') {
+    expect(threw).toBe(true);
+  }
+  const out = formatRelativeFromDiffMs(90_000, 'en-US');
+  expect(String(out)).not.toBe('');
+});
+
+test('createRelativeTimeFormatter: constructs when RelativeTimeFormat is polyfilled', () => {
+  const prev = (Intl as any).RelativeTimeFormat;
+  (Intl as any).RelativeTimeFormat = class {
+    tag: string;
+    constructor(tag: string) {
+      this.tag = tag;
+    }
+    format(value: number, unit: string) {
+      return `${this.tag}:${value}:${unit}`;
+    }
+  };
+  try {
+    expect(createRelativeTimeFormatter('en-US').format(-1, 'minute')).toBe('en-US:-1:minute');
+    expect(formatRelativeFromDiffMs(-60_000, 'fr-FR')).toMatch(/^fr-FR:/);
+  } finally {
+    (Intl as any).RelativeTimeFormat = prev;
+  }
+});
+
+test('resolveRelativeTargetMs: Date / number / invalid string paths', () => {
+  const fromDate = resolveRelativeTargetMs(new Date(Date.UTC(2024, 0, 1)), 'Bad/Zone');
+  expect(Number.isFinite(fromDate)).toBe(true);
+  const fromNumber = resolveRelativeTargetMs(1_700_000_000_000, 'Bad/Zone');
+  expect(fromNumber).toBe(1_700_000_000_000);
+  const fromInvalid = resolveRelativeTargetMs('not-an-iso', 'Bad/Zone');
+  expect(Number.isFinite(fromInvalid)).toBe(true);
 });
 
 test('formatDateTime: relative works without tz when parseUtc/tz throws', () => {
-  if (typeof Intl.RelativeTimeFormat !== 'function') {
-    return;
-  }
   const past = Date.now() - 120_000;
   expect(String(formatDateTime(past, {}, { type: 'relative', bcp47: 'en-US' }))).not.toBe('');
   expect(
     String(
       formatDateTime('not-an-iso', {}, { type: 'relative', bcp47: 'en-US', timeZone: 'Bad/Zone' }),
     ),
+  ).not.toBe('');
+  expect(
+    String(formatDateTime(new Date(past), {}, { type: 'relative', bcp47: 'en-US', timeZone: 'Bad/Zone' })),
   ).not.toBe('');
 });
 
@@ -152,4 +210,42 @@ test('matchBestLang: picks first allowed when tags miss', () => {
 
 test('matchBestLang: empty preferred tag mainLang continues to next', () => {
   expect(matchBestLang(['', 'en-us'], ['de_DE', 'en_US'])).toBe('en_US');
+});
+
+test('readPreferredLanguageTags: languages array, language fallback, missing navigator, and throw', () => {
+  const desc = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
+  const setNav = (value: unknown) => {
+    Object.defineProperty(globalThis, 'navigator', {
+      configurable: true,
+      enumerable: true,
+      writable: true,
+      value,
+    });
+  };
+  try {
+    setNav({ languages: ['zh-CN', 'en-US'], language: 'en-US' });
+    expect(readPreferredLanguageTags()).toEqual(['zh-CN', 'en-US']);
+
+    setNav({ languages: [], language: 'de-DE' });
+    expect(readPreferredLanguageTags()).toEqual(['de-DE']);
+
+    setNav(undefined);
+    expect(readPreferredLanguageTags()).toEqual([]);
+
+    setNav(
+      new Proxy(
+        {},
+        {
+          get() {
+            throw new Error('nav boom');
+          },
+        },
+      ),
+    );
+    expect(readPreferredLanguageTags()).toEqual([]);
+  } finally {
+    if (desc) {
+      Object.defineProperty(globalThis, 'navigator', desc);
+    }
+  }
 });

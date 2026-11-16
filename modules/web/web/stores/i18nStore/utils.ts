@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { usePreferredLanguages, isClient } from '@vueuse/core';
+import { isClient } from '@vueuse/core';
 import dayjs from 'dayjs';
 import { DateTimeFormatType } from './types';
 import { bcp47FromCode } from './bcp47';
@@ -25,6 +25,22 @@ function normalizeCatalog(allowedCodes?: readonly string[]): string[] {
 
 function catalogFallback(catalog: string[]): string {
   return catalog.includes('en_US') ? 'en_US' : catalog[0] || 'en_US';
+}
+
+/** Read navigator language tags without VueUse composables (safe inside computed). */
+export function readPreferredLanguageTags(): string[] {
+  try {
+    const nav = (globalThis as { navigator?: Navigator }).navigator;
+    if (!nav) {
+      return [];
+    }
+    if (Array.isArray(nav.languages) && nav.languages.length) {
+      return [...nav.languages];
+    }
+    return nav.language ? [nav.language] : [];
+  } catch {
+    return [];
+  }
 }
 
 /**
@@ -66,12 +82,7 @@ export function matchBestLang(preferredTags: readonly string[], allowedCodes: re
  * Detect the best matching active Language.Code from navigator preferences.
  */
 export function detectBestLang(allowedCodes?: readonly string[]): string {
-  const catalog = normalizeCatalog(allowedCodes);
-  if (!isClient) {
-    return catalogFallback(catalog);
-  }
-  const preferredLanguages = usePreferredLanguages();
-  return matchBestLang(preferredLanguages.value || [], catalog);
+  return matchBestLang(readPreferredLanguageTags(), normalizeCatalog(allowedCodes));
 }
 
 /**
@@ -133,15 +144,72 @@ export function pickRelativeUnit(diffMs: number): { value: number; unit: Relativ
   return { value: year, unit: 'year' };
 }
 
+type RelativeTimeFormatter = { format: (value: number, unit: RelativeUnit) => string };
+
+/** Build an Intl relative-time formatter, or throw when the runtime lacks support. */
+export function createRelativeTimeFormatter(tag: string): RelativeTimeFormatter {
+  const RelativeTimeFormat = (
+    Intl as unknown as {
+      RelativeTimeFormat?: new (
+        locales?: string | string[],
+        options?: { numeric?: 'always' | 'auto' },
+      ) => RelativeTimeFormatter;
+    }
+  ).RelativeTimeFormat;
+  if (typeof RelativeTimeFormat !== 'function') {
+    throw new Error('Intl.RelativeTimeFormat unavailable');
+  }
+  return new RelativeTimeFormat(tag, { numeric: 'auto' });
+}
+
+function formatRelativePlain(value: number, unit: RelativeUnit): string {
+  const abs = Math.abs(value);
+  const label = abs === 1 ? String(unit) : `${unit}s`;
+  return value <= 0 ? `${abs} ${label} ago` : `in ${abs} ${label}`;
+}
+
 /** Format a signed millisecond delta as a relative time string (BCP47 tag). */
-export function formatRelativeFromDiffMs(diffMs: number, bcp47: string): string {
+export function formatRelativeFromDiffMs(
+  diffMs: number,
+  bcp47: string,
+  createFormatter: (tag: string) => RelativeTimeFormatter = createRelativeTimeFormatter,
+): string {
   const { value, unit } = pickRelativeUnit(diffMs);
   const tag = bcp47 || 'en-US';
   try {
-    return new Intl.RelativeTimeFormat(tag, { numeric: 'auto' }).format(value, unit);
+    return createFormatter(tag).format(value, unit);
   } catch {
-    return new Intl.RelativeTimeFormat('en-US', { numeric: 'auto' }).format(value, unit);
+    try {
+      return createFormatter('en-US').format(value, unit);
+    } catch {
+      return formatRelativePlain(value, unit);
+    }
   }
+}
+
+/** Resolve a relative-time target instant; falls back when TZ conversion is unavailable. */
+export function resolveRelativeTargetMs(date: Date | string | number, timeZone: string): number {
+  try {
+    const iso =
+      date instanceof Date
+        ? date.toISOString()
+        : typeof date === 'number'
+          ? new Date(date).toISOString()
+          : String(date);
+    const value = parseUtc(iso).tz(timeZone).valueOf();
+    if (Number.isFinite(value)) {
+      return value;
+    }
+  } catch {
+    // Fall through to Date-based fallback below.
+  }
+  const fallback =
+    date instanceof Date
+      ? date.getTime()
+      : typeof date === 'number'
+        ? date
+        : Date.parse(String(date));
+  return Number.isFinite(fallback) ? fallback : Date.now();
 }
 
 /**
@@ -168,26 +236,7 @@ export function formatDateTime(
   const timeZone = options?.timeZone || getUserTimeZone();
 
   if (type === 'relative') {
-    let targetMs: number;
-    try {
-      const iso =
-        date instanceof Date
-          ? date.toISOString()
-          : typeof date === 'number'
-            ? new Date(date).toISOString()
-            : String(date);
-      targetMs = parseUtc(iso).tz(timeZone).valueOf();
-    } catch {
-      targetMs =
-        date instanceof Date
-          ? date.getTime()
-          : typeof date === 'number'
-            ? date
-            : Date.parse(String(date));
-    }
-    if (!Number.isFinite(targetMs)) {
-      targetMs = Date.now();
-    }
+    const targetMs = resolveRelativeTargetMs(date, timeZone);
     return formatRelativeFromDiffMs(targetMs - Date.now(), options?.bcp47 || 'en-US');
   }
 

@@ -18,9 +18,12 @@ export async function afterLangChange(options?: AfterLangChangeOptions): Promise
   const reload =
     options?.reload ||
     (() => {
-      if (typeof globalThis !== 'undefined' && (globalThis as { location?: Location }).location?.reload) {
-        (globalThis as { location: Location }).location.reload();
+      const loc = (globalThis as { location?: Location }).location;
+      if (loc?.reload) {
+        loc.reload();
+        return;
       }
+      console.warn('afterLangChange: location.reload unavailable; language switch not applied');
     });
   reload();
 }
