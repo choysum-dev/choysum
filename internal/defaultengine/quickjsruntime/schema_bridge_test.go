@@ -134,6 +134,15 @@ func TestWithSchemaDDL_Helpers(t *testing.T) {
 		}
 		call(`$choysum.schema.replaceColumnPre('bridge_replace2','old_code','status_code')`)
 		fail(`$choysum.schema.replaceColumnPre('bridge_replace2','old_code', 1)`)
+		if err := txScope.Session().Exec(`CREATE TABLE bridge_replace3 (code integer)`).Error; err != nil {
+			return err
+		}
+		// Optional toColumn omitted via undefined/null must not throw.
+		call(`$choysum.schema.replaceColumnPre('bridge_replace3','code', undefined)`)
+		if err := txScope.Session().Exec(`CREATE TABLE bridge_replace4 (code integer)`).Error; err != nil {
+			return err
+		}
+		call(`$choysum.schema.replaceColumnPre('bridge_replace4','code', null)`)
 		if err := txScope.Session().Exec(`CREATE TABLE bridge_idx (code text)`).Error; err != nil {
 			return err
 		}

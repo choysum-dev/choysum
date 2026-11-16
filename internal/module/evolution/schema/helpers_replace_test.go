@@ -266,6 +266,33 @@ func TestReplaceColumnCopyCast_UnknownKind(t *testing.T) {
 	}
 }
 
+func TestReplaceColumnCopyCast_SkipsNullObsolete(t *testing.T) {
+	t.Parallel()
+	runtimeScope := newSchemaTestScope(t)
+	db := runtimeScope.Session().DB
+	if err := db.Exec(`CREATE TABLE replace_null (id integer, old_v integer, new_v text)`).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Exec(`INSERT INTO replace_null (id, old_v, new_v) VALUES (1, 5, NULL), (2, NULL, 'keep')`).Error; err != nil {
+		t.Fatal(err)
+	}
+	bag := NewMemoryIntentBag()
+	opts := HelperOptions{DB: db, Dialect: "sqlite", Intents: bag}
+	if err := ReplaceColumnCopyCast(opts, "replace_null", "old_v", "new_v", "int_to_varchar"); err != nil {
+		t.Fatal(err)
+	}
+	var got1, got2 string
+	if err := db.Raw(`SELECT new_v FROM replace_null WHERE id = 1`).Scan(&got1).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Raw(`SELECT new_v FROM replace_null WHERE id = 2`).Scan(&got2).Error; err != nil {
+		t.Fatal(err)
+	}
+	if got1 != "5" || got2 != "keep" {
+		t.Fatalf("got %q / %q (NULL obsolete must not overwrite new_v)", got1, got2)
+	}
+}
+
 func TestValidatePlan_ReplaceColumnHintOnTypeChange(t *testing.T) {
 	t.Parallel()
 	plan := SchemaPlan{

@@ -68,6 +68,8 @@ func ReplaceColumnPre(opts HelperOptions, o ReplaceColumnOptions) error {
 		}
 		// Same-name replacement after Migrate: live From/To exists again beside __obsolete
 		// (e.g. Post CopyCast failed). Allow Pre retry as a no-op so Post can resume.
+		// hasFrom here means Migrate already re-added the column (Pre renames From away);
+		// callers still must run Migrate before CopyCast/Drop when only __obsolete remains.
 		// When ToColumn differs, From should not still exist after a successful Pre.
 		if strings.EqualFold(from, to) {
 			return nil
@@ -122,7 +124,8 @@ func ReplaceColumnCopyCast(opts HelperOptions, table, fromObsolete, toColumn, ki
 	if err != nil {
 		return err
 	}
-	sql := fmt.Sprintf("UPDATE %s SET %s = %s", qTable, qTo, expr)
+	// Skip NULL obsolete values so a retried Post does not clobber rows already filled in ToColumn.
+	sql := fmt.Sprintf("UPDATE %s SET %s = %s WHERE %s IS NOT NULL", qTable, qTo, expr, qFrom)
 	if err := helperExec(opts.DB, sql); err != nil {
 		return fmt.Errorf("replaceColumnCopyCast %s: %w", kind, err)
 	}

@@ -80,8 +80,8 @@ func schemaSyncFactory(engine *quickjsengine.QuickjsEngine, dialect, method stri
 				return ctx.ThrowError(err)
 			}
 			toCol := ""
-			if len(args) >= 3 {
-				if args[2] == nil || !args[2].IsString() {
+			if len(args) >= 3 && args[2] != nil && !args[2].IsUndefined() && !args[2].IsNull() {
+				if !args[2].IsString() {
 					return ctx.ThrowError(fmt.Errorf("replaceColumnPre: argument 3 must be a string when provided"))
 				}
 				toCol = args[2].String()
