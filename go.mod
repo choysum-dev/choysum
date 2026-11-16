@@ -8,7 +8,7 @@ require (
 	github.com/bufbuild/protocompile v0.14.1
 	github.com/buke/quickjs-go v0.7.8
 	github.com/buke/typescript-go-internal/v7 v7.0.2
-	github.com/chromedp/cdproto v0.159.3
+	github.com/chromedp/cdproto v0.160.0
 	github.com/chromedp/chromedp v0.23.0
 	github.com/dhamidi/tailwind-go v0.4.0
 	github.com/ettle/strcase v0.2.0
@@ -40,7 +40,7 @@ require (
 	go.opentelemetry.io/otel/sdk v1.47.0
 	go.opentelemetry.io/otel/sdk/metric v1.47.0
 	go.opentelemetry.io/otel/trace v1.47.0
-	golang.org/x/crypto v0.58.0
+	golang.org/x/crypto v0.59.0
 	golang.org/x/exp/errors v0.0.0-20261109185158-a52e3aef5920
 	golang.org/x/mod v0.43.0
 	golang.org/x/net v0.62.0
