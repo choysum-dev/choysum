@@ -5,9 +5,11 @@ import {
   formatCurrency,
   formatDateTime,
   formatNumber,
+  formatRelativeFromDiffMs,
   getDateTimeFormats,
   getNumberFormats,
   matchBestLang,
+  pickRelativeUnit,
   updateDocumentDirection,
 } from './utils';
 
@@ -32,83 +34,61 @@ test('getNumberFormats: decimal, currency, and percent entries', () => {
 test('formatDateTime: date and time literals use dayjs patterns', () => {
   const config = {
     shortDate: 'YYYY-MM-DD',
+    longDate: 'YYYY.MM.DD',
     shortTime: 'HH:mm',
     longTime: 'HH:mm:ss',
   };
   const d = new Date(2026, 0, 15, 9, 30, 5);
   expect(formatDateTime(d, config, { type: 'date' })).toBe('2026-01-15');
+  expect(formatDateTime(d, config, { type: 'date', isLong: true })).toBe('2026.01.15');
   expect(formatDateTime(d, config, { type: 'time' })).toBe('09:30');
   expect(formatDateTime(d, config, { type: 'time', isLong: true })).toBe('09:30:05');
 });
 
-test('formatDateTime: relative uses Intl.RelativeTimeFormat when available', () => {
-  if (typeof Intl.RelativeTimeFormat !== 'function') {
-    return;
-  }
-  let out = '';
-  let hostUnsupported = false;
-  try {
-    const now = Date.now();
-    out = formatDateTime(now - 60_000, {}, {
-      type: 'relative',
-      bcp47: 'en-US',
-    });
-  } catch {
-    hostUnsupported = true;
-  }
-  if (hostUnsupported) {
-    return;
-  }
-  expect(String(out)).not.toBe('');
+test('formatDateTime: datetime uses timezone conversion path', () => {
+  const config = {
+    shortDate: 'YYYY-MM-DD',
+    shortTime: 'HH:mm',
+  };
+  const utcInstant = '2024-07-01T12:00:00.000Z';
+  const out = formatDateTime(utcInstant, config, {
+    type: 'datetime',
+    timeZone: 'Asia/Shanghai',
+  });
+  expect(String(out)).toMatch(/2024-07-01/);
 });
 
-test('formatDateTime: relative falls back when tag invalid', () => {
-  if (typeof Intl.RelativeTimeFormat !== 'function') {
-    return;
-  }
-  let out = '';
-  let hostUnsupported = false;
-  try {
-    out = formatDateTime(Date.now(), {}, {
-      type: 'relative',
-      bcp47: 'not-a-real-bcp47-tag-###',
-    });
-  } catch {
-    hostUnsupported = true;
-  }
-  if (hostUnsupported) {
-    return;
-  }
-  expect(String(out)).not.toBe('');
+test('pickRelativeUnit: maps millisecond deltas to units', () => {
+  const dayMs = 86_400_000;
+  expect(pickRelativeUnit(-30_000).unit).toBe('second');
+  expect(pickRelativeUnit(-120_000).unit).toBe('minute');
+  expect(pickRelativeUnit(-3_600_000).unit).toBe('hour');
+  expect(pickRelativeUnit(-dayMs).unit).toBe('day');
+  expect(pickRelativeUnit(-7 * dayMs).unit).toBe('week');
+  expect(pickRelativeUnit(-35 * dayMs).unit).toBe('month');
+  expect(pickRelativeUnit(-400 * dayMs).unit).toBe('year');
+  expect(pickRelativeUnit(45_000).value).toBeGreaterThan(0);
 });
 
-test('formatDateTime: relative spans minute hour day week month year units', () => {
+test('formatRelativeFromDiffMs: formats via Intl with invalid tag fallback', () => {
   if (typeof Intl.RelativeTimeFormat !== 'function') {
     return;
   }
-  const now = Date.now();
-  const deltas = [
-    30_000,
-    120_000,
-    3_600_000,
-    86_400_000,
-    604_800_000,
-    2_592_000_000,
-    31_536_000_000,
-  ];
-  for (const delta of deltas) {
-    let out = '';
-    let hostUnsupported = false;
-    try {
-      out = formatDateTime(now - delta, {}, { type: 'relative', bcp47: 'en-US' });
-    } catch {
-      hostUnsupported = true;
-    }
-    if (hostUnsupported) {
-      return;
-    }
-    expect(String(out)).not.toBe('');
+  expect(String(formatRelativeFromDiffMs(-60_000, 'en-US'))).not.toBe('');
+  expect(String(formatRelativeFromDiffMs(-60_000, 'not-a-real-bcp47-tag-###'))).not.toBe('');
+});
+
+test('formatDateTime: relative works without tz when parseUtc/tz throws', () => {
+  if (typeof Intl.RelativeTimeFormat !== 'function') {
+    return;
   }
+  const past = Date.now() - 120_000;
+  expect(String(formatDateTime(past, {}, { type: 'relative', bcp47: 'en-US' }))).not.toBe('');
+  expect(
+    String(
+      formatDateTime('not-an-iso', {}, { type: 'relative', bcp47: 'en-US', timeZone: 'Bad/Zone' }),
+    ),
+  ).not.toBe('');
 });
 
 test('formatNumber: config path with separators', () => {
@@ -168,4 +148,8 @@ test('updateDocumentDirection: sets dir and CSS variables on documentElement', (
 
 test('matchBestLang: picks first allowed when tags miss', () => {
   expect(matchBestLang(['xx-YY'], ['de_DE', 'en_US'])).toBe('en_US');
+});
+
+test('matchBestLang: empty preferred tag mainLang continues to next', () => {
+  expect(matchBestLang(['', 'en-us'], ['de_DE', 'en_US'])).toBe('en_US');
 });

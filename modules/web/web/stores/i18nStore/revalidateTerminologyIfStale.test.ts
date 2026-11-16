@@ -489,6 +489,82 @@ describe('useI18nStore.revalidateTerminologyIfStale / reloadTerminology', () => 
     expect(store.formatByCode.zh_CN?.PersonNameFormat).toBe('{LastName}');
   });
 
+  test('setLang: empty code returns false', async () => {
+    const store = useI18nStore();
+    expect(await store.setLang('')).toBe(false);
+    expect(await store.setLang('   ')).toBe(false);
+    expect(store.isLoading).toBe(false);
+  });
+
+  test('setLang: unknown code clears loading after reload', async () => {
+    const store = useI18nStore();
+    store.isInitialized = true;
+    store.activeLanguages = [{ Code: 'en_US' }];
+    setI18nCreateStoreForTests(
+      () =>
+        ({
+          GetActiveLanguages: async () => [{ Code: 'en_US' }],
+        }) as any,
+    );
+    const ok = await store.setLang('xx_YY');
+    expect(ok).toBe(false);
+    expect(store.isLoading).toBe(false);
+    expect(store.lang).not.toBe('xx_YY');
+  });
+
+  test('loadActiveLanguages: stale generation discards RPC result', async () => {
+    const store = useI18nStore();
+    store.activeLanguages = [{ Code: 'en_US', Name: 'English' }];
+    store.formatByCode = { en_US: { Name: 'English' } };
+    let releaseSlow!: () => void;
+    const slowGate = new Promise<void>(resolve => {
+      releaseSlow = resolve;
+    });
+    let calls = 0;
+    setI18nCreateStoreForTests(
+      () =>
+        ({
+          GetActiveLanguages: async () => {
+            calls += 1;
+            if (calls === 1) {
+              await slowGate;
+              return [{ Code: 'zh_CN', Name: 'Chinese' }];
+            }
+            return [{ Code: 'de_DE', Name: 'German' }];
+          },
+        }) as any,
+    );
+    const first = store.loadActiveLanguages();
+    const second = store.loadActiveLanguages();
+    releaseSlow();
+    expect(await first).toBe(false);
+    expect(await second).toBe(true);
+    expect(store.activeLanguages.map(r => r.Code)).toEqual(['de_DE']);
+  });
+
+  test('initialize: persisted lang not in active set falls back after load', async () => {
+    const store = useI18nStore();
+    store.lang = 'zh_CN';
+    store.activeLanguages = [];
+    setI18nCreateStoreForTests(
+      () =>
+        ({
+          GetActiveLanguages: async () => [{ Code: 'en_US' }],
+        }) as any,
+    );
+    globalThis.fetch = (async () =>
+      jsonResponse({
+        lang: 'en_US',
+        bcp47: 'en-US',
+        hash: 'en',
+        unchanged: true,
+        messages: null,
+      })) as typeof fetch;
+    await store.initialize();
+    expect(store.lang).toBe('en_US');
+    expect(store.isInitialized).toBe(true);
+  });
+
   test('setLang: returns false when code stays outside active set after reload', async () => {
     const store = useI18nStore();
     store.isInitialized = true;

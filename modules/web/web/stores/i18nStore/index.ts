@@ -78,6 +78,7 @@ export const useI18nStore = defineStore(
 
     let terminologyCatalogGeneration = 0;
     let setLangGeneration = 0;
+    let activeLanguagesGeneration = 0;
     let pendingLang: string | null = null;
 
     const activeLanguages = ref<ActiveLanguageRow[]>([]);
@@ -140,30 +141,23 @@ export const useI18nStore = defineStore(
         return true;
       }
 
-      let generation: number;
-
-      if (!inActive) {
-        generation = ++setLangGeneration;
-        pendingLang = next;
-        isLoading.value = true;
-        await loadActiveLanguages();
-        if (generation !== setLangGeneration) {
-          return false;
-        }
-        const allowed = activeCodes.value.length ? activeCodes.value : [...DEFAULT_ACTIVE_LANGS];
-        if (!allowed.includes(next)) {
-          console.warn(`Language ${next} is not in the active set`);
-          pendingLang = null;
-          isLoading.value = false;
-          return false;
-        }
-      } else {
-        generation = ++setLangGeneration;
-        pendingLang = next;
-        isLoading.value = true;
-      }
+      const generation = ++setLangGeneration;
+      pendingLang = next;
+      isLoading.value = true;
 
       try {
+        if (!inActive) {
+          await loadActiveLanguages();
+          if (generation !== setLangGeneration) {
+            return false;
+          }
+          const allowed = activeCodes.value.length ? activeCodes.value : [...DEFAULT_ACTIVE_LANGS];
+          if (!allowed.includes(next)) {
+            console.warn(`Language ${next} is not in the active set`);
+            return false;
+          }
+        }
+
         const prevHash = terminologyHashByLang.value[next] || '';
         try {
           const res = await fetchWebTranslations(next, prevHash || undefined);
@@ -213,6 +207,9 @@ export const useI18nStore = defineStore(
 
         if (activeCodes.value.length && !activeCodes.value.includes(next)) {
           console.warn(`Language ${next} is not in the active set`);
+          if (generation === setLangGeneration) {
+            lastTerminologyLoad.value = null;
+          }
           return false;
         }
 
@@ -370,9 +367,13 @@ export const useI18nStore = defineStore(
      * Load active languages from base.Language/GetActiveLanguages (gRPC-Web).
      */
     async function loadActiveLanguages(): Promise<boolean> {
+      const generation = ++activeLanguagesGeneration;
       try {
         const languageStore = createModelStoreImpl('base.Language');
         const rows = await (languageStore as any).GetActiveLanguages();
+        if (generation !== activeLanguagesGeneration) {
+          return false;
+        }
         const { rows: nextRows, byCode } = collectActiveLanguages(rows);
         formatByCode.value = byCode;
         activeLanguages.value =
@@ -381,6 +382,9 @@ export const useI18nStore = defineStore(
             : DEFAULT_ACTIVE_LANGS.map(code => ({ Code: code }));
         return true;
       } catch (error) {
+        if (generation !== activeLanguagesGeneration) {
+          return false;
+        }
         console.warn('Failed to load active languages; using defaults', error);
         if (activeLanguages.value.length === 0) {
           formatByCode.value = {};
@@ -410,17 +414,18 @@ export const useI18nStore = defineStore(
         }
       }
 
+      const initSetLangGen = setLangGeneration;
       let ok = await setLang(langToSet);
-      if (!ok) {
+      if (!ok && setLangGeneration === initSetLangGen + 1) {
         const allowedNow = activeCodes.value.length ? activeCodes.value : [...DEFAULT_ACTIVE_LANGS];
         ok = await setLang(detectBestLang(allowedNow));
       }
-      if (!ok) {
+      if (!ok && setLangGeneration === initSetLangGen + 2) {
         const allowedNow = activeCodes.value.length ? activeCodes.value : [...DEFAULT_ACTIVE_LANGS];
         lang.value = allowedNow.includes('en_US') ? 'en_US' : allowedNow[0] || 'en_US';
       }
 
-      if (isClient) {
+      if (isClient && setLangGeneration <= initSetLangGen + 2) {
         updateDocumentDirection(activeLanguage.value.textDirection);
       }
 

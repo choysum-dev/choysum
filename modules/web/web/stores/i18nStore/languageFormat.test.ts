@@ -149,3 +149,16 @@ test('collectActiveLanguages: maps overlays and keeps POSIX codes', () => {
   expect(rows.map(r => r.Code)).toEqual(['zh_CN', 'en_US', 'xx_YY']);
   expect(collectActiveLanguages(null).rows).toEqual([]);
 });
+
+test('collectActiveLanguages: skips empty Code and maps Name and Direction', () => {
+  const { rows, byCode } = collectActiveLanguages([
+    { Code: '' },
+    { Code: 'ar_001', Direction: 'rtl', Name: 'Arabic' },
+    { Code: 'bad_dir', Direction: 'sideways' },
+  ]);
+  expect(rows.map(r => r.Code)).toEqual(['ar_001', 'bad_dir']);
+  expect(rows[0]?.Name).toBe('Arabic');
+  expect(rows[0]?.Direction).toBe('rtl');
+  expect(byCode.ar_001?.Name).toBe('Arabic');
+  expect(byCode.bad_dir?.Direction).toBeUndefined();
+});

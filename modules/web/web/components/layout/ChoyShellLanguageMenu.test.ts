@@ -6,7 +6,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { flushPromises, mountApp } from '@/web/web/__tests__/mountApp';
 import { shellLanguageSelect } from './shellLanguageSelect';
 import source from '../../i18n/source';
-import { useI18nStore } from '../../stores/i18nStore';
+import { setI18nCreateStoreForTests, useI18nStore } from '../../stores/i18nStore';
 import ChoyShellLanguageMenu from './ChoyShellLanguageMenu.vue';
 
 describe('ChoyShellLanguageMenu', () => {
@@ -59,5 +59,52 @@ describe('ChoyShellLanguageMenu', () => {
     };
     await shellLanguageSelect('zh_CN', setLang, async () => undefined);
     expect(store.lang).toBe('zh_CN');
+  });
+
+  test('exposed onSelect resolves store after mount', async () => {
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const store = useI18nStore();
+    store.isInitialized = true;
+    store.lang = 'en_US';
+    store.activeLanguages = [{ Code: 'en_US' }, { Code: 'zh_CN' }];
+    setI18nCreateStoreForTests(
+      () =>
+        ({
+          GetActiveLanguages: async () => [{ Code: 'en_US' }, { Code: 'zh_CN' }],
+        }) as any,
+    );
+    const prevFetch = globalThis.fetch;
+    globalThis.fetch = (async () =>
+      ({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          lang: 'zh_CN',
+          bcp47: 'zh-CN',
+          hash: 'zh',
+          unchanged: true,
+          messages: null,
+        }),
+      }) as Response) as typeof fetch;
+    const mounted = mountApp(ChoyShellLanguageMenu as any, { plugins: [pinia] });
+    await flushPromises();
+    const vm = mounted.root as { onSelect?: (c: string) => Promise<void>; resolveI18nStore?: () => unknown };
+    expect(vm.resolveI18nStore?.()).not.toBeNull();
+    expect(typeof vm.onSelect).toBe('function');
+    await vm.onSelect?.('zh_CN');
+    mounted.unmount();
+    globalThis.fetch = prevFetch;
+    setI18nCreateStoreForTests(null);
+  });
+
+  test('exposed onSelect without pinia is a no-op', async () => {
+    setActivePinia(undefined as any);
+    const mounted = mountApp(ChoyShellLanguageMenu as any);
+    await flushPromises();
+    const vm = mounted.root as { onSelect?: (c: string) => Promise<void>; resolveI18nStore?: () => unknown };
+    expect(vm.resolveI18nStore?.()).toBeNull();
+    await vm.onSelect?.('zh_CN');
+    mounted.unmount();
   });
 });

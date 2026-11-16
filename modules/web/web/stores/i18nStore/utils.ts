@@ -102,8 +102,8 @@ export function updateDocumentDirection(textDirection: string) {
 
 type RelativeUnit = Intl.RelativeTimeFormatUnit;
 
-function pickRelativeUnit(diffMs: number): { value: number; unit: RelativeUnit } {
-  const abs = Math.abs(diffMs);
+/** Pick Intl relative-time unit from signed millisecond delta (past → negative values). */
+export function pickRelativeUnit(diffMs: number): { value: number; unit: RelativeUnit } {
   const sec = Math.round(diffMs / 1000);
   const absSec = Math.abs(sec);
   if (absSec < 60) {
@@ -130,8 +130,18 @@ function pickRelativeUnit(diffMs: number): { value: number; unit: RelativeUnit }
     return { value: month, unit: 'month' };
   }
   const year = Math.round(day / 365);
-  void abs;
   return { value: year, unit: 'year' };
+}
+
+/** Format a signed millisecond delta as a relative time string (BCP47 tag). */
+export function formatRelativeFromDiffMs(diffMs: number, bcp47: string): string {
+  const { value, unit } = pickRelativeUnit(diffMs);
+  const tag = bcp47 || 'en-US';
+  try {
+    return new Intl.RelativeTimeFormat(tag, { numeric: 'auto' }).format(value, unit);
+  } catch {
+    return new Intl.RelativeTimeFormat('en-US', { numeric: 'auto' }).format(value, unit);
+  }
 }
 
 /**
@@ -158,21 +168,27 @@ export function formatDateTime(
   const timeZone = options?.timeZone || getUserTimeZone();
 
   if (type === 'relative') {
-    const iso =
-      date instanceof Date
-        ? date.toISOString()
-        : typeof date === 'number'
-          ? new Date(date).toISOString()
-          : String(date);
-    const targetMs = parseUtc(iso).tz(timeZone).valueOf();
-    const nowMs = Date.now();
-    const { value, unit } = pickRelativeUnit(targetMs - nowMs);
-    const tag = options?.bcp47 || 'en-US';
+    let targetMs: number;
     try {
-      return new Intl.RelativeTimeFormat(tag, { numeric: 'auto' }).format(value, unit);
+      const iso =
+        date instanceof Date
+          ? date.toISOString()
+          : typeof date === 'number'
+            ? new Date(date).toISOString()
+            : String(date);
+      targetMs = parseUtc(iso).tz(timeZone).valueOf();
     } catch {
-      return new Intl.RelativeTimeFormat('en-US', { numeric: 'auto' }).format(value, unit);
+      targetMs =
+        date instanceof Date
+          ? date.getTime()
+          : typeof date === 'number'
+            ? date
+            : Date.parse(String(date));
     }
+    if (!Number.isFinite(targetMs)) {
+      targetMs = Date.now();
+    }
+    return formatRelativeFromDiffMs(targetMs - Date.now(), options?.bcp47 || 'en-US');
   }
 
   let defaultFormat: string;

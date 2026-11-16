@@ -23,3 +23,7 @@ test('detectBestLang: SSR-style catalog fallback without navigator', () => {
   expect(detectBestLang(['fr_FR', 'en_US'])).toBe('en_US');
   expect(detectBestLang(['fr_FR'])).toBe('fr_FR');
 });
+
+test('detectBestLang: empty allowed catalog falls back to en_US', () => {
+  expect(detectBestLang([])).toBe('en_US');
+});
