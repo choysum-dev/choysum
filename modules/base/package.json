@@ -28,6 +28,7 @@
     },
     "data": [
       "data/bootstrap.json",
+      "data/languages.json",
       "data/currencies.json",
       "data/countries.json"
     ],
