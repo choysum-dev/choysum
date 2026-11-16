@@ -191,7 +191,7 @@ func ReplaceColumnDropObsolete(opts HelperOptions, table, fromColumn string) err
 		if isSQLiteDialect(opts.Dialect) {
 			// Keep DropColumn's primary-key rejection; do not rebuild around it.
 			if pkErr := rejectPrimaryKeyColumnDrop(opts.DB, table, obsolete); pkErr != nil {
-				return err
+				return pkErr
 			}
 			if rwErr := sqliteRewriteTable(opts.DB, table, sqliteTableRewrite{
 				Drop: map[string]struct{}{strings.ToLower(obsolete): {}},

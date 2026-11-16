@@ -398,6 +398,15 @@ func TestSqliteRewriteHelpers(t *testing.T) {
 	if got := sqliteReplaceIdent(`CREATE INDEX idx ON t (prefix_a)`, "a", "b"); !strings.Contains(got, "prefix_a") {
 		t.Fatalf("should not replace substring: %q", got)
 	}
+	if got := sqliteBareTypeName("INTEGER PRIMARY KEY AUTOINCREMENT"); got != "INTEGER" {
+		t.Fatalf("bare type: %q", got)
+	}
+	if got := sqliteBareTypeName("TEXT NOT NULL DEFAULT 'x'"); got != "TEXT" {
+		t.Fatalf("bare text: %q", got)
+	}
+	if got := sqliteBareTypeName(""); got != "TEXT" {
+		t.Fatalf("empty bare: %q", got)
+	}
 }
 
 func TestSqliteRewriteTable_ExecFailurePaths(t *testing.T) {

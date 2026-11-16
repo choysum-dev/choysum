@@ -98,68 +98,70 @@ func sqliteRewriteTable(db *gorm.DB, table string, rewrite sqliteTableRewrite) e
 	createSQL := fmt.Sprintf("CREATE TABLE %s (%s)", qTmp, strings.Join(decls, ", "))
 	insertSQL := fmt.Sprintf("INSERT INTO %s SELECT %s FROM %s", qTmp, strings.Join(selectParts, ", "), qTable)
 
-	fkWasOn, err := sqliteReadForeignKeys(db)
-	if err != nil {
-		return err
-	}
-	if fkWasOn {
-		if err := helperExec(db, "PRAGMA foreign_keys=OFF"); err != nil {
-			return fmt.Errorf("disable foreign_keys for rewrite: %w", err)
-		}
-		defer func() { _ = helperExec(db, "PRAGMA foreign_keys=ON") }()
-	}
-
-	err = db.Transaction(func(tx *gorm.DB) error {
-		_ = helperExec(tx, "DROP TABLE IF EXISTS "+qTmp)
-		if err := helperExec(tx, createSQL); err != nil {
-			return fmt.Errorf("create rewrite table %s: %w", tmp, err)
-		}
-		if err := helperExec(tx, insertSQL); err != nil {
-			_ = helperExec(tx, "DROP TABLE IF EXISTS "+qTmp)
-			return fmt.Errorf("copy into rewrite table %s: %w", tmp, err)
-		}
-		if err := helperExec(tx, "DROP TABLE "+qTable); err != nil {
-			_ = helperExec(tx, "DROP TABLE IF EXISTS "+qTmp)
-			return fmt.Errorf("drop original %s: %w", table, err)
-		}
-		if err := helperExec(tx, fmt.Sprintf("ALTER TABLE %s RENAME TO %s", qTmp, qTable)); err != nil {
-			return fmt.Errorf("rename rewrite table to %s: %w", table, err)
-		}
-		for _, sql := range indexSQLs {
-			rewritten, ok := sqliteRewriteObjectSQL(sql, rewrite)
-			if !ok {
-				continue
-			}
-			if err := helperExec(tx, rewritten); err != nil {
-				return fmt.Errorf("restore index after rewrite of %s: %w", table, err)
-			}
-		}
-		for _, sql := range triggerSQLs {
-			rewritten, ok := sqliteRewriteObjectSQL(sql, rewrite)
-			if !ok {
-				continue
-			}
-			if err := helperExec(tx, rewritten); err != nil {
-				return fmt.Errorf("restore trigger after rewrite of %s: %w", table, err)
-			}
-		}
-		if err := sqliteCheckForeignKeys(tx); err != nil {
+	// Pin one pool connection: PRAGMA foreign_keys is per-connection and a no-op
+	// inside a transaction, so OFF/ON must share the connection used for DROP.
+	err = db.Connection(func(connDB *gorm.DB) error {
+		fkWasOn, err := sqliteReadForeignKeys(connDB)
+		if err != nil {
 			return err
+		}
+		if fkWasOn {
+			if err := helperExec(connDB, "PRAGMA foreign_keys=OFF"); err != nil {
+				return fmt.Errorf("disable foreign_keys for rewrite: %w", err)
+			}
+			defer func() { _ = helperExec(connDB, "PRAGMA foreign_keys=ON") }()
+		}
+
+		txErr := connDB.Transaction(func(tx *gorm.DB) error {
+			_ = helperExec(tx, "DROP TABLE IF EXISTS "+qTmp)
+			if err := helperExec(tx, createSQL); err != nil {
+				return fmt.Errorf("create rewrite table %s: %w", tmp, err)
+			}
+			if err := helperExec(tx, insertSQL); err != nil {
+				_ = helperExec(tx, "DROP TABLE IF EXISTS "+qTmp)
+				return fmt.Errorf("copy into rewrite table %s: %w", tmp, err)
+			}
+			if err := helperExec(tx, "DROP TABLE "+qTable); err != nil {
+				_ = helperExec(tx, "DROP TABLE IF EXISTS "+qTmp)
+				return fmt.Errorf("drop original %s: %w", table, err)
+			}
+			if err := helperExec(tx, fmt.Sprintf("ALTER TABLE %s RENAME TO %s", qTmp, qTable)); err != nil {
+				return fmt.Errorf("rename rewrite table to %s: %w", table, err)
+			}
+			for _, sql := range indexSQLs {
+				rewritten, ok := sqliteRewriteObjectSQL(sql, rewrite)
+				if !ok {
+					continue
+				}
+				if err := helperExec(tx, rewritten); err != nil {
+					return fmt.Errorf("restore index after rewrite of %s: %w", table, err)
+				}
+			}
+			for _, sql := range triggerSQLs {
+				rewritten, ok := sqliteRewriteObjectSQL(sql, rewrite)
+				if !ok {
+					continue
+				}
+				if err := helperExec(tx, rewritten); err != nil {
+					return fmt.Errorf("restore trigger after rewrite of %s: %w", table, err)
+				}
+			}
+			if err := sqliteCheckForeignKeys(tx); err != nil {
+				return err
+			}
+			return nil
+		})
+		if txErr != nil {
+			_ = helperExec(connDB, "DROP TABLE IF EXISTS "+qTmp)
+			return txErr
 		}
 		return nil
 	})
-	if err != nil {
-		_ = helperExec(db, "DROP TABLE IF EXISTS "+qTmp)
-		return err
-	}
-	return nil
+	return err
 }
 
 func sqliteColumnDecl(ct gorm.ColumnType, dst string, rewrite sqliteTableRewrite) string {
-	typeName := strings.TrimSpace(ct.DatabaseTypeName())
-	if typeName == "" {
-		typeName = "TEXT"
-	}
+	typeName := sqliteBareTypeName(ct.DatabaseTypeName())
 	isPK := false
 	if pk, ok := ct.PrimaryKey(); ok && pk {
 		isPK = true
@@ -193,6 +195,26 @@ func sqliteColumnDecl(ct gorm.ColumnType, dst string, rewrite sqliteTableRewrite
 		}
 	}
 	return decl
+}
+
+// sqliteBareTypeName keeps only the type token so we do not duplicate PRIMARY KEY /
+// NOT NULL / DEFAULT when a driver embeds constraints in DatabaseTypeName().
+func sqliteBareTypeName(raw string) string {
+	typeName := strings.TrimSpace(raw)
+	if typeName == "" {
+		return "TEXT"
+	}
+	upper := strings.ToUpper(typeName)
+	for _, kw := range []string{" PRIMARY KEY", " AUTOINCREMENT", " NOT NULL", " DEFAULT "} {
+		if i := strings.Index(upper, kw); i >= 0 {
+			typeName = strings.TrimSpace(typeName[:i])
+			upper = strings.ToUpper(typeName)
+		}
+	}
+	if typeName == "" {
+		return "TEXT"
+	}
+	return typeName
 }
 
 // Overridable seams for error-path tests.
