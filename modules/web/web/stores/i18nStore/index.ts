@@ -433,17 +433,24 @@ export const useI18nStore = defineStore(
           }
         }
 
+        // Bounded retries while this initialize still owns setLangGeneration.
+        // setLang bumps the counter on entry; ownership is initSetLangGen + attempts.
+        let attempts = 0;
+        const ownsSetLang = () => setLangGeneration === initSetLangGen + attempts;
+
         let ok = await setLang(langToSet);
-        if (!ok && setLangGeneration === initSetLangGen + 1) {
+        attempts += 1;
+        if (!ok && ownsSetLang()) {
           const allowedNow = activeCodes.value.length ? activeCodes.value : [...DEFAULT_ACTIVE_LANGS];
           ok = await setLang(detectBestLang(allowedNow));
+          attempts += 1;
         }
-        if (!ok && setLangGeneration === initSetLangGen + 2) {
+        if (!ok && ownsSetLang()) {
           const allowedNow = activeCodes.value.length ? activeCodes.value : [...DEFAULT_ACTIVE_LANGS];
           lang.value = allowedNow.includes('en_US') ? 'en_US' : allowedNow[0] || 'en_US';
         }
 
-        if (isClient && setLangGeneration <= initSetLangGen + 2) {
+        if (isClient && ownsSetLang()) {
           updateDocumentDirection(activeLanguage.value.textDirection);
         }
       } finally {
