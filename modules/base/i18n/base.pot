@@ -312,48 +312,37 @@ msgctxt "base.model.ExchangeRate.fields"
 msgid "Units of this currency per one unit of the company base currency."
 msgstr ""
 
-#: service/models/language.ts:75
+#: service/models/language.ts:79
 msgctxt "base.model.Language.fields"
 msgid "Active"
 msgstr ""
 
-#: service/models/language.ts:218
+#: service/models/language.ts:177
 msgctxt "base.model.Language.fields"
 msgid "After amount"
 msgstr ""
 
-#: service/models/language.ts:114
-msgctxt "base.model.Language.fields"
-msgid "Apostrophe (')"
-msgstr ""
-
-#: service/models/language.ts:217
+#: service/models/language.ts:176
 msgctxt "base.model.Language.fields"
 msgid "Before amount"
 msgstr ""
 
-#: service/models/language.ts:118
+#: service/models/language.ts:111
 msgctxt "base.model.Language.fields"
-msgid "Clear the value for no thousands separator."
+msgid "Clear the value for no thousands separator. Whitespace (space / NBSP) is allowed."
 msgstr ""
 
-#: service/models/language.ts:63
+#: service/models/language.ts:67
 msgctxt "base.model.Language.fields"
 msgid "Code"
 msgstr ""
 
-#: service/models/language.ts:100
-#: service/models/language.ts:110
-msgctxt "base.model.Language.fields"
-msgid "Comma (,)"
-msgstr ""
-
-#: service/models/language.ts:222
+#: service/models/language.ts:181
 msgctxt "base.model.Language.fields"
 msgid "Currency Symbol Position"
 msgstr ""
 
-#: service/models/language.ts:165
+#: service/models/language.ts:137
 msgctxt "base.model.Language.fields"
 msgid "Date Format"
 msgstr ""
@@ -363,173 +352,147 @@ msgctxt "base.model.Language.fields"
 msgid "Decimal Separator"
 msgstr ""
 
-#: service/models/language.ts:135
+#: service/models/language.ts:128
 msgctxt "base.model.Language.fields"
 msgid "Digit grouping pattern, default [3,0] (thousands then none)."
 msgstr ""
 
-#: service/models/language.ts:89
+#: service/models/language.ts:93
 msgctxt "base.model.Language.fields"
 msgid "Direction"
 msgstr ""
 
-#: service/models/language.ts:111
-#: service/models/language.ts:99
-msgctxt "base.model.Language.fields"
-msgid "Dot (.)"
-msgstr ""
-
-#: service/models/language.ts:207
+#: service/models/language.ts:166
 msgctxt "base.model.Language.fields"
 msgid "First Day of Week"
 msgstr ""
 
-#: service/models/language.ts:241
-msgctxt "base.model.Language.fields"
-msgid "First Last ({FirstName} {LastName})"
-msgstr ""
-
-#: service/models/language.ts:203
+#: service/models/language.ts:162
 msgctxt "base.model.Language.fields"
 msgid "Friday"
 msgstr ""
 
-#: service/models/language.ts:134
+#: service/models/language.ts:127
 msgctxt "base.model.Language.fields"
 msgid "Grouping"
 msgstr ""
 
-#: service/models/language.ts:128
+#: service/models/language.ts:121
 msgctxt "base.model.Language.fields"
 msgid "Indian ([3,2,0])"
 msgstr ""
 
-#: service/models/language.ts:245
-msgctxt "base.model.Language.fields"
-msgid "LastFirst ({LastName}{FirstName})"
-msgstr ""
-
-#: service/models/language.ts:85
+#: service/models/language.ts:89
 msgctxt "base.model.Language.fields"
 msgid "Left to right"
 msgstr ""
 
-#: service/models/language.ts:199
+#: service/models/language.ts:158
 msgctxt "base.model.Language.fields"
 msgid "Monday"
 msgstr ""
 
-#: service/models/language.ts:53
+#: service/models/language.ts:57
 msgctxt "base.model.Language.fields"
 msgid "Name"
 msgstr ""
 
-#: service/models/language.ts:113
-msgctxt "base.model.Language.fields"
-msgid "Narrow no-break space"
-msgstr ""
-
-#: service/models/language.ts:130
+#: service/models/language.ts:123
 msgctxt "base.model.Language.fields"
 msgid "None ([])"
 msgstr ""
 
-#: service/models/language.ts:64
+#: service/models/language.ts:68
 msgctxt "base.model.Language.fields"
 msgid "POSIX locale code (e.g. en_US); cannot be changed after create."
 msgstr ""
 
-#: service/models/language.ts:250
+#: service/models/language.ts:199
 msgctxt "base.model.Language.fields"
 msgid "Person Name Format"
 msgstr ""
 
-#: service/models/language.ts:86
+#: service/models/language.ts:90
 msgctxt "base.model.Language.fields"
 msgid "Right to left"
 msgstr ""
 
-#: service/models/language.ts:204
+#: service/models/language.ts:163
 msgctxt "base.model.Language.fields"
 msgid "Saturday"
 msgstr ""
 
-#: service/models/language.ts:112
-msgctxt "base.model.Language.fields"
-msgid "Space"
-msgstr ""
-
-#: service/models/language.ts:198
+#: service/models/language.ts:157
 msgctxt "base.model.Language.fields"
 msgid "Sunday"
 msgstr ""
 
-#: service/models/language.ts:229
+#: service/models/language.ts:188
 msgctxt "base.model.Language.fields"
 msgid "Symbol Spacing"
 msgstr ""
 
-#: service/models/language.ts:251
+#: service/models/language.ts:200
 msgctxt "base.model.Language.fields"
 msgid "Template using {FirstName} and {LastName}; e.g. {LastName}{FirstName} or {FirstName} {LastName}."
 msgstr ""
 
-#: service/models/language.ts:90
+#: service/models/language.ts:94
 msgctxt "base.model.Language.fields"
 msgid "Text direction for UI chrome that follows this language (ltr or rtl)."
 msgstr ""
 
-#: service/models/language.ts:127
+#: service/models/language.ts:120
 msgctxt "base.model.Language.fields"
 msgid "Thousands ([3,0])"
 msgstr ""
 
-#: service/models/language.ts:117
+#: service/models/language.ts:110
 msgctxt "base.model.Language.fields"
 msgid "Thousands Separator"
 msgstr ""
 
-#: service/models/language.ts:202
+#: service/models/language.ts:161
 msgctxt "base.model.Language.fields"
 msgid "Thursday"
 msgstr ""
 
-#: service/models/language.ts:188
+#: service/models/language.ts:147
 msgctxt "base.model.Language.fields"
 msgid "Time Format"
 msgstr ""
 
-#: service/models/language.ts:129
+#: service/models/language.ts:122
 msgctxt "base.model.Language.fields"
 msgid "Triples ([3,3])"
 msgstr ""
 
-#: service/models/language.ts:200
+#: service/models/language.ts:159
 msgctxt "base.model.Language.fields"
 msgid "Tuesday"
 msgstr ""
 
-#: service/models/language.ts:201
+#: service/models/language.ts:160
 msgctxt "base.model.Language.fields"
 msgid "Wednesday"
 msgstr ""
 
-#: service/models/language.ts:208
+#: service/models/language.ts:167
 msgctxt "base.model.Language.fields"
 msgid "Week start day for calendars (0 = Sunday … 6 = Saturday)."
 msgstr ""
 
-#: service/models/language.ts:76
+#: service/models/language.ts:80
 msgctxt "base.model.Language.fields"
 msgid "When enabled, the language appears in Preferences and the guest switcher. Enabling does not install PO / terminology packs."
 msgstr ""
 
-#: service/models/language.ts:166
+#: service/models/language.ts:138
 msgctxt "base.model.Language.fields"
 msgid "dayjs pattern for dates in this language (e.g. YYYY-MM-DD)."
 msgstr ""
 
-#: service/models/language.ts:189
+#: service/models/language.ts:148
 msgctxt "base.model.Language.fields"
 msgid "dayjs pattern for times in this language (e.g. HH:mm:ss)."
 msgstr ""
@@ -1099,27 +1062,32 @@ msgctxt "service/models/exchange_rate"
 msgid "Rate must be greater than 0"
 msgstr ""
 
-#: service/models/language.ts:368
+#: service/models/language.ts:326
 msgctxt "service/models/language"
 msgid "At least one language must stay active"
 msgstr ""
 
-#: service/models/language.ts:305
+#: service/models/language.ts:254
 msgctxt "service/models/language"
 msgid "Code or LanguageId is required"
 msgstr ""
 
-#: service/models/language.ts:382
+#: service/models/language.ts:340
 msgctxt "service/models/language"
 msgid "Language code cannot be changed"
 msgstr ""
 
-#: service/models/language.ts:326
+#: service/models/language.ts:275
 msgctxt "service/models/language"
 msgid "Language not found"
 msgstr ""
 
-#: service/models/language.ts:385
+#: service/models/language.ts:303
+msgctxt "service/models/language"
+msgid "Person name format must include {FirstName} and/or {LastName}"
+msgstr ""
+
+#: service/models/language.ts:343
 msgctxt "service/models/language"
 msgid "The root language en_US cannot be deactivated"
 msgstr ""
@@ -2059,47 +2027,37 @@ msgctxt "web/views/ExchangeRateListView"
 msgid "Exchange Rate"
 msgstr ""
 
-#: web/views/LanguageFormView.vue:33
-msgctxt "web/views/LanguageFormView"
-msgid "Clear the value for no thousands separator."
-msgstr ""
-
 #: web/views/LanguageFormView.vue:16
 msgctxt "web/views/LanguageFormView"
 msgid "Controls text direction (dir) for UI that follows this language."
 msgstr ""
 
-#: web/views/LanguageFormView.vue:37
+#: web/views/LanguageFormView.vue:35
 msgctxt "web/views/LanguageFormView"
 msgid "Copy Language"
 msgstr ""
 
-#: web/views/LanguageFormView.vue:37
+#: web/views/LanguageFormView.vue:35
 msgctxt "web/views/LanguageFormView"
 msgid "Create Language"
 msgstr ""
 
-#: web/views/LanguageFormView.vue:63
+#: web/views/LanguageFormView.vue:57
 msgctxt "web/views/LanguageFormView"
 msgid "Currency & Person Name"
 msgstr ""
 
-#: web/views/LanguageFormView.vue:76
-msgctxt "web/views/LanguageFormView"
-msgid "Currency preview"
-msgstr ""
-
-#: web/views/LanguageFormView.vue:45
+#: web/views/LanguageFormView.vue:42
 msgctxt "web/views/LanguageFormView"
 msgid "Date & Time"
 msgstr ""
 
-#: web/views/LanguageFormView.vue:37
+#: web/views/LanguageFormView.vue:35
 msgctxt "web/views/LanguageFormView"
 msgid "Delete Language"
 msgstr ""
 
-#: web/views/LanguageFormView.vue:37
+#: web/views/LanguageFormView.vue:35
 msgctxt "web/views/LanguageFormView"
 msgid "Edit Language"
 msgstr ""
@@ -2109,7 +2067,7 @@ msgctxt "web/views/LanguageFormView"
 msgid "Enabling a language makes it selectable. It does not install PO / terminology packs."
 msgstr ""
 
-#: web/views/LanguageFormView.vue:37
+#: web/views/LanguageFormView.vue:35
 msgctxt "web/views/LanguageFormView"
 msgid "Language"
 msgstr ""
@@ -2134,18 +2092,12 @@ msgctxt "web/views/LanguageFormView"
 msgid "POSIX locale code cannot be changed after create."
 msgstr ""
 
-#: web/views/LanguageFormView.vue:79
+#: web/views/LanguageFormView.vue:29
 msgctxt "web/views/LanguageFormView"
-msgid "Person name preview"
+msgid "Person name format must include {FirstName} and/or {LastName}"
 msgstr ""
 
-#: web/views/LanguageFormView.vue:40
-#: web/views/LanguageFormView.vue:58
-msgctxt "web/views/LanguageFormView"
-msgid "Preview"
-msgstr ""
-
-#: web/views/LanguageFormView.vue:32
+#: web/views/LanguageFormView.vue:27
 msgctxt "web/views/LanguageFormView"
 msgid "Required"
 msgstr ""

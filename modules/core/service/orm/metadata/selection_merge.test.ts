@@ -33,6 +33,9 @@ test('mergeSelectionByValue rejects leading or trailing whitespace in values', (
   expect(() =>
     mergeSelectionByValue([{ value: 'a', label: 'A' }], [{ value: '', label: 'empty' } as any])
   ).toThrow(/non-empty/);
+  expect(() =>
+    mergeSelectionByValue([{ value: 1 as any, label: 'N' }], [{ value: 'c', label: 'C' }])
+  ).toThrow(/must be a string/);
 });
 
 test('mergeSelectionByValue plain label clears inherited labelText', () => {

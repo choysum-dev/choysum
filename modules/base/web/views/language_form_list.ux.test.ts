@@ -28,3 +28,9 @@ test('LanguageFormView and LanguageListView components are defined', () => {
   expect(LanguageFormView).toBeTruthy();
   expect(LanguageListView).toBeTruthy();
 });
+
+test('Language list column contract includes DateFormat as a listed prop', () => {
+  // Keep list/search UX aligned with LANGUAGE_LIST_COLUMN_PROPS (Name/Code/Direction/IsActive/DateFormat).
+  expect([...LANGUAGE_LIST_COLUMN_PROPS]).toContain('DateFormat');
+  expect([...LANGUAGE_LIST_COLUMN_PROPS]).not.toContain('FirstDayOfWeek');
+});
