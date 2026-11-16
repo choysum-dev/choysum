@@ -810,7 +810,7 @@ function normalizeSelectionItems(
       throw new Error(`@Field(${name}) each ${optionName} item must be an object`);
     }
     const entry = item as { value?: unknown; label?: unknown; labelText?: unknown };
-    if (!entry.value || typeof entry.value !== 'string') {
+    if (typeof entry.value !== 'string') {
       throw new Error(`@Field(${name}) each ${optionName} item must include a string value field`);
     }
     if (entry.labelText != null) {
@@ -819,7 +819,13 @@ function normalizeSelectionItems(
       );
     }
 
-    const value = entry.value.trim();
+    // Selection values are symbolic keys: reject leading/trailing whitespace (do not silent-trim).
+    if (entry.value !== entry.value.trim()) {
+      throw new Error(
+        `@Field(${name}) each ${optionName} item value must not contain leading or trailing whitespace`
+      );
+    }
+    const value = entry.value;
     if (!value) {
       throw new Error(`@Field(${name}) each ${optionName} item must include a non-empty string value`);
     }

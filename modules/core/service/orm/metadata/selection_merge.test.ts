@@ -4,18 +4,16 @@
 import { createTranslate } from '../../i18n';
 import { mergeSelectionByValue } from './selection_merge';
 
-test('mergeSelectionByValue appends and overrides by value (PR-P2-F4)', () => {
+test('mergeSelectionByValue appends and overrides by value', () => {
   expect(
     mergeSelectionByValue(
       [
         { value: 'a', label: 'A' },
         { value: 'b', label: 'B' },
-        { value: '  ', label: 'skip' } as any,
       ],
       [
         { value: 'c', label: 'C' },
         { value: 'b', label: 'B2' },
-        { value: '', label: 'empty' } as any,
       ]
     )
   ).toEqual([
@@ -25,14 +23,29 @@ test('mergeSelectionByValue appends and overrides by value (PR-P2-F4)', () => {
   ]);
 });
 
-test('mergeSelectionByValue plain label clears inherited labelText (PR-P2-F4)', () => {
+test('mergeSelectionByValue rejects leading or trailing whitespace in values', () => {
+  expect(() =>
+    mergeSelectionByValue([{ value: 'a', label: 'A' }], [{ value: ' vip ', label: 'VIP' } as any])
+  ).toThrow(/leading or trailing whitespace/);
+  expect(() =>
+    mergeSelectionByValue([{ value: '  ', label: 'skip' } as any], [{ value: 'c', label: 'C' }])
+  ).toThrow(/leading or trailing whitespace/);
+  expect(() =>
+    mergeSelectionByValue([{ value: 'a', label: 'A' }], [{ value: '', label: 'empty' } as any])
+  ).toThrow(/non-empty/);
+  expect(() =>
+    mergeSelectionByValue([{ value: 1 as any, label: 'N' }], [{ value: 'c', label: 'C' }])
+  ).toThrow(/must be a string/);
+});
+
+test('mergeSelectionByValue plain label clears inherited labelText', () => {
   const labelText = createTranslate('demo', { scope: 'demo.status' })._lt('Done');
   expect(
     mergeSelectionByValue([{ value: 'done', label: 'Done', labelText }], [{ value: 'done', label: 'Finished' }])
   ).toEqual([{ value: 'done', label: 'Finished' }]);
 });
 
-test('mergeSelectionByValue keeps addend labelText and tolerates empty base (PR-P2-F4)', () => {
+test('mergeSelectionByValue keeps addend labelText and tolerates empty base', () => {
   const labelText = createTranslate('demo', { scope: 'demo.status' })._lt('VIP');
   expect(mergeSelectionByValue(undefined, [{ value: 'vip', label: 'VIP', labelText }])).toEqual([
     { value: 'vip', label: 'VIP', labelText },

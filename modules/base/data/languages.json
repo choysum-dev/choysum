@@ -16,7 +16,7 @@
         "Grouping": "[3,0]",
         "DateFormat": "DD/MM/YYYY",
         "TimeFormat": "hh:mm:ss",
-        "FirstDayOfWeek": 0,
+        "FirstDayOfWeek": "0",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -36,7 +36,7 @@
         "Grouping": "[3,0]",
         "DateFormat": "DD MMM, YYYY",
         "TimeFormat": "hh:mm:ss A",
-        "FirstDayOfWeek": 6,
+        "FirstDayOfWeek": "6",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -56,7 +56,7 @@
         "Grouping": "[3,0]",
         "DateFormat": "DD MMM, YYYY",
         "TimeFormat": "hh:mm:ss A",
-        "FirstDayOfWeek": 6,
+        "FirstDayOfWeek": "6",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -76,7 +76,7 @@
         "Grouping": "[3,0]",
         "DateFormat": "DD.MM.YYYY",
         "TimeFormat": "HH:mm:ss",
-        "FirstDayOfWeek": 1,
+        "FirstDayOfWeek": "1",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -96,7 +96,7 @@
         "Grouping": "[3,0]",
         "DateFormat": "DD.MM.YYYY",
         "TimeFormat": "HH:mm:ss",
-        "FirstDayOfWeek": 1,
+        "FirstDayOfWeek": "1",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -116,7 +116,7 @@
         "Grouping": "[3,0]",
         "DateFormat": "DD.MM.YYYY",
         "TimeFormat": "HH,mm,ss",
-        "FirstDayOfWeek": 1,
+        "FirstDayOfWeek": "1",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -136,7 +136,7 @@
         "Grouping": "[]",
         "DateFormat": "dddd DD MMM YYYY",
         "TimeFormat": "hh:mm:ss",
-        "FirstDayOfWeek": 1,
+        "FirstDayOfWeek": "1",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -156,7 +156,7 @@
         "Grouping": "[3,0]",
         "DateFormat": "DD.MM.YYYY",
         "TimeFormat": "HH:mm:ss",
-        "FirstDayOfWeek": 1,
+        "FirstDayOfWeek": "1",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -176,7 +176,7 @@
         "Grouping": "[3,0]",
         "DateFormat": "DD/MM/YYYY",
         "TimeFormat": "HH:mm:ss",
-        "FirstDayOfWeek": 1,
+        "FirstDayOfWeek": "1",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -196,7 +196,7 @@
         "Grouping": "[3,0]",
         "DateFormat": "DD.MM.YYYY",
         "TimeFormat": "HH:mm:ss",
-        "FirstDayOfWeek": 1,
+        "FirstDayOfWeek": "1",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -216,7 +216,7 @@
         "Grouping": "[3,0]",
         "DateFormat": "DD-MM-YYYY",
         "TimeFormat": "HH:mm:ss",
-        "FirstDayOfWeek": 1,
+        "FirstDayOfWeek": "1",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -236,7 +236,7 @@
         "Grouping": "[3,0]",
         "DateFormat": "DD.MM.YYYY",
         "TimeFormat": "HH:mm:ss",
-        "FirstDayOfWeek": 1,
+        "FirstDayOfWeek": "1",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -256,7 +256,7 @@
         "Grouping": "[3,0]",
         "DateFormat": "DD.MM.YYYY",
         "TimeFormat": "HH:mm:ss",
-        "FirstDayOfWeek": 1,
+        "FirstDayOfWeek": "1",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -276,7 +276,7 @@
         "Grouping": "[]",
         "DateFormat": "DD/MM/YYYY",
         "TimeFormat": "hh:mm:ss A",
-        "FirstDayOfWeek": 1,
+        "FirstDayOfWeek": "1",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -296,7 +296,7 @@
         "Grouping": "[3,0]",
         "DateFormat": "DD/MM/YYYY",
         "TimeFormat": "HH:mm:ss",
-        "FirstDayOfWeek": 0,
+        "FirstDayOfWeek": "0",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -316,7 +316,7 @@
         "Grouping": "[3,0]",
         "DateFormat": "YYYY-MM-DD",
         "TimeFormat": "HH:mm:ss",
-        "FirstDayOfWeek": 0,
+        "FirstDayOfWeek": "0",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -336,7 +336,7 @@
         "Grouping": "[3,0]",
         "DateFormat": "DD/MM/YYYY",
         "TimeFormat": "HH:mm:ss",
-        "FirstDayOfWeek": 1,
+        "FirstDayOfWeek": "1",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -356,7 +356,7 @@
         "Grouping": "[3,2,0]",
         "DateFormat": "DD/MM/YYYY",
         "TimeFormat": "HH:mm:ss",
-        "FirstDayOfWeek": 0,
+        "FirstDayOfWeek": "0",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -376,7 +376,7 @@
         "Grouping": "[3,0]",
         "DateFormat": "DD/MM/YYYY",
         "TimeFormat": "HH:mm:ss",
-        "FirstDayOfWeek": 0,
+        "FirstDayOfWeek": "0",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -396,7 +396,7 @@
         "Grouping": "[3,0]",
         "DateFormat": "DD/MM/YYYY",
         "TimeFormat": "HH:mm:ss",
-        "FirstDayOfWeek": 1,
+        "FirstDayOfWeek": "1",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -416,7 +416,7 @@
         "Grouping": "[3,0]",
         "DateFormat": "DD/MM/YYYY",
         "TimeFormat": "HH:mm:ss",
-        "FirstDayOfWeek": 0,
+        "FirstDayOfWeek": "0",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -436,7 +436,7 @@
         "Grouping": "[3,0]",
         "DateFormat": "DD/MM/YYYY",
         "TimeFormat": "HH:mm:ss",
-        "FirstDayOfWeek": 1,
+        "FirstDayOfWeek": "1",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -456,7 +456,7 @@
         "Grouping": "[3,0]",
         "DateFormat": "DD/MM/YYYY",
         "TimeFormat": "HH:mm:ss",
-        "FirstDayOfWeek": 1,
+        "FirstDayOfWeek": "1",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -476,7 +476,7 @@
         "Grouping": "[3,0]",
         "DateFormat": "DD-MM-YYYY",
         "TimeFormat": "HH:mm:ss",
-        "FirstDayOfWeek": 0,
+        "FirstDayOfWeek": "0",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -496,7 +496,7 @@
         "Grouping": "[3,0]",
         "DateFormat": "DD/MM/YYYY",
         "TimeFormat": "HH:mm:ss",
-        "FirstDayOfWeek": 1,
+        "FirstDayOfWeek": "1",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -516,7 +516,7 @@
         "Grouping": "[3,0]",
         "DateFormat": "DD/MM/YYYY",
         "TimeFormat": "hh:mm:ss A",
-        "FirstDayOfWeek": 1,
+        "FirstDayOfWeek": "1",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -536,7 +536,7 @@
         "Grouping": "[3,0]",
         "DateFormat": "DD/MM/YYYY",
         "TimeFormat": "HH:mm:ss",
-        "FirstDayOfWeek": 1,
+        "FirstDayOfWeek": "1",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -556,7 +556,7 @@
         "Grouping": "[3,0]",
         "DateFormat": "DD/MM/YYYY",
         "TimeFormat": "HH:mm:ss",
-        "FirstDayOfWeek": 1,
+        "FirstDayOfWeek": "1",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -576,7 +576,7 @@
         "Grouping": "[3,0]",
         "DateFormat": "DD/MM/YYYY",
         "TimeFormat": "HH:mm:ss",
-        "FirstDayOfWeek": 0,
+        "FirstDayOfWeek": "0",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -596,7 +596,7 @@
         "Grouping": "[3,0]",
         "DateFormat": "DD/MM/YYYY",
         "TimeFormat": "HH:mm:ss",
-        "FirstDayOfWeek": 0,
+        "FirstDayOfWeek": "0",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -616,7 +616,7 @@
         "Grouping": "[3,0]",
         "DateFormat": "DD/MM/YYYY",
         "TimeFormat": "HH:mm:ss",
-        "FirstDayOfWeek": 0,
+        "FirstDayOfWeek": "0",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -636,7 +636,7 @@
         "Grouping": "[3,0]",
         "DateFormat": "DD/MM/YYYY",
         "TimeFormat": "HH:mm:ss",
-        "FirstDayOfWeek": 0,
+        "FirstDayOfWeek": "0",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -656,7 +656,7 @@
         "Grouping": "[3,0]",
         "DateFormat": "DD/MM/YYYY",
         "TimeFormat": "HH:mm:ss",
-        "FirstDayOfWeek": 0,
+        "FirstDayOfWeek": "0",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -676,7 +676,7 @@
         "Grouping": "[3,0]",
         "DateFormat": "DD/MM/YYYY",
         "TimeFormat": "HH:mm:ss",
-        "FirstDayOfWeek": 1,
+        "FirstDayOfWeek": "1",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -696,7 +696,7 @@
         "Grouping": "[3,0]",
         "DateFormat": "DD/MM/YYYY",
         "TimeFormat": "HH:mm:ss",
-        "FirstDayOfWeek": 0,
+        "FirstDayOfWeek": "0",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -716,7 +716,7 @@
         "Grouping": "[3,0]",
         "DateFormat": "DD.MM.YYYY",
         "TimeFormat": "HH:mm:ss",
-        "FirstDayOfWeek": 1,
+        "FirstDayOfWeek": "1",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -736,7 +736,7 @@
         "Grouping": "[]",
         "DateFormat": "ddd, YYYY.[eko] MMM[ren] DD[a]",
         "TimeFormat": "HH:mm:ss",
-        "FirstDayOfWeek": 1,
+        "FirstDayOfWeek": "1",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -756,7 +756,7 @@
         "Grouping": "[3,0]",
         "DateFormat": "YYYY/MM/DD",
         "TimeFormat": "HH:mm:ss",
-        "FirstDayOfWeek": 6,
+        "FirstDayOfWeek": "6",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -776,7 +776,7 @@
         "Grouping": "[3,0]",
         "DateFormat": "DD.MM.YYYY",
         "TimeFormat": "HH.mm.ss",
-        "FirstDayOfWeek": 1,
+        "FirstDayOfWeek": "1",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -796,7 +796,7 @@
         "Grouping": "[3,0]",
         "DateFormat": "DD/MM/YYYY",
         "TimeFormat": "HH:mm:ss",
-        "FirstDayOfWeek": 1,
+        "FirstDayOfWeek": "1",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -816,7 +816,7 @@
         "Grouping": "[3,0]",
         "DateFormat": "YYYY-MM-DD",
         "TimeFormat": "HH:mm:ss",
-        "FirstDayOfWeek": 0,
+        "FirstDayOfWeek": "0",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -836,7 +836,7 @@
         "Grouping": "[3,0]",
         "DateFormat": "DD.MM.YYYY",
         "TimeFormat": "HH:mm:ss",
-        "FirstDayOfWeek": 1,
+        "FirstDayOfWeek": "1",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -856,7 +856,7 @@
         "Grouping": "[3,0]",
         "DateFormat": "DD/MM/YYYY",
         "TimeFormat": "HH:mm:ss",
-        "FirstDayOfWeek": 1,
+        "FirstDayOfWeek": "1",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -876,7 +876,7 @@
         "Grouping": "[]",
         "DateFormat": "DD/MM/YYYY",
         "TimeFormat": "HH:mm:ss",
-        "FirstDayOfWeek": 1,
+        "FirstDayOfWeek": "1",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -896,7 +896,7 @@
         "Grouping": "[]",
         "DateFormat": "dddd DD MMM YYYY",
         "TimeFormat": "hh:mm:ss",
-        "FirstDayOfWeek": 0,
+        "FirstDayOfWeek": "0",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -916,7 +916,7 @@
         "Grouping": "[3,0]",
         "DateFormat": "DD/MM/YYYY",
         "TimeFormat": "HH:mm:ss",
-        "FirstDayOfWeek": 0,
+        "FirstDayOfWeek": "0",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -936,7 +936,7 @@
         "Grouping": "[3,2,0]",
         "DateFormat": "dddd DD MMM YYYY",
         "TimeFormat": "hh:mm:ss",
-        "FirstDayOfWeek": 0,
+        "FirstDayOfWeek": "0",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -956,7 +956,7 @@
         "Grouping": "[3,0]",
         "DateFormat": "DD.MM.YYYY",
         "TimeFormat": "HH:mm:ss",
-        "FirstDayOfWeek": 1,
+        "FirstDayOfWeek": "1",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -976,7 +976,7 @@
         "Grouping": "[3,0]",
         "DateFormat": "YYYY-MM-DD",
         "TimeFormat": "HH:mm:ss",
-        "FirstDayOfWeek": 1,
+        "FirstDayOfWeek": "1",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -996,7 +996,7 @@
         "Grouping": "[3,0]",
         "DateFormat": "DD/MM/YYYY",
         "TimeFormat": "HH:mm:ss",
-        "FirstDayOfWeek": 0,
+        "FirstDayOfWeek": "0",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -1016,7 +1016,7 @@
         "Grouping": "[3,0]",
         "DateFormat": "DD/MM/YYYY",
         "TimeFormat": "HH:mm:ss",
-        "FirstDayOfWeek": 1,
+        "FirstDayOfWeek": "1",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -1036,7 +1036,7 @@
         "Grouping": "[3,0]",
         "DateFormat": "YYYY年MM月DD日",
         "TimeFormat": "HH時mm分ss秒",
-        "FirstDayOfWeek": 0,
+        "FirstDayOfWeek": "0",
         "PersonNameFormat": "{LastName}{FirstName}"
       }
     },
@@ -1056,7 +1056,7 @@
         "Grouping": "[3,0]",
         "DateFormat": "MM/DD/YYYY",
         "TimeFormat": "HH:mm:ss",
-        "FirstDayOfWeek": 1,
+        "FirstDayOfWeek": "1",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -1076,7 +1076,7 @@
         "Grouping": "[]",
         "DateFormat": "MM/DD/YYYY",
         "TimeFormat": "hh:mm:ss A",
-        "FirstDayOfWeek": 6,
+        "FirstDayOfWeek": "6",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -1096,7 +1096,7 @@
         "Grouping": "[3,0]",
         "DateFormat": "DD MMMM YYYY",
         "TimeFormat": "HH:mm:ss",
-        "FirstDayOfWeek": 0,
+        "FirstDayOfWeek": "0",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -1116,7 +1116,7 @@
         "Grouping": "[3,0]",
         "DateFormat": "MM/DD/YYYY",
         "TimeFormat": "hh:mm:ss A",
-        "FirstDayOfWeek": 1,
+        "FirstDayOfWeek": "1",
         "PersonNameFormat": "{LastName}{FirstName}"
       }
     },
@@ -1136,7 +1136,7 @@
         "Grouping": "[3,0]",
         "DateFormat": "YYYY년 MM월 DD일",
         "TimeFormat": "HH시 mm분 ss초",
-        "FirstDayOfWeek": 0,
+        "FirstDayOfWeek": "0",
         "PersonNameFormat": "{LastName}{FirstName}"
       }
     },
@@ -1156,7 +1156,7 @@
         "Grouping": "[3,0]",
         "DateFormat": "DD/MM/YYYY",
         "TimeFormat": "HH:mm:ss",
-        "FirstDayOfWeek": 1,
+        "FirstDayOfWeek": "1",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -1176,7 +1176,7 @@
         "Grouping": "[3,0]",
         "DateFormat": "DD/MM/YYYY",
         "TimeFormat": "HH:mm:ss",
-        "FirstDayOfWeek": 0,
+        "FirstDayOfWeek": "0",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -1196,7 +1196,7 @@
         "Grouping": "[3,0]",
         "DateFormat": "YYYY-MM-DD",
         "TimeFormat": "HH:mm:ss",
-        "FirstDayOfWeek": 1,
+        "FirstDayOfWeek": "1",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -1216,7 +1216,7 @@
         "Grouping": "[3,0]",
         "DateFormat": "YYYY.MM.DD.",
         "TimeFormat": "HH:mm:ss",
-        "FirstDayOfWeek": 1,
+        "FirstDayOfWeek": "1",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -1236,7 +1236,7 @@
         "Grouping": "[3,0]",
         "DateFormat": "DD.MM.YYYY",
         "TimeFormat": "HH:mm:ss",
-        "FirstDayOfWeek": 1,
+        "FirstDayOfWeek": "1",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -1256,7 +1256,7 @@
         "Grouping": "[3,0]",
         "DateFormat": "DD/MM/YYYY",
         "TimeFormat": "HH:mm:ss",
-        "FirstDayOfWeek": 1,
+        "FirstDayOfWeek": "1",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -1276,7 +1276,7 @@
         "Grouping": "[3,0]",
         "DateFormat": "YYYY-MM-DD",
         "TimeFormat": "HH:mm:ss",
-        "FirstDayOfWeek": 0,
+        "FirstDayOfWeek": "0",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -1296,7 +1296,7 @@
         "Grouping": "[3,0]",
         "DateFormat": "DD/MM/YYYY",
         "TimeFormat": "HH:mm:ss",
-        "FirstDayOfWeek": 1,
+        "FirstDayOfWeek": "1",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -1316,7 +1316,7 @@
         "Grouping": "[3,3]",
         "DateFormat": "YYYY MMM DD dddd",
         "TimeFormat": "hh:mm:ss A",
-        "FirstDayOfWeek": 0,
+        "FirstDayOfWeek": "0",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -1336,7 +1336,7 @@
         "Grouping": "[3,0]",
         "DateFormat": "DD.MM.YYYY",
         "TimeFormat": "HH:mm:ss",
-        "FirstDayOfWeek": 1,
+        "FirstDayOfWeek": "1",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -1356,7 +1356,7 @@
         "Grouping": "[3,0]",
         "DateFormat": "DD-MM-YYYY",
         "TimeFormat": "HH:mm:ss",
-        "FirstDayOfWeek": 1,
+        "FirstDayOfWeek": "1",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -1376,7 +1376,7 @@
         "Grouping": "[3,0]",
         "DateFormat": "DD-MM-YYYY",
         "TimeFormat": "HH:mm:ss",
-        "FirstDayOfWeek": 1,
+        "FirstDayOfWeek": "1",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -1396,7 +1396,7 @@
         "Grouping": "[]",
         "DateFormat": "DD.MM.YYYY",
         "TimeFormat": "HH:mm:ss",
-        "FirstDayOfWeek": 1,
+        "FirstDayOfWeek": "1",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -1416,7 +1416,7 @@
         "Grouping": "[]",
         "DateFormat": "DD-MM-YYYY",
         "TimeFormat": "HH:mm:ss",
-        "FirstDayOfWeek": 1,
+        "FirstDayOfWeek": "1",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -1436,7 +1436,7 @@
         "Grouping": "[3,0]",
         "DateFormat": "DD/MM/YYYY",
         "TimeFormat": "HH:mm:ss",
-        "FirstDayOfWeek": 0,
+        "FirstDayOfWeek": "0",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -1456,7 +1456,7 @@
         "Grouping": "[3,0]",
         "DateFormat": "DD-MM-YYYY",
         "TimeFormat": "HH:mm:ss",
-        "FirstDayOfWeek": 1,
+        "FirstDayOfWeek": "1",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -1476,7 +1476,7 @@
         "Grouping": "[3,0]",
         "DateFormat": "DD.MM.YYYY",
         "TimeFormat": "HH:mm:ss",
-        "FirstDayOfWeek": 1,
+        "FirstDayOfWeek": "1",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -1496,7 +1496,7 @@
         "Grouping": "[3,0]",
         "DateFormat": "DD.MM.YYYY",
         "TimeFormat": "HH:mm:ss",
-        "FirstDayOfWeek": 1,
+        "FirstDayOfWeek": "1",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -1516,7 +1516,7 @@
         "Grouping": "[3,0]",
         "DateFormat": "DD.MM.YYYY",
         "TimeFormat": "HH:mm:ss",
-        "FirstDayOfWeek": 1,
+        "FirstDayOfWeek": "1",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -1536,7 +1536,7 @@
         "Grouping": "[]",
         "DateFormat": "DD. MM. YYYY",
         "TimeFormat": "HH:mm:ss",
-        "FirstDayOfWeek": 1,
+        "FirstDayOfWeek": "1",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -1556,7 +1556,7 @@
         "Grouping": "[3,0]",
         "DateFormat": "YYYY-MMM-DD",
         "TimeFormat": "hh.mm.ss.",
-        "FirstDayOfWeek": 1,
+        "FirstDayOfWeek": "1",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -1576,7 +1576,7 @@
         "Grouping": "[3,0]",
         "DateFormat": "YYYY-MM-DD",
         "TimeFormat": "HH:mm:ss",
-        "FirstDayOfWeek": 1,
+        "FirstDayOfWeek": "1",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -1596,7 +1596,7 @@
         "Grouping": "[3,0]",
         "DateFormat": "DD/MM/YYYY",
         "TimeFormat": "HH:mm:ss",
-        "FirstDayOfWeek": 1,
+        "FirstDayOfWeek": "1",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -1616,7 +1616,7 @@
         "Grouping": "[]",
         "DateFormat": "MMMM DD dddd YYYY",
         "TimeFormat": "Ahh.mm.ss",
-        "FirstDayOfWeek": 0,
+        "FirstDayOfWeek": "0",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -1636,7 +1636,7 @@
         "Grouping": "[3,0]",
         "DateFormat": "DD/MM/YYYY",
         "TimeFormat": "HH:mm:ss",
-        "FirstDayOfWeek": 0,
+        "FirstDayOfWeek": "0",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -1656,7 +1656,7 @@
         "Grouping": "[3,0]",
         "DateFormat": "MM/DD/YY",
         "TimeFormat": "HH:mm:ss",
-        "FirstDayOfWeek": 1,
+        "FirstDayOfWeek": "1",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -1676,7 +1676,7 @@
         "Grouping": "[3,0]",
         "DateFormat": "DD-MM-YYYY",
         "TimeFormat": "HH:mm:ss",
-        "FirstDayOfWeek": 1,
+        "FirstDayOfWeek": "1",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -1696,7 +1696,7 @@
         "Grouping": "[3,0]",
         "DateFormat": "DD.MM.YYYY",
         "TimeFormat": "HH:mm:ss",
-        "FirstDayOfWeek": 1,
+        "FirstDayOfWeek": "1",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -1716,7 +1716,7 @@
         "Grouping": "[3,0]",
         "DateFormat": "DD/MM/YYYY",
         "TimeFormat": "HH:mm:ss",
-        "FirstDayOfWeek": 1,
+        "FirstDayOfWeek": "1",
         "PersonNameFormat": "{FirstName} {LastName}"
       }
     },
@@ -1736,7 +1736,7 @@
         "Grouping": "[3,0]",
         "DateFormat": "YYYY年MM月DD日 dddd",
         "TimeFormat": "hh時mm分ss秒",
-        "FirstDayOfWeek": 0,
+        "FirstDayOfWeek": "0",
         "PersonNameFormat": "{LastName}{FirstName}"
       }
     },
@@ -1756,7 +1756,7 @@
         "Grouping": "[3,0]",
         "DateFormat": "YYYY年MM月DD日",
         "TimeFormat": "HH時mm分ss秒",
-        "FirstDayOfWeek": 0,
+        "FirstDayOfWeek": "0",
         "PersonNameFormat": "{LastName}{FirstName}"
       }
     }
