@@ -114,8 +114,9 @@ func sqliteRewriteTable(db *gorm.DB, table string, rewrite sqliteTableRewrite) e
 				return stillErr
 			}
 			if stillOn {
-				// PRAGMA foreign_keys is a no-op inside an open transaction; refuse when
-				// DROP could cascade to referencing tables.
+				// PRAGMA foreign_keys is a no-op inside an open transaction; leave
+				// fkDisabled false so defer does not toggle the shared tx connection.
+				// Refuse when DROP could cascade to referencing tables.
 				referenced, refErr := sqliteTableIsReferencedFn(connDB, table)
 				if refErr != nil {
 					return refErr
@@ -193,6 +194,8 @@ func sqliteRunOnOneConn(db *gorm.DB, fn func(*gorm.DB) error) error {
 	}
 	if db.Statement != nil {
 		if tx, ok := db.Statement.ConnPool.(gorm.TxCommitter); ok && tx != nil {
+			// Reusing the caller's tx: PRAGMA foreign_keys is a no-op inside a txn,
+			// so the rewrite must not rely on toggling it here.
 			return fn(db)
 		}
 	}
