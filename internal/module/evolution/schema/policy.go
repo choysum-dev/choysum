@@ -12,7 +12,7 @@ import (
 const replaceColumnHint = "hint: incompatible in-place change; use ReplaceColumn " +
 	"($choysum.schema.replaceColumnPre / replaceColumnCopyCast / replaceColumnDropObsolete; " +
 	"copy kinds: int_to_varchar, as_text). " +
-	"Target @Field must be nullable for this upgrade."
+	"Keep @Field nullable for the type-change upgrade; tighten later with $choysum.schema.setNotNull."
 
 // ValidatePlan fails closed on any Guarded or Manual op unless an Intent already covers it.
 func ValidatePlan(plan SchemaPlan, intents IntentBag) error {

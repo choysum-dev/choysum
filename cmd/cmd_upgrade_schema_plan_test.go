@@ -45,6 +45,7 @@ func TestPrintSchemaPlan(t *testing.T) {
 			{Kind: schema.OpCreateTable, Safety: schema.SafetyAuto, Table: "t", Detail: "create"},
 			{Kind: schema.OpAlterColumn, Safety: schema.SafetyGuarded, Table: "t", Detail: "change column default", Column: col},
 			{Kind: schema.OpAddIndex, Safety: schema.SafetyGuarded, Table: "t", Detail: "add unique index", IndexName: "idx_code", Column: col},
+			{Kind: schema.OpAlterColumn, Safety: schema.SafetyGuarded, Table: "demo_order", Detail: "type change int → varchar", Column: &schema.ColumnSpec{Name: "status_code"}},
 		},
 		Leftover: []schema.Leftover{{Kind: schema.LeftoverColumn, Table: "t", Name: "old"}},
 	}, errors.New("guarded"))

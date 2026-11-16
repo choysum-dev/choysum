@@ -348,6 +348,9 @@ func printSchemaPlan(env scope.Scope, moduleName string, plan schema.SchemaPlan,
 			"name", left.Name,
 		)
 	}
+	for _, line := range schema.FormatReplaceColumnSuggestions(plan) {
+		logger.Info("schema-plan replace-column hint", "module", moduleName, "hint", line)
+	}
 	if planErr != nil {
 		logger.Error("schema-plan validation failed", "module", moduleName, "error", planErr)
 	}

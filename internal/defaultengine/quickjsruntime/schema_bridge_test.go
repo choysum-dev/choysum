@@ -36,7 +36,7 @@ func TestWithSchemaDDL_RecreatesNonObjectChoysum(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, name := range []string{
-		"renameColumn", "replaceColumnPre", "replaceColumnCopyCast", "replaceColumnDropObsolete",
+		"renameColumn", "replaceColumnPre", "replaceColumnCopyCast", "replaceColumnDropObsolete", "setNotNull",
 	} {
 		v := engine.Ctx.Eval(`typeof $choysum.schema.` + name)
 		if v.IsException() || v.String() != "function" {
@@ -143,6 +143,14 @@ func TestWithSchemaDDL_Helpers(t *testing.T) {
 			return err
 		}
 		call(`$choysum.schema.replaceColumnPre('bridge_replace4','code', null)`)
+		if err := txScope.Session().Exec(`CREATE TABLE bridge_nn (code text)`).Error; err != nil {
+			return err
+		}
+		if err := txScope.Session().Exec(`INSERT INTO bridge_nn (code) VALUES ('x')`).Error; err != nil {
+			return err
+		}
+		call(`$choysum.schema.setNotNull('bridge_nn','code')`)
+		fail(`$choysum.schema.setNotNull('bridge_nn')`)
 		if err := txScope.Session().Exec(`CREATE TABLE bridge_idx (code text)`).Error; err != nil {
 			return err
 		}
