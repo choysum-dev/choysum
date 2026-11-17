@@ -34,6 +34,22 @@ Do **not** introduce a third spinner (e.g. thick CSS border discs) in the SPA. C
 - `stale` — keep content, light fade (refresh with prior rows)
 - `skeleton` — reserved; prefer `block` for first paint so local feedback stays Loader2-only
 
+## Navigation chrome settle (`meta.navLoading`)
+
+Route destinations declare how long the top bar nav ticket stays after navigation.
+This is **orthogonal** to `runWithLoading` layers (`surface` / `control` / `chrome`).
+
+| `meta.navLoading` | Chrome held until | Typical destinations |
+| --- | --- | --- |
+| **`content`** (omit = default) | First surface owns chrome, or idle grace (`NAV_IDLE_SETTLE_MS`, 2s) | App List/Form |
+| **`route`** | Route lands (`afterEach`); settle delay `NAV_ROUTE_SETTLE_MS` (0) | Login / Setup / Logout / Register / Error |
+| **`none`** | Never opens a nav ticket | Silent redirects (opt-in; rarely used) |
+
+Resolver: `modules/web/web/router/navLoadingPolicy.ts` (`resolveNavLoadingPolicy`).
+Router hooks in `modules/web/web/router/index.ts` pass the matching settle delay into
+`scheduleNavigationSettleIfIdle(ms)`. Timing constants live on `loadingTiming` in the
+registry — not on RouteMeta (no per-route millisecond knobs).
+
 ## Registry pointers
 
 - `modules/core/web/client/loadingRegistry.ts` — bar, userBusy, nav ticket, `runWithLoading`

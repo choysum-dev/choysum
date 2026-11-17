@@ -7,6 +7,7 @@ import { createTermReference } from '@/core/service/i18n';
 import {
   beginNavigationLoading,
   getLoadingRegistryDebugState,
+  loadingTiming,
   resetLoadingRegistryForTests,
   settleNavigationIfActive,
 } from '@/core/web/client/loadingRegistry';
@@ -87,6 +88,47 @@ describe('createAppRouter', () => {
     expect(getLoadingRegistryDebugState().navTicketActive).toBe(true);
     expect(getLoadingRegistryDebugState().navTicketGeneration).toBe(genB);
 
+    resetLoadingRegistryForTests();
+  });
+
+  test('navLoading route settles the nav ticket as soon as the route lands', async () => {
+    resetLoadingRegistryForTests();
+    const router = createAppRouter('/');
+    await router.isReady().catch(() => undefined);
+
+    // FE stub applies push().meta onto the destination before guards run.
+    await router
+      .push({ path: '/__nav_route_policy__', meta: { navLoading: 'route' } } as any)
+      .catch(() => undefined);
+    await new Promise<void>(resolve => setTimeout(resolve, 20));
+    expect(getLoadingRegistryDebugState().navTicketActive).toBe(false);
+    resetLoadingRegistryForTests();
+  });
+
+  test('navLoading content keeps the nav ticket through idle grace', async () => {
+    resetLoadingRegistryForTests();
+    const router = createAppRouter('/');
+    await router.isReady().catch(() => undefined);
+
+    await router
+      .push({ path: '/__nav_content_policy__', meta: { navLoading: 'content' } } as any)
+      .catch(() => undefined);
+    expect(getLoadingRegistryDebugState().navTicketActive).toBe(true);
+    expect(loadingTiming.NAV_IDLE_SETTLE_MS).toBeGreaterThan(50);
+    await new Promise<void>(resolve => setTimeout(resolve, 30));
+    expect(getLoadingRegistryDebugState().navTicketActive).toBe(true);
+    resetLoadingRegistryForTests();
+  });
+
+  test('navLoading none does not open a navigation ticket', async () => {
+    resetLoadingRegistryForTests();
+    const router = createAppRouter('/');
+    await router.isReady().catch(() => undefined);
+
+    await router
+      .push({ path: '/__nav_none_policy__', meta: { navLoading: 'none' } } as any)
+      .catch(() => undefined);
+    expect(getLoadingRegistryDebugState().navTicketActive).toBe(false);
     resetLoadingRegistryForTests();
   });
 });

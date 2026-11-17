@@ -9,13 +9,17 @@ import routes from './routes';
 import 'nprogress/nprogress.css';
 import {
   beginNavigationLoading,
+  loadingTiming,
   scheduleNavigationSettleIfIdle,
   settleNavigationIfActive,
 } from '@/core/web/client/loadingRegistry';
 import type { ComposerLike } from '../i18n';
 import { resolveDocumentTitle } from './documentTitle';
+import { resolveNavLoadingPolicy } from './navLoadingPolicy';
 
 export { resolveDocumentTitle, resolveRoutePageTitle } from './documentTitle';
+export { resolveNavLoadingPolicy } from './navLoadingPolicy';
+export type { NavLoadingPolicy } from './navLoadingPolicy';
 
 function defaultAppName(env: ImportMetaEnv | undefined = import.meta.env): string {
   const appNameRaw = env?.CHOYSUM_APP_NAME;
@@ -57,14 +61,16 @@ export function createAppRouter(base = '/', composer?: ComposerLike): Router {
   useTitle(computed(() => resolveDocumentTitle(titleRoute.value as any, composer, appName)));
 
   router.beforeEach(async to => {
+    titleRoute.value = to;
+    // none: do not open a nav ticket for this destination.
+    if (resolveNavLoadingPolicy(to) === 'none') return true;
     const generation = beginNavigationLoading();
     (to.meta as { __navLoadingGen?: number }).__navLoadingGen = generation;
-    titleRoute.value = to;
     return true;
   });
 
-  // Guest pages never open surface: settle the nav bar shortly if still idle.
-  // List/Form that start surface within the grace keep the ticket until surface ends.
+  // Settle by destination meta.navLoading: content keeps idle grace for surface
+  // handoff; route settles as soon as the route lands; none opened no ticket.
   // Failed navigations (redirect/abort) must drop the nav ticket — afterEach still
   // runs with a failure, but scheduleNavigationSettleIfIdle would leave bar up.
   // Settlement is generation-scoped so an older cancelled nav cannot clear a newer ticket.
@@ -74,7 +80,13 @@ export function createAppRouter(base = '/', composer?: ComposerLike): Router {
       settleNavigationIfActive(generation ? { generation } : undefined);
       return;
     }
-    scheduleNavigationSettleIfIdle();
+    const policy = resolveNavLoadingPolicy(to);
+    if (policy === 'none') return;
+    if (policy === 'route') {
+      scheduleNavigationSettleIfIdle(loadingTiming.NAV_ROUTE_SETTLE_MS);
+      return;
+    }
+    scheduleNavigationSettleIfIdle(loadingTiming.NAV_IDLE_SETTLE_MS);
   });
 
   router.onError(error => {
