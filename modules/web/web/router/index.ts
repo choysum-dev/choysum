@@ -9,13 +9,17 @@ import routes from './routes';
 import 'nprogress/nprogress.css';
 import {
   beginNavigationLoading,
+  loadingTiming,
   scheduleNavigationSettleIfIdle,
   settleNavigationIfActive,
 } from '@/core/web/client/loadingRegistry';
 import type { ComposerLike } from '../i18n';
 import { resolveDocumentTitle } from './documentTitle';
+import { resolveNavLoadingPolicy } from './navLoadingPolicy';
 
 export { resolveDocumentTitle, resolveRoutePageTitle } from './documentTitle';
+export { resolveNavLoadingPolicy } from './navLoadingPolicy';
+export type { NavLoadingPolicy } from './navLoadingPolicy';
 
 function defaultAppName(env: ImportMetaEnv | undefined = import.meta.env): string {
   const appNameRaw = env?.CHOYSUM_APP_NAME;
@@ -57,24 +61,41 @@ export function createAppRouter(base = '/', composer?: ComposerLike): Router {
   useTitle(computed(() => resolveDocumentTitle(titleRoute.value as any, composer, appName)));
 
   router.beforeEach(async to => {
+    titleRoute.value = to;
+    // none: do not open a nav ticket; drop any stale generation marker on meta.
+    if (resolveNavLoadingPolicy(to) === 'none') {
+      delete (to.meta as { __navLoadingGen?: number }).__navLoadingGen;
+      return true;
+    }
     const generation = beginNavigationLoading();
     (to.meta as { __navLoadingGen?: number }).__navLoadingGen = generation;
-    titleRoute.value = to;
     return true;
   });
 
-  // Guest pages never open surface: settle the nav bar shortly if still idle.
-  // List/Form that start surface within the grace keep the ticket until surface ends.
-  // Failed navigations (redirect/abort) must drop the nav ticket — afterEach still
-  // runs with a failure, but scheduleNavigationSettleIfIdle would leave bar up.
-  // Settlement is generation-scoped so an older cancelled nav cannot clear a newer ticket.
+  // Settle by destination meta.navLoading: content keeps idle grace for surface
+  // handoff; route settles immediately (generation-scoped); none drops leftover
+  // chrome without opening a new ticket (unscoped — none has no generation).
+  // Failed navigations settle only by generation so a failed none (no ticket)
+  // cannot clear a newer navigation's chrome.
   router.afterEach((to, _from, failure) => {
     const generation = Number((to.meta as { __navLoadingGen?: number }).__navLoadingGen) || 0;
     if (failure) {
-      settleNavigationIfActive(generation ? { generation } : undefined);
+      if (generation) settleNavigationIfActive({ generation });
       return;
     }
-    scheduleNavigationSettleIfIdle();
+    const policy = resolveNavLoadingPolicy(to);
+    if (policy === 'none') {
+      settleNavigationIfActive();
+      return;
+    }
+    if (policy === 'route') {
+      // Direct settle: avoid scheduleNavigationSettleIfIdle(0) re-arm spin while a
+      // leftover surface from the previous page is still busy. Scope to this
+      // destination's generation so a stale afterEach cannot clear a newer ticket.
+      settleNavigationIfActive({ generation });
+      return;
+    }
+    scheduleNavigationSettleIfIdle(loadingTiming.NAV_IDLE_SETTLE_MS);
   });
 
   router.onError(error => {

@@ -36,6 +36,7 @@ test('web routes: registers Error page under GuestLayout and no Home route/menu'
   expect(error).toBeTruthy();
   expect(error.path).toBe('error/:code(\\d+)');
   expect(error.meta?.requiresAuth).toBe(false);
+  expect(error.meta?.navLoading).toBe('route');
   expect(error.meta?.isAuthPage).toBeUndefined();
 
   const home = guest?.children?.find((route: any) => route.name === 'Home');

@@ -7,6 +7,7 @@ import { createTermReference } from '@/core/service/i18n';
 import {
   beginNavigationLoading,
   getLoadingRegistryDebugState,
+  loadingTiming,
   resetLoadingRegistryForTests,
   settleNavigationIfActive,
 } from '@/core/web/client/loadingRegistry';
@@ -42,13 +43,14 @@ describe('createAppRouter', () => {
     resetLoadingRegistryForTests();
     const router = createAppRouter('/');
     await router.isReady().catch(() => undefined);
-    router.beforeEach(to => {
+    const removeGuard = router.beforeEach(to => {
       if (to.path === '/__abort_nav__') return false;
       return true;
     });
     await router.push('/__abort_nav__').catch(() => undefined);
     // Failure path must drop the ticket opened in beforeEach.
     expect(getLoadingRegistryDebugState().navTicketActive).toBe(false);
+    removeGuard();
     resetLoadingRegistryForTests();
   });
 
@@ -87,6 +89,81 @@ describe('createAppRouter', () => {
     expect(getLoadingRegistryDebugState().navTicketActive).toBe(true);
     expect(getLoadingRegistryDebugState().navTicketGeneration).toBe(genB);
 
+    resetLoadingRegistryForTests();
+  });
+
+  test('navLoading route settles the nav ticket as soon as the route lands', async () => {
+    resetLoadingRegistryForTests();
+    const router = createAppRouter('/');
+    await router.isReady().catch(() => undefined);
+
+    let sawTicketDuringNav = false;
+    // Runs after createAppRouter beforeEach, so the route ticket must already be open.
+    const removeGuard = router.beforeEach(() => {
+      if (getLoadingRegistryDebugState().navTicketActive) sawTicketDuringNav = true;
+      return true;
+    });
+
+    // FE stub applies push().meta onto the destination before guards run.
+    await router
+      .push({ path: '/__nav_route_policy__', meta: { navLoading: 'route' } } as any)
+      .catch(() => undefined);
+    expect(sawTicketDuringNav).toBe(true);
+    expect(getLoadingRegistryDebugState().navTicketActive).toBe(false);
+    removeGuard();
+    resetLoadingRegistryForTests();
+  });
+
+  test('navLoading content keeps the nav ticket through idle grace', async () => {
+    resetLoadingRegistryForTests();
+    const router = createAppRouter('/');
+    await router.isReady().catch(() => undefined);
+
+    await router
+      .push({ path: '/__nav_content_policy__', meta: { navLoading: 'content' } } as any)
+      .catch(() => undefined);
+    expect(getLoadingRegistryDebugState().navTicketActive).toBe(true);
+    expect(loadingTiming.NAV_IDLE_SETTLE_MS).toBeGreaterThan(50);
+    await new Promise<void>(resolve => setTimeout(resolve, 30));
+    expect(getLoadingRegistryDebugState().navTicketActive).toBe(true);
+    resetLoadingRegistryForTests();
+  });
+
+  test('navLoading none does not open a navigation ticket and clears leftovers', async () => {
+    resetLoadingRegistryForTests();
+    const router = createAppRouter('/');
+    await router.isReady().catch(() => undefined);
+
+    beginNavigationLoading();
+    expect(getLoadingRegistryDebugState().navTicketActive).toBe(true);
+
+    await router
+      .push({ path: '/__nav_none_policy__', meta: { navLoading: 'none' } } as any)
+      .catch(() => undefined);
+    expect(getLoadingRegistryDebugState().navTicketActive).toBe(false);
+    resetLoadingRegistryForTests();
+  });
+
+  test('failed none navigation does not clear a newer ticket', async () => {
+    resetLoadingRegistryForTests();
+    const router = createAppRouter('/');
+    await router.isReady().catch(() => undefined);
+
+    const newerGen = beginNavigationLoading();
+    expect(getLoadingRegistryDebugState().navTicketActive).toBe(true);
+
+    const removeGuard = router.beforeEach(to => {
+      if (to.path === '/__nav_none_abort__') return false;
+      return true;
+    });
+
+    await router
+      .push({ path: '/__nav_none_abort__', meta: { navLoading: 'none' } } as any)
+      .catch(() => undefined);
+
+    expect(getLoadingRegistryDebugState().navTicketActive).toBe(true);
+    expect(getLoadingRegistryDebugState().navTicketGeneration).toBe(newerGen);
+    removeGuard();
     resetLoadingRegistryForTests();
   });
 });

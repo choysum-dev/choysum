@@ -41,5 +41,11 @@ declare module 'vue-router' {
 
     /** Absolute paths keyed by view kind for ViewSwitcher sibling navigation. */
     viewPaths?: Record<string, string>;
+
+    /**
+     * Keep nav chrome until content owns it, until the route lands, or not at all.
+     * Omit = content. Orthogonal to runWithLoading layer (surface/control/chrome).
+     */
+    navLoading?: 'content' | 'route' | 'none';
   }
 }

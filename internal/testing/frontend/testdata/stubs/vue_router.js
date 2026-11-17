@@ -79,6 +79,7 @@ export function createFeStubRouter(overrides) {
         var chain = Promise.resolve();
         var aborted = false;
         var failure = undefined;
+        var failedTo = undefined;
         beforeHooks.forEach(function (fn) {
           chain = chain.then(function () {
             if (aborted) return;
@@ -86,6 +87,17 @@ export function createFeStubRouter(overrides) {
               if (result === false) {
                 aborted = true;
                 failure = { type: 'aborted' };
+                // Keep the intended destination (incl. guard-mutated meta) for afterEach,
+                // matching vue-router's failure semantics.
+                failedTo = {
+                  path: route.path,
+                  fullPath: route.fullPath,
+                  name: route.name,
+                  query: route.query,
+                  params: route.params,
+                  meta: Object.assign({}, route.meta),
+                  matched: route.matched,
+                };
                 applyRoute(route, fromSnapshot);
                 router.currentRoute.value = route;
               }
@@ -94,7 +106,7 @@ export function createFeStubRouter(overrides) {
         });
         afterHooks.forEach(function (fn) {
           chain = chain.then(function () {
-            return fn(route, fromSnapshot, failure);
+            return fn(failure ? failedTo : route, fromSnapshot, failure);
           });
         });
         return chain.then(function () {
@@ -182,6 +194,7 @@ export function createFeStubRouter(overrides) {
         var chain = Promise.resolve();
         var aborted = false;
         var failure = undefined;
+        var failedTo = undefined;
         beforeHooks.forEach(function (fn) {
           chain = chain.then(function () {
             if (aborted) return;
@@ -189,6 +202,15 @@ export function createFeStubRouter(overrides) {
               if (guardResult === false) {
                 aborted = true;
                 failure = { type: 'aborted' };
+                failedTo = {
+                  path: route.path,
+                  fullPath: route.fullPath,
+                  name: route.name,
+                  query: route.query,
+                  params: route.params,
+                  meta: Object.assign({}, route.meta),
+                  matched: route.matched,
+                };
                 applyRoute(route, fromSnapshot);
                 router.currentRoute.value = route;
               }
@@ -197,7 +219,7 @@ export function createFeStubRouter(overrides) {
         });
         afterHooks.forEach(function (fn) {
           chain = chain.then(function () {
-            return fn(route, fromSnapshot, failure);
+            return fn(failure ? failedTo : route, fromSnapshot, failure);
           });
         });
         return chain.then(function () {

@@ -45,13 +45,19 @@ const SLOW_HINT_MIN_SHOW_MS = 1500;
 /** Drop orphaned navigation bar tickets if no surface settles. */
 const NAV_TIMEOUT_MS = 15_000;
 /**
- * After route afterEach: if no surface started, drop the nav bar ticket after a
- * short grace. Guest pages (Setup/Login) never open surface — without this the
- * bar (and formerly slow-hint) stuck until NAV_TIMEOUT_MS. Grace must cover
- * Guest→App shell mount + List/Search first-frame surface under slow nets so
- * the top bar does not drop before the first authenticated surface owns it.
+ * Idle grace for meta.navLoading === 'content' (omit = content): after afterEach,
+ * if no surface started, drop the nav bar ticket. Covers Guest→App shell mount +
+ * List/Search first-frame surface under slow nets so the top bar does not drop
+ * before the first authenticated surface owns it. Guest/static destinations use
+ * meta.navLoading === 'route' with NAV_ROUTE_SETTLE_MS instead.
  */
 const NAV_IDLE_SETTLE_MS = 2000;
+/**
+ * Documented settle delay for meta.navLoading === 'route' (immediate). Routers
+ * should call settleNavigationIfActive on afterEach rather than scheduling a
+ * zero-delay idle re-arm (that spins while a leftover surface is busy).
+ */
+const NAV_ROUTE_SETTLE_MS = 0;
 
 const stack: StackFrame[] = [];
 
@@ -413,10 +419,11 @@ export function beginNavigationLoading(): number {
 }
 
 /**
- * Router afterEach: if the page never opens a surface (Setup/Login/static),
- * drop the nav bar after NAV_IDLE_SETTLE_MS so chrome does not linger on an
- * idle form. Grace covers Guest→App mount + first surface under slow nets;
- * when a surface is already (or soon) busy, leave the ticket for surface finally.
+ * Router afterEach for navLoading content: schedule idle settle of the nav ticket
+ * when no surface owns chrome. Pass NAV_IDLE_SETTLE_MS. Route destinations should
+ * call settleNavigationIfActive directly (zero-delay re-arm would spin while a
+ * leftover surface is busy). When a surface is already (or soon) busy, leave the
+ * ticket for surface finally and re-arm with the same delay.
  */
 export function scheduleNavigationSettleIfIdle(delayMs: number = NAV_IDLE_SETTLE_MS): void {
   if (!navTicketActive) return;
@@ -584,6 +591,7 @@ export const loadingTiming = {
   SLOW_HINT_MIN_SHOW_MS,
   NAV_TIMEOUT_MS,
   NAV_IDLE_SETTLE_MS,
+  NAV_ROUTE_SETTLE_MS,
 } as const;
 
 /** Debug / tests: current counters. */
