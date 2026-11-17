@@ -46,6 +46,40 @@ export async function reloadActiveLanguagesAfterLanguageSave(): Promise<void> {
   }
 }
 
+/** Unwrap Form Browse RecordRow `{ key, payload }` / `{ raw }` or a flat field map. */
+export function languageRowFields(row: unknown): Record<string, unknown> | null {
+  if (!row || typeof row !== 'object') return null;
+  const r = row as Record<string, unknown>;
+  if (r.payload && typeof r.payload === 'object') return r.payload as Record<string, unknown>;
+  if (r.raw && typeof r.raw === 'object') return r.raw as Record<string, unknown>;
+  return r;
+}
+
+/** True when a Form/List row (RecordRow or flat) matches the Language id. */
+export function languageRowMatchesId(row: unknown, id: string): boolean {
+  if (!id || !row || typeof row !== 'object') return false;
+  const r = row as Record<string, unknown>;
+  if (String(r.key || '').trim() === id) return true;
+  const fields = languageRowFields(row);
+  return !!fields && String(fields.Id || '').trim() === id;
+}
+
+/** Resolve the current Language field map from a form store snapshot. */
+export function resolveLanguageCurrentRow(opts: {
+  recordId?: string | null;
+  records?: Record<string, unknown> | null;
+  rows?: unknown[] | null;
+}): Record<string, unknown> {
+  const id = String(opts.recordId || '').trim();
+  const records = (opts.records || {}) as Record<string, unknown>;
+  if (id && records[id] != null) {
+    return languageRowFields(records[id]) || {};
+  }
+  const rows = (opts.rows || []) as unknown[];
+  const matched = id ? rows.find(r => languageRowMatchesId(r, id)) : undefined;
+  return languageRowFields(matched) || {};
+}
+
 /** Call Language.Activate then refresh the form row and active-language overlays. */
 export async function activateLanguage(opts: {
   activate: (req: { Id: string }) => Promise<unknown>;
@@ -56,7 +90,11 @@ export async function activateLanguage(opts: {
   const id = String(opts.recordId || '').trim();
   if (!id) return;
   await opts.activate({ Id: id });
-  if (opts.reloadRecord) await opts.reloadRecord();
+  try {
+    if (opts.reloadRecord) await opts.reloadRecord();
+  } catch {
+    // Row refresh is best-effort; overlays still refresh below.
+  }
   await (opts.reloadActiveLanguages || reloadActiveLanguagesAfterLanguageSave)();
 }
 
@@ -70,6 +108,10 @@ export async function deactivateLanguage(opts: {
   const id = String(opts.recordId || '').trim();
   if (!id) return;
   await opts.deactivate({ Id: id });
-  if (opts.reloadRecord) await opts.reloadRecord();
+  try {
+    if (opts.reloadRecord) await opts.reloadRecord();
+  } catch {
+    // Row refresh is best-effort; overlays still refresh below.
+  }
   await (opts.reloadActiveLanguages || reloadActiveLanguagesAfterLanguageSave)();
 }

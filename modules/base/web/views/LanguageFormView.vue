@@ -20,7 +20,7 @@ SPDX-License-Identifier: Apache-2.0
         data-testid="language-activate"
         :disabled="activeBusy"
         :aria-busy="activeBusy || undefined"
-        @click="onActivate"
+        @click="() => void onActivate()"
       >
         {{ _t('Activate') }}
       </ChoyButton>
@@ -32,7 +32,7 @@ SPDX-License-Identifier: Apache-2.0
         data-testid="language-deactivate"
         :disabled="activeBusy"
         :aria-busy="activeBusy || undefined"
-        @click="onDeactivate"
+        @click="() => void onDeactivate()"
       >
         {{ _t('Deactivate') }}
       </ChoyButton>
@@ -169,7 +169,9 @@ import {
   createPersonNameFormatRules,
   deactivateLanguage,
   isLanguageCodeReadonly,
+  languageRowFields,
   reloadActiveLanguagesAfterLanguageSave,
+  resolveLanguageCurrentRow,
 } from './languageFormHelpers';
 
 defineOptions({ name: 'LanguageFormView', inheritAttrs: true });
@@ -189,31 +191,18 @@ const recordId = toRef(props, 'recordId');
 const { viewMode, showHeader, createAction } = props;
 
 const activeBusy = ref(false);
+/** Local override after Activate/Deactivate when store Browse does not refresh snapshots. */
+const rowOverride = ref<Record<string, unknown> | null>(null);
 
-/** Unwrap Form Browse RecordRow `{ key, payload }` or flat Search rows into a field map. */
-function languageRowFields(row: unknown): Record<string, unknown> | null {
-  if (!row || typeof row !== 'object') return null;
-  const r = row as Record<string, unknown>;
-  if (r.payload && typeof r.payload === 'object') return r.payload as Record<string, unknown>;
-  if (r.raw && typeof r.raw === 'object') return r.raw as Record<string, unknown>;
-  return r;
-}
-
-function languageRowMatchesId(row: unknown, id: string): boolean {
-  if (!id || !row || typeof row !== 'object') return false;
-  const r = row as Record<string, unknown>;
-  if (String(r.key || '').trim() === id) return true;
-  const fields = languageRowFields(row);
-  return !!fields && String(fields.Id || '').trim() === id;
-}
+const canWriteLanguage = computed(() => hasAction(languageActions.edit));
 
 const currentRow = computed(() => {
-  const id = String(recordId.value || '').trim();
-  const records = ((store as any)?.state?.records || {}) as Record<string, Record<string, unknown>>;
-  if (id && records[id]) return records[id];
-  const rows = ((store as any)?.state?.result?.rows || []) as unknown[];
-  const matched = id ? rows.find(r => languageRowMatchesId(r, id)) : undefined;
-  return languageRowFields(matched) || {};
+  if (rowOverride.value) return rowOverride.value;
+  return resolveLanguageCurrentRow({
+    recordId: recordId.value,
+    records: (store as any)?.state?.records,
+    rows: (store as any)?.state?.result?.rows,
+  });
 });
 
 const hasMatchedRow = computed(() => {
@@ -221,14 +210,21 @@ const hasMatchedRow = computed(() => {
   return !!(String(rec.Id || '').trim() || String(rec.Code || '').trim());
 });
 
-const showActivate = computed(() => hasMatchedRow.value && currentRow.value.IsActive !== true);
-const showDeactivate = computed(() => hasMatchedRow.value && currentRow.value.IsActive === true);
+const showActivate = computed(
+  () => canWriteLanguage.value && hasMatchedRow.value && currentRow.value.IsActive !== true
+);
+const showDeactivate = computed(
+  () => canWriteLanguage.value && hasMatchedRow.value && currentRow.value.IsActive === true
+);
 
 async function reloadRecord(): Promise<void> {
   const id = String(recordId.value || '').trim();
   if (!id) return;
-  if (typeof (store as any)?.Browse === 'function') {
-    await (store as any).Browse(id, ['Id', 'Code', 'IsActive', 'Name']);
+  if (typeof (store as any)?.Browse !== 'function') return;
+  const browsed = await (store as any).Browse(id, ['Id', 'Code', 'IsActive', 'Name']);
+  const fields = languageRowFields(browsed);
+  if (fields && (String(fields.Id || '').trim() || String(fields.Code || '').trim())) {
+    rowOverride.value = { ...fields };
   }
 }
 
@@ -242,7 +238,12 @@ async function onActivate(): Promise<void> {
       reloadRecord,
     });
   } catch (err: any) {
-    ChoyMessage.error(String(err?.message || err || _t('Activate failed')));
+    const message = String(err?.message || err || _t('Activate failed'));
+    try {
+      ChoyMessage.error(message);
+    } catch {
+      // Toast host may be absent in FE unit tests.
+    }
   } finally {
     activeBusy.value = false;
   }
@@ -258,7 +259,12 @@ async function onDeactivate(): Promise<void> {
       reloadRecord,
     });
   } catch (err: any) {
-    ChoyMessage.error(String(err?.message || err || _t('Deactivate failed')));
+    const message = String(err?.message || err || _t('Deactivate failed'));
+    try {
+      ChoyMessage.error(message);
+    } catch {
+      // Toast host may be absent in FE unit tests.
+    }
   } finally {
     activeBusy.value = false;
   }

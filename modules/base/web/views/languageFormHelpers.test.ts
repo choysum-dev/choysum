@@ -9,7 +9,10 @@ import {
   createPersonNameFormatRules,
   isLanguageCodeReadonly,
   LANGUAGE_LIST_COLUMN_PROPS,
+  languageRowFields,
+  languageRowMatchesId,
   reloadActiveLanguagesAfterLanguageSave,
+  resolveLanguageCurrentRow,
 } from './languageFormHelpers';
 
 test('languageFormHelpers: selection option catalogs', () => {
@@ -53,6 +56,41 @@ test('languageFormHelpers: reloadActiveLanguagesAfterLanguageSave swallows load 
   await reloadActiveLanguagesAfterLanguageSave();
 });
 
+test('languageFormHelpers: languageRowFields unwraps payload/raw/flat', () => {
+  expect(languageRowFields(null)).toBe(null);
+  expect(languageRowFields('x')).toBe(null);
+  expect(languageRowFields({ payload: { Id: '1', Code: 'zh_CN' } })).toEqual({ Id: '1', Code: 'zh_CN' });
+  expect(languageRowFields({ raw: { Id: '2', Code: 'en_US' } })).toEqual({ Id: '2', Code: 'en_US' });
+  expect(languageRowFields({ Id: '3', Code: 'ja_JP' })).toEqual({ Id: '3', Code: 'ja_JP' });
+});
+
+test('languageFormHelpers: languageRowMatchesId matches key or payload Id', () => {
+  expect(languageRowMatchesId(null, '1')).toBe(false);
+  expect(languageRowMatchesId({ Id: '1' }, '')).toBe(false);
+  expect(languageRowMatchesId({ key: 'lang-1', payload: { Id: 'lang-1' } }, 'lang-1')).toBe(true);
+  expect(languageRowMatchesId({ Id: 'lang-2', Code: 'zh_CN' }, 'lang-2')).toBe(true);
+  expect(languageRowMatchesId({ Id: 'other' }, 'lang-2')).toBe(false);
+});
+
+test('languageFormHelpers: resolveLanguageCurrentRow prefers records then rows', () => {
+  expect(
+    resolveLanguageCurrentRow({
+      recordId: 'a',
+      records: { a: { kind: 'record', key: 'a', payload: { Id: 'a', IsActive: false, Code: 'zh_HK' } } },
+    })
+  ).toEqual({ Id: 'a', IsActive: false, Code: 'zh_HK' });
+
+  expect(
+    resolveLanguageCurrentRow({
+      recordId: 'b',
+      records: {},
+      rows: [{ kind: 'record', key: 'b', payload: { Id: 'b', IsActive: true, Code: 'zh_CN' } }],
+    })
+  ).toEqual({ Id: 'b', IsActive: true, Code: 'zh_CN' });
+
+  expect(resolveLanguageCurrentRow({ recordId: 'missing', records: {}, rows: [] })).toEqual({});
+});
+
 test('languageFormHelpers: activateLanguage calls Activate then reloads', async () => {
   const calls: string[] = [];
   await activateLanguage({
@@ -94,6 +132,24 @@ test('languageFormHelpers: activateLanguage skips reload when Activate rejects',
   expect(calls).toEqual(['activate']);
 });
 
+test('languageFormHelpers: activateLanguage still refreshes overlays when reloadRecord rejects', async () => {
+  const calls: string[] = [];
+  await activateLanguage({
+    activate: async () => {
+      calls.push('activate');
+    },
+    recordId: 'lang-1',
+    reloadRecord: async () => {
+      calls.push('reloadRecord');
+      throw new Error('browse failed');
+    },
+    reloadActiveLanguages: async () => {
+      calls.push('reloadActive');
+    },
+  });
+  expect(calls).toEqual(['activate', 'reloadRecord', 'reloadActive']);
+});
+
 test('languageFormHelpers: deactivateLanguage calls Deactivate then reloads', async () => {
   const calls: string[] = [];
   await deactivateLanguage({
@@ -109,4 +165,39 @@ test('languageFormHelpers: deactivateLanguage calls Deactivate then reloads', as
     },
   });
   expect(calls).toEqual(['deactivate:lang-2', 'reloadRecord', 'reloadActive']);
+});
+
+test('languageFormHelpers: deactivateLanguage still refreshes overlays when reloadRecord rejects', async () => {
+  const calls: string[] = [];
+  await deactivateLanguage({
+    deactivate: async () => {
+      calls.push('deactivate');
+    },
+    recordId: 'lang-2',
+    reloadRecord: async () => {
+      calls.push('reloadRecord');
+      throw new Error('browse failed');
+    },
+    reloadActiveLanguages: async () => {
+      calls.push('reloadActive');
+    },
+  });
+  expect(calls).toEqual(['deactivate', 'reloadRecord', 'reloadActive']);
+});
+
+test('languageFormHelpers: activate/deactivate no-op on empty recordId', async () => {
+  let called = false;
+  await activateLanguage({
+    activate: async () => {
+      called = true;
+    },
+    recordId: '  ',
+  });
+  await deactivateLanguage({
+    deactivate: async () => {
+      called = true;
+    },
+    recordId: '',
+  });
+  expect(called).toBe(false);
 });

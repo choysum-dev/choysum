@@ -418,6 +418,8 @@ test('base.language: Activate/Deactivate require Id', async () => {
     activateErr = err;
   }
   expect(activateErr instanceof ChoysumError).toBe(true);
+  expect(String((activateErr as ChoysumError).code || '')).toMatch(/InvalidArgument/i);
+  expect(String((activateErr as ChoysumError).message || '')).toMatch(/Id is required/i);
 
   let deactivateErr: unknown;
   try {
@@ -426,4 +428,42 @@ test('base.language: Activate/Deactivate require Id', async () => {
     deactivateErr = err;
   }
   expect(deactivateErr instanceof ChoysumError).toBe(true);
+  expect(String((deactivateErr as ChoysumError).code || '')).toMatch(/InvalidArgument/i);
+  expect(String((deactivateErr as ChoysumError).message || '')).toMatch(/Id is required/i);
+});
+
+test('base.language: Activate on one row does not authorize UpdateById IsActive on another', async () => {
+  const suffix = companyCode8();
+  const a = await Language.Create(
+    {
+      Name: uid('LangGateA'),
+      Code: `ga_${suffix}`.slice(0, 16),
+      Direction: 'ltr' as any,
+      IsActive: false,
+    } as any,
+    ['Id'] as any
+  );
+  const b = await Language.Create(
+    {
+      Name: uid('LangGateB'),
+      Code: `gb_${suffix}`.slice(0, 16),
+      Direction: 'ltr' as any,
+      IsActive: false,
+    } as any,
+    ['Id'] as any
+  );
+  const idA = String((a as any).Id);
+  const idB = String((b as any).Id);
+
+  await Language.Activate({ Id: idA });
+  let bypassErr: unknown;
+  try {
+    await Language.UpdateById(idB, { IsActive: true } as any, ['Id', 'IsActive'] as any);
+  } catch (err) {
+    bypassErr = err;
+  }
+  expect(bypassErr instanceof ChoysumError).toBe(true);
+  expect(String((bypassErr as ChoysumError).message || '')).toMatch(/Activate|Deactivate/i);
+  expect(Boolean((await Language.Browse(idB, ['IsActive'] as any) as any).IsActive)).toBe(false);
+  expect(Boolean((await Language.Browse(idA, ['IsActive'] as any) as any).IsActive)).toBe(true);
 });

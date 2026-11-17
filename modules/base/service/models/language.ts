@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BaseModel, Field, Model } from '@/core/service';
-import { getCurrentReq, getOrInitReqServiceState } from '@/core/service/api/context';
 import { Constraint } from '@/core/service/api/constraint';
 import { condition } from '@/core/service/api/query';
 import { raiseDomainError } from '@/core/service/error';
@@ -36,6 +35,7 @@ export type LanguageActivateReq = {
   Id: string;
 };
 
+/** Activate result: language is published to Preferences / guest switcher. */
 export type LanguageActivateResp = {
   Id: string;
   Code: string;
@@ -47,40 +47,32 @@ export type LanguageDeactivateReq = {
   Id: string;
 };
 
+/** Deactivate result: language is unpublished from Preferences / guest switcher. */
 export type LanguageDeactivateResp = {
   Id: string;
   Code: string;
   IsActive: false;
 };
 
-/** Req-scoped (or process fallback) gate so only Activate/Deactivate may flip IsActive. */
-const LANGUAGE_IS_ACTIVE_INTERNAL_KEY = '__baseLanguageIsActiveInternalWrite';
-let languageIsActiveInternalDepth = 0;
+/**
+ * Per-row gate for Activate/Deactivate → UpdateById.
+ * Keyed by Language Id so a concurrent Activate on A cannot authorize UpdateById(IsActive) on B.
+ */
+const languageIsActiveInternalIds = new Set<string>();
 
-function isLanguageIsActiveInternalWrite(): boolean {
-  if (languageIsActiveInternalDepth > 0) return true;
-  const req = getCurrentReq();
-  const state = req ? getOrInitReqServiceState(req) : undefined;
-  return Boolean(state?.[LANGUAGE_IS_ACTIVE_INTERNAL_KEY]);
+function isLanguageIsActiveInternalWrite(id: string | null | undefined): boolean {
+  const key = String(id || '').trim();
+  return !!key && languageIsActiveInternalIds.has(key);
 }
 
-async function withLanguageIsActiveInternalWrite<T>(fn: () => Promise<T>): Promise<T> {
-  const req = getCurrentReq();
-  const state = req ? getOrInitReqServiceState(req) : undefined;
-  if (state) {
-    const prev = state[LANGUAGE_IS_ACTIVE_INTERNAL_KEY];
-    state[LANGUAGE_IS_ACTIVE_INTERNAL_KEY] = true;
-    try {
-      return await fn();
-    } finally {
-      state[LANGUAGE_IS_ACTIVE_INTERNAL_KEY] = prev;
-    }
-  }
-  languageIsActiveInternalDepth += 1;
+async function withLanguageIsActiveInternalWrite<T>(id: string, fn: () => Promise<T>): Promise<T> {
+  const key = String(id || '').trim();
+  if (!key) return await fn();
+  languageIsActiveInternalIds.add(key);
   try {
     return await fn();
   } finally {
-    languageIsActiveInternalDepth -= 1;
+    languageIsActiveInternalIds.delete(key);
   }
 }
 
@@ -305,19 +297,16 @@ export default class Language extends BaseModel {
     if (!id) {
       raiseDomainError('base', 'InvalidArgument', _t('Id is required', { scope: 'service/models/language' }));
     }
-    return withLanguageIsActiveInternalWrite(async () => {
+    return withLanguageIsActiveInternalWrite(id, async () => {
       const row = await this.Browse(id, ['Id', 'Code', 'IsActive'] as const);
       if (!row) {
         raiseDomainError('base', 'NotFound', _t('Language not found', { scope: 'service/models/language' }));
       }
-      const code = String((row as Language).Code || '');
-      if ((row as Language).IsActive === true) {
-        return { Id: id, Code: code, IsActive: true };
-      }
+      // Always write so overlapping Activate/Deactivate cannot return a stale early success.
       const updated = await this.UpdateById(id, { IsActive: true } as Partial<Language>, ['Id', 'Code', 'IsActive'] as const);
       return {
         Id: String((updated as Language).Id || id),
-        Code: String((updated as Language).Code || code),
+        Code: String((updated as Language).Code || (row as Language).Code || ''),
         IsActive: true,
       };
     });
@@ -332,19 +321,16 @@ export default class Language extends BaseModel {
     if (!id) {
       raiseDomainError('base', 'InvalidArgument', _t('Id is required', { scope: 'service/models/language' }));
     }
-    return withLanguageIsActiveInternalWrite(async () => {
+    return withLanguageIsActiveInternalWrite(id, async () => {
       const row = await this.Browse(id, ['Id', 'Code', 'IsActive'] as const);
       if (!row) {
         raiseDomainError('base', 'NotFound', _t('Language not found', { scope: 'service/models/language' }));
       }
-      const code = String((row as Language).Code || '');
-      if ((row as Language).IsActive === false) {
-        return { Id: id, Code: code, IsActive: false };
-      }
+      // Always write so overlapping Activate/Deactivate cannot return a stale early success.
       const updated = await this.UpdateById(id, { IsActive: false } as Partial<Language>, ['Id', 'Code', 'IsActive'] as const);
       return {
         Id: String((updated as Language).Id || id),
-        Code: String((updated as Language).Code || code),
+        Code: String((updated as Language).Code || (row as Language).Code || ''),
         IsActive: false,
       };
     });
@@ -431,7 +417,7 @@ export default class Language extends BaseModel {
       }
 
       if (this.IsActive !== undefined && Boolean(this.IsActive) !== prevActive) {
-        if (!isLanguageIsActiveInternalWrite()) {
+        if (!isLanguageIsActiveInternalWrite(this.Id)) {
           raiseDomainError(
             'base',
             'InvalidArgument',
