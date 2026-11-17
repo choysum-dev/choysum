@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import {
+  activateLanguage,
+  deactivateLanguage,
   GROUPING_SELECTION,
   FIRST_DAY_SELECTION,
   createPersonNameFormatRules,
@@ -49,4 +51,62 @@ test('languageFormHelpers: person name format rules reject invalid templates', a
 
 test('languageFormHelpers: reloadActiveLanguagesAfterLanguageSave swallows load failures', async () => {
   await reloadActiveLanguagesAfterLanguageSave();
+});
+
+test('languageFormHelpers: activateLanguage calls Activate then reloads', async () => {
+  const calls: string[] = [];
+  await activateLanguage({
+    activate: async req => {
+      calls.push(`activate:${req.Id}`);
+    },
+    recordId: 'lang-1',
+    reloadRecord: async () => {
+      calls.push('reloadRecord');
+    },
+    reloadActiveLanguages: async () => {
+      calls.push('reloadActive');
+    },
+  });
+  expect(calls).toEqual(['activate:lang-1', 'reloadRecord', 'reloadActive']);
+});
+
+test('languageFormHelpers: activateLanguage skips reload when Activate rejects', async () => {
+  const calls: string[] = [];
+  let err: unknown;
+  try {
+    await activateLanguage({
+      activate: async () => {
+        calls.push('activate');
+        throw new Error('nope');
+      },
+      recordId: 'lang-1',
+      reloadRecord: async () => {
+        calls.push('reloadRecord');
+      },
+      reloadActiveLanguages: async () => {
+        calls.push('reloadActive');
+      },
+    });
+  } catch (e) {
+    err = e;
+  }
+  expect(String((err as Error)?.message || err)).toBe('nope');
+  expect(calls).toEqual(['activate']);
+});
+
+test('languageFormHelpers: deactivateLanguage calls Deactivate then reloads', async () => {
+  const calls: string[] = [];
+  await deactivateLanguage({
+    deactivate: async req => {
+      calls.push(`deactivate:${req.Id}`);
+    },
+    recordId: 'lang-2',
+    reloadRecord: async () => {
+      calls.push('reloadRecord');
+    },
+    reloadActiveLanguages: async () => {
+      calls.push('reloadActive');
+    },
+  });
+  expect(calls).toEqual(['deactivate:lang-2', 'reloadRecord', 'reloadActive']);
 });

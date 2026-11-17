@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { BaseModel, Field, Model } from '@/core/service';
+import { getCurrentReq, getOrInitReqServiceState } from '@/core/service/api/context';
 import { Constraint } from '@/core/service/api/constraint';
 import { condition } from '@/core/service/api/query';
 import { raiseDomainError } from '@/core/service/error';
@@ -29,6 +30,59 @@ export type LanguageFormatParams = {
   /** Fraction digits for number formatting (default 2). */
   Digits?: number;
 };
+
+/** Activate command envelope (gRPC: base.Language/Activate). */
+export type LanguageActivateReq = {
+  Id: string;
+};
+
+export type LanguageActivateResp = {
+  Id: string;
+  Code: string;
+  IsActive: true;
+};
+
+/** Deactivate command envelope (gRPC: base.Language/Deactivate). */
+export type LanguageDeactivateReq = {
+  Id: string;
+};
+
+export type LanguageDeactivateResp = {
+  Id: string;
+  Code: string;
+  IsActive: false;
+};
+
+/** Req-scoped (or process fallback) gate so only Activate/Deactivate may flip IsActive. */
+const LANGUAGE_IS_ACTIVE_INTERNAL_KEY = '__baseLanguageIsActiveInternalWrite';
+let languageIsActiveInternalDepth = 0;
+
+function isLanguageIsActiveInternalWrite(): boolean {
+  if (languageIsActiveInternalDepth > 0) return true;
+  const req = getCurrentReq();
+  const state = req ? getOrInitReqServiceState(req) : undefined;
+  return Boolean(state?.[LANGUAGE_IS_ACTIVE_INTERNAL_KEY]);
+}
+
+async function withLanguageIsActiveInternalWrite<T>(fn: () => Promise<T>): Promise<T> {
+  const req = getCurrentReq();
+  const state = req ? getOrInitReqServiceState(req) : undefined;
+  if (state) {
+    const prev = state[LANGUAGE_IS_ACTIVE_INTERNAL_KEY];
+    state[LANGUAGE_IS_ACTIVE_INTERNAL_KEY] = true;
+    try {
+      return await fn();
+    } finally {
+      state[LANGUAGE_IS_ACTIVE_INTERNAL_KEY] = prev;
+    }
+  }
+  languageIsActiveInternalDepth += 1;
+  try {
+    return await fn();
+  } finally {
+    languageIsActiveInternalDepth -= 1;
+  }
+}
 
 /** Fixed projection returned by GetActiveLanguages. Callers cannot request extra fields. */
 export type ActiveLanguage = {
@@ -243,6 +297,60 @@ export default class Language extends BaseModel {
   }
 
   /**
+   * Publish a language to Preferences / guest switcher (sets IsActive=true).
+   * Does not import PO / terminology. gRPC: base.Language/Activate
+   */
+  public static async Activate(req: LanguageActivateReq): Promise<LanguageActivateResp> {
+    const id = String(req?.Id || '').trim();
+    if (!id) {
+      raiseDomainError('base', 'InvalidArgument', _t('Id is required', { scope: 'service/models/language' }));
+    }
+    return withLanguageIsActiveInternalWrite(async () => {
+      const row = await this.Browse(id, ['Id', 'Code', 'IsActive'] as const);
+      if (!row) {
+        raiseDomainError('base', 'NotFound', _t('Language not found', { scope: 'service/models/language' }));
+      }
+      const code = String((row as Language).Code || '');
+      if ((row as Language).IsActive === true) {
+        return { Id: id, Code: code, IsActive: true };
+      }
+      const updated = await this.UpdateById(id, { IsActive: true } as Partial<Language>, ['Id', 'Code', 'IsActive'] as const);
+      return {
+        Id: String((updated as Language).Id || id),
+        Code: String((updated as Language).Code || code),
+        IsActive: true,
+      };
+    });
+  }
+
+  /**
+   * Unpublish a language from Preferences / guest switcher (sets IsActive=false).
+   * Does not purge terminology. gRPC: base.Language/Deactivate
+   */
+  public static async Deactivate(req: LanguageDeactivateReq): Promise<LanguageDeactivateResp> {
+    const id = String(req?.Id || '').trim();
+    if (!id) {
+      raiseDomainError('base', 'InvalidArgument', _t('Id is required', { scope: 'service/models/language' }));
+    }
+    return withLanguageIsActiveInternalWrite(async () => {
+      const row = await this.Browse(id, ['Id', 'Code', 'IsActive'] as const);
+      if (!row) {
+        raiseDomainError('base', 'NotFound', _t('Language not found', { scope: 'service/models/language' }));
+      }
+      const code = String((row as Language).Code || '');
+      if ((row as Language).IsActive === false) {
+        return { Id: id, Code: code, IsActive: false };
+      }
+      const updated = await this.UpdateById(id, { IsActive: false } as Partial<Language>, ['Id', 'Code', 'IsActive'] as const);
+      return {
+        Id: String((updated as Language).Id || id),
+        Code: String((updated as Language).Code || code),
+        IsActive: false,
+      };
+    });
+  }
+
+  /**
    * Format a value using a Language row's separators / grouping / date patterns.
    * gRPC: base.Language/Format
    */
@@ -309,10 +417,33 @@ export default class Language extends BaseModel {
       this.PersonNameFormat = text;
     }
 
-    // Refuse deactivating the last active language (update path only).
-    if (this.IsActive === false && this.Id) {
-      const existingRows = await Language.Search(['Id', '=', this.Id], { fields: ['Id'], limit: 1 });
-      if (existingRows?.length) {
+    // Language.Code is immutable after create; IsActive flips only via Activate/Deactivate.
+    if (this.Id) {
+      const existingRows = await Language.Search(['Id', '=', this.Id], { fields: ['Code', 'IsActive'], limit: 1 });
+      if (!existingRows?.length) {
+        return;
+      }
+      const prev = String(existingRows[0]?.Code || '');
+      const prevActive = Boolean(existingRows[0]?.IsActive);
+
+      if (this.Code != null && prev && prev !== String(this.Code)) {
+        raiseDomainError('base', 'InvalidArgument', _t('Language code cannot be changed', { scope: 'service/models/language' }));
+      }
+
+      if (this.IsActive !== undefined && Boolean(this.IsActive) !== prevActive) {
+        if (!isLanguageIsActiveInternalWrite()) {
+          raiseDomainError(
+            'base',
+            'InvalidArgument',
+            _t('Use Language.Activate or Language.Deactivate to change active state', {
+              scope: 'service/models/language',
+            })
+          );
+        }
+      }
+
+      // Refuse deactivating the last active language (Activate/Deactivate path).
+      if (this.IsActive === false) {
         const others = await Language.Search(
           condition<Language>({
             And: [
@@ -326,19 +457,7 @@ export default class Language extends BaseModel {
           raiseDomainError('base', 'InvalidArgument', _t('At least one language must stay active', { scope: 'service/models/language' }));
         }
       }
-    }
 
-    // Language.Code is immutable after create; root en_US cannot be deactivated.
-    // Load prev Code from DB so partial updates (IsActive-only) still enforce en_US.
-    if (this.Id) {
-      const existingRows = await Language.Search(['Id', '=', this.Id], { fields: ['Code'], limit: 1 });
-      if (!existingRows?.length) {
-        return;
-      }
-      const prev = String(existingRows[0]?.Code || '');
-      if (this.Code != null && prev && prev !== String(this.Code)) {
-        raiseDomainError('base', 'InvalidArgument', _t('Language code cannot be changed', { scope: 'service/models/language' }));
-      }
       if (prev === 'en_US' && this.IsActive === false) {
         raiseDomainError('base', 'InvalidArgument', _t('The root language en_US cannot be deactivated', { scope: 'service/models/language' }));
       }

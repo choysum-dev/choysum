@@ -45,3 +45,31 @@ export async function reloadActiveLanguagesAfterLanguageSave(): Promise<void> {
     // Next full page init will reload formats.
   }
 }
+
+/** Call Language.Activate then refresh the form row and active-language overlays. */
+export async function activateLanguage(opts: {
+  activate: (req: { Id: string }) => Promise<unknown>;
+  recordId: string;
+  reloadRecord?: () => Promise<void>;
+  reloadActiveLanguages?: () => Promise<void>;
+}): Promise<void> {
+  const id = String(opts.recordId || '').trim();
+  if (!id) return;
+  await opts.activate({ Id: id });
+  if (opts.reloadRecord) await opts.reloadRecord();
+  await (opts.reloadActiveLanguages || reloadActiveLanguagesAfterLanguageSave)();
+}
+
+/** Call Language.Deactivate then refresh the form row and active-language overlays. */
+export async function deactivateLanguage(opts: {
+  deactivate: (req: { Id: string }) => Promise<unknown>;
+  recordId: string;
+  reloadRecord?: () => Promise<void>;
+  reloadActiveLanguages?: () => Promise<void>;
+}): Promise<void> {
+  const id = String(opts.recordId || '').trim();
+  if (!id) return;
+  await opts.deactivate({ Id: id });
+  if (opts.reloadRecord) await opts.reloadRecord();
+  await (opts.reloadActiveLanguages || reloadActiveLanguagesAfterLanguageSave)();
+}

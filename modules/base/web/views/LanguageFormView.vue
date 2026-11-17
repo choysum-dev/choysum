@@ -12,6 +12,32 @@ SPDX-License-Identifier: Apache-2.0
     @update-success="reloadActiveLanguagesAfterLanguageSave"
     @create-success="reloadActiveLanguagesAfterLanguageSave"
   >
+    <template #secondary-actions>
+      <ChoyButton
+        v-if="showActivate"
+        type="button"
+        size="default"
+        data-testid="language-activate"
+        :disabled="activeBusy"
+        :aria-busy="activeBusy || undefined"
+        @click="onActivate"
+      >
+        {{ _t('Activate') }}
+      </ChoyButton>
+      <ChoyButton
+        v-else-if="showDeactivate"
+        type="button"
+        size="default"
+        variant="outline"
+        data-testid="language-deactivate"
+        :disabled="activeBusy"
+        :aria-busy="activeBusy || undefined"
+        @click="onDeactivate"
+      >
+        {{ _t('Deactivate') }}
+      </ChoyButton>
+    </template>
+
     <template #default="{ viewMode: mode }">
       <div data-anchor="choy.form.sheet" class="min-h-full space-y-8">
         <section class="space-y-4" data-testid="language-form-identity">
@@ -53,7 +79,8 @@ SPDX-License-Identifier: Apache-2.0
               <ChoyBooleanField
                 :store="store"
                 prop="IsActive"
-                :help="_t('Enabling a language makes it selectable. It does not install PO / terminology packs.')"
+                :readonly="mode !== 'create'"
+                :help="_t('Enabling a language makes it selectable. It does not install PO / terminology packs. Use Activate / Deactivate in the header after create.')"
               />
             </ChoyCol>
           </ChoyGrid>
@@ -118,7 +145,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, toRef } from 'vue';
 import type { RouteLocationRaw } from 'vue-router';
 import type { ModelStore } from '@/web/web/stores/modelStore';
 import type Language from '@/base/service/models/language';
@@ -126,8 +153,10 @@ import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { createTranslate } from '@/web/web/i18n';
+import { ChoyMessage } from '@/web/web/composables/useChoyMessage';
 import {
   ChoyBooleanField,
+  ChoyButton,
   ChoyCol,
   ChoyFormView,
   ChoyGrid,
@@ -136,7 +165,9 @@ import {
 } from '@/web';
 import type { ChoyViewMode as ViewMode } from '@/web';
 import {
+  activateLanguage,
   createPersonNameFormatRules,
+  deactivateLanguage,
   isLanguageCodeReadonly,
   reloadActiveLanguagesAfterLanguageSave,
 } from './languageFormHelpers';
@@ -154,5 +185,82 @@ const props = withDefaults(
 const languageActions = defineModelActions('base.Language', { entityTitle: _lt('Language') });
 const { hasAction } = usePermission();
 const store = resolvePageStore(props.store, 'LanguageFormView');
-const { recordId, viewMode, showHeader, createAction } = props;
+const recordId = toRef(props, 'recordId');
+const { viewMode, showHeader, createAction } = props;
+
+const activeBusy = ref(false);
+
+/** Unwrap Form Browse RecordRow `{ key, payload }` or flat Search rows into a field map. */
+function languageRowFields(row: unknown): Record<string, unknown> | null {
+  if (!row || typeof row !== 'object') return null;
+  const r = row as Record<string, unknown>;
+  if (r.payload && typeof r.payload === 'object') return r.payload as Record<string, unknown>;
+  if (r.raw && typeof r.raw === 'object') return r.raw as Record<string, unknown>;
+  return r;
+}
+
+function languageRowMatchesId(row: unknown, id: string): boolean {
+  if (!id || !row || typeof row !== 'object') return false;
+  const r = row as Record<string, unknown>;
+  if (String(r.key || '').trim() === id) return true;
+  const fields = languageRowFields(row);
+  return !!fields && String(fields.Id || '').trim() === id;
+}
+
+const currentRow = computed(() => {
+  const id = String(recordId.value || '').trim();
+  const records = ((store as any)?.state?.records || {}) as Record<string, Record<string, unknown>>;
+  if (id && records[id]) return records[id];
+  const rows = ((store as any)?.state?.result?.rows || []) as unknown[];
+  const matched = id ? rows.find(r => languageRowMatchesId(r, id)) : undefined;
+  return languageRowFields(matched) || {};
+});
+
+const hasMatchedRow = computed(() => {
+  const rec = currentRow.value;
+  return !!(String(rec.Id || '').trim() || String(rec.Code || '').trim());
+});
+
+const showActivate = computed(() => hasMatchedRow.value && currentRow.value.IsActive !== true);
+const showDeactivate = computed(() => hasMatchedRow.value && currentRow.value.IsActive === true);
+
+async function reloadRecord(): Promise<void> {
+  const id = String(recordId.value || '').trim();
+  if (!id) return;
+  if (typeof (store as any)?.Browse === 'function') {
+    await (store as any).Browse(id, ['Id', 'Code', 'IsActive', 'Name']);
+  }
+}
+
+async function onActivate(): Promise<void> {
+  if (activeBusy.value) return;
+  activeBusy.value = true;
+  try {
+    await activateLanguage({
+      activate: req => (store as any).Activate(req),
+      recordId: String(recordId.value || ''),
+      reloadRecord,
+    });
+  } catch (err: any) {
+    ChoyMessage.error(String(err?.message || err || _t('Activate failed')));
+  } finally {
+    activeBusy.value = false;
+  }
+}
+
+async function onDeactivate(): Promise<void> {
+  if (activeBusy.value) return;
+  activeBusy.value = true;
+  try {
+    await deactivateLanguage({
+      deactivate: req => (store as any).Deactivate(req),
+      recordId: String(recordId.value || ''),
+      reloadRecord,
+    });
+  } catch (err: any) {
+    ChoyMessage.error(String(err?.message || err || _t('Deactivate failed')));
+  } finally {
+    activeBusy.value = false;
+  }
+}
 </script>
