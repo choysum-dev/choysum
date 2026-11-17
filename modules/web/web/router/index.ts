@@ -62,16 +62,19 @@ export function createAppRouter(base = '/', composer?: ComposerLike): Router {
 
   router.beforeEach(async to => {
     titleRoute.value = to;
-    // none: do not open a nav ticket for this destination.
-    if (resolveNavLoadingPolicy(to) === 'none') return true;
+    // none: do not open a nav ticket; drop any stale generation marker on meta.
+    if (resolveNavLoadingPolicy(to) === 'none') {
+      delete (to.meta as { __navLoadingGen?: number }).__navLoadingGen;
+      return true;
+    }
     const generation = beginNavigationLoading();
     (to.meta as { __navLoadingGen?: number }).__navLoadingGen = generation;
     return true;
   });
 
   // Settle by destination meta.navLoading: content keeps idle grace for surface
-  // handoff; route settles immediately when the route lands; none drops leftover
-  // chrome without opening a new ticket.
+  // handoff; route settles immediately (generation-scoped); none drops leftover
+  // chrome without opening a new ticket (unscoped — none has no generation).
   // Failed navigations settle only by generation so a failed none (no ticket)
   // cannot clear a newer navigation's chrome.
   router.afterEach((to, _from, failure) => {
@@ -87,9 +90,9 @@ export function createAppRouter(base = '/', composer?: ComposerLike): Router {
     }
     if (policy === 'route') {
       // Direct settle: avoid scheduleNavigationSettleIfIdle(0) re-arm spin while a
-      // leftover surface from the previous page is still busy. Successful route
-      // afterEach runs for the active navigation, so unscoped settle is correct.
-      settleNavigationIfActive();
+      // leftover surface from the previous page is still busy. Scope to this
+      // destination's generation so a stale afterEach cannot clear a newer ticket.
+      settleNavigationIfActive({ generation });
       return;
     }
     scheduleNavigationSettleIfIdle(loadingTiming.NAV_IDLE_SETTLE_MS);

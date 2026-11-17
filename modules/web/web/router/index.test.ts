@@ -43,13 +43,14 @@ describe('createAppRouter', () => {
     resetLoadingRegistryForTests();
     const router = createAppRouter('/');
     await router.isReady().catch(() => undefined);
-    router.beforeEach(to => {
+    const removeGuard = router.beforeEach(to => {
       if (to.path === '/__abort_nav__') return false;
       return true;
     });
     await router.push('/__abort_nav__').catch(() => undefined);
     // Failure path must drop the ticket opened in beforeEach.
     expect(getLoadingRegistryDebugState().navTicketActive).toBe(false);
+    removeGuard();
     resetLoadingRegistryForTests();
   });
 
@@ -98,7 +99,7 @@ describe('createAppRouter', () => {
 
     let sawTicketDuringNav = false;
     // Runs after createAppRouter beforeEach, so the route ticket must already be open.
-    router.beforeEach(() => {
+    const removeGuard = router.beforeEach(() => {
       if (getLoadingRegistryDebugState().navTicketActive) sawTicketDuringNav = true;
       return true;
     });
@@ -109,6 +110,7 @@ describe('createAppRouter', () => {
       .catch(() => undefined);
     expect(sawTicketDuringNav).toBe(true);
     expect(getLoadingRegistryDebugState().navTicketActive).toBe(false);
+    removeGuard();
     resetLoadingRegistryForTests();
   });
 
@@ -150,7 +152,7 @@ describe('createAppRouter', () => {
     const newerGen = beginNavigationLoading();
     expect(getLoadingRegistryDebugState().navTicketActive).toBe(true);
 
-    router.beforeEach(to => {
+    const removeGuard = router.beforeEach(to => {
       if (to.path === '/__nav_none_abort__') return false;
       return true;
     });
@@ -161,6 +163,7 @@ describe('createAppRouter', () => {
 
     expect(getLoadingRegistryDebugState().navTicketActive).toBe(true);
     expect(getLoadingRegistryDebugState().navTicketGeneration).toBe(newerGen);
+    removeGuard();
     resetLoadingRegistryForTests();
   });
 });
