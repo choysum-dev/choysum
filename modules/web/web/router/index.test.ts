@@ -96,11 +96,18 @@ describe('createAppRouter', () => {
     const router = createAppRouter('/');
     await router.isReady().catch(() => undefined);
 
+    let sawTicketDuringNav = false;
+    // Runs after createAppRouter beforeEach, so the route ticket must already be open.
+    router.beforeEach(() => {
+      if (getLoadingRegistryDebugState().navTicketActive) sawTicketDuringNav = true;
+      return true;
+    });
+
     // FE stub applies push().meta onto the destination before guards run.
     await router
       .push({ path: '/__nav_route_policy__', meta: { navLoading: 'route' } } as any)
       .catch(() => undefined);
-    await new Promise<void>(resolve => setTimeout(resolve, 20));
+    expect(sawTicketDuringNav).toBe(true);
     expect(getLoadingRegistryDebugState().navTicketActive).toBe(false);
     resetLoadingRegistryForTests();
   });
@@ -120,15 +127,40 @@ describe('createAppRouter', () => {
     resetLoadingRegistryForTests();
   });
 
-  test('navLoading none does not open a navigation ticket', async () => {
+  test('navLoading none does not open a navigation ticket and clears leftovers', async () => {
     resetLoadingRegistryForTests();
     const router = createAppRouter('/');
     await router.isReady().catch(() => undefined);
+
+    beginNavigationLoading();
+    expect(getLoadingRegistryDebugState().navTicketActive).toBe(true);
 
     await router
       .push({ path: '/__nav_none_policy__', meta: { navLoading: 'none' } } as any)
       .catch(() => undefined);
     expect(getLoadingRegistryDebugState().navTicketActive).toBe(false);
+    resetLoadingRegistryForTests();
+  });
+
+  test('failed none navigation does not clear a newer ticket', async () => {
+    resetLoadingRegistryForTests();
+    const router = createAppRouter('/');
+    await router.isReady().catch(() => undefined);
+
+    const newerGen = beginNavigationLoading();
+    expect(getLoadingRegistryDebugState().navTicketActive).toBe(true);
+
+    router.beforeEach(to => {
+      if (to.path === '/__nav_none_abort__') return false;
+      return true;
+    });
+
+    await router
+      .push({ path: '/__nav_none_abort__', meta: { navLoading: 'none' } } as any)
+      .catch(() => undefined);
+
+    expect(getLoadingRegistryDebugState().navTicketActive).toBe(true);
+    expect(getLoadingRegistryDebugState().navTicketGeneration).toBe(newerGen);
     resetLoadingRegistryForTests();
   });
 });

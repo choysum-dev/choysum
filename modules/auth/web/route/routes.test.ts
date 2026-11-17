@@ -5,9 +5,13 @@ import { authRoutes } from './routes';
 
 test('auth guest routes use navLoading route for chrome settle', () => {
   const byName = new Map(authRoutes.map(route => [String(route.name), route]));
-  for (const name of ['login', 'setup', 'logout', 'register'] as const) {
+  const names: Array<'login' | 'setup' | 'logout' | 'register'> = ['login', 'setup', 'logout'];
+  if (import.meta.env.CHOYSUM_ENABLE_REGISTRATION !== false) {
+    names.push('register');
+  }
+  for (const name of names) {
     const route = byName.get(name);
-    expect(route, name).toBeTruthy();
+    expect(route).toBeTruthy();
     expect(route?.meta?.requiresAuth).toBe(false);
     expect(route?.meta?.navLoading).toBe('route');
   }

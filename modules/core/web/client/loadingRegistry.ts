@@ -53,8 +53,9 @@ const NAV_TIMEOUT_MS = 15_000;
  */
 const NAV_IDLE_SETTLE_MS = 2000;
 /**
- * Idle grace for meta.navLoading === 'route': settle as soon as the route lands
- * (afterEach). Still begin the nav ticket so slow chunk loads can show the bar.
+ * Documented settle delay for meta.navLoading === 'route' (immediate). Routers
+ * should call settleNavigationIfActive on afterEach rather than scheduling a
+ * zero-delay idle re-arm (that spins while a leftover surface is busy).
  */
 const NAV_ROUTE_SETTLE_MS = 0;
 
@@ -418,9 +419,11 @@ export function beginNavigationLoading(): number {
 }
 
 /**
- * Router afterEach: schedule idle settle of the nav ticket when no surface owns
- * chrome. Pass NAV_IDLE_SETTLE_MS for navLoading content, NAV_ROUTE_SETTLE_MS for
- * route. When a surface is already (or soon) busy, leave the ticket for surface finally.
+ * Router afterEach for navLoading content: schedule idle settle of the nav ticket
+ * when no surface owns chrome. Pass NAV_IDLE_SETTLE_MS. Route destinations should
+ * call settleNavigationIfActive directly (zero-delay re-arm would spin while a
+ * leftover surface is busy). When a surface is already (or soon) busy, leave the
+ * ticket for surface finally and re-arm with the same delay.
  */
 export function scheduleNavigationSettleIfIdle(delayMs: number = NAV_IDLE_SETTLE_MS): void {
   if (!navTicketActive) return;

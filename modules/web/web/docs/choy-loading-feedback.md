@@ -42,13 +42,15 @@ This is **orthogonal** to `runWithLoading` layers (`surface` / `control` / `chro
 | `meta.navLoading` | Chrome held until | Typical destinations |
 | --- | --- | --- |
 | **`content`** (omit = default) | First surface owns chrome, or idle grace (`NAV_IDLE_SETTLE_MS`, 2s) | App List/Form |
-| **`route`** | Route lands (`afterEach`); settle delay `NAV_ROUTE_SETTLE_MS` (0) | Login / Setup / Logout / Register / Error |
-| **`none`** | Never opens a nav ticket | Silent redirects (opt-in; rarely used) |
+| **`route`** | Route lands (`afterEach`); `settleNavigationIfActive` immediately | Login / Setup / Logout / Register / Error |
+| **`none`** | Never opens a nav ticket; drops any leftover nav chrome on success | Silent redirects (opt-in; rarely used) |
 
 Resolver: `modules/web/web/router/navLoadingPolicy.ts` (`resolveNavLoadingPolicy`).
-Router hooks in `modules/web/web/router/index.ts` pass the matching settle delay into
-`scheduleNavigationSettleIfIdle(ms)`. Timing constants live on `loadingTiming` in the
-registry — not on RouteMeta (no per-route millisecond knobs).
+Router hooks in `modules/web/web/router/index.ts`: `content` uses
+`scheduleNavigationSettleIfIdle(NAV_IDLE_SETTLE_MS)`; `route`/`none` settle directly.
+Timing constants live on `loadingTiming` in the registry — not on RouteMeta
+(no per-route millisecond knobs). `NAV_ROUTE_SETTLE_MS` (0) documents the route
+policy intent; the router does not schedule a zero-delay idle re-arm.
 
 ## Registry pointers
 

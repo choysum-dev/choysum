@@ -70,20 +70,30 @@ export function createAppRouter(base = '/', composer?: ComposerLike): Router {
   });
 
   // Settle by destination meta.navLoading: content keeps idle grace for surface
-  // handoff; route settles as soon as the route lands; none opened no ticket.
-  // Failed navigations (redirect/abort) must drop the nav ticket — afterEach still
-  // runs with a failure, but scheduleNavigationSettleIfIdle would leave bar up.
-  // Settlement is generation-scoped so an older cancelled nav cannot clear a newer ticket.
+  // handoff; route settles immediately when the route lands; none drops leftover
+  // chrome without opening a new ticket.
+  // Failed navigations must drop only the ticket they opened (generation-scoped).
+  // A failed none nav has no generation — do not settle, or a newer ticket can drop.
   router.afterEach((to, _from, failure) => {
     const generation = Number((to.meta as { __navLoadingGen?: number }).__navLoadingGen) || 0;
     if (failure) {
-      settleNavigationIfActive(generation ? { generation } : undefined);
+      if (generation) {
+        settleNavigationIfActive({ generation });
+      } else if (resolveNavLoadingPolicy(to) !== 'none') {
+        // Fallback when generation was lost; never clear chrome for a failed none nav.
+        settleNavigationIfActive();
+      }
       return;
     }
     const policy = resolveNavLoadingPolicy(to);
-    if (policy === 'none') return;
+    if (policy === 'none') {
+      settleNavigationIfActive();
+      return;
+    }
     if (policy === 'route') {
-      scheduleNavigationSettleIfIdle(loadingTiming.NAV_ROUTE_SETTLE_MS);
+      // Direct settle: avoid scheduleNavigationSettleIfIdle(0) re-arm spin while a
+      // leftover surface from the previous page is still busy.
+      settleNavigationIfActive(generation ? { generation } : undefined);
       return;
     }
     scheduleNavigationSettleIfIdle(loadingTiming.NAV_IDLE_SETTLE_MS);
