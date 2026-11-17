@@ -145,7 +145,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { computed, ref, toRef } from 'vue';
+import { computed, ref, toRef, watch } from 'vue';
 import type { RouteLocationRaw } from 'vue-router';
 import type { ModelStore } from '@/web/web/stores/modelStore';
 import type Language from '@/base/service/models/language';
@@ -170,8 +170,10 @@ import {
   deactivateLanguage,
   isLanguageCodeReadonly,
   languageRowFields,
+  languageRowOverrideFields,
   reloadActiveLanguagesAfterLanguageSave,
   resolveLanguageCurrentRow,
+  type LanguageRowOverride,
 } from './languageFormHelpers';
 
 defineOptions({ name: 'LanguageFormView', inheritAttrs: true });
@@ -191,13 +193,21 @@ const recordId = toRef(props, 'recordId');
 const { viewMode, showHeader, createAction } = props;
 
 const activeBusy = ref(false);
-/** Local override after Activate/Deactivate when store Browse does not refresh snapshots. */
-const rowOverride = ref<Record<string, unknown> | null>(null);
+/** Local override after Activate/Deactivate; only applied when `id` still matches `recordId`. */
+const rowOverride = ref<LanguageRowOverride | null>(null);
+
+watch(
+  () => String(recordId.value || '').trim(),
+  () => {
+    rowOverride.value = null;
+  }
+);
 
 const canWriteLanguage = computed(() => hasAction(languageActions.edit));
 
 const currentRow = computed(() => {
-  if (rowOverride.value) return rowOverride.value;
+  const overrideFields = languageRowOverrideFields(rowOverride.value, recordId.value);
+  if (overrideFields) return overrideFields;
   return resolveLanguageCurrentRow({
     recordId: recordId.value,
     records: (store as any)?.state?.records,
@@ -222,9 +232,13 @@ async function reloadRecord(): Promise<void> {
   if (!id) return;
   if (typeof (store as any)?.Browse !== 'function') return;
   const browsed = await (store as any).Browse(id, ['Id', 'Code', 'IsActive', 'Name']);
+  // Drop stale Browse results after the user navigated to another Language.
+  if (String(recordId.value || '').trim() !== id) return;
   const fields = languageRowFields(browsed);
   if (fields && (String(fields.Id || '').trim() || String(fields.Code || '').trim())) {
-    rowOverride.value = { ...fields };
+    rowOverride.value = { id, fields: { ...fields } };
+  } else {
+    rowOverride.value = null;
   }
 }
 

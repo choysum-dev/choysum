@@ -80,6 +80,19 @@ export function resolveLanguageCurrentRow(opts: {
   return languageRowFields(matched) || {};
 }
 
+/** Local Activate/Deactivate override; only valid while `recordId` still matches. */
+export type LanguageRowOverride = { id: string; fields: Record<string, unknown> };
+
+/** Return override fields when scoped to the current recordId; otherwise null. */
+export function languageRowOverrideFields(
+  override: LanguageRowOverride | null | undefined,
+  recordId: string | null | undefined
+): Record<string, unknown> | null {
+  const id = String(recordId || '').trim();
+  if (!override || !id || override.id !== id) return null;
+  return override.fields;
+}
+
 /** Call Language.Activate then refresh the form row and active-language overlays. */
 export async function activateLanguage(opts: {
   activate: (req: { Id: string }) => Promise<unknown>;

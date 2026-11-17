@@ -55,24 +55,27 @@ export type LanguageDeactivateResp = {
 };
 
 /**
- * Per-row gate for Activate/Deactivate → UpdateById.
+ * Per-row refcounted gate for Activate/Deactivate → UpdateById.
  * Keyed by Language Id so a concurrent Activate on A cannot authorize UpdateById(IsActive) on B.
+ * Refcount keeps nested/overlapping writes on the same Id from clearing the gate early.
  */
-const languageIsActiveInternalIds = new Set<string>();
+const languageIsActiveInternalIds = new Map<string, number>();
 
 function isLanguageIsActiveInternalWrite(id: string | null | undefined): boolean {
   const key = String(id || '').trim();
-  return !!key && languageIsActiveInternalIds.has(key);
+  return !!key && (languageIsActiveInternalIds.get(key) || 0) > 0;
 }
 
 async function withLanguageIsActiveInternalWrite<T>(id: string, fn: () => Promise<T>): Promise<T> {
   const key = String(id || '').trim();
   if (!key) return await fn();
-  languageIsActiveInternalIds.add(key);
+  languageIsActiveInternalIds.set(key, (languageIsActiveInternalIds.get(key) || 0) + 1);
   try {
     return await fn();
   } finally {
-    languageIsActiveInternalIds.delete(key);
+    const next = (languageIsActiveInternalIds.get(key) || 1) - 1;
+    if (next > 0) languageIsActiveInternalIds.set(key, next);
+    else languageIsActiveInternalIds.delete(key);
   }
 }
 

@@ -11,6 +11,7 @@ import {
   LANGUAGE_LIST_COLUMN_PROPS,
   languageRowFields,
   languageRowMatchesId,
+  languageRowOverrideFields,
   reloadActiveLanguagesAfterLanguageSave,
   resolveLanguageCurrentRow,
 } from './languageFormHelpers';
@@ -89,6 +90,14 @@ test('languageFormHelpers: resolveLanguageCurrentRow prefers records then rows',
   ).toEqual({ Id: 'b', IsActive: true, Code: 'zh_CN' });
 
   expect(resolveLanguageCurrentRow({ recordId: 'missing', records: {}, rows: [] })).toEqual({});
+});
+
+test('languageFormHelpers: languageRowOverrideFields is scoped to recordId', () => {
+  const override = { id: 'lang-a', fields: { Id: 'lang-a', IsActive: true, Code: 'zh_HK' } };
+  expect(languageRowOverrideFields(override, 'lang-a')).toEqual(override.fields);
+  expect(languageRowOverrideFields(override, 'lang-b')).toBe(null);
+  expect(languageRowOverrideFields(null, 'lang-a')).toBe(null);
+  expect(languageRowOverrideFields(override, '')).toBe(null);
 });
 
 test('languageFormHelpers: activateLanguage calls Activate then reloads', async () => {
