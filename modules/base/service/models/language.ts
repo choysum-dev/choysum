@@ -431,8 +431,8 @@ export default class Language extends BaseModel {
         }
       }
 
-      // Refuse deactivating the last active language (Activate/Deactivate path).
-      if (this.IsActive === false) {
+      // Refuse deactivating the last active language (only on active → inactive).
+      if (this.IsActive === false && prevActive) {
         const others = await Language.Search(
           condition<Language>({
             And: [
@@ -447,7 +447,7 @@ export default class Language extends BaseModel {
         }
       }
 
-      if (prev === 'en_US' && this.IsActive === false) {
+      if (prev === 'en_US' && this.IsActive === false && prevActive) {
         raiseDomainError('base', 'InvalidArgument', _t('The root language en_US cannot be deactivated', { scope: 'service/models/language' }));
       }
     }

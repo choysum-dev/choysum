@@ -145,7 +145,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { computed, ref, toRef, watch } from 'vue';
+import { computed, ref, toRef } from 'vue';
 import type { RouteLocationRaw } from 'vue-router';
 import type { ModelStore } from '@/web/web/stores/modelStore';
 import type Language from '@/base/service/models/language';
@@ -193,15 +193,11 @@ const recordId = toRef(props, 'recordId');
 const { viewMode, showHeader, createAction } = props;
 
 const activeBusy = ref(false);
-/** Local override after Activate/Deactivate; only applied when `id` still matches `recordId`. */
+/**
+ * Local override after Activate/Deactivate.
+ * Scoped via languageRowOverrideFields(id) — stale overrides for other recordIds are ignored.
+ */
 const rowOverride = ref<LanguageRowOverride | null>(null);
-
-watch(
-  () => String(recordId.value || '').trim(),
-  () => {
-    rowOverride.value = null;
-  }
-);
 
 const canWriteLanguage = computed(() => hasAction(languageActions.edit));
 
