@@ -101,6 +101,10 @@ test('DatetimeField toDisplayText: Z offset follows user timezone', async () => 
     // User-TZ spring-forward gap: keep wall clock, omit offset (no fake +00:00).
     setUserTimeZoneResolver(() => 'America/New_York');
     expect(ss.toDisplayText?.(new Date(2026, 2, 8, 2, 30, 0))).toBe('2026-03-08 02:30');
+    // Fall-back fold: ambiguous wall still prints a real user-TZ offset (D21 default occurrence).
+    expect(ss.toDisplayText?.(new Date(2026, 10, 1, 1, 30, 0))).toMatch(
+      /^2026-11-01 01:30 [+-]\d{2}:\d{2}$/,
+    );
     setUserTimeZoneResolver(() => 'Asia/Shanghai');
     m.unmount();
     // No-Z formats keep wall-carrier dayjs formatting (including fractional seconds).

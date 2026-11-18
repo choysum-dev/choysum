@@ -5,6 +5,7 @@ import {
   displayFormatNeedsZoneOffset,
   formatUtcInTimeZone,
   formatUtcIso,
+  formatWallPartsStamp,
   getUserTimeZone,
   parseUtc,
   setUserTimeZoneResolver,
@@ -32,6 +33,14 @@ describe('displayFormatNeedsZoneOffset', () => {
     expect(displayFormatNeedsZoneOffset('')).toBe(false);
     expect(displayFormatNeedsZoneOffset(null)).toBe(false);
     expect(displayFormatNeedsZoneOffset(undefined)).toBe(false);
+  });
+});
+
+describe('formatWallPartsStamp', () => {
+  test('pads wall parts as YYYY-MM-DDTHH:mm:ss', () => {
+    expect(
+      formatWallPartsStamp({ year: 42, month: 1, day: 5, hour: 9, minute: 0, second: 0 }),
+    ).toBe('0042-01-05T09:00:00');
   });
 });
 

@@ -124,6 +124,11 @@ export type UserWallDateParts = {
   millisecond?: number;
 };
 
+/** `YYYY-MM-DDTHH:mm:ss` stamp from wall parts (shared by picker/field round-trip guards). */
+export function formatWallPartsStamp(parts: UserWallDateParts): string {
+  return `${String(parts.year).padStart(4, '0')}-${String(parts.month).padStart(2, '0')}-${String(parts.day).padStart(2, '0')}T${String(parts.hour).padStart(2, '0')}:${String(parts.minute).padStart(2, '0')}:${String(parts.second).padStart(2, '0')}`;
+}
+
 /**
  * Interpret numeric wall-clock parts as local time in `tz` and return a UTC Date.
  * Prefer this over building a browser-local Date when the host zone may DST-normalize

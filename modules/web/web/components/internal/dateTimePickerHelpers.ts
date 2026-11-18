@@ -7,6 +7,7 @@ import { dayjsUtc } from '@/web/web/utils/dayjsUtc';
 import {
   displayFormatNeedsZoneOffset,
   formatUtcInTimeZone,
+  formatWallPartsStamp,
   getUserTimeZone,
   stripDisplayOffsetTokens,
   userWallPartsToUtc,
@@ -103,8 +104,7 @@ export function formatDateTimePickerDisplay(
     // Pass numeric parts (not a browser-local Date) so host DST gaps cannot rewrite the clock.
     const utc = userWallPartsToUtc(parts, tz);
     if (utc) {
-      // Build from the same numeric parts as userWallPartsToUtc (not formatDatePickerValue).
-      const expected = `${String(parts.year).padStart(4, '0')}-${String(parts.month).padStart(2, '0')}-${String(parts.day).padStart(2, '0')}T${String(parts.hour).padStart(2, '0')}:${String(parts.minute).padStart(2, '0')}:${String(parts.second).padStart(2, '0')}`;
+      const expected = formatWallPartsStamp(parts);
       const roundTrip = formatUtcInTimeZone(utc, 'YYYY-MM-DDTHH:mm:ss', tz);
       if (roundTrip === expected) {
         const wall = formatUtcInTimeZone(utc, fmt, tz);

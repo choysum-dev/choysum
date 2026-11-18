@@ -53,6 +53,7 @@ import {
   displayFormatNeedsZoneOffset,
   formatUtcInTimeZone,
   formatUtcIso,
+  formatWallPartsStamp,
   getUserTimeZone,
   parseUtc,
   stripDisplayOffsetTokens,
@@ -190,7 +191,14 @@ const toDisplayText = (v: FieldType) => {
   const utc = userWallDateToUtc(v, tz);
   if (utc) {
     // Numeric local getters (same wall-carrier contract as toView / picker parts).
-    const expected = `${String(v.getFullYear()).padStart(4, '0')}-${String(v.getMonth() + 1).padStart(2, '0')}-${String(v.getDate()).padStart(2, '0')}T${String(v.getHours()).padStart(2, '0')}:${String(v.getMinutes()).padStart(2, '0')}:${String(v.getSeconds()).padStart(2, '0')}`;
+    const expected = formatWallPartsStamp({
+      year: v.getFullYear(),
+      month: v.getMonth() + 1,
+      day: v.getDate(),
+      hour: v.getHours(),
+      minute: v.getMinutes(),
+      second: v.getSeconds(),
+    });
     // Mirror picker: reject DST-gap / year-remap rewrites that still print an offset.
     if (formatUtcInTimeZone(utc, 'YYYY-MM-DDTHH:mm:ss', tz) === expected) {
       const wall = formatUtcInTimeZone(utc, fmt, tz);
