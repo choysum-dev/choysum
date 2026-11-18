@@ -586,6 +586,8 @@ const localSessionId = props.onchangeSessionId || nextLocalToken(`FormView:${pro
 const onchangeCtrl = provideOnchange(store, localSessionId, {
   debounceMs: props.onchangeDebounceMs,
   immediateFirst: props.onchangeImmediateFirst,
+  // Same-component VIEW_SCOPE inject cannot see Form's own provide — pass mode explicitly.
+  viewMode,
   // Inject root record access so the composable stays decoupled from store internals.
   getRoot: () => controller.vm.draft,
   onPatch: (value: any) => {

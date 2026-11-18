@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { nextTick, ref, defineComponent } from 'vue';
+import { nextTick, ref, defineComponent, h } from 'vue';
 
 import { disposeOnchange, getOnchangeController } from '@/web/web/composables/useOnchange';
 import { useProvideViewScope } from '@/web/web/components/view/viewScopeKeys';
@@ -243,7 +243,7 @@ describe('useOnchange.rebind view-mode inject gating', () => {
     disposeOnchange(store);
   });
 
-  test('honors injected view-mode when created inside setup', async () => {
+  test('honors opts.viewMode for display pause (same-component scope inject is invisible)', async () => {
     const onchange = fnRecorder(async () => ({ value: {}, messages: [] }));
     const store = makeStore(onchange);
     const draft = ref({ Id: '1', Name: 'A' });
@@ -252,9 +252,11 @@ describe('useOnchange.rebind view-mode inject gating', () => {
 
     const Host = defineComponent({
       setup() {
+        // Mirrors ChoyFormView: provide scope + create controller in the same setup.
         useProvideViewScope({ kind: 'Form', mode: viewMode });
         ctrl = getOnchangeController(store, 'InsideSetup', {
           getRoot: () => draft.value,
+          viewMode,
         });
         return () => null;
       },
@@ -262,16 +264,131 @@ describe('useOnchange.rebind view-mode inject gating', () => {
     const mounted = mountApp(Host);
     try {
       expect(ctrl).toBeTruthy();
-      // Immediate display watch pauses auto-flush.
+      expect(ctrl!.isPaused()).toBe(true);
       draft.value = { Id: '1', Name: 'B' };
       await ctrl!.markChanged('Name');
       expect(ctrl!.hasPending()).toBe(true);
+      await sleep(50);
       expect(onchange.calls.length).toBe(0);
 
       viewMode.value = 'edit';
       await nextTick();
-      await flushPromises();
+      draft.value = { Id: '1', Name: 'C' };
+      await nextTick();
       await waitUntil(() => onchange.calls.length > 0);
+    } finally {
+      mounted.unmount();
+      disposeOnchange(store);
+    }
+  });
+
+  test('reset() keeps auto-flush paused while viewMode stays display', async () => {
+    const onchange = fnRecorder(async () => ({ value: {}, messages: [] }));
+    const store = makeStore(onchange);
+    const draft = ref({ Id: '1', Name: 'A', IsActive: false });
+    const viewMode = ref<'display' | 'edit'>('display');
+    let ctrl: ReturnType<typeof getOnchangeController> | undefined;
+
+    const Host = defineComponent({
+      setup() {
+        ctrl = getOnchangeController(store, 'ResetKeepsDisplayPause', {
+          getRoot: () => draft.value,
+          viewMode,
+          debounceMs: 20,
+        });
+        return () => null;
+      },
+    });
+    const mounted = mountApp(Host);
+    try {
+      expect(ctrl).toBeTruthy();
+      expect(ctrl!.isPaused()).toBe(true);
+      // Mimic Form initializeForm: reset while mode stays display (mode watch does not re-run).
+      ctrl!.resume();
+      expect(ctrl!.isPaused()).toBe(false);
+      ctrl!.reset();
+      expect(ctrl!.isPaused()).toBe(true);
+      await ctrl!.markChanged('IsActive');
+      expect(ctrl!.hasPending()).toBe(true);
+      await sleep(50);
+      await flushPromises();
+      expect(onchange.calls.length).toBe(0);
+
+      viewMode.value = 'edit';
+      await nextTick();
+      draft.value = { Id: '1', Name: 'B', IsActive: true };
+      await nextTick();
+      await waitUntil(() => onchange.calls.length > 0);
+    } finally {
+      mounted.unmount();
+      disposeOnchange(store);
+    }
+  });
+
+  test('reset() leaves auto-flush enabled when viewMode is edit', async () => {
+    const onchange = fnRecorder(async () => ({ value: {}, messages: [] }));
+    const store = makeStore(onchange);
+    const draft = ref({ Id: '1', Name: 'A' });
+    const viewMode = ref<'display' | 'edit'>('edit');
+    let ctrl: ReturnType<typeof getOnchangeController> | undefined;
+
+    const Host = defineComponent({
+      setup() {
+        ctrl = getOnchangeController(store, 'ResetKeepsEditUnpaused', {
+          getRoot: () => draft.value,
+          viewMode,
+          debounceMs: 20,
+        });
+        return () => null;
+      },
+    });
+    const mounted = mountApp(Host);
+    try {
+      expect(ctrl).toBeTruthy();
+      expect(ctrl!.isPaused()).toBe(false);
+      ctrl!.pause();
+      ctrl!.reset();
+      expect(ctrl!.isPaused()).toBe(false);
+      await ctrl!.markChanged('Name');
+      await waitUntil(() => onchange.calls.length > 0);
+    } finally {
+      mounted.unmount();
+      disposeOnchange(store);
+    }
+  });
+
+  test('honors ancestor-injected view-mode when opts.viewMode is omitted', async () => {
+    const onchange = fnRecorder(async () => ({ value: {}, messages: [] }));
+    const store = makeStore(onchange);
+    const draft = ref({ Id: '1', Name: 'A' });
+    const viewMode = ref<'display' | 'edit'>('display');
+    let ctrl: ReturnType<typeof getOnchangeController> | undefined;
+
+    const Child = defineComponent({
+      setup() {
+        // Child injects parent VIEW_SCOPE — same-component provide is not required.
+        ctrl = getOnchangeController(store, 'AncestorInject', {
+          getRoot: () => draft.value,
+          debounceMs: 20,
+        });
+        return () => null;
+      },
+    });
+    const Parent = defineComponent({
+      setup() {
+        useProvideViewScope({ kind: 'Form', mode: viewMode });
+        return () => h(Child);
+      },
+    });
+    const mounted = mountApp(Parent);
+    try {
+      expect(ctrl).toBeTruthy();
+      expect(ctrl!.isPaused()).toBe(true);
+      ctrl!.reset();
+      expect(ctrl!.isPaused()).toBe(true);
+      await ctrl!.markChanged('Name');
+      await sleep(50);
+      expect(onchange.calls.length).toBe(0);
     } finally {
       mounted.unmount();
       disposeOnchange(store);

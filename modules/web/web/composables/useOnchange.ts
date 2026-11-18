@@ -12,7 +12,7 @@
  * 5. Uses a single parent Onchange RPC and merges returned collection patches in one pass.
  */
 
-import { ref, watch, nextTick, provide, inject, getCurrentInstance, type Ref } from 'vue';
+import { ref, watch, nextTick, provide, inject, getCurrentInstance, unref, computed, type Ref } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
 import { getFieldMetadataView, isRelationFieldType, type ModelStore, type WebFieldMetadata } from '@/web/web/stores/modelStore';
 import { collectChangedPaths } from '@/core/utils/diff';
@@ -47,6 +47,8 @@ export interface OnchangeController {
   pause: () => void;
   resume: () => void;
   reset: () => void;
+  /** True when auto-flush is suppressed (display mode or explicit pause). */
+  isPaused: () => boolean;
 
   /** Refresh getRoot/onPatch (and other opts) when a remounted view reuses the cached controller. */
   rebindOptions: (next?: CreateOnchangeOptions) => void;
@@ -61,6 +63,13 @@ export interface CreateOnchangeOptions {
   maxIterations?: number;
   immediateFirst?: boolean;
   collapseRelationChildren?: boolean;
+
+  /**
+   * Preferred view mode for auto-flush gating (display → pause).
+   * Pass explicitly from Form/List: same-component provide/inject cannot see its own scope.
+   * Falls back to injected VIEW_SCOPE.mode when omitted (parent-provided scope).
+   */
+  viewMode?: Ref<ViewMode> | ViewMode;
 
   // Injected root accessor so callers do not depend on store.state._draftRecord/record.
   getRoot?: () => any;
@@ -515,33 +524,45 @@ function createAutoOnchangeController(store: ModelStore<any>, opts?: CreateOncha
   }
 
   // Pause in display mode and resume in edit/create mode while resetting tracked state.
-  // Only inject when called from setup(); getOnchangeController is also used outside components.
+  // Prefer opts.viewMode: provide+inject in the same setup cannot see its own VIEW_SCOPE.
+  // Inject only works when an ancestor provided the scope (getOnchangeController outside setup skips inject).
   const injectedScope = getCurrentInstance() ? inject(VIEW_SCOPE_KEY, null) : null;
-  const injectedViewMode = injectedScope?.mode ?? null;
-  if (injectedViewMode) {
-    watch(
-      injectedViewMode,
-      (mode: ViewMode) => {
-        // Reset tracked state so initial detail-page values are not treated as changes.
-        const r = root();
-        baseline = r ? deepClone(r) : null;
-        pending.value.clear();
-        fullPathsRef.value.clear();
+  const resolvedViewMode = computed<ViewMode | null>(() => {
+    if (options?.viewMode !== undefined) return unref(options.viewMode);
+    if (injectedScope?.mode) return unref(injectedScope.mode);
+    return null;
+  });
 
-        if (mode === 'display') {
-          paused.value = true;
-          cancelDebounced();
-        } else {
-          const wasPaused = paused.value;
-          paused.value = false;
-          if (wasPaused && pending.value.size) {
-            debouncedFlush();
-          }
-        }
-      },
-      { immediate: true }
-    );
+  function syncPauseFromViewMode() {
+    if (resolvedViewMode.value === 'display') {
+      paused.value = true;
+      cancelDebounced();
+    }
   }
+
+  watch(
+    resolvedViewMode,
+    (mode: ViewMode | null) => {
+      if (mode == null) return;
+      // Reset tracked state so initial detail-page values are not treated as changes.
+      const r = root();
+      baseline = r ? deepClone(r) : null;
+      pending.value.clear();
+      fullPathsRef.value.clear();
+
+      if (mode === 'display') {
+        paused.value = true;
+        cancelDebounced();
+      } else {
+        const wasPaused = paused.value;
+        paused.value = false;
+        if (wasPaused && pending.value.size) {
+          debouncedFlush();
+        }
+      }
+    },
+    { immediate: true }
+  );
 
   function invokeAfterFlush(payload: OnchangeFlushPayload) {
     if (!afterFlushCallbacks.size) return;
@@ -847,6 +868,9 @@ function createAutoOnchangeController(store: ModelStore<any>, opts?: CreateOncha
     running.value = false;
     paused.value = false;
     initialized = false;
+    // Form initialize/cancel/refresh call reset() while staying in display; mode watch
+    // does not re-run, so re-apply display pause here (List already depended on this).
+    syncPauseFromViewMode();
   }
 
   function markChanged(paths: string | string[], mOpts?: { immediate?: boolean; flush?: boolean }) {
@@ -930,10 +954,11 @@ function createAutoOnchangeController(store: ModelStore<any>, opts?: CreateOncha
     pause,
     resume,
     reset,
+    isPaused: () => paused.value,
     rebindOptions(next) {
       options = next;
       cancelDebounced();
-      // Remounts should not inherit a prior pause; callers that need pause re-apply it.
+      // Remounts should not inherit a prior pause; re-apply from current view mode below.
       paused.value = false;
       debounceMs = next?.debounceMs ?? 120;
       // Drop prior-root diff state so remounts / draft swaps do not flush stale pending.
@@ -941,6 +966,7 @@ function createAutoOnchangeController(store: ModelStore<any>, opts?: CreateOncha
       pending.value.clear();
       fullPathsRef.value.clear();
       initialized = false;
+      syncPauseFromViewMode();
     },
     registerAfterFlush(cb) {
       afterFlushCallbacks.add(cb);
