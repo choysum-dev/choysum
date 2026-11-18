@@ -4,6 +4,7 @@
 import { h } from 'vue';
 import { mount, flushPromises } from '@choysum/test-utils';
 import { useAuthStore } from '@/auth/web/stores/auth';
+import { ChoyMessage } from '@/web/web/composables/useChoyMessage';
 import { restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
 import ChoyFormView from '@/web/web/components/view/ChoyFormView.vue';
 import LanguageFormView from './LanguageFormView.vue';
@@ -207,6 +208,55 @@ test('LanguageFormView: missing Activate method is handled without UpdateById', 
   wrapper.unmount();
 });
 
+test('LanguageFormView: Activate rejection surfaces error and clears busy', async () => {
+  const toasts: string[] = [];
+  const origError = ChoyMessage.error;
+  ChoyMessage.error = ((msg: string) => {
+    toasts.push(String(msg));
+    return 0;
+  }) as typeof ChoyMessage.error;
+  try {
+    let rejectActivate!: (err: Error) => void;
+    const activateGate = new Promise<never>((_, reject) => {
+      rejectActivate = reject;
+    });
+    const { store, activateCalls, browseCalls } = buildStore(
+      { Id: 'lang-act-fail', Code: 'zh_HK', IsActive: false },
+      {
+        activate: async () => {
+          await activateGate;
+        },
+      }
+    );
+    const wrapper = mountLanguageForm(store, 'lang-act-fail');
+    await flushPromises();
+    const setupState = (wrapper.vm as any).$.setupState;
+    const pending = setupState.onActivate('lang-act-fail');
+    await flushPromises();
+    expect(setupState.activeBusy).toBe(true);
+    rejectActivate(new Error('activate denied'));
+    let settled: 'ok' | 'err' = 'ok';
+    await pending.then(
+      () => {
+        settled = 'ok';
+      },
+      () => {
+        settled = 'err';
+      }
+    );
+    await flushPromises();
+    expect(settled).toBe('ok');
+    expect(activateCalls).toEqual([{ Id: 'lang-act-fail' }]);
+    expect(browseCalls.length).toBe(0);
+    expect(toasts).toEqual(['activate denied']);
+    expect(setupState.activeBusy).toBe(false);
+    expect(wrapper.find('[data-testid="language-activate"]').exists()).toBe(true);
+    wrapper.unmount();
+  } finally {
+    ChoyMessage.error = origError;
+  }
+});
+
 test('LanguageFormView: missing Deactivate method is handled', async () => {
   const { store, updateByIdCalls } = buildStore({ Id: 'lang-missing-deact', Code: 'zh_CN', IsActive: true });
   delete (store as any).Deactivate;
@@ -217,6 +267,55 @@ test('LanguageFormView: missing Deactivate method is handled', async () => {
   expect(updateByIdCalls.length).toBe(0);
   expect(wrapper.find('[data-testid="language-deactivate"]').exists()).toBe(true);
   wrapper.unmount();
+});
+
+test('LanguageFormView: Deactivate rejection surfaces error and clears busy', async () => {
+  const toasts: string[] = [];
+  const origError = ChoyMessage.error;
+  ChoyMessage.error = ((msg: string) => {
+    toasts.push(String(msg));
+    return 0;
+  }) as typeof ChoyMessage.error;
+  try {
+    let rejectDeactivate!: (err: Error) => void;
+    const deactivateGate = new Promise<never>((_, reject) => {
+      rejectDeactivate = reject;
+    });
+    const { store, deactivateCalls, browseCalls } = buildStore(
+      { Id: 'lang-deact-fail', Code: 'zh_CN', IsActive: true },
+      {
+        deactivate: async () => {
+          await deactivateGate;
+        },
+      }
+    );
+    const wrapper = mountLanguageForm(store, 'lang-deact-fail');
+    await flushPromises();
+    const setupState = (wrapper.vm as any).$.setupState;
+    const pending = setupState.onDeactivate('lang-deact-fail');
+    await flushPromises();
+    expect(setupState.activeBusy).toBe(true);
+    rejectDeactivate(new Error('deactivate denied'));
+    let settled: 'ok' | 'err' = 'ok';
+    await pending.then(
+      () => {
+        settled = 'ok';
+      },
+      () => {
+        settled = 'err';
+      }
+    );
+    await flushPromises();
+    expect(settled).toBe('ok');
+    expect(deactivateCalls).toEqual([{ Id: 'lang-deact-fail' }]);
+    expect(browseCalls.length).toBe(0);
+    expect(toasts).toEqual(['deactivate denied']);
+    expect(setupState.activeBusy).toBe(false);
+    expect(wrapper.find('[data-testid="language-deactivate"]').exists()).toBe(true);
+    wrapper.unmount();
+  } finally {
+    ChoyMessage.error = origError;
+  }
 });
 
 test('LanguageFormView: Activate without Browse still succeeds', async () => {
