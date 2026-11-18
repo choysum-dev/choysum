@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	i18nmodels "github.com/choysum-dev/choysum/internal/i18n/models"
 	"github.com/choysum-dev/choysum/internal/testing/scopetest"
@@ -174,5 +175,76 @@ func TestEnsureLanguageCachedKeepsFailedWarmRetryable(t *testing.T) {
 	}
 	if _, warmed := ts.cache["zh_CN"]; warmed {
 		t.Fatal("failed warm must not install a permanent empty cache")
+	}
+}
+
+func TestEnsureLanguageCachedWaitsForInFlightWarm(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open(filepath.Join(t.TempDir(), "wait.db")), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	rs := &raceTestScope{
+		ctx:     context.Background(),
+		logger:  slog.New(slog.NewTextHandler(io.Discard, nil)),
+		session: &scope.Session{DB: db},
+	}
+	if err := i18nmodels.MigrateTranslationTermTable(rs, "auth"); err != nil {
+		t.Fatalf("ensure: %v", err)
+	}
+	if err := rs.Session().Table("auth_translation_term").Create(&i18nmodels.TranslationTerm{
+		Application: "auth", Module: "auth", Lang: "zh_CN",
+		Scope: "a@b", Src: "Hello", Value: "你好",
+		Kind: i18nmodels.KindLiteral, Source: i18nmodels.SourcePackaged,
+	}).Error; err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+
+	ts := NewTermStore(rs, "auth")
+	started := make(chan struct{})
+	release := make(chan struct{})
+	prev := warmAfterLoadHook
+	t.Cleanup(func() { warmAfterLoadHook = prev })
+	warmAfterLoadHook = func(lang string) {
+		close(started)
+		<-release
+	}
+
+	firstDone := make(chan string, 1)
+	go func() {
+		val, ok := ts.Lookup("auth", "zh_CN", "a@b", "Hello", "")
+		if !ok {
+			firstDone <- ""
+			return
+		}
+		firstDone <- val
+	}()
+	<-started
+
+	secondDone := make(chan string, 1)
+	go func() {
+		val, ok := ts.Lookup("auth", "zh_CN", "a@b", "Hello", "")
+		if !ok {
+			secondDone <- ""
+			return
+		}
+		secondDone <- val
+	}()
+	// Second Lookup must observe in-flight warming and wait.
+	for i := 0; i < 50; i++ {
+		ts.mu.RLock()
+		_, waiting := ts.warming["zh_CN"]
+		ts.mu.RUnlock()
+		if waiting {
+			break
+		}
+		time.Sleep(time.Millisecond)
+	}
+
+	close(release)
+	if got := <-firstDone; got != "你好" {
+		t.Fatalf("first Lookup = %q", got)
+	}
+	if got := <-secondDone; got != "你好" {
+		t.Fatalf("waiter Lookup = %q", got)
 	}
 }

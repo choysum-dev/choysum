@@ -545,6 +545,7 @@ function createAutoOnchangeController(store: ModelStore<any>, opts?: CreateOncha
     (mode: ViewMode | null) => {
       if (mode == null) return;
       // Reset tracked state so initial detail-page values are not treated as changes.
+      // Clear before unpausing: display-time marks must not flush as edit onchanges.
       const r = root();
       baseline = r ? deepClone(r) : null;
       pending.value.clear();
@@ -554,11 +555,7 @@ function createAutoOnchangeController(store: ModelStore<any>, opts?: CreateOncha
         paused.value = true;
         cancelDebounced();
       } else {
-        const wasPaused = paused.value;
         paused.value = false;
-        if (wasPaused && pending.value.size) {
-          debouncedFlush();
-        }
       }
     },
     { immediate: true }

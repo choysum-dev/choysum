@@ -1,8 +1,11 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
+import { h } from 'vue';
 import { mount, flushPromises } from '@choysum/test-utils';
 import { useAuthStore } from '@/auth/web/stores/auth';
+import { restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
+import ChoyFormView from '@/web/web/components/view/ChoyFormView.vue';
 import LanguageFormView from './LanguageFormView.vue';
 import { buildPageMountGlobal } from '@choysum/page-mount';
 
@@ -260,5 +263,154 @@ test('LanguageFormView: empty slot recordId does not toggle busy', async () => {
   await flushPromises();
   expect(activateCalls.length).toBe(0);
   expect(setupState.activeBusy).toBe(false);
+  await setupState.onDeactivate('');
+  await flushPromises();
+  expect(setupState.activeBusy).toBe(false);
   wrapper.unmount();
+});
+
+test('LanguageFormView: reloadDisplay success clears override', async () => {
+  const { store, activateCalls, browseCalls } = buildStore({
+    Id: 'lang-reload-display',
+    Code: 'zh_HK',
+    IsActive: false,
+  });
+  let reloadDisplayCalls = 0;
+  const wrapper = mountLanguageForm(store, 'lang-reload-display');
+  await flushPromises();
+  const setupState = (wrapper.vm as any).$.setupState;
+  setupState.formViewRef = {
+    getViewMode: () => 'display',
+    reloadDisplay: async () => {
+      reloadDisplayCalls += 1;
+    },
+  };
+  setupState.rowOverride = {
+    id: 'lang-reload-display',
+    fields: { Id: 'lang-reload-display', Code: 'zh_HK', IsActive: false },
+  };
+  await wrapper.find('[data-testid="language-activate"]').trigger('click');
+  await flushPromises();
+  expect(activateCalls).toEqual([{ Id: 'lang-reload-display' }]);
+  expect(reloadDisplayCalls).toBe(1);
+  expect(browseCalls.length).toBe(0);
+  expect(setupState.rowOverride).toBeNull();
+  wrapper.unmount();
+});
+
+test('LanguageFormView: refresh path clears override when reloadDisplay absent', async () => {
+  const { store, activateCalls, browseCalls } = buildStore({
+    Id: 'lang-refresh',
+    Code: 'zh_HK',
+    IsActive: false,
+  });
+  let refreshCalls = 0;
+  const wrapper = mountLanguageForm(store, 'lang-refresh');
+  await flushPromises();
+  const setupState = (wrapper.vm as any).$.setupState;
+  setupState.formViewRef = {
+    getViewMode: () => 'display',
+    refresh: async () => {
+      refreshCalls += 1;
+    },
+  };
+  await wrapper.find('[data-testid="language-activate"]').trigger('click');
+  await flushPromises();
+  expect(activateCalls).toEqual([{ Id: 'lang-refresh' }]);
+  expect(refreshCalls).toBe(1);
+  expect(browseCalls.length).toBe(0);
+  expect(setupState.rowOverride).toBeNull();
+  wrapper.unmount();
+});
+
+test('LanguageFormView: reloadDisplay rejection falls back to Browse', async () => {
+  const { store, activateCalls, browseCalls } = buildStore({
+    Id: 'lang-reload-fail',
+    Code: 'zh_HK',
+    IsActive: false,
+  });
+  const wrapper = mountLanguageForm(store, 'lang-reload-fail');
+  await flushPromises();
+  const setupState = (wrapper.vm as any).$.setupState;
+  setupState.formViewRef = {
+    getViewMode: () => 'display',
+    reloadDisplay: async () => {
+      throw new Error('reload failed');
+    },
+  };
+  await wrapper.find('[data-testid="language-activate"]').trigger('click');
+  await flushPromises();
+  expect(activateCalls).toEqual([{ Id: 'lang-reload-fail' }]);
+  expect(browseCalls.length).toBe(1);
+  wrapper.unmount();
+});
+
+test('LanguageFormView: activeBusy blocks re-entrant Activate', async () => {
+  let release!: () => void;
+  const gate = new Promise<void>(resolve => {
+    release = resolve;
+  });
+  const { store, activateCalls } = buildStore(
+    { Id: 'lang-busy', Code: 'zh_HK', IsActive: false },
+    {
+      activate: async () => {
+        await gate;
+        return { Id: 'lang-busy', Code: 'zh_HK', IsActive: true };
+      },
+    }
+  );
+  const wrapper = mountLanguageForm(store, 'lang-busy');
+  await flushPromises();
+  const setupState = (wrapper.vm as any).$.setupState;
+  const first = setupState.onActivate('lang-busy');
+  await flushPromises();
+  expect(setupState.activeBusy).toBe(true);
+  await setupState.onActivate('lang-busy');
+  expect(activateCalls.length).toBe(1);
+  release();
+  await first;
+  await flushPromises();
+  expect(setupState.activeBusy).toBe(false);
+  wrapper.unmount();
+});
+
+test('LanguageFormView: empty Browse keeps override for a different record', async () => {
+  const { store } = buildStore(
+    { Id: 'lang-keep-override', Code: 'zh_HK', IsActive: false },
+    { browse: async () => ({}) }
+  );
+  const wrapper = mountLanguageForm(store, 'lang-keep-override');
+  await flushPromises();
+  const setupState = (wrapper.vm as any).$.setupState;
+  setupState.rowOverride = { id: 'other-lang', fields: { Id: 'other-lang', IsActive: true } };
+  await setupState.reloadRecordViaBrowse('lang-keep-override');
+  await flushPromises();
+  expect(setupState.rowOverride).toEqual({ id: 'other-lang', fields: { Id: 'other-lang', IsActive: true } });
+  wrapper.unmount();
+});
+
+test('LanguageFormView: loading slot hides Activate/Deactivate', async () => {
+  const { store } = buildStore({ Id: 'lang-loading', Code: 'zh_HK', IsActive: false });
+  stubSfc(ChoyFormView as any, {
+    name: 'ChoyFormView',
+    setup(_: unknown, { slots }: any) {
+      return () =>
+        h('div', [
+          slots['secondary-actions']?.({
+            formData: { Id: 'lang-loading', Code: 'zh_HK', IsActive: false },
+            recordId: 'lang-loading',
+            loading: true,
+          }),
+        ]);
+    },
+  });
+  try {
+    const wrapper = mountLanguageForm(store, 'lang-loading');
+    await flushPromises();
+    expect(wrapper.find('[data-testid="language-activate"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="language-deactivate"]').exists()).toBe(false);
+    wrapper.unmount();
+  } finally {
+    restoreSfc(ChoyFormView as any);
+  }
 });
