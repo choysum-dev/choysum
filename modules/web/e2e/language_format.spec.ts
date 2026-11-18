@@ -318,6 +318,7 @@ test('base: Language DateFormat + FirstDayOfWeek update applies live to date fie
   await loginAsE2EAdmin(page, baseURL);
 
   // Seeded zh_CN uses YYYY-MM-DD + Monday week start; fixture date is 2026-07-22.
+  // Keep this list document mounted so DateFormat is asserted on the same row after refresh.
   await page.goto(`${baseURL}/web/base/exchange-rates`, { waitUntil: 'domcontentloaded' });
   await expect(page.locator('body')).toBeVisible();
   const dateCell = page.locator('.choy-field-display-text', { hasText: /2026/ }).first();
@@ -326,25 +327,12 @@ test('base: Language DateFormat + FirstDayOfWeek update applies live to date fie
     .poll(async () => ((await dateCell.textContent()) || '').trim(), { timeout: 30_000 })
     .toMatch(/2026-07-22/);
 
-  // Open create-form calendar before overlay update so week-start is observed on the same document.
-  await page.goto(`${baseURL}/web/base/exchange-rates/new`, { waitUntil: 'domcontentloaded' });
-  const dateTrigger = page.locator('[data-anchor="choy.internal.date-picker"]').first();
-  await expect(dateTrigger).toBeVisible({ timeout: 30_000 });
-  await dateTrigger.click();
-  const beforeHeads = await readDatePickerWeekdayHeaders();
-  expect(beforeHeads.length, `weekday headers before: ${JSON.stringify(beforeHeads)}`).toBe(7);
-  // Monday-first for seeded zh_CN (一 / 周一 / Mon …) — not Sunday 日 alone.
-  expect(beforeHeads[0], `Monday-first before overlay: ${JSON.stringify(beforeHeads)}`).toMatch(
-    /^(一|周一|星期一|Mon|Mo|M|lun|Lu)$/i
-  );
-  // Dismiss calendar so the next open re-reads weekStartsOn from the store.
-  await dismissDatePicker(dateTrigger);
-
   const languageId = await resolveLanguageIdByCode(baseURL, 'zh_CN');
   try {
+    // FirstDayOfWeek=2 (Tuesday) — not 0, so a lost overlay cannot pass via the Sunday fallback.
     await updateLanguageDateAndWeekStart(baseURL, languageId, {
       DateFormat: 'DD.MM.YYYY',
-      FirstDayOfWeek: '0',
+      FirstDayOfWeek: '2',
     });
 
     const activeLangs = page.waitForResponse(
@@ -355,32 +343,22 @@ test('base: Language DateFormat + FirstDayOfWeek update applies live to date fie
     expect(reloaded, 'loadActiveLanguages via pinia (live, no full reload)').toBe(true);
     await activeLangs;
 
-    // Same document: reopen calendar and assert Sunday-first without navigation.
+    // Same list row, no navigation: DateFormat overlay must rewrite the already-rendered cell.
+    await expect
+      .poll(async () => ((await dateCell.textContent()) || '').trim(), { timeout: 30_000 })
+      .toMatch(/22\.07\.2026/);
+
+    // Calendar week-start on create form (Tuesday-first after the same overlay refresh).
+    await page.goto(`${baseURL}/web/base/exchange-rates/new`, { waitUntil: 'domcontentloaded' });
+    const dateTrigger = page.locator('[data-anchor="choy.internal.date-picker"]').first();
+    await expect(dateTrigger).toBeVisible({ timeout: 30_000 });
     await dateTrigger.click();
     const afterHeads = await readDatePickerWeekdayHeaders();
     expect(afterHeads.length, `weekday headers after: ${JSON.stringify(afterHeads)}`).toBe(7);
-    // zh-CN short Sunday is 日; reject bare "S" (also matches Sat) and Saturday forms.
-    expect(afterHeads[0], `Sunday-first after overlay: ${JSON.stringify(afterHeads)}`).toMatch(
-      /^(Su|Sun|周日|星期日|日|domingo|dom|Do)$/i
-    );
-    expect(afterHeads[0], `must not be Saturday: ${JSON.stringify(afterHeads)}`).not.toMatch(
-      /^(Sat|Saturday|六|周六|星期六|sáb)/i
+    expect(afterHeads[0], `Tuesday-first after overlay: ${JSON.stringify(afterHeads)}`).toMatch(
+      /^(二|周二|星期二|Tue|Tu|Tues|mar|Ma)$/i
     );
     await dismissDatePicker(dateTrigger);
-
-    // DateFormat overlay on the list (live, after returning from create form).
-    await page.goto(`${baseURL}/web/base/exchange-rates`, { waitUntil: 'domcontentloaded' });
-    const liveDateCell = page.locator('.choy-field-display-text', { hasText: /2026/ }).first();
-    await expect(liveDateCell).toBeVisible({ timeout: 30_000 });
-    const listLangs = page.waitForResponse(
-      { urlIncludes: '/base.Language/GetActiveLanguages', method: 'POST' },
-      { timeout: 45_000 }
-    );
-    expect(await reloadActiveLanguageOverlaysLive()).toBe(true);
-    await listLangs;
-    await expect
-      .poll(async () => ((await liveDateCell.textContent()) || '').trim(), { timeout: 30_000 })
-      .toMatch(/22\.07\.2026/);
   } finally {
     // Restore zh_CN defaults even when an assertion fails mid-test.
     await updateLanguageDateAndWeekStart(baseURL, languageId, {

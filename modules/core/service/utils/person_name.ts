@@ -80,8 +80,5 @@ export function personNameFieldOrder(template?: string | null): PersonNameFieldP
     }
   }
   // normalizePersonNameFormat always keeps at least one allowed token.
-  if (order.length === 1) {
-    return order[0] === 'LastName' ? ['LastName', 'FirstName'] : ['FirstName', 'LastName'];
-  }
   return order[0] === 'LastName' ? ['LastName', 'FirstName'] : ['FirstName', 'LastName'];
 }

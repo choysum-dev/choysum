@@ -67,11 +67,32 @@ function formatDatePreview(value: unknown, displayFormat?: string | null): strin
   }
   const raw = String(value ?? '').trim();
   if (!raw) return '';
-  // Stored date conditions may be bare YYYY-MM-DD or YYYY-MM-DDTHH:mm:ss[Z].
-  const day = raw.match(/^(\d{4}-\d{2}-\d{2})(?:$|[T\s])/)?.[1];
+  const day = parseStoredDateCalendarDay(raw);
   if (!day) return raw;
   const m = dayjsUtc.utc(day, 'YYYY-MM-DD', true);
   return m.isValid() ? m.format(fmt) : raw;
+}
+
+/**
+ * Calendar day from a stored date condition: bare YYYY-MM-DD, or a full
+ * YYYY-MM-DD[T ]HH:mm[:ss[.fff]][Z|±offset] with a valid clock. Rejects
+ * malformed times like `2024-07-01T99:99:99Z` instead of formatting the prefix.
+ */
+function parseStoredDateCalendarDay(raw: string): string | null {
+  const match = raw.match(
+    /^(\d{4}-\d{2}-\d{2})(?:$|[T\s](\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2})?)$/,
+  );
+  if (!match) return null;
+  const day = match[1];
+  if (match[2] != null) {
+    const hour = Number(match[2]);
+    const minute = Number(match[3]);
+    const second = match[4] != null ? Number(match[4]) : 0;
+    if (!Number.isInteger(hour) || hour < 0 || hour > 23) return null;
+    if (!Number.isInteger(minute) || minute < 0 || minute > 59) return null;
+    if (!Number.isInteger(second) || second < 0 || second > 59) return null;
+  }
+  return dayjsUtc.utc(day, 'YYYY-MM-DD', true).isValid() ? day : null;
 }
 
 function formatTimePreview(value: unknown, displayFormat?: string | null): string {

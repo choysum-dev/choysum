@@ -42,6 +42,9 @@ test('normalizeWeekStartsOn: clamps 0-6', () => {
   expect(normalizeWeekStartsOn(6)).toBe(6);
   expect(normalizeWeekStartsOn(1.5)).toBe(0);
   expect(normalizeWeekStartsOn('x', 1)).toBe(1);
+  expect(normalizeWeekStartsOn(null, 1)).toBe(1);
+  expect(normalizeWeekStartsOn(undefined, 2)).toBe(2);
+  expect(normalizeWeekStartsOn('', 3)).toBe(3);
 });
 
 test('resolveCalendarWeekStartsOn: reads FirstDayOfWeek from active language', () => {

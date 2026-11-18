@@ -24,6 +24,10 @@ export function resolveCalendarLocale(): string {
 
 /** Clamp Language.FirstDayOfWeek (or similar) to Reka's 0–6 weekStartsOn. */
 export function normalizeWeekStartsOn(value: unknown, fallback: WeekStartsOn = 0): WeekStartsOn {
+  // Number(null) and Number('') are 0 — treat those as missing so fallback wins.
+  if (value === null || value === undefined || value === '') {
+    return fallback;
+  }
   const n = Number(value);
   if (Number.isInteger(n) && n >= 0 && n <= 6) {
     return n as WeekStartsOn;

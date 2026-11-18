@@ -58,6 +58,10 @@ test('valueToPreview date: formats stored ISO date-with-time values', () => {
   expect(
     valueToPreview('=', '2024-07-01T00:00:00', { fieldType: 'date', displayFormat: 'DD.MM.YYYY' }),
   ).toBe('01.07.2024');
+  // Malformed time must not preview as a valid calendar day.
+  expect(
+    valueToPreview('=', '2024-07-01T99:99:99Z', { fieldType: 'date', displayFormat: 'DD/MM/YYYY' }),
+  ).toBe('2024-07-01T99:99:99Z');
 });
 
 test('valueToPreview datetime wall-clock: formats datetime Date values and custom display formats', () => {
