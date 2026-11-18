@@ -524,6 +524,75 @@ test('LanguageFormView: shows Update translations for active and inactive rows',
   activeWrap.unmount();
 });
 
+test('LanguageFormView: ReloadTerminology toast branches by packaged PO result', async () => {
+  const levels: string[] = [];
+  const titles: string[] = [];
+  const orig = {
+    success: ChoyMessage.success,
+    warning: ChoyMessage.warning,
+  };
+  ChoyMessage.success = ((msg: string) => {
+    levels.push('success');
+    titles.push(String(msg));
+    return 0;
+  }) as typeof ChoyMessage.success;
+  ChoyMessage.warning = ((msg: string) => {
+    levels.push('warning');
+    titles.push(String(msg));
+    return 0;
+  }) as typeof ChoyMessage.warning;
+  try {
+    const ok = buildStore(
+      { Id: 'lang-toast-ok', Code: 'zh_CN', IsActive: true },
+      {
+        reloadTerminology: async () => ({
+          Code: 'zh_CN',
+          ModulesScanned: 8,
+          ModulesWithPo: 8,
+          Upserted: 12,
+        }),
+      }
+    );
+    const okWrap = mountLanguageForm(ok.store, 'lang-toast-ok');
+    await flushPromises();
+    await (okWrap.vm as any).$.setupState.onReloadTerminology('lang-toast-ok', {
+      Id: 'lang-toast-ok',
+      Code: 'zh_CN',
+      IsActive: true,
+    });
+    await flushPromises();
+    okWrap.unmount();
+
+    const missing = buildStore(
+      { Id: 'lang-toast-tl', Code: 'tl_PH', IsActive: false },
+      {
+        reloadTerminology: async () => ({
+          Code: 'tl_PH',
+          ModulesScanned: 8,
+          ModulesWithPo: 0,
+          Upserted: 0,
+        }),
+      }
+    );
+    const tlWrap = mountLanguageForm(missing.store, 'lang-toast-tl');
+    await flushPromises();
+    await (tlWrap.vm as any).$.setupState.onReloadTerminology('lang-toast-tl', {
+      Id: 'lang-toast-tl',
+      Code: 'tl_PH',
+      IsActive: false,
+    });
+    await flushPromises();
+    tlWrap.unmount();
+
+    expect(levels).toEqual(['success', 'warning']);
+    expect(titles[0]).toMatch(/Synced packaged translations|zh_CN/i);
+    expect(titles[1]).toMatch(/tl_PH/i);
+  } finally {
+    ChoyMessage.success = orig.success;
+    ChoyMessage.warning = orig.warning;
+  }
+});
+
 test('LanguageFormView: missing ReloadTerminology method is handled', async () => {
   const { store } = buildStore({ Id: 'lang-reload-missing', Code: 'zh_HK', IsActive: false });
   delete (store as any).ReloadTerminology;

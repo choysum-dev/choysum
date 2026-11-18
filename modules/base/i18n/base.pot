@@ -2085,9 +2085,24 @@ msgctxt "web/views/LanguageFormView"
 msgid "Update translations failed"
 msgstr ""
 
-#: web/views/LanguageFormView.vue
+#: web/views/languageFormHelpers.ts
 msgctxt "web/views/LanguageFormView"
-msgid "Updated translations for %s: %s terms from %s/%s modules"
+msgid "Synced packaged translations for %s: %s terms from %s/%s modules"
+msgstr ""
+
+#: web/views/languageFormHelpers.ts
+msgctxt "web/views/LanguageFormView"
+msgid "No packaged translations found for %s"
+msgstr ""
+
+#: web/views/languageFormHelpers.ts
+msgctxt "web/views/LanguageFormView"
+msgid "Scanned %s installed modules; none provide i18n/%s.po."
+msgstr ""
+
+#: web/views/languageFormHelpers.ts
+msgctxt "web/views/LanguageFormView"
+msgid "This does not enable the language in Preferences or the guest switcher."
 msgstr ""
 
 #: web/views/LanguageFormView.vue:27

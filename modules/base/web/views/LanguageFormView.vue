@@ -190,6 +190,7 @@ import {
   languageRowFields,
   languageRowOverrideFields,
   mergeLanguageFormFields,
+  buildLanguageReloadTerminologyToast,
   reloadActiveLanguagesAfterLanguageSave,
   reloadLanguageTerminology,
   resolveLanguageCurrentRow,
@@ -402,20 +403,18 @@ async function onReloadTerminology(
       currentLang: i18n.lang,
       revalidateIfCurrent: () => i18n.revalidateTerminologyIfStale(),
       onDone: stats => {
-        const code = String(stats?.Code || fields.Code || '').trim() || id;
-        const upserted = Number(stats?.Upserted || 0);
-        const withPo = Number(stats?.ModulesWithPo || 0);
-        const scanned = Number(stats?.ModulesScanned || 0);
+        const toast = buildLanguageReloadTerminologyToast({
+          code: String(stats?.Code || fields.Code || '').trim() || id,
+          modulesScanned: Number(stats?.ModulesScanned || 0),
+          modulesWithPo: Number(stats?.ModulesWithPo || 0),
+          upserted: Number(stats?.Upserted || 0),
+          isActive: fields.IsActive === true ? true : fields.IsActive === false ? false : null,
+          t: _t,
+        });
         try {
-          ChoyMessage.success(
-            _t(
-              'Updated translations for %s: %s terms from %s/%s modules',
-              code,
-              String(upserted),
-              String(withPo),
-              String(scanned)
-            )
-          );
+          const opts = toast.description ? { description: toast.description } : undefined;
+          if (toast.level === 'success') ChoyMessage.success(toast.title, opts);
+          else ChoyMessage.warning(toast.title, opts);
         } catch {
           // Toast host may be absent in FE unit tests.
         }

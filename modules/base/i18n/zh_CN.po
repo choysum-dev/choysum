@@ -2071,10 +2071,25 @@ msgctxt "web/views/LanguageFormView"
 msgid "Update translations failed"
 msgstr "更新翻译失败"
 
-#: web/views/LanguageFormView.vue
+#: web/views/languageFormHelpers.ts
 msgctxt "web/views/LanguageFormView"
-msgid "Updated translations for %s: %s terms from %s/%s modules"
-msgstr "已更新 %s 翻译：%s 条术语，来自 %s/%s 个模块"
+msgid "Synced packaged translations for %s: %s terms from %s/%s modules"
+msgstr "已从模块包同步 %s 翻译：%s 条术语，来自 %s/%s 个模块"
+
+#: web/views/languageFormHelpers.ts
+msgctxt "web/views/LanguageFormView"
+msgid "No packaged translations found for %s"
+msgstr "未找到 %s 的包装翻译"
+
+#: web/views/languageFormHelpers.ts
+msgctxt "web/views/LanguageFormView"
+msgid "Scanned %s installed modules; none provide i18n/%s.po."
+msgstr "已扫描 %s 个已安装模块，均无 i18n/%s.po。"
+
+#: web/views/languageFormHelpers.ts
+msgctxt "web/views/LanguageFormView"
+msgid "This does not enable the language in Preferences or the guest switcher."
+msgstr "这不会在偏好设置或访客切换器中启用该语言。"
 
 #: web/views/LanguageFormView.vue:27
 msgctxt "web/views/LanguageFormView"

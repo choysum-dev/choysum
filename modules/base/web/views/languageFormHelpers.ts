@@ -182,6 +182,64 @@ export type LanguageReloadTerminologyResult = {
   PurgedRetired?: number;
 };
 
+export type LanguageReloadToastLevel = 'success' | 'warning';
+
+/** Toast payload after ReloadTerminology, branched on whether packaged PO was found. */
+export type LanguageReloadToast = {
+  level: LanguageReloadToastLevel;
+  title: string;
+  description?: string;
+};
+
+type TranslateFn = (src: string, ...args: unknown[]) => string;
+
+/**
+ * Build success / info / warning copy for Update translations.
+ * ModulesWithPo === 0 is never treated as a successful sync.
+ */
+export function buildLanguageReloadTerminologyToast(opts: {
+  code: string;
+  modulesScanned: number;
+  modulesWithPo: number;
+  upserted: number;
+  isActive?: boolean | null;
+  t: TranslateFn;
+}): LanguageReloadToast {
+  const code = String(opts.code || '').trim() || '—';
+  const scanned = Math.max(0, Number(opts.modulesScanned) || 0);
+  const withPo = Math.max(0, Number(opts.modulesWithPo) || 0);
+  const upserted = Math.max(0, Number(opts.upserted) || 0);
+  const inactiveNote =
+    opts.isActive === false
+      ? opts.t('This does not enable the language in Preferences or the guest switcher.')
+      : undefined;
+
+  if (withPo > 0) {
+    return {
+      level: 'success',
+      title: opts.t(
+        'Synced packaged translations for %s: %s terms from %s/%s modules',
+        code,
+        String(upserted),
+        String(withPo),
+        String(scanned)
+      ),
+      ...(inactiveNote ? { description: inactiveNote } : {}),
+    };
+  }
+
+  return {
+    level: 'warning',
+    title: opts.t('No packaged translations found for %s', code),
+    description: [
+      opts.t('Scanned %s installed modules; none provide i18n/%s.po.', String(scanned), code),
+      inactiveNote,
+    ]
+      .filter(Boolean)
+      .join(' '),
+  };
+}
+
 /**
  * Call Language.ReloadTerminology then optionally refresh the FE catalog when the
  * current UI language matches the reloaded Code.

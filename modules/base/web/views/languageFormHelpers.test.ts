@@ -3,6 +3,7 @@
 
 import {
   activateLanguage,
+  buildLanguageReloadTerminologyToast,
   deactivateLanguage,
   GROUPING_SELECTION,
   FIRST_DAY_SELECTION,
@@ -205,6 +206,58 @@ test('languageFormHelpers: deactivateLanguage still refreshes overlays when relo
     },
   });
   expect(calls).toEqual(['deactivate', 'reloadRecord', 'reloadActive']);
+});
+
+test('languageFormHelpers: buildLanguageReloadTerminologyToast branches on result', () => {
+  const t = (src: string, ...args: unknown[]) => [src, ...args].join('|');
+  const ok = buildLanguageReloadTerminologyToast({
+    code: 'zh_CN',
+    modulesScanned: 8,
+    modulesWithPo: 8,
+    upserted: 12,
+    isActive: true,
+    t,
+  });
+  expect(ok.level).toBe('success');
+  expect(ok.title).toContain('Synced packaged translations');
+  expect(ok.description).toBeUndefined();
+
+  const inactiveOk = buildLanguageReloadTerminologyToast({
+    code: 'zh_CN',
+    modulesScanned: 8,
+    modulesWithPo: 2,
+    upserted: 3,
+    isActive: false,
+    t,
+  });
+  expect(inactiveOk.level).toBe('success');
+  expect(inactiveOk.description).toContain('does not enable');
+
+  const missing = buildLanguageReloadTerminologyToast({
+    code: 'tl_PH',
+    modulesScanned: 8,
+    modulesWithPo: 0,
+    upserted: 0,
+    isActive: false,
+    t,
+  });
+  expect(missing.level).toBe('warning');
+  expect(missing.title).toContain('tl_PH');
+  expect(missing.description).toContain('none provide i18n/%s.po.');
+  expect(missing.description).toContain('|8|tl_PH');
+  expect(missing.description).toContain('does not enable');
+
+  const enUs = buildLanguageReloadTerminologyToast({
+    code: 'en_US',
+    modulesScanned: 8,
+    modulesWithPo: 0,
+    upserted: 0,
+    isActive: true,
+    t,
+  });
+  expect(enUs.level).toBe('warning');
+  expect(enUs.title).toContain('en_US');
+  expect(enUs.description).toContain('|8|en_US');
 });
 
 test('languageFormHelpers: reloadLanguageTerminology calls reload and revalidates current lang', async () => {
