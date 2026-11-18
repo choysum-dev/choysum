@@ -27,6 +27,8 @@ describe('displayFormatNeedsZoneOffset', () => {
     expect(displayFormatNeedsZoneOffset('HH:mm z')).toBe(false);
     expect(displayFormatNeedsZoneOffset('YYYY-MM-DD HH:mm')).toBe(false);
     expect(displayFormatNeedsZoneOffset('YYYY-MM-DD[T]HH:mm:ss[Z]')).toBe(false);
+    // Unmatched `[` is skipped like stripDisplayOffsetTokens — following Z still counts.
+    expect(displayFormatNeedsZoneOffset('HH:mm [Z')).toBe(true);
     expect(displayFormatNeedsZoneOffset('')).toBe(false);
     expect(displayFormatNeedsZoneOffset(null)).toBe(false);
     expect(displayFormatNeedsZoneOffset(undefined)).toBe(false);

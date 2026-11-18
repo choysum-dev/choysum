@@ -119,6 +119,9 @@ test('DatetimeField toDisplayText: Z offset follows user timezone', async () => 
     await flushPromises();
     const ss3 = m.setupState() as any;
     expect(ss3.toDisplayText?.(new Date(2026, 2, 8, 2, 30, 0))).toBe('2026-03-08 02:30:00');
+    // Successful offset-only path (valid zone round-trip) returns the zone offset alone.
+    setUserTimeZoneResolver(() => 'Asia/Shanghai');
+    expect(ss3.toDisplayText?.(value.value)).toBe('+08:00');
   } finally {
     m?.unmount();
     restoreSfc(ChoyFieldBase as any);

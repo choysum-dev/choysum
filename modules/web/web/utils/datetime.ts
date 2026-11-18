@@ -222,11 +222,27 @@ export function stripDisplayOffsetTokens(format: string): string {
 
 /**
  * True when a dayjs display format includes an unescaped offset token (`Z` / `ZZ`).
- * Bracket literals like `[Z]` are ignored so storage-style patterns are not treated as offsets.
+ * Closed bracket literals are ignored; an unmatched `[` is skipped the same way as
+ * `stripDisplayOffsetTokens` so a following `Z` still counts as an offset token.
  * Lowercase `z` is not included: core dayjs (without advancedFormat) leaves it literal.
  */
 export function displayFormatNeedsZoneOffset(format: string | null | undefined): boolean {
-  const stripped = String(format ?? '').replace(/\[[^\]]*]/g, '');
+  const src = String(format ?? '');
+  let stripped = '';
+  for (let i = 0; i < src.length; ) {
+    if (src[i] === '[') {
+      const end = src.indexOf(']', i + 1);
+      if (end < 0) {
+        // Skip the unmatched `[` only; keep scanning for a later Z/ZZ.
+        i += 1;
+        continue;
+      }
+      i = end + 1;
+      continue;
+    }
+    stripped += src[i];
+    i += 1;
+  }
   return /Z{1,2}/.test(stripped);
 }
 
