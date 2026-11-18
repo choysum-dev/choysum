@@ -39,6 +39,10 @@ describe('stripDisplayOffsetTokens', () => {
     expect(stripDisplayOffsetTokens('YYYY-MM-DD HH:mm ZZ')).toBe('YYYY-MM-DD HH:mm');
     expect(stripDisplayOffsetTokens('YYYY-MM-DD[T]HH:mm:ss[Z]')).toBe('YYYY-MM-DD[T]HH:mm:ss[Z]');
     expect(stripDisplayOffsetTokens('HH:mm Z[')).toBe('HH:mm [');
+    // Unmatched `[` must not hide a following Z from stripping (avoids dayjs still expanding Z).
+    expect(stripDisplayOffsetTokens('HH:mm [Z')).toBe('HH:mm [');
+    // Internal bracket whitespace must stay (do not collapse `[A  B]` → `[A B]`).
+    expect(stripDisplayOffsetTokens('HH:mm [A  B] Z')).toBe('HH:mm [A  B]');
     expect(stripDisplayOffsetTokens('Z')).toBe('');
   });
 });
@@ -97,6 +101,18 @@ describe('utc ↔ user wall', () => {
     expect(wall!.getDate()).toBe(1);
     expect(wall!.getHours()).toBe(0);
     expect(wall!.getMinutes()).toBe(0);
+  });
+
+  test('preserves years 0001–0099 on the wall-carrier Date', () => {
+    const early = utcToUserWallDate('0001-01-05T12:00:00.000Z', 'UTC');
+    expect(early).not.toBeNull();
+    expect(early!.getFullYear()).toBe(1);
+    expect(early!.getMonth()).toBe(0);
+    expect(early!.getDate()).toBe(5);
+    expect(early!.getHours()).toBe(12);
+    // Modern years must still round-trip through the same constructor path.
+    const modern = utcToUserWallDate('2024-06-30T16:00:00.000Z', 'UTC');
+    expect(modern!.getFullYear()).toBe(2024);
   });
 
   test('maps America/New_York wall back to the same UTC instant', () => {

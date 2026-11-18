@@ -198,8 +198,9 @@ const toDisplayText = (v: FieldType) => {
   }
   const m = dayjs(v);
   if (!m.isValid()) return '';
-  const withoutOffset = stripDisplayOffsetTokens(fmt);
-  return withoutOffset ? m.format(withoutOffset) : '';
+  // Offset-only formats (e.g. `Z`) strip to empty — mirror picker canonical wall.
+  const withoutOffset = stripDisplayOffsetTokens(fmt) || 'YYYY-MM-DD HH:mm:ss';
+  return m.format(withoutOffset);
 };
 
 function normalizeToDate(v: any): FieldType {

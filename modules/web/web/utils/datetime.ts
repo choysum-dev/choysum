@@ -106,7 +106,11 @@ export function utcToUserWallDate(input: Date | string | number | null | undefin
   if (input == null || input === '') return null;
   const wall = utcInstantInZone(input, tz);
   if (!wall) return null;
-  return new Date(wall.year(), wall.month(), wall.date(), wall.hour(), wall.minute(), wall.second(), wall.millisecond());
+  // setFullYear — `new Date(year<100, …)` remaps to 19xx.
+  const local = new Date(0);
+  local.setFullYear(wall.year(), wall.month(), wall.date());
+  local.setHours(wall.hour(), wall.minute(), wall.second(), wall.millisecond());
+  return local;
 }
 
 /** Wall-clock components interpreted in a named IANA zone (month is 1–12). */
@@ -188,6 +192,8 @@ export function formatUtcInTimeZone(
 /**
  * Remove unescaped `Z`/`ZZ` tokens (bracket literals kept) so a failed zone path can
  * keep the wall clock without emitting a false `+00:00` offset.
+ * Unmatched `[` is kept as a single literal character so a following `Z` is still stripped.
+ * Whitespace inside closed bracket literals is left unchanged.
  */
 export function stripDisplayOffsetTokens(format: string): string {
   let out = '';
@@ -195,8 +201,10 @@ export function stripDisplayOffsetTokens(format: string): string {
     if (format[i] === '[') {
       const end = format.indexOf(']', i + 1);
       if (end < 0) {
-        out += format.slice(i);
-        break;
+        // Keep `[` only and keep scanning so a later Z/ZZ can still be removed.
+        out += '[';
+        i += 1;
+        continue;
       }
       out += format.slice(i, end + 1);
       i = end + 1;
@@ -209,7 +217,7 @@ export function stripDisplayOffsetTokens(format: string): string {
     out += format[i];
     i += 1;
   }
-  return out.replace(/[ \t]{2,}/g, ' ').trim();
+  return out.trim();
 }
 
 /**

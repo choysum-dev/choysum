@@ -110,6 +110,15 @@ test('DatetimeField toDisplayText: Z offset follows user timezone', async () => 
     await flushPromises();
     const ss2 = m.setupState() as any;
     expect(ss2.toDisplayText?.(value.value)).toBe('08:00:00.123');
+    m.unmount();
+    // Offset-only format with failed zone → canonical wall (not blank).
+    setUserTimeZoneResolver(() => 'America/New_York');
+    m = mountApp(DatetimeField as any, {
+      props: { binding, renderMode: 'form', displayFormat: 'Z' },
+    });
+    await flushPromises();
+    const ss3 = m.setupState() as any;
+    expect(ss3.toDisplayText?.(new Date(2026, 2, 8, 2, 30, 0))).toBe('2026-03-08 02:30:00');
   } finally {
     m?.unmount();
     restoreSfc(ChoyFieldBase as any);

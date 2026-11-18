@@ -93,6 +93,10 @@ describe('dateTimePickerHelpers', () => {
     );
     // Unclosed `[` is kept as a trailing literal fragment after stripping Z.
     expect(formatDateTimePickerDisplay(wall, 'HH:mm Z[', 'Not/A_Zone')).toBe('08:00 [');
+    // Z after unmatched `[` must still be stripped (not left for dayjs to expand as +00:00).
+    expect(formatDateTimePickerDisplay(wall, 'HH:mm [Z', 'Not/A_Zone')).toBe('08:00 [');
+    // Bracket-literal internal spaces survive the failed-zone fallback.
+    expect(formatDateTimePickerDisplay(wall, 'HH:mm [A  B] Z', 'Not/A_Zone')).toBe('08:00 A  B');
   });
 
   test('parses legacy YYYY-MM-DDTHH:mm with second default 0', () => {
