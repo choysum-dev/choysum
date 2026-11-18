@@ -145,8 +145,8 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { computed, ref, toRef } from 'vue';
-import type { RouteLocationRaw } from 'vue-router';
+import { computed, ref } from 'vue';
+import { useRoute, type RouteLocationRaw } from 'vue-router';
 import type { ModelStore } from '@/web/web/stores/modelStore';
 import type Language from '@/base/service/models/language';
 import { defineModelActions } from '@/core/web/resource';
@@ -173,6 +173,7 @@ import {
   languageRowOverrideFields,
   reloadActiveLanguagesAfterLanguageSave,
   resolveLanguageCurrentRow,
+  resolveLanguageRecordId,
   type LanguageRowOverride,
 } from './languageFormHelpers';
 
@@ -189,7 +190,15 @@ const props = withDefaults(
 const languageActions = defineModelActions('base.Language', { entityTitle: _lt('Language') });
 const { hasAction } = usePermission();
 const store = resolvePageStore(props.store, 'LanguageFormView');
-const recordId = toRef(props, 'recordId');
+const route = useRoute();
+/** Prop wins; otherwise route `:id` (Language.vue does not pass recordId). */
+const recordId = computed(() =>
+  resolveLanguageRecordId({
+    recordId: props.recordId,
+    routeParams: route.params as Record<string, unknown>,
+    routeQuery: route.query as Record<string, unknown>,
+  })
+);
 const { viewMode, showHeader, createAction } = props;
 
 const activeBusy = ref(false);

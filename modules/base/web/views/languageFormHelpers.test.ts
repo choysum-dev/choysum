@@ -14,6 +14,7 @@ import {
   languageRowOverrideFields,
   reloadActiveLanguagesAfterLanguageSave,
   resolveLanguageCurrentRow,
+  resolveLanguageRecordId,
 } from './languageFormHelpers';
 
 test('languageFormHelpers: selection option catalogs', () => {
@@ -98,6 +99,15 @@ test('languageFormHelpers: languageRowOverrideFields is scoped to recordId', () 
   expect(languageRowOverrideFields(override, 'lang-b')).toBe(null);
   expect(languageRowOverrideFields(null, 'lang-a')).toBe(null);
   expect(languageRowOverrideFields(override, '')).toBe(null);
+});
+
+test('languageFormHelpers: resolveLanguageRecordId prefers prop then route :id', () => {
+  expect(resolveLanguageRecordId({ recordId: 'from-prop', routeParams: { id: 'from-route' } })).toBe('from-prop');
+  expect(resolveLanguageRecordId({ routeParams: { id: 'route-id' } })).toBe('route-id');
+  expect(resolveLanguageRecordId({ routeParams: { recordId: 'rid' } })).toBe('rid');
+  expect(resolveLanguageRecordId({ routeQuery: { id: 'qid' } })).toBe('qid');
+  expect(resolveLanguageRecordId({ routeParams: { id: 'new' } })).toBe('');
+  expect(resolveLanguageRecordId({})).toBe('');
 });
 
 test('languageFormHelpers: activateLanguage calls Activate then reloads', async () => {

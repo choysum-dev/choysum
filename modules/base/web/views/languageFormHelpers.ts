@@ -93,6 +93,25 @@ export function languageRowOverrideFields(
   return override.fields;
 }
 
+/**
+ * Resolve Language form record id from an explicit prop, else route params/query
+ * (same keys as ChoyFormView / useFormViewLifecycle).
+ */
+export function resolveLanguageRecordId(opts: {
+  recordId?: string | null;
+  routeParams?: Record<string, unknown> | null;
+  routeQuery?: Record<string, unknown> | null;
+}): string {
+  const fromProp = String(opts.recordId || '').trim();
+  if (fromProp && fromProp !== 'undefined' && fromProp !== 'null') return fromProp;
+  const params = opts.routeParams || {};
+  const query = opts.routeQuery || {};
+  const raw = params.recordId ?? params.id ?? params.Id ?? query.recordId ?? query.id ?? query.Id;
+  const fromRoute = String(raw ?? '').trim();
+  if (!fromRoute || fromRoute === 'undefined' || fromRoute === 'null' || fromRoute === 'new') return '';
+  return fromRoute;
+}
+
 /** Call Language.Activate then refresh the form row and active-language overlays. */
 export async function activateLanguage(opts: {
   activate: (req: { Id: string }) => Promise<unknown>;

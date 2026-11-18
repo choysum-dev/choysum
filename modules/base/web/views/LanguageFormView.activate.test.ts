@@ -98,6 +98,26 @@ test('LanguageFormView: display shows Activate when inactive', async () => {
   wrapper.unmount();
 });
 
+test('LanguageFormView: resolves Activate from route :id when prop omitted', async () => {
+  seedLanguageWritePermission();
+  const row = { Id: 'lang-route', Code: 'ca_ES', IsActive: false, Name: 'Catalan' };
+  const { store } = buildStore(row);
+  const wrapper = mount(LanguageFormView as any, {
+    props: { store, viewMode: 'display' },
+    global: buildPageMountGlobal({
+      route: {
+        path: '/base/languages/lang-route',
+        fullPath: '/base/languages/lang-route',
+        params: { id: 'lang-route' },
+      },
+    }),
+  });
+  seedLanguageWritePermission();
+  await flushPromises();
+  expect(wrapper.find('[data-testid="language-activate"]').exists()).toBe(true);
+  wrapper.unmount();
+});
+
 test('LanguageFormView: display shows Deactivate when active', async () => {
   const { store, deactivateCalls, updateByIdCalls } = buildStore({
     Id: 'lang-active',
