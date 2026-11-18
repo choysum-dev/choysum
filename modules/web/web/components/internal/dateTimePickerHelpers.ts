@@ -2,19 +2,14 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { CalendarDate, parseDate } from '@internationalized/date';
-import dayjs from 'dayjs';
-import customParseFormat from 'dayjs/plugin/customParseFormat';
-import utc from 'dayjs/plugin/utc';
 
+import { dayjsUtc } from '@/web/web/utils/dayjsUtc';
 import {
   formatDatePickerValue,
   parseDatePickerValue,
   todayDatePickerValue,
   type DatePickerDateParts,
 } from './datePickerHelpers';
-
-dayjs.extend(customParseFormat);
-dayjs.extend(utc);
 
 /** Local wall datetime with seconds: YYYY-MM-DDTHH:mm:ss */
 export type DateTimePickerParts = DatePickerDateParts & {
@@ -79,14 +74,13 @@ export function formatDateTimePickerDisplay(
 ): string {
   const parts = parseDateTimePickerValue(value);
   if (!parts) return String(value ?? '').trim();
-  const canonical = formatDateTimePickerValue(parts);
   const fmt = String(displayFormat || '').trim();
   if (fmt) {
     // Build from validated parts in UTC (avoids Date.UTC year<100 remap and local DST gaps).
     const instant = new Date(0);
     instant.setUTCFullYear(parts.year, parts.month - 1, parts.day);
     instant.setUTCHours(parts.hour, parts.minute, parts.second, 0);
-    const m = dayjs.utc(instant);
+    const m = dayjsUtc.utc(instant);
     if (m.isValid()) return m.format(fmt);
   }
   const date = formatDatePickerValue(parts);

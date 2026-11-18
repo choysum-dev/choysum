@@ -1,12 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import dayjs from 'dayjs';
-import customParseFormat from 'dayjs/plugin/customParseFormat';
-import utc from 'dayjs/plugin/utc';
-
-dayjs.extend(customParseFormat);
-dayjs.extend(utc);
+import { dayjsUtc } from '@/web/web/utils/dayjsUtc';
 
 /** Local wall clock with seconds: HH:mm:ss */
 export type TimePickerParts = {
@@ -56,7 +51,7 @@ export function formatTimePickerDisplay(
     return canonical;
   }
   // Fixed UTC calendar day: time-only values must not inherit today's DST gap.
-  const m = dayjs.utc(`1970-01-01T${canonical}`, 'YYYY-MM-DDTHH:mm:ss', true);
+  const m = dayjsUtc.utc(`1970-01-01T${canonical}`, 'YYYY-MM-DDTHH:mm:ss', true);
   return m.isValid() ? m.format(fmt) : canonical;
 }
 

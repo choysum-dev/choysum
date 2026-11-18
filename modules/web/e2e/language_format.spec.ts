@@ -204,6 +204,26 @@ async function readDatePickerWeekdayHeaders(): Promise<string[]> {
   });
 }
 
+/** True when the date-picker calendar popover is mounted. */
+async function isDatePickerCalendarOpen(): Promise<boolean> {
+  return page.evaluate(() => !!document.querySelector('.choy-date-picker__calendar'));
+}
+
+/**
+ * Close the date-picker popover. Choysum e2e Page has no `keyboard` API, so toggle
+ * via the trigger (and fall back to a DOM Escape event if still open).
+ */
+async function dismissDatePicker(trigger: { click: () => Promise<void> }): Promise<void> {
+  if (!(await isDatePickerCalendarOpen())) return;
+  await trigger.click();
+  if (!(await isDatePickerCalendarOpen())) return;
+  await page.evaluate(() => {
+    document.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', bubbles: true })
+    );
+  });
+}
+
 async function updateLanguageDateAndWeekStart(
   baseURL: string,
   languageId: string,
@@ -318,7 +338,7 @@ test('base: Language DateFormat + FirstDayOfWeek update applies live to date fie
     /^(一|周一|星期一|Mon|Mo|M|lun|Lu)$/i
   );
   // Dismiss calendar so the next open re-reads weekStartsOn from the store.
-  await page.keyboard.press('Escape');
+  await dismissDatePicker(dateTrigger);
 
   const languageId = await resolveLanguageIdByCode(baseURL, 'zh_CN');
   try {
@@ -346,7 +366,7 @@ test('base: Language DateFormat + FirstDayOfWeek update applies live to date fie
     expect(afterHeads[0], `must not be Saturday: ${JSON.stringify(afterHeads)}`).not.toMatch(
       /^(Sat|Saturday|六|周六|星期六|sáb)/i
     );
-    await page.keyboard.press('Escape');
+    await dismissDatePicker(dateTrigger);
 
     // DateFormat overlay on the list (live, after returning from create form).
     await page.goto(`${baseURL}/web/base/exchange-rates`, { waitUntil: 'domcontentloaded' });

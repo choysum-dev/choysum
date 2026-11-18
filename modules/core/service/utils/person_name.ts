@@ -72,18 +72,16 @@ export type PersonNameFieldProp = 'FirstName' | 'LastName';
  */
 export function personNameFieldOrder(template?: string | null): PersonNameFieldProp[] {
   const pattern = normalizePersonNameFormat(template);
-  let firstPos = -1;
-  let lastPos = -1;
+  const order: PersonNameFieldProp[] = [];
   for (const match of pattern.matchAll(TOKEN_RE)) {
     const name = match[1];
-    if (name !== 'FirstName' && name !== 'LastName') continue;
-    const at = match.index as number;
-    if (name === 'FirstName' && firstPos < 0) firstPos = at;
-    if (name === 'LastName' && lastPos < 0) lastPos = at;
+    if (name === 'FirstName' || name === 'LastName') {
+      if (!order.includes(name)) order.push(name);
+    }
   }
-  if (firstPos >= 0 && lastPos >= 0) {
-    return firstPos <= lastPos ? ['FirstName', 'LastName'] : ['LastName', 'FirstName'];
+  // normalizePersonNameFormat always keeps at least one allowed token.
+  if (order.length === 1) {
+    return order[0] === 'LastName' ? ['LastName', 'FirstName'] : ['FirstName', 'LastName'];
   }
-  if (lastPos >= 0) return ['LastName', 'FirstName'];
-  return ['FirstName', 'LastName'];
+  return order[0] === 'LastName' ? ['LastName', 'FirstName'] : ['FirstName', 'LastName'];
 }

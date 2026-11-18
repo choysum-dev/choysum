@@ -56,5 +56,7 @@ test('personNameFieldOrder: follows first token occurrence', () => {
   expect(personNameFieldOrder('')).toEqual(['FirstName', 'LastName']);
   // Later duplicate tokens must not reorder; unknown tokens are ignored.
   expect(personNameFieldOrder('{FirstName} {LastName} {FirstName}')).toEqual(['FirstName', 'LastName']);
+  expect(personNameFieldOrder('{LastName} {FirstName} {LastName}')).toEqual(['LastName', 'FirstName']);
   expect(personNameFieldOrder('{MiddleName} {LastName}')).toEqual(['LastName', 'FirstName']);
+  expect(personNameFieldOrder('{MiddleName} {FirstName}')).toEqual(['FirstName', 'LastName']);
 });

@@ -2,12 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { CalendarDate, parseDate } from '@internationalized/date';
-import dayjs from 'dayjs';
-import customParseFormat from 'dayjs/plugin/customParseFormat';
-import utc from 'dayjs/plugin/utc';
 
-dayjs.extend(customParseFormat);
-dayjs.extend(utc);
+import { dayjsUtc } from '@/web/web/utils/dayjsUtc';
 
 export type DatePickerDateParts = {
   year: number;
@@ -100,6 +96,6 @@ export function formatDatePickerDisplay(
   // Date.UTC(year<100) remaps to 19xx; setUTCFullYear keeps years 0001–0099.
   const instant = new Date(0);
   instant.setUTCFullYear(parsed.year, parsed.month - 1, parsed.day);
-  const m = dayjs.utc(instant);
+  const m = dayjsUtc.utc(instant);
   return m.isValid() ? m.format(fmt) : iso;
 }
