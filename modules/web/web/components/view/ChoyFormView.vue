@@ -688,7 +688,6 @@ const { submitting, handleSubmit, onNativeSubmit } = useFormViewSubmit({
   emit: emit as (event: string, payload?: unknown) => void,
   router,
   detailsTitle,
-  _t,
 });
 
 /** Binary/Image fields use this to show Attachment state=uploading during Prepare/PUT/Finalize. */

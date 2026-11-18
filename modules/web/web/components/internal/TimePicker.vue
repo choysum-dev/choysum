@@ -149,6 +149,8 @@ const props = withDefaults(
     placeholder?: string;
     disabled?: boolean;
     clearable?: boolean;
+    /** Dayjs pattern for the trigger label; model stays HH:mm:ss. */
+    displayFormat?: string;
     id?: string;
     'aria-invalid'?: boolean | 'true' | 'false';
     'aria-required'?: boolean | 'true' | 'false';
@@ -158,6 +160,7 @@ const props = withDefaults(
     placeholder: undefined,
     disabled: false,
     clearable: true,
+    displayFormat: undefined,
   },
 );
 
@@ -176,11 +179,7 @@ const selectedHour = computed(() => parsed.value?.hour ?? 0);
 const selectedMinute = computed(() => parsed.value?.minute ?? 0);
 const selectedSecond = computed(() => parsed.value?.second ?? 0);
 
-const displayText = computed(() => {
-  const formatted = formatTimePickerDisplay(modelValue.value);
-  if (formatted) return formatted;
-  return String(modelValue.value ?? '').trim();
-});
+const displayText = computed(() => formatTimePickerDisplay(modelValue.value, props.displayFormat));
 
 function timeItemClass(selected: boolean): string {
   return cn(

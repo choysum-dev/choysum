@@ -63,3 +63,22 @@ export function formatPersonName(parts: PersonNameParts, template?: string | nul
 
   return rendered.replace(/\s+/g, ' ').trim();
 }
+
+export type PersonNameFieldProp = 'FirstName' | 'LastName';
+
+/**
+ * Input/display field order for Preferences (and similar) from PersonNameFormat.
+ * Uses first occurrence of each token; always returns both fields (missing token last).
+ */
+export function personNameFieldOrder(template?: string | null): PersonNameFieldProp[] {
+  const pattern = normalizePersonNameFormat(template);
+  const order: PersonNameFieldProp[] = [];
+  for (const match of pattern.matchAll(TOKEN_RE)) {
+    const name = match[1];
+    if (name === 'FirstName' || name === 'LastName') {
+      if (!order.includes(name)) order.push(name);
+    }
+  }
+  // normalizePersonNameFormat always keeps at least one allowed token.
+  return order[0] === 'LastName' ? ['LastName', 'FirstName'] : ['FirstName', 'LastName'];
+}

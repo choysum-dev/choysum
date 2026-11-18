@@ -235,22 +235,22 @@ msgctxt "web/components/field/ChoyBooleanField"
 msgid "Yes"
 msgstr ""
 
-#: web/components/field/ChoyDateField.vue:138
+#: web/components/field/ChoyDateField.vue:139
 msgctxt "web/components/field/ChoyDateField"
 msgid "Invalid date"
 msgstr ""
 
-#: web/components/field/ChoyDateField.vue:192
+#: web/components/field/ChoyDateField.vue:193
 msgctxt "web/components/field/ChoyDateField"
 msgid "Select date"
 msgstr ""
 
-#: web/components/field/ChoyDatetimeField.vue:167
+#: web/components/field/ChoyDatetimeField.vue:168
 msgctxt "web/components/field/ChoyDatetimeField"
 msgid "Invalid date time"
 msgstr ""
 
-#: web/components/field/ChoyDatetimeField.vue:220
+#: web/components/field/ChoyDatetimeField.vue:221
 msgctxt "web/components/field/ChoyDatetimeField"
 msgid "Select date and time"
 msgstr ""
@@ -1179,12 +1179,12 @@ msgctxt "web/components/field/ChoyTextField"
 msgid "Must be a string"
 msgstr ""
 
-#: web/components/field/ChoyTimeField.vue:139
+#: web/components/field/ChoyTimeField.vue:140
 msgctxt "web/components/field/ChoyTimeField"
 msgid "Invalid time value"
 msgstr ""
 
-#: web/components/field/ChoyTimeField.vue:195
+#: web/components/field/ChoyTimeField.vue:196
 msgctxt "web/components/field/ChoyTimeField"
 msgid "Select time"
 msgstr ""
@@ -1356,7 +1356,7 @@ msgctxt "web/components/internal/DatePicker"
 msgid "Previous month"
 msgstr ""
 
-#: web/components/internal/DatePicker.vue:74
+#: web/components/internal/DatePicker.vue:69
 msgctxt "web/components/internal/DatePicker"
 msgid "Select date"
 msgstr ""
@@ -1402,7 +1402,7 @@ msgctxt "web/components/internal/DateTimePicker"
 msgid "Second"
 msgstr ""
 
-#: web/components/internal/DateTimePicker.vue:84
+#: web/components/internal/DateTimePicker.vue:76
 msgctxt "web/components/internal/DateTimePicker"
 msgid "Select date and time"
 msgstr ""
@@ -1463,7 +1463,7 @@ msgctxt "web/components/internal/TimePicker"
 msgid "Second"
 msgstr ""
 
-#: web/components/internal/TimePicker.vue:52
+#: web/components/internal/TimePicker.vue:55
 msgctxt "web/components/internal/TimePicker"
 msgid "Select time"
 msgstr ""
@@ -1656,7 +1656,7 @@ msgctxt "web/components/terminology/TerminologyExportMenu"
 msgid "No modules"
 msgstr ""
 
-#: web/components/terminology/TerminologyExportMenu.vue:131
+#: web/components/terminology/TerminologyExportMenu.vue:136
 msgctxt "web/components/terminology/TerminologyExportMenu"
 msgid "PO download failed"
 msgstr ""
@@ -1779,12 +1779,18 @@ msgctxt "web/components/view/FormView"
 msgid "Cancel"
 msgstr ""
 
-#: web/components/view/ChoyFormView.vue:72
+#: web/components/view/ChoyFormView.vue:77
 msgctxt "web/components/view/FormView"
 msgid "Copy"
 msgstr ""
 
-#: web/components/view/ChoyFormView.vue:76
+#: web/composables/useFormViewSubmit.ts:178
+#: web/composables/useFormViewSubmit.ts:224
+msgctxt "web/components/view/FormView"
+msgid "Created successfully"
+msgstr ""
+
+#: web/components/view/ChoyFormView.vue:81
 msgctxt "web/components/view/FormView"
 msgid "Delete"
 msgstr ""
@@ -1794,12 +1800,12 @@ msgctxt "web/components/view/FormView"
 msgid "Details"
 msgstr ""
 
-#: web/components/view/ChoyFormView.vue:479
+#: web/components/view/ChoyFormView.vue:492
 msgctxt "web/components/view/FormView"
 msgid "Discard"
 msgstr ""
 
-#: web/components/view/ChoyFormView.vue:68
+#: web/components/view/ChoyFormView.vue:73
 msgctxt "web/components/view/FormView"
 msgid "Edit"
 msgstr ""
@@ -1807,6 +1813,17 @@ msgstr ""
 #: web/components/view/ChoyFormView.vue:39
 msgctxt "web/components/view/FormView"
 msgid "New"
+msgstr ""
+
+#: web/composables/useFormViewSubmit.ts:245
+msgctxt "web/components/view/FormView"
+msgid "Operation failed"
+msgstr ""
+
+#: web/composables/useFormViewSubmit.ts:71
+#: web/composables/useFormViewSubmit.ts:77
+msgctxt "web/components/view/FormView"
+msgid "Please fix the errors in the form first"
 msgstr ""
 
 #: web/components/view/ChoyFormView.vue:54
@@ -1819,14 +1836,20 @@ msgctxt "web/components/view/FormView"
 msgid "Reset"
 msgstr ""
 
-#: web/components/view/ChoyFormView.vue:472
-#: web/components/view/ChoyFormView.vue:477
+#: web/components/view/ChoyFormView.vue:485
+#: web/components/view/ChoyFormView.vue:490
 msgctxt "web/components/view/FormView"
 msgid "Save"
 msgstr ""
 
-#: web/components/view/ChoyFormView.vue:472
-#: web/components/view/ChoyFormView.vue:477
+#: web/composables/useFormViewSubmit.ts:179
+#: web/composables/useFormViewSubmit.ts:224
+msgctxt "web/components/view/FormView"
+msgid "Saved successfully"
+msgstr ""
+
+#: web/components/view/ChoyFormView.vue:485
+#: web/components/view/ChoyFormView.vue:490
 msgctxt "web/components/view/FormView"
 msgid "Saving..."
 msgstr ""
@@ -1841,7 +1864,7 @@ msgctxt "web/components/view/FormView"
 msgid "User actions"
 msgstr ""
 
-#: web/components/view/ChoyFormView.vue:92
+#: web/components/view/ChoyFormView.vue:95
 msgctxt "web/components/view/FormView"
 msgid "View switcher"
 msgstr ""

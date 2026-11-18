@@ -40,12 +40,15 @@ export function createPersonNameFormatRules(invalidMessage: string) {
   ];
 }
 
-/** Best-effort refresh of FE language format overlays after Language create/update. */
+/**
+ * Best-effort refresh of FE language format overlays after Language create/update.
+ * Also syncs document direction when the current UI language's Direction changed.
+ */
 export async function reloadActiveLanguagesAfterLanguageSave(): Promise<void> {
   try {
     await useI18nStore().loadActiveLanguages();
   } catch {
-    // Next full page init will reload formats.
+    // Next full page init will reload formats and direction.
   }
 }
 

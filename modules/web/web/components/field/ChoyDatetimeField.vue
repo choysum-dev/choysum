@@ -44,6 +44,7 @@ import type { UseField } from '@/web/web/composables/useField';
 import type { NarrowAggProp, TemporalAggFns } from '@/web/web/composables/useField';
 import ChoyFieldBase, { type FieldStateExpr, type FormItemProps } from './ChoyFieldBase.vue';
 import DateTimePicker from '../internal/DateTimePicker.vue';
+import { resolveActiveDateTimeDisplayFormat } from '../internal/calendarLocale';
 import dayjs from 'dayjs';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
 import { useBufferedCommit, type CommitStrategy } from '@/web/web/composables/useBufferedCommit';
@@ -101,7 +102,7 @@ const props = withDefaults(
   }>(),
   {
     rules: () => [],
-    displayFormat: 'YYYY-MM-DD HH:mm:ss',
+    displayFormat: undefined,
     valueFormat: 'YYYY-MM-DD[T]HH:mm:ss.SSSZ',
     required: false,
     readonly: false,
@@ -120,7 +121,7 @@ const props = withDefaults(
 
 const binding = (props.binding ?? useField<T, P, V>({ store: props.store as ModelStore<T>, prop: props.prop as P, agg: props.agg })) as UseField<T, V>;
 
-const displayFormat = computed(() => props.displayFormat || 'YYYY-MM-DD HH:mm:ss');
+const displayFormat = computed(() => resolveActiveDateTimeDisplayFormat(props.displayFormat));
 const storageFormat = computed(() => props.valueFormat || 'YYYY-MM-DD[T]HH:mm:ss.SSSZ');
 
 function padFractionToSSS(input: string): string {
@@ -253,6 +254,7 @@ const ChoyDatetimeCell = defineComponent({
         ...(p.pickerProps || {}),
         class: 'choy-date-picker w-full',
         placeholder: _t('Select date and time'),
+        displayFormat: p.displayFormat,
         modelValue: value,
         'onUpdate:modelValue': (raw: string | null) => {
           buffer.setEditing(raw ? normalizeToDate(raw) : null);

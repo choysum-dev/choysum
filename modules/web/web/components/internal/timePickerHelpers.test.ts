@@ -16,6 +16,9 @@ describe('timePickerHelpers', () => {
     expect(parseTimePickerValue('09:05:07')).toEqual({ hour: 9, minute: 5, second: 7 });
     expect(parseTimePickerValue('09:05')).toEqual({ hour: 9, minute: 5, second: 0 });
     expect(formatTimePickerDisplay('09:05:07')).toBe('09:05:07');
+    expect(formatTimePickerDisplay('09:05:07', 'HH:mm')).toBe('09:05');
+    // Must not depend on today's local calendar (DST gap days).
+    expect(formatTimePickerDisplay('02:30:00', 'h:mm A')).toMatch(/^2:30\s?AM$/i);
   });
 
   test('rejects blank and invalid values', () => {

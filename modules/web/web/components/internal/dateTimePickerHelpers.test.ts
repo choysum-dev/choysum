@@ -32,6 +32,16 @@ describe('dateTimePickerHelpers', () => {
       second: 7,
     });
     expect(formatDateTimePickerDisplay('2026-10-20T09:49:07')).toBe('2026-10-20 09:49:07');
+    expect(formatDateTimePickerDisplay('2026-10-20T09:49:07', 'DD.MM.YYYY HH:mm')).toBe(
+      '20.10.2026 09:49',
+    );
+    // Wall-clock parts must format even when the local zone has a DST gap at that clock.
+    expect(formatDateTimePickerDisplay('2026-03-08T02:30:00', 'DD.MM.YYYY HH:mm')).toBe(
+      '08.03.2026 02:30',
+    );
+    expect(formatDateTimePickerDisplay('0042-01-05T09:00:00', 'DD.MM.YYYY HH:mm')).toBe(
+      '05.01.0042 09:00',
+    );
   });
 
   test('parses legacy YYYY-MM-DDTHH:mm with second default 0', () => {

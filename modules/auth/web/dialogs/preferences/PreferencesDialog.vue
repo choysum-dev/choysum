@@ -50,7 +50,7 @@ SPDX-License-Identifier: Apache-2.0
               @apply="onThemeDraftApply"
             />
 
-            <!-- Compact identity chrome above tabs: fixed First | Last order. -->
+            <!-- Compact identity chrome: First/Last order follows active Language.PersonNameFormat. -->
             <div class="choy-preferences-dialog__profile flex shrink-0 items-start gap-3">
               <div
                 v-if="isUserAvatarFieldVisible(collaborationCaps)"
@@ -70,24 +70,21 @@ SPDX-License-Identifier: Apache-2.0
                 />
               </div>
               <div class="min-w-0 flex-1 space-y-1">
-                <div class="choy-preferences-dialog__names grid grid-cols-2 gap-2">
+                <div
+                  class="choy-preferences-dialog__names grid grid-cols-2 gap-2"
+                  data-testid="preferences-name-fields"
+                  :data-name-order="nameFieldOrder.join(',')"
+                >
                   <ChoyVarcharField
+                    v-for="field in nameFields"
+                    :key="field.prop"
                     :store="userStore"
-                    prop="FirstName"
-                    :label="_t('First name')"
+                    :prop="field.prop"
+                    :label="field.label"
                     hide-help
                     :show-word-limit="false"
                     orientation="vertical"
-                    data-testid="preferences-first-name"
-                  />
-                  <ChoyVarcharField
-                    :store="userStore"
-                    prop="LastName"
-                    :label="_t('Last name')"
-                    hide-help
-                    :show-word-limit="false"
-                    orientation="vertical"
-                    data-testid="preferences-last-name"
+                    :data-testid="field.testId"
                   />
                 </div>
                 <div
@@ -249,6 +246,7 @@ import { isUserAvatarFieldVisible } from '@/auth/web/views/user_avatar_visibilit
 import { resolveUserMenuMeta } from '@/auth/web/components/layout/user_menu_display_name';
 import { SelfProfileDraftSeeder } from './SelfProfileDraftSeeder';
 import { ThemeDraftApplier } from './ThemeDraftApplier';
+import { preferencesPersonNameFieldOrder } from './preferencesPersonNameOrder';
 import ChangePasswordDialog from '@/auth/web/dialogs/change-password/ChangePasswordDialog.vue';
 import {
   needsSelfProfileLoad,
@@ -326,6 +324,16 @@ function profileIdentityMeta(formData: Record<string, unknown> | null | undefine
     username: formData?.Username ?? user.Username,
   });
 }
+
+/** Active UI Language.PersonNameFormat drives First/Last input order (updates after Language save / setLang). */
+const nameFieldOrder = computed(() => preferencesPersonNameFieldOrder(i18nStore.getPersonNameFormat()));
+const nameFields = computed(() =>
+  nameFieldOrder.value.map(prop =>
+    prop === 'FirstName'
+      ? { prop, label: _t('First name'), testId: 'preferences-first-name' }
+      : { prop, label: _t('Last name'), testId: 'preferences-last-name' },
+  ),
+);
 
 function fieldText(value: unknown): string {
   return value == null ? '' : String(value).trim();

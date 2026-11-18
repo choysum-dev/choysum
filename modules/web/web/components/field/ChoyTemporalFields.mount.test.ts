@@ -6,12 +6,32 @@
  */
 
 import { computed, h, ref } from 'vue';
+import { createPinia, setActivePinia } from 'pinia';
 
 import { flushPromises, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
+import { useI18nStore } from '@/web/web/stores/i18nStore';
 import ChoyFieldBase from './ChoyFieldBase.vue';
 import ChoyDateField from './ChoyDateField.vue';
 import ChoyDatetimeField from './ChoyDatetimeField.vue';
 import ChoyTimeField from './ChoyTimeField.vue';
+
+/**
+ * Seed a non-ISO Language.DateFormat so date labels prove the overlay path
+ * (YYYY-MM-DD would match the calendarLocale fallback and hide overlay bugs).
+ */
+function seedIsoLanguageFormats() {
+  setActivePinia(createPinia());
+  const i18n = useI18nStore();
+  i18n.lang = 'en_US';
+  i18n.activeLanguages = [{ Code: 'en_US' }];
+  i18n.formatByCode = {
+    en_US: {
+      DateFormat: 'DD/MM/YYYY',
+      TimeFormat: 'HH:mm:ss',
+      FirstDayOfWeek: 0,
+    },
+  };
+}
 
 const lastBaseProps: { current: Record<string, unknown> | null } = { current: null };
 
@@ -72,6 +92,10 @@ async function runRule(rules: any[], value: unknown): Promise<Error | undefined>
 }
 
 describe('Choy temporal field cells', () => {
+  beforeEach(() => {
+    seedIsoLanguageFormats();
+  });
+
   afterEach(() => {
     restoreSfc(ChoyFieldBase as any);
     lastBaseProps.current = null;
@@ -141,7 +165,7 @@ describe('Choy temporal field cells', () => {
     // DateField edit chrome is Popover + Calendar (Button trigger), not a native <input>.
     const dateTrigger = editMount.q('[data-anchor="choy.internal.date-picker"]');
     expect(dateTrigger).toBeTruthy();
-    expect(dateTrigger?.textContent || '').toMatch(/2024-06-15/);
+    expect(dateTrigger?.textContent || '').toMatch(/15\/06\/2024/);
     const clearBtn = editMount.q('.choy-date-picker__clear');
     expect(clearBtn).toBeTruthy();
     clearBtn!.dispatchEvent(new Event('click', { bubbles: true }));
@@ -243,7 +267,8 @@ describe('Choy temporal field cells', () => {
     // DatetimeField edit chrome is Popover + Calendar + hour/minute/second columns.
     const trigger = m.q('[data-anchor="choy.internal.datetime-picker"]');
     expect(trigger).toBeTruthy();
-    expect(trigger?.textContent || '').toMatch(/\d{4}-\d{2}-\d{2}/);
+    // Seeded overlay is DD/MM/YYYY HH:mm:ss (not the ISO fallback).
+    expect(trigger?.textContent || '').toMatch(/\d{2}\/\d{2}\/\d{4}/);
     const clearBtn = m.q('[data-testid="choy-datetime-picker-clear"]');
     expect(clearBtn).toBeTruthy();
     clearBtn!.dispatchEvent(new Event('click', { bubbles: true }));

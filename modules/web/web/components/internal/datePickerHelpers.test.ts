@@ -4,6 +4,7 @@
 import { CalendarDate } from '@internationalized/date';
 import {
   clearDatePickerValue,
+  formatDatePickerDisplay,
   formatDatePickerValue,
   parseDatePickerValue,
   todayDatePickerValue,
@@ -52,5 +53,14 @@ describe('datePickerHelpers', () => {
   test('todayDatePickerValue uses local calendar parts', () => {
     const fixed = new Date(2026, 0, 5);
     expect(formatDatePickerValue(todayDatePickerValue(fixed))).toBe('2026-01-05');
+  });
+
+  test('formatDatePickerDisplay applies dayjs displayFormat', () => {
+    expect(formatDatePickerDisplay('2026-01-05')).toBe('2026-01-05');
+    expect(formatDatePickerDisplay('2026-01-05', 'DD.MM.YYYY')).toBe('05.01.2026');
+    expect(formatDatePickerDisplay('not-a-date', 'DD.MM.YYYY')).toBe('not-a-date');
+    // Years 0001–0099 must not fall back to ISO via local Date remapping.
+    expect(formatDatePickerDisplay('0099-07-01', 'DD/MM/YYYY')).toBe('01/07/0099');
+    expect(formatDatePickerDisplay('0042-01-05', 'DD.MM.YYYY')).toBe('05.01.0042');
   });
 });

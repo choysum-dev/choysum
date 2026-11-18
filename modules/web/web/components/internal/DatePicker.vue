@@ -48,6 +48,7 @@ SPDX-License-Identifier: Apache-2.0
           v-slot="{ weekDays, grid }"
           v-model="calendarValue"
           :locale="resolveCalendarLocale()"
+          :week-starts-on="resolveCalendarWeekStartsOn()"
           :min-value="datePickerMinValue"
           :max-value="datePickerMaxValue"
           class="choy-date-picker__calendar"
@@ -137,13 +138,14 @@ import { Calendar, ChevronLeft, ChevronRight, X } from 'lucide-vue-next';
 import { CalendarDate } from '@internationalized/date';
 import { cn, type ClassValue } from '../../lib/utils';
 import { createTranslate } from '@/web/web/i18n';
-import { resolveCalendarLocale } from './calendarLocale';
+import { resolveCalendarLocale, resolveCalendarWeekStartsOn } from './calendarLocale';
 import Button from '../vendor/ui/button/Button.vue';
 import Popover from '../vendor/ui/popover/Popover.vue';
 import PopoverContent from '../vendor/ui/popover/PopoverContent.vue';
 import PopoverTrigger from '../vendor/ui/popover/PopoverTrigger.vue';
 import {
   clearDatePickerValue,
+  formatDatePickerDisplay,
   formatDatePickerValue,
   parseDatePickerValue,
   todayDatePickerValue,
@@ -165,6 +167,8 @@ const props = withDefaults(
     placeholder?: string;
     disabled?: boolean;
     clearable?: boolean;
+    /** Dayjs pattern for the trigger label; model stays YYYY-MM-DD. */
+    displayFormat?: string;
     id?: string;
     'aria-invalid'?: boolean | 'true' | 'false';
     'aria-required'?: boolean | 'true' | 'false';
@@ -174,6 +178,7 @@ const props = withDefaults(
     placeholder: undefined,
     disabled: false,
     clearable: true,
+    displayFormat: undefined,
   },
 );
 
@@ -205,14 +210,7 @@ const calendarValue = computed<DateValue | undefined>({
   },
 });
 
-const displayText = computed(() => {
-  const parsed = parseDatePickerValue(modelValue.value);
-  if (parsed) {
-    return formatDatePickerValue(parsed);
-  }
-  // Keep host-provided non-canonical values visible instead of rendering an empty field.
-  return String(modelValue.value ?? '').trim();
-});
+const displayText = computed(() => formatDatePickerDisplay(modelValue.value, props.displayFormat));
 
 function onClear(): void {
   modelValue.value = clearDatePickerValue();

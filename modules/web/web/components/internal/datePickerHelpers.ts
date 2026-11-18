@@ -3,6 +3,8 @@
 
 import { CalendarDate, parseDate } from '@internationalized/date';
 
+import { dayjsUtc } from '@/web/web/utils/dayjsUtc';
+
 export type DatePickerDateParts = {
   year: number;
   month: number;
@@ -72,4 +74,28 @@ export function todayDatePickerValue(date: Date = new Date()): CalendarDate {
 /** Clears the picker model (null). */
 export function clearDatePickerValue(): null {
   return null;
+}
+
+/**
+ * Trigger label for a YYYY-MM-DD model value.
+ * When displayFormat is set, formats with dayjs; otherwise returns the canonical ISO date.
+ */
+export function formatDatePickerDisplay(
+  value: string | null | undefined,
+  displayFormat?: string | null,
+): string {
+  const parsed = parseDatePickerValue(value);
+  if (!parsed) {
+    return String(value ?? '').trim();
+  }
+  const iso = formatDatePickerValue(parsed);
+  const fmt = String(displayFormat || '').trim();
+  if (!fmt || fmt === 'YYYY-MM-DD') {
+    return iso;
+  }
+  // Date.UTC(year<100) remaps to 19xx; setUTCFullYear keeps years 0001–0099.
+  const instant = new Date(0);
+  instant.setUTCFullYear(parsed.year, parsed.month - 1, parsed.day);
+  const m = dayjsUtc.utc(instant);
+  return m.isValid() ? m.format(fmt) : iso;
 }

@@ -1,7 +1,13 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
+import {
+  resolveActiveDateDisplayFormat,
+  resolveActiveDateTimeDisplayFormat,
+  resolveActiveTimeDisplayFormat,
+} from '@/web/web/components/internal/calendarLocale';
 import { formatUtcInTimeZone, getUserTimeZone } from '@/web/web/utils/datetime';
+import { dayjsUtc } from '@/web/web/utils/dayjsUtc';
 
 /**
  * Reports whether an operator belongs to the LIKE family.
@@ -44,9 +50,84 @@ export type ValuePreviewOptions = {
   displayFormat?: string;
 };
 
+function localIsoDate(value: Date): string {
+  // Literal calendar day — use local Y/M/D, not toISOString (east-of-UTC shift).
+  const y = value.getFullYear();
+  const m = String(value.getMonth() + 1).padStart(2, '0');
+  const d = String(value.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+function formatDatePreview(value: unknown, displayFormat?: string | null): string {
+  const fmt = resolveActiveDateDisplayFormat(displayFormat);
+  if (value instanceof Date) {
+    const iso = localIsoDate(value);
+    const m = dayjsUtc.utc(iso, 'YYYY-MM-DD', true);
+    return m.isValid() ? m.format(fmt) : iso;
+  }
+  const raw = String(value ?? '').trim();
+  if (!raw) return '';
+  const day = parseStoredDateCalendarDay(raw);
+  if (!day) return raw;
+  const m = dayjsUtc.utc(day, 'YYYY-MM-DD', true);
+  return m.isValid() ? m.format(fmt) : raw;
+}
+
+/**
+ * Calendar day from a stored date condition: bare YYYY-MM-DD, or a full
+ * YYYY-MM-DD[T ]HH:mm[:ss[.fff]][Z|±offset] with a valid clock. Rejects
+ * malformed times like `2024-07-01T99:99:99Z` instead of formatting the prefix.
+ */
+function parseStoredDateCalendarDay(raw: string): string | null {
+  const match = raw.match(
+    /^(\d{4}-\d{2}-\d{2})(?:$|[T\s](\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2})?)$/,
+  );
+  if (!match) return null;
+  const day = match[1];
+  if (match[2] != null) {
+    const hour = Number(match[2]);
+    const minute = Number(match[3]);
+    const second = match[4] != null ? Number(match[4]) : 0;
+    if (!Number.isInteger(hour) || hour < 0 || hour > 23) return null;
+    if (!Number.isInteger(minute) || minute < 0 || minute > 59) return null;
+    if (!Number.isInteger(second) || second < 0 || second > 59) return null;
+  }
+  return dayjsUtc.utc(day, 'YYYY-MM-DD', true).isValid() ? day : null;
+}
+
+function formatTimePreview(value: unknown, displayFormat?: string | null): string {
+  const fmt = resolveActiveTimeDisplayFormat(displayFormat);
+  if (value instanceof Date) {
+    const canonical = dayjsUtc(value).format('HH:mm:ss');
+    const m = dayjsUtc.utc(`1970-01-01T${canonical}`, 'YYYY-MM-DDTHH:mm:ss', true);
+    return m.isValid() ? m.format(fmt) : canonical;
+  }
+  const raw = String(value ?? '').trim();
+  if (!raw) return '';
+  const parts = parseTimePreviewParts(raw);
+  if (!parts) return raw;
+  const canonical = `${String(parts.hour).padStart(2, '0')}:${String(parts.minute).padStart(2, '0')}:${String(parts.second).padStart(2, '0')}`;
+  const m = dayjsUtc.utc(`1970-01-01T${canonical}`, 'YYYY-MM-DDTHH:mm:ss', true);
+  return m.isValid() ? m.format(fmt) : raw;
+}
+
+function parseTimePreviewParts(
+  raw: string,
+): { hour: number; minute: number; second: number } | null {
+  const match = raw.match(/^(\d{2}):(\d{2})(?::(\d{2}))?$/);
+  if (!match) return null;
+  const hour = Number(match[1]);
+  const minute = Number(match[2]);
+  const second = match[3] != null ? Number(match[3]) : 0;
+  if (!Number.isInteger(hour) || hour < 0 || hour > 23) return null;
+  if (!Number.isInteger(minute) || minute < 0 || minute > 59) return null;
+  if (!Number.isInteger(second) || second < 0 || second > 59) return null;
+  return { hour, minute, second };
+}
+
 /**
  * Converts a value into the preview string shown for an operator.
- * Datetime wire values (UTC ISO / Date) render as user wall-clock; date literals stay unchanged.
+ * Date/time/datetime previews follow Language overlays (same defaults as ChoyDate*).
  */
 export function valueToPreview(op: string, value: any, options?: ValuePreviewOptions): string {
   if (isLikeOperator(op)) return toLikePattern(value);
@@ -55,23 +136,16 @@ export function valueToPreview(op: string, value: any, options?: ValuePreviewOpt
   }
 
   const fieldType = String(options?.fieldType || '').toLowerCase();
-  if (fieldType === 'date' || fieldType === 'time') {
-    if (value instanceof Date) {
-      if (fieldType === 'date') {
-        // Literal calendar day — use local Y/M/D, not toISOString (east-of-UTC shift).
-        const y = value.getFullYear();
-        const m = String(value.getMonth() + 1).padStart(2, '0');
-        const d = String(value.getDate()).padStart(2, '0');
-        return `${y}-${m}-${d}`;
-      }
-      return String(value);
-    }
-    return String(value ?? '');
+  if (fieldType === 'date') {
+    return formatDatePreview(value, options?.displayFormat);
+  }
+  if (fieldType === 'time') {
+    return formatTimePreview(value, options?.displayFormat);
   }
 
   if (fieldType === 'datetime' || (!fieldType && looksLikeUtcDatetime(value))) {
     const tz = options?.timeZone || getUserTimeZone();
-    const format = options?.displayFormat || 'YYYY-MM-DD HH:mm:ss';
+    const format = resolveActiveDateTimeDisplayFormat(options?.displayFormat);
     const wall = formatUtcInTimeZone(value, format, tz);
     if (wall) return wall;
   }

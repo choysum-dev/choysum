@@ -1,9 +1,23 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
+import { createPinia, setActivePinia } from 'pinia';
+
 import { valueToPreview } from './like';
 import { filtersToQuery } from './builder';
 import type { ConditionGroup } from '../../types';
+import { useI18nStore } from '@/web/web/stores/i18nStore';
+
+beforeEach(() => {
+  // Keep Language overlay ISO-like so preview assertions stay stable across suites.
+  setActivePinia(createPinia());
+  const i18n = useI18nStore();
+  i18n.lang = 'en_US';
+  i18n.activeLanguages = [{ Code: 'en_US' }];
+  i18n.formatByCode = {
+    en_US: { DateFormat: 'YYYY-MM-DD', TimeFormat: 'HH:mm:ss', FirstDayOfWeek: 0 },
+  };
+});
 
 test('valueToPreview datetime wall-clock: formats UTC ISO as user wall clock for datetime fields', () => {
   expect(
@@ -24,10 +38,30 @@ test('valueToPreview datetime wall-clock: formats Date date-field values from lo
   expect(valueToPreview('=', localMorning, { fieldType: 'date', timeZone: 'Asia/Shanghai' })).toBe('2024-07-01');
 });
 
-test('valueToPreview datetime wall-clock: stringifies time Date values and arrays', () => {
+test('valueToPreview datetime wall-clock: formats time Date values and arrays', () => {
   const t = new Date(2024, 0, 1, 12, 30, 0);
-  expect(valueToPreview('=', t, { fieldType: 'time' })).toBe(String(t));
+  expect(valueToPreview('=', t, { fieldType: 'time' })).toBe('12:30:00');
   expect(valueToPreview('in', ['a', 'b'], { fieldType: 'date' })).toBe('(a, b)');
+});
+
+test('valueToPreview date/time: follows explicit displayFormat override', () => {
+  expect(valueToPreview('=', '2024-07-01', { fieldType: 'date', displayFormat: 'DD.MM.YYYY' })).toBe(
+    '01.07.2024',
+  );
+  expect(valueToPreview('=', '14:05:06', { fieldType: 'time', displayFormat: 'HH:mm' })).toBe('14:05');
+});
+
+test('valueToPreview date: formats stored ISO date-with-time values', () => {
+  expect(
+    valueToPreview('=', '2024-07-01T00:00:00Z', { fieldType: 'date', displayFormat: 'DD/MM/YYYY' }),
+  ).toBe('01/07/2024');
+  expect(
+    valueToPreview('=', '2024-07-01T00:00:00', { fieldType: 'date', displayFormat: 'DD.MM.YYYY' }),
+  ).toBe('01.07.2024');
+  // Malformed time must not preview as a valid calendar day.
+  expect(
+    valueToPreview('=', '2024-07-01T99:99:99Z', { fieldType: 'date', displayFormat: 'DD/MM/YYYY' }),
+  ).toBe('2024-07-01T99:99:99Z');
 });
 
 test('valueToPreview datetime wall-clock: formats datetime Date values and custom display formats', () => {
