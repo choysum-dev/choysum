@@ -5,7 +5,16 @@
  * Conversion helpers used by DatetimeField (toView/fromView) — cover the FE hub paths
  * without mounting field UI (framework prefers pure-logic Vitest for coverage).
  */
-import { formatUtcIso, userWallDateToUtc, utcToUserWallDate } from '@/web/web/utils/datetime';
+import {
+  formatUtcIso,
+  setUserTimeZoneResolver,
+  userWallDateToUtc,
+  utcToUserWallDate,
+} from '@/web/web/utils/datetime';
+
+afterEach(() => {
+  setUserTimeZoneResolver(undefined);
+});
 
 test('DatetimeField conversion contract > toView-equivalent: UTC ISO → user wall Date components', () => {
   const wall = utcToUserWallDate('2024-11-03T06:00:00.000Z', 'America/New_York');
@@ -38,6 +47,57 @@ test('DatetimeField conversion contract > pads short fractional seconds like Dat
   expect(padded).toBe('2024-07-01T12:00:00.100Z');
   const wall = utcToUserWallDate(padded, 'UTC');
   expect(wall!.getMilliseconds()).toBe(100);
+});
+
+test('DatetimeField toDisplayText: Z offset follows user timezone', async () => {
+  setUserTimeZoneResolver(() => 'Asia/Shanghai');
+  const { h } = await import('vue');
+  const { createPinia, setActivePinia } = await import('pinia');
+  setActivePinia(createPinia());
+  const { flushPromises, mountApp, restoreSfc, stubSfc } = await import('@/web/web/__tests__/mountApp');
+  const DatetimeField = (await import('./ChoyDatetimeField.vue')).default;
+  const ChoyFieldBase = (await import('./ChoyFieldBase.vue')).default;
+  stubSfc(ChoyFieldBase as any, {
+    name: 'ChoyFieldBase',
+    props: {
+      binding: { type: Object, required: false },
+      rules: { type: Array, default: () => [] },
+      toView: { type: Function, default: undefined },
+      fromView: { type: Function, default: undefined },
+    },
+    setup(props: any, { slots }: any) {
+      return () =>
+        h('div', [
+          slots.display?.({
+            fieldValue: () => (props.binding as any)?.fieldRef?.() ?? { value: null },
+          }),
+        ]);
+    },
+  });
+  const { computed, ref } = await import('vue');
+  // Wall-carrier Date for Shanghai 08:00 on 2026-01-05 (UTC 00:00Z).
+  const value = ref(new Date(2026, 0, 5, 8, 0, 0));
+  const binding = {
+    env: { isForm: true, isEditMode: false, viewMode: 'readonly', fieldPrefix: null },
+    prop: 'At',
+    meta: {} as any,
+    fieldRef: () => value as any,
+    fieldRefOf: () => value as any,
+    recordRef: () => computed(() => ({ Id: '1' })) as any,
+    registerFields: () => {},
+    store: undefined,
+    asView: () => ({ fieldValue: () => value }) as any,
+  };
+  const m = mountApp(DatetimeField as any, {
+    props: { binding, renderMode: 'form', displayFormat: 'YYYY-MM-DD HH:mm Z' },
+  });
+  await flushPromises();
+  const ss = m.setupState() as any;
+  expect(ss.toDisplayText?.(value.value)).toBe('2026-01-05 08:00 +08:00');
+  expect(ss.toDisplayText?.(null)).toBe('');
+  expect(ss.toDisplayText?.(new Date('invalid'))).toBe('');
+  m.unmount();
+  restoreSfc(ChoyFieldBase as any);
 });
 
 test('DatetimeField normalizeToDate accepts numeric epoch via Date ctor fallback', async () => {

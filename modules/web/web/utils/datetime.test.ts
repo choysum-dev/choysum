@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import {
+  displayFormatNeedsZoneOffset,
   formatUtcInTimeZone,
   formatUtcIso,
   getUserTimeZone,
@@ -14,6 +15,19 @@ import {
 
 afterEach(() => {
   setUserTimeZoneResolver(undefined);
+});
+
+describe('displayFormatNeedsZoneOffset', () => {
+  test('detects unescaped Z/z and ignores bracket literals', () => {
+    expect(displayFormatNeedsZoneOffset('YYYY-MM-DD HH:mm Z')).toBe(true);
+    expect(displayFormatNeedsZoneOffset('YYYY-MM-DD HH:mm:ss Z')).toBe(true);
+    expect(displayFormatNeedsZoneOffset('HH:mm z')).toBe(true);
+    expect(displayFormatNeedsZoneOffset('YYYY-MM-DD HH:mm')).toBe(false);
+    expect(displayFormatNeedsZoneOffset('YYYY-MM-DD[T]HH:mm:ss[Z]')).toBe(false);
+    expect(displayFormatNeedsZoneOffset('')).toBe(false);
+    expect(displayFormatNeedsZoneOffset(null)).toBe(false);
+    expect(displayFormatNeedsZoneOffset(undefined)).toBe(false);
+  });
 });
 
 describe('getUserTimeZone', () => {

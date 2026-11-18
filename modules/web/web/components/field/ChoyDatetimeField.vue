@@ -49,6 +49,7 @@ import dayjs from 'dayjs';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
 import { useBufferedCommit, type CommitStrategy } from '@/web/web/composables/useBufferedCommit';
 import { createTranslate } from '@/web/web/i18n';
+import { formatDateTimePickerDisplay } from '../internal/dateTimePickerHelpers';
 import {
   formatUtcIso,
   getUserTimeZone,
@@ -174,9 +175,11 @@ const fromView = (v: FieldType) => {
 
 const toDisplayText = (v: FieldType) => {
   if (!v) return '';
-  // fieldValue is a user-TZ wall-carrier Date from toView; format local components as-is.
-  const m = dayjs(v);
-  return m.isValid() ? m.format(displayFormat.value) : '';
+  // fieldValue is a user-TZ wall-carrier Date from toView; reuse picker display so Z/z
+  // offsets follow getUserTimeZone() (not the browser zone).
+  if (!(v instanceof Date) || Number.isNaN(v.getTime())) return '';
+  const wall = dayjs(v).format('YYYY-MM-DDTHH:mm:ss');
+  return formatDateTimePickerDisplay(wall, displayFormat.value, getUserTimeZone());
 };
 
 function normalizeToDate(v: any): FieldType {

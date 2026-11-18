@@ -5,6 +5,12 @@ import { CalendarDate, parseDate } from '@internationalized/date';
 
 import { dayjsUtc } from '@/web/web/utils/dayjsUtc';
 import {
+  displayFormatNeedsZoneOffset,
+  formatUtcInTimeZone,
+  getUserTimeZone,
+  userWallDateToUtc,
+} from '@/web/web/utils/datetime';
+import {
   formatDatePickerValue,
   parseDatePickerValue,
   todayDatePickerValue,
@@ -67,24 +73,42 @@ export function parseDateTimePickerValue(
 /**
  * Display text for the trigger.
  * Default: space instead of T (YYYY-MM-DD HH:mm:ss). Optional dayjs displayFormat overrides.
+ * When the format includes offset tokens (Z/z), wall parts are interpreted in `timeZone`
+ * (user TZ) so the offset matches query preview — not browser/UTC.
  */
 export function formatDateTimePickerDisplay(
   value: string | null | undefined,
   displayFormat?: string | null,
+  timeZone?: string | null,
 ): string {
   const parts = parseDateTimePickerValue(value);
   if (!parts) return String(value ?? '').trim();
   const fmt = String(displayFormat || '').trim();
-  if (fmt) {
-    // Build from validated parts in UTC (avoids Date.UTC year<100 remap and local DST gaps).
-    const instant = new Date(0);
-    instant.setUTCFullYear(parts.year, parts.month - 1, parts.day);
-    instant.setUTCHours(parts.hour, parts.minute, parts.second, 0);
-    const m = dayjsUtc.utc(instant);
-    if (m.isValid()) return m.format(fmt);
-  }
   const date = formatDatePickerValue(parts);
-  return `${date} ${String(parts.hour).padStart(2, '0')}:${String(parts.minute).padStart(2, '0')}:${String(parts.second).padStart(2, '0')}`;
+  const canonical = `${date} ${String(parts.hour).padStart(2, '0')}:${String(parts.minute).padStart(2, '0')}:${String(parts.second).padStart(2, '0')}`;
+  if (!fmt) return canonical;
+
+  if (displayFormatNeedsZoneOffset(fmt)) {
+    const tz = String(timeZone || '').trim() || getUserTimeZone();
+    // Wall-carrier Date: local getters hold user-TZ components (same contract as toView).
+    // Use setFullYear — `new Date(year<100, …)` remaps to 19xx.
+    const wallLocal = new Date(0);
+    wallLocal.setFullYear(parts.year, parts.month - 1, parts.day);
+    wallLocal.setHours(parts.hour, parts.minute, parts.second, 0);
+    const utc = userWallDateToUtc(wallLocal, tz);
+    if (utc) {
+      const wall = formatUtcInTimeZone(utc, fmt, tz);
+      if (wall) return wall;
+    }
+    return canonical;
+  }
+
+  // No offset token: format validated parts in UTC so year 0001–0099 and DST gaps stay literal.
+  const instant = new Date(0);
+  instant.setUTCFullYear(parts.year, parts.month - 1, parts.day);
+  instant.setUTCHours(parts.hour, parts.minute, parts.second, 0);
+  const m = dayjsUtc.utc(instant);
+  return m.isValid() ? m.format(fmt) : canonical;
 }
 
 /** Now in the local calendar + clock (seconds precision). */

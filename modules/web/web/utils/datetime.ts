@@ -150,6 +150,15 @@ export function formatUtcInTimeZone(
 }
 
 /**
+ * True when a dayjs display format includes an unescaped offset token (`Z` / `z`).
+ * Bracket literals like `[Z]` are ignored so storage-style patterns are not treated as offsets.
+ */
+export function displayFormatNeedsZoneOffset(format: string | null | undefined): boolean {
+  const stripped = String(format ?? '').replace(/\[[^\]]*]/g, '');
+  return /[Zz]/.test(stripped);
+}
+
+/**
  * Format a UTC instant to storage ISO (UTC offset / Z) using dayjs format tokens.
  */
 export function formatUtcIso(input: Date | string | number | null | undefined, format: string): string | null {
