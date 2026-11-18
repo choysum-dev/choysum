@@ -5,6 +5,7 @@ import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
 import { condition } from '@/core/service/api/query';
 import { raiseDomainError } from '@/core/service/error';
+import { createServiceByModel, getServiceFactory } from '@/core/service/rpc';
 import { _t, _lt } from '../i18n';
 import { assertCurrencySymbolPosition, assertCurrencySymbolSpacing, assertDirection } from './_normalizers';
 import {
@@ -16,6 +17,72 @@ import {
   isValidPersonNameFormat,
   normalizePersonNameFormat,
 } from '@/core/service/utils/person_name';
+
+/**
+ * Odoo-aligned guard: refuse deactivating a language still preferred by users/contacts.
+ * Cross-app via dial; skipped when auth/partner are not loaded.
+ */
+async function assertLanguageNotReferencedOnDeactivate(languageId: string): Promise<void> {
+  const id = String(languageId || '').trim();
+  if (!id) return;
+
+  if (getServiceFactory('auth.User')) {
+    const User = createServiceByModel<any>('auth.User');
+    const activeUsers = await User.Count(
+      condition({
+        And: [
+          ['LanguageId', '=', id],
+          ['IsActive', '=', true],
+        ],
+      }) as any
+    );
+    if (activeUsers > 0) {
+      raiseDomainError(
+        'base',
+        'InvalidArgument',
+        _t('Cannot deactivate a language that is currently used by users.', {
+          scope: 'service/models/language',
+        })
+      );
+    }
+  }
+
+  if (getServiceFactory('partner.Partner')) {
+    const Partner = createServiceByModel<any>('partner.Partner');
+    const activePartners = await Partner.Count(
+      condition({
+        And: [
+          ['LanguageId', '=', id],
+          ['IsActive', '=', true],
+        ],
+      }) as any
+    );
+    if (activePartners > 0) {
+      raiseDomainError(
+        'base',
+        'InvalidArgument',
+        _t('Cannot deactivate a language that is currently used by contacts.', {
+          scope: 'service/models/language',
+        })
+      );
+    }
+  }
+
+  if (getServiceFactory('auth.User')) {
+    const User = createServiceByModel<any>('auth.User');
+    // Includes inactive users (automated / archived principals), matching Odoo.
+    const anyUsers = await User.Count(['LanguageId', '=', id] as any);
+    if (anyUsers > 0) {
+      raiseDomainError(
+        'base',
+        'InvalidArgument',
+        _t('Cannot deactivate a language that is still referenced by inactive users.', {
+          scope: 'service/models/language',
+        })
+      );
+    }
+  }
+}
 
 export type LanguageFormatKind = 'number' | 'date' | 'time' | 'datetime';
 
@@ -29,6 +96,55 @@ export type LanguageFormatParams = {
   /** Fraction digits for number formatting (default 2). */
   Digits?: number;
 };
+
+/** Activate command envelope (gRPC: base.Language/Activate). */
+export type LanguageActivateReq = {
+  Id: string;
+};
+
+/** Activate result: language is published to Preferences / guest switcher. */
+export type LanguageActivateResp = {
+  Id: string;
+  Code: string;
+  IsActive: true;
+};
+
+/** Deactivate command envelope (gRPC: base.Language/Deactivate). */
+export type LanguageDeactivateReq = {
+  Id: string;
+};
+
+/** Deactivate result: language is unpublished from Preferences / guest switcher. */
+export type LanguageDeactivateResp = {
+  Id: string;
+  Code: string;
+  IsActive: false;
+};
+
+/**
+ * Per-row refcounted gate for Activate/Deactivate → UpdateById.
+ * Keyed by Language Id so a concurrent Activate on A cannot authorize UpdateById(IsActive) on B.
+ * Refcount keeps nested/overlapping writes on the same Id from clearing the gate early.
+ */
+const languageIsActiveInternalIds = new Map<string, number>();
+
+function isLanguageIsActiveInternalWrite(id: string | null | undefined): boolean {
+  const key = String(id || '').trim();
+  return !!key && (languageIsActiveInternalIds.get(key) || 0) > 0;
+}
+
+async function withLanguageIsActiveInternalWrite<T>(id: string, fn: () => Promise<T>): Promise<T> {
+  const key = String(id || '').trim();
+  if (!key) return await fn();
+  languageIsActiveInternalIds.set(key, (languageIsActiveInternalIds.get(key) || 0) + 1);
+  try {
+    return await fn();
+  } finally {
+    const next = (languageIsActiveInternalIds.get(key) || 1) - 1;
+    if (next > 0) languageIsActiveInternalIds.set(key, next);
+    else languageIsActiveInternalIds.delete(key);
+  }
+}
 
 /** Fixed projection returned by GetActiveLanguages. Callers cannot request extra fields. */
 export type ActiveLanguage = {
@@ -243,6 +359,55 @@ export default class Language extends BaseModel {
   }
 
   /**
+   * Publish a language to Preferences / guest switcher (sets IsActive=true).
+   * Does not import PO / terminology. gRPC: base.Language/Activate
+   */
+  public static async Activate(req: LanguageActivateReq): Promise<LanguageActivateResp> {
+    const id = String(req?.Id || '').trim();
+    if (!id) {
+      raiseDomainError('base', 'InvalidArgument', _t('Id is required', { scope: 'service/models/language' }));
+    }
+    return withLanguageIsActiveInternalWrite(id, async () => {
+      const row = await this.Browse(id, ['Id', 'Code', 'IsActive'] as const);
+      if (!row) {
+        raiseDomainError('base', 'NotFound', _t('Language not found', { scope: 'service/models/language' }));
+      }
+      // Always write so overlapping Activate/Deactivate cannot return a stale early success.
+      const updated = await this.UpdateById(id, { IsActive: true } as Partial<Language>, ['Id', 'Code', 'IsActive'] as const);
+      return {
+        Id: String((updated as Language).Id || id),
+        Code: String((updated as Language).Code || (row as Language).Code || ''),
+        IsActive: true,
+      };
+    });
+  }
+
+  /**
+   * Unpublish a language from Preferences / guest switcher (sets IsActive=false).
+   * Refuses when users/contacts still prefer it (Odoo-aligned). Does not purge terminology.
+   * gRPC: base.Language/Deactivate
+   */
+  public static async Deactivate(req: LanguageDeactivateReq): Promise<LanguageDeactivateResp> {
+    const id = String(req?.Id || '').trim();
+    if (!id) {
+      raiseDomainError('base', 'InvalidArgument', _t('Id is required', { scope: 'service/models/language' }));
+    }
+    return withLanguageIsActiveInternalWrite(id, async () => {
+      const row = await this.Browse(id, ['Id', 'Code', 'IsActive'] as const);
+      if (!row) {
+        raiseDomainError('base', 'NotFound', _t('Language not found', { scope: 'service/models/language' }));
+      }
+      // Always write so overlapping Activate/Deactivate cannot return a stale early success.
+      const updated = await this.UpdateById(id, { IsActive: false } as Partial<Language>, ['Id', 'Code', 'IsActive'] as const);
+      return {
+        Id: String((updated as Language).Id || id),
+        Code: String((updated as Language).Code || (row as Language).Code || ''),
+        IsActive: false,
+      };
+    });
+  }
+
+  /**
    * Format a value using a Language row's separators / grouping / date patterns.
    * gRPC: base.Language/Format
    */
@@ -309,10 +474,33 @@ export default class Language extends BaseModel {
       this.PersonNameFormat = text;
     }
 
-    // Refuse deactivating the last active language (update path only).
-    if (this.IsActive === false && this.Id) {
-      const existingRows = await Language.Search(['Id', '=', this.Id], { fields: ['Id'], limit: 1 });
-      if (existingRows?.length) {
+    // Language.Code is immutable after create; IsActive flips only via Activate/Deactivate.
+    if (this.Id) {
+      const existingRows = await Language.Search(['Id', '=', this.Id], { fields: ['Code', 'IsActive'], limit: 1 });
+      if (!existingRows?.length) {
+        return;
+      }
+      const prev = String(existingRows[0]?.Code || '');
+      const prevActive = Boolean(existingRows[0]?.IsActive);
+
+      if (this.Code != null && prev && prev !== String(this.Code)) {
+        raiseDomainError('base', 'InvalidArgument', _t('Language code cannot be changed', { scope: 'service/models/language' }));
+      }
+
+      if (this.IsActive !== undefined && Boolean(this.IsActive) !== prevActive) {
+        if (!isLanguageIsActiveInternalWrite(this.Id)) {
+          raiseDomainError(
+            'base',
+            'InvalidArgument',
+            _t('Use Language.Activate or Language.Deactivate to change active state', {
+              scope: 'service/models/language',
+            })
+          );
+        }
+      }
+
+      // Refuse deactivating the last active language (only on active → inactive).
+      if (this.IsActive === false && prevActive) {
         const others = await Language.Search(
           condition<Language>({
             And: [
@@ -326,21 +514,13 @@ export default class Language extends BaseModel {
           raiseDomainError('base', 'InvalidArgument', _t('At least one language must stay active', { scope: 'service/models/language' }));
         }
       }
-    }
 
-    // Language.Code is immutable after create; root en_US cannot be deactivated.
-    // Load prev Code from DB so partial updates (IsActive-only) still enforce en_US.
-    if (this.Id) {
-      const existingRows = await Language.Search(['Id', '=', this.Id], { fields: ['Code'], limit: 1 });
-      if (!existingRows?.length) {
-        return;
-      }
-      const prev = String(existingRows[0]?.Code || '');
-      if (this.Code != null && prev && prev !== String(this.Code)) {
-        raiseDomainError('base', 'InvalidArgument', _t('Language code cannot be changed', { scope: 'service/models/language' }));
-      }
-      if (prev === 'en_US' && this.IsActive === false) {
+      if (prev === 'en_US' && this.IsActive === false && prevActive) {
         raiseDomainError('base', 'InvalidArgument', _t('The root language en_US cannot be deactivated', { scope: 'service/models/language' }));
+      }
+
+      if (this.IsActive === false && prevActive) {
+        await assertLanguageNotReferencedOnDeactivate(String(this.Id));
       }
     }
   }

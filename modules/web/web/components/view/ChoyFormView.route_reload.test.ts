@@ -169,4 +169,22 @@ describe('FormView reloads when route identity changes', () => {
     expect(wrapper.setupState().controller.vm.mode).toBe('display');
     wrapper.unmount();
   });
+
+  test('reloadDisplay no-ops while editing so unsaved drafts are kept', async () => {
+    const store = fakeStore();
+    const { wrapper } = mountForm({
+      props: { recordId: 'edit-1', resolveRecordIdFromRoute: false, viewMode: 'edit' },
+      store,
+    });
+    await flushPromises();
+    const ss = wrapper.setupState();
+    ss.controller.vm.mode = 'edit';
+    ss.controller.vm.draft = { Id: 'edit-1', Name: 'dirty' };
+    const before = store.Browse.calls.length;
+    await wrapper.root.reloadDisplay();
+    await flushPromises();
+    expect(store.Browse.calls.length).toBe(before);
+    expect(ss.controller.vm.draft).toMatchObject({ Name: 'dirty' });
+    wrapper.unmount();
+  });
 });

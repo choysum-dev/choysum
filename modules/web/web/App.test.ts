@@ -7,7 +7,7 @@ import { flushPromises, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp
 import App from './App.vue';
 import ChoyConfirmHost from './components/layout/ChoyConfirmHost.vue';
 import ChoyDialogHost from './components/layout/ChoyDialogHost.vue';
-import Toaster from './components/vendor/ui/sonner/Sonner.vue';
+import ChoyToaster from './components/layout/ChoyToaster.vue';
 import { useI18nStore } from './stores';
 
 describe('App', () => {
@@ -16,8 +16,8 @@ describe('App', () => {
     setActivePinia(pinia);
     useI18nStore().lang = 'en_US';
 
-    stubSfc(Toaster as any, {
-      name: 'Toaster',
+    stubSfc(ChoyToaster as any, {
+      name: 'ChoyToaster',
       setup() {
         return () => h('div', { 'data-test': 'toaster' });
       },
@@ -59,7 +59,7 @@ describe('App', () => {
     expect(el.querySelector('[data-test=dialog-host]')).not.toBeNull();
     app.unmount();
     el.remove();
-    restoreSfc(Toaster as any);
+    restoreSfc(ChoyToaster as any);
     restoreSfc(ChoyConfirmHost as any);
     restoreSfc(ChoyDialogHost as any);
   });

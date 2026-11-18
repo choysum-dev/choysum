@@ -335,7 +335,7 @@ test('base.language: Get/UpdateFieldTranslations maintain lang map', async () =>
   expect(String((zh as any).Name)).toBe('甲');
 });
 
-test('base.language: partial IsActive=false still blocks deactivating en_US', async () => {
+test('base.language: Deactivate blocks deactivating en_US', async () => {
   const enRows = await Language.Search(['Code', '=', 'en_US'] as any, { fields: ['Id', 'Code', 'IsActive'], limit: 1 } as any);
   expect(enRows?.length).toBe(1);
   const enId = String((enRows[0] as any).Id);
@@ -353,7 +353,7 @@ test('base.language: partial IsActive=false still blocks deactivating en_US', as
 
   let error: unknown;
   try {
-    await Language.UpdateById(enId, { IsActive: false } as any, ['Id', 'IsActive'] as any);
+    await Language.Deactivate({ Id: enId });
   } catch (err) {
     error = err;
   }
@@ -364,4 +364,156 @@ test('base.language: partial IsActive=false still blocks deactivating en_US', as
 
   const after = await Language.Browse(enId, ['Id', 'IsActive'] as any);
   expect(Boolean((after as any).IsActive)).toBe(true);
+});
+
+test('base.language: Deactivate blocks when an active user prefers the language', async () => {
+  const { createServiceByModel, getServiceFactory } = await import('@/core/service/rpc');
+  if (!getServiceFactory('auth.User') || !getServiceFactory('base.Company')) {
+    return;
+  }
+
+  const User = createServiceByModel<any>('auth.User');
+  const Company = createServiceByModel<any>('base.Company');
+  const companies = await Company.Search(['Code', '=', 'MAIN'] as any, { fields: ['Id'], limit: 1 } as any);
+  const companyId = String((companies?.[0] as { Id?: string } | undefined)?.Id || '').trim();
+  expect(companyId).toBeTruthy();
+
+  const created = await Language.Create(
+    {
+      Name: uid('LangInUse'),
+      Code: `u_${companyCode8()}`.slice(0, 16),
+      Direction: 'ltr' as any,
+      IsActive: true,
+    } as any,
+    ['Id', 'Code'] as any
+  );
+  const langId = String((created as any).Id);
+  const username = `lu_${companyCode8()}`.slice(0, 20);
+
+  await User.Create(
+    {
+      Username: username,
+      Email: `${username}@example.com`,
+      PasswordHash: 'test',
+      FirstName: 'Lang',
+      LastName: 'User',
+      LanguageId: langId,
+      CompanyId: companyId,
+      CompanyIds: [companyId],
+      IsActive: true,
+    } as any,
+    ['Id'] as any
+  );
+
+  let error: unknown;
+  try {
+    await Language.Deactivate({ Id: langId });
+  } catch (err) {
+    error = err;
+  }
+  expect(error instanceof ChoysumError).toBe(true);
+  expect(String((error as ChoysumError).message || '')).toMatch(/used by users/i);
+  expect(Boolean((await Language.Browse(langId, ['IsActive'] as any) as any).IsActive)).toBe(true);
+});
+
+test('base.language: UpdateById cannot change IsActive; Activate/Deactivate can', async () => {
+  const suffix = companyCode8();
+  const created = await Language.Create(
+    {
+      Name: uid('LangAct'),
+      Code: `x_${suffix}`.slice(0, 16),
+      Direction: 'ltr' as any,
+      IsActive: false,
+    } as any,
+    ['Id', 'Code', 'IsActive'] as any
+  );
+  const id = String((created as any).Id);
+  const code = String((created as any).Code);
+
+  let bypassErr: unknown;
+  try {
+    await Language.UpdateById(id, { IsActive: true } as any, ['Id', 'IsActive'] as any);
+  } catch (err) {
+    bypassErr = err;
+  }
+  expect(bypassErr instanceof ChoysumError).toBe(true);
+  expect(String((bypassErr as ChoysumError).message || '')).toMatch(/Activate|Deactivate/i);
+  expect(Boolean((await Language.Browse(id, ['IsActive'] as any) as any).IsActive)).toBe(false);
+
+  const activated = await Language.Activate({ Id: id });
+  expect(activated.IsActive).toBe(true);
+  expect(activated.Code).toBe(code);
+  expect(Boolean((await Language.Browse(id, ['IsActive'] as any) as any).IsActive)).toBe(true);
+  expect((await Language.GetActiveLanguages()).some(r => r.Code === code)).toBe(true);
+
+  // Idempotent Activate.
+  const again = await Language.Activate({ Id: id });
+  expect(again.IsActive).toBe(true);
+
+  const deactivated = await Language.Deactivate({ Id: id });
+  expect(deactivated.IsActive).toBe(false);
+  expect(Boolean((await Language.Browse(id, ['IsActive'] as any) as any).IsActive)).toBe(false);
+  expect((await Language.GetActiveLanguages()).some(r => r.Code === code)).toBe(false);
+
+  // Name-only Update still works.
+  await Language.UpdateById(id, { Name: uid('LangActRenamed') } as any, ['Id', 'Name'] as any);
+  expect(Boolean((await Language.Browse(id, ['IsActive'] as any) as any).IsActive)).toBe(false);
+});
+
+test('base.language: Activate/Deactivate require Id', async () => {
+  let activateErr: unknown;
+  try {
+    await Language.Activate({ Id: '' });
+  } catch (err) {
+    activateErr = err;
+  }
+  expect(activateErr instanceof ChoysumError).toBe(true);
+  expect(String((activateErr as ChoysumError).code || '')).toMatch(/InvalidArgument/i);
+  expect(String((activateErr as ChoysumError).message || '')).toMatch(/Id is required/i);
+
+  let deactivateErr: unknown;
+  try {
+    await Language.Deactivate({ Id: '   ' });
+  } catch (err) {
+    deactivateErr = err;
+  }
+  expect(deactivateErr instanceof ChoysumError).toBe(true);
+  expect(String((deactivateErr as ChoysumError).code || '')).toMatch(/InvalidArgument/i);
+  expect(String((deactivateErr as ChoysumError).message || '')).toMatch(/Id is required/i);
+});
+
+test('base.language: Activate on one row does not authorize UpdateById IsActive on another', async () => {
+  const suffix = companyCode8();
+  const a = await Language.Create(
+    {
+      Name: uid('LangGateA'),
+      Code: `ga_${suffix}`.slice(0, 16),
+      Direction: 'ltr' as any,
+      IsActive: false,
+    } as any,
+    ['Id'] as any
+  );
+  const b = await Language.Create(
+    {
+      Name: uid('LangGateB'),
+      Code: `gb_${suffix}`.slice(0, 16),
+      Direction: 'ltr' as any,
+      IsActive: false,
+    } as any,
+    ['Id'] as any
+  );
+  const idA = String((a as any).Id);
+  const idB = String((b as any).Id);
+
+  await Language.Activate({ Id: idA });
+  let bypassErr: unknown;
+  try {
+    await Language.UpdateById(idB, { IsActive: true } as any, ['Id', 'IsActive'] as any);
+  } catch (err) {
+    bypassErr = err;
+  }
+  expect(bypassErr instanceof ChoysumError).toBe(true);
+  expect(String((bypassErr as ChoysumError).message || '')).toMatch(/Activate|Deactivate/i);
+  expect(Boolean((await Language.Browse(idB, ['IsActive'] as any) as any).IsActive)).toBe(false);
+  expect(Boolean((await Language.Browse(idA, ['IsActive'] as any) as any).IsActive)).toBe(true);
 });

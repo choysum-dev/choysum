@@ -36,6 +36,16 @@ new HISTORY entry describing what was re-copied vs re-patched.
 
 ## Entries (newest first)
 
+### 2026-11-18 — Sonner error-icon slot forward
+
+- **What:** `#error-icon` wraps kit default `OctagonX` in `<slot name="error-icon">`
+  so product hosts can override (e.g. `ChoyToaster` → `CircleAlert`).
+- **Why kit (not App-only CSS):** status icons are kit slots; product hosts cannot
+  replace them without a forwardable surface. Prefer this over baking product
+  glyphs into kit defaults.
+- **Do not regress:** keep `OctagonX` as the slot fallback; do not hard-code
+  product `CircleAlert` into the kit SFC.
+
 ### 2026-11-09 — DialogContent showCloseButton + attr forward
 
 - **Files:** `dialog/DialogContent.vue` (re-patched).

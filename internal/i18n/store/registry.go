@@ -16,7 +16,7 @@ type Registry struct {
 	mu           sync.RWMutex
 	runtimeScope scope.Scope
 	stores       map[string]*TermStore
-	moduleToApp map[string]string
+	moduleToApp  map[string]string
 }
 
 // NewRegistry creates a registry bound to a runtime scope (shared DB).

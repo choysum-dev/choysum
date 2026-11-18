@@ -60,7 +60,7 @@ function show(level: ChoyMessageLevel, title: string, options?: ChoyMessageOptio
 
 /**
  * Domain/shell toast facade over vue-sonner.
- * Host pages must mount `<Toaster />` from vendor/ui/sonner (product `App.vue` does).
+ * Host pages must mount product `<ChoyToaster />` (product `App.vue` does).
  */
 export const ChoyMessage = {
   success(title: string, options?: ChoyMessageOptions): number {

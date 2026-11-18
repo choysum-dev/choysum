@@ -45,3 +45,128 @@ export async function reloadActiveLanguagesAfterLanguageSave(): Promise<void> {
     // Next full page init will reload formats.
   }
 }
+
+/** Unwrap Form Browse RecordRow `{ key, payload }` / `{ raw }` or a flat field map. */
+export function languageRowFields(row: unknown): Record<string, unknown> | null {
+  if (!row || typeof row !== 'object') return null;
+  const r = row as Record<string, unknown>;
+  if (r.payload && typeof r.payload === 'object') return r.payload as Record<string, unknown>;
+  if (r.raw && typeof r.raw === 'object') return r.raw as Record<string, unknown>;
+  return r;
+}
+
+/** True when a Form/List row (RecordRow or flat) matches the Language id. */
+export function languageRowMatchesId(row: unknown, id: string): boolean {
+  if (!id || !row || typeof row !== 'object') return false;
+  const r = row as Record<string, unknown>;
+  if (String(r.key || '').trim() === id) return true;
+  const fields = languageRowFields(row);
+  return !!fields && String(fields.Id || '').trim() === id;
+}
+
+/** Resolve the current Language field map from a form store snapshot. */
+export function resolveLanguageCurrentRow(opts: {
+  recordId?: string | null;
+  records?: Record<string, unknown> | null;
+  rows?: unknown[] | null;
+}): Record<string, unknown> {
+  const id = String(opts.recordId || '').trim();
+  const records = (opts.records || {}) as Record<string, unknown>;
+  if (id && records[id] != null) {
+    return languageRowFields(records[id]) || {};
+  }
+  const rows = (opts.rows || []) as unknown[];
+  const matched = id ? rows.find(r => languageRowMatchesId(r, id)) : undefined;
+  return languageRowFields(matched) || {};
+}
+
+/** Local Activate/Deactivate override; only valid while `recordId` still matches. */
+export type LanguageRowOverride = { id: string; fields: Record<string, unknown> };
+
+/** Return override fields when scoped to the current recordId; otherwise null. */
+export function languageRowOverrideFields(
+  override: LanguageRowOverride | null | undefined,
+  recordId: string | null | undefined
+): Record<string, unknown> | null {
+  const id = String(recordId || '').trim();
+  if (!override || !id || override.id !== id) return null;
+  return override.fields;
+}
+
+/**
+ * Merge form draft fields onto the store row only when the draft Id matches the
+ * slot recordId (avoids stale draft A driving CTAs while record B loads).
+ */
+export function mergeLanguageFormFields(opts: {
+  recordId: string;
+  fromStore: Record<string, unknown>;
+  formData?: Record<string, unknown> | null;
+}): Record<string, unknown> {
+  const id = String(opts.recordId || '').trim();
+  const fromForm = opts.formData && typeof opts.formData === 'object' ? opts.formData : {};
+  const formId = String(fromForm.Id || '').trim();
+  if (id && formId && formId === id) {
+    return { ...opts.fromStore, ...fromForm };
+  }
+  return opts.fromStore;
+}
+
+/** Prefer Browse override over silent display reload while the form is editing. */
+export function shouldPreferBrowseReloadAfterLanguageAction(viewMode: string | null | undefined): boolean {
+  return viewMode === 'edit' || viewMode === 'create';
+}
+
+/**
+ * Resolve Language form record id from an explicit prop, else route params/query
+ * (same keys as ChoyFormView / useFormViewLifecycle).
+ */
+export function resolveLanguageRecordId(opts: {
+  recordId?: string | null;
+  routeParams?: Record<string, unknown> | null;
+  routeQuery?: Record<string, unknown> | null;
+}): string {
+  const fromProp = String(opts.recordId || '').trim();
+  if (fromProp && fromProp !== 'undefined' && fromProp !== 'null') return fromProp;
+  const params = opts.routeParams || {};
+  const query = opts.routeQuery || {};
+  const raw = params.recordId ?? params.id ?? params.Id ?? query.recordId ?? query.id ?? query.Id;
+  const fromRoute = String(raw ?? '').trim();
+  if (!fromRoute || fromRoute === 'undefined' || fromRoute === 'null' || fromRoute === 'new') return '';
+  return fromRoute;
+}
+
+/** Call Language.Activate then refresh the form row and active-language overlays. */
+export async function activateLanguage(opts: {
+  activate: (req: { Id: string }) => Promise<unknown>;
+  recordId: string;
+  reloadRecord?: () => Promise<void>;
+  reloadActiveLanguages?: () => Promise<void>;
+}): Promise<void> {
+  const id = String(opts.recordId || '').trim();
+  if (!id) return;
+  await opts.activate({ Id: id });
+  try {
+    if (opts.reloadRecord) await opts.reloadRecord();
+  } catch {
+    // Row refresh is best-effort; overlays still refresh below.
+  }
+  await (opts.reloadActiveLanguages || reloadActiveLanguagesAfterLanguageSave)();
+}
+
+/** Call Language.Deactivate then refresh the form row and active-language overlays. */
+export async function deactivateLanguage(opts: {
+  deactivate: (req: { Id: string }) => Promise<unknown>;
+  recordId: string;
+  reloadRecord?: () => Promise<void>;
+  reloadActiveLanguages?: () => Promise<void>;
+}): Promise<void> {
+  const id = String(opts.recordId || '').trim();
+  if (!id) return;
+  await opts.deactivate({ Id: id });
+  try {
+    if (opts.reloadRecord) await opts.reloadRecord();
+  } catch {
+    // Row refresh is best-effort; overlays still refresh below.
+  }
+  await (opts.reloadActiveLanguages || reloadActiveLanguagesAfterLanguageSave)();
+}
