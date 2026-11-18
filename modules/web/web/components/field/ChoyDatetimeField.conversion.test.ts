@@ -74,30 +74,42 @@ test('DatetimeField toDisplayText: Z offset follows user timezone', async () => 
         ]);
     },
   });
-  const { computed, ref } = await import('vue');
-  // Wall-carrier Date for Shanghai 08:00 on 2026-01-05 (UTC 00:00Z).
-  const value = ref(new Date(2026, 0, 5, 8, 0, 0));
-  const binding = {
-    env: { isForm: true, isEditMode: false, viewMode: 'readonly', fieldPrefix: null },
-    prop: 'At',
-    meta: {} as any,
-    fieldRef: () => value as any,
-    fieldRefOf: () => value as any,
-    recordRef: () => computed(() => ({ Id: '1' })) as any,
-    registerFields: () => {},
-    store: undefined,
-    asView: () => ({ fieldValue: () => value }) as any,
-  };
-  const m = mountApp(DatetimeField as any, {
-    props: { binding, renderMode: 'form', displayFormat: 'YYYY-MM-DD HH:mm Z' },
-  });
-  await flushPromises();
-  const ss = m.setupState() as any;
-  expect(ss.toDisplayText?.(value.value)).toBe('2026-01-05 08:00 +08:00');
-  expect(ss.toDisplayText?.(null)).toBe('');
-  expect(ss.toDisplayText?.(new Date('invalid'))).toBe('');
-  m.unmount();
-  restoreSfc(ChoyFieldBase as any);
+  let m: Awaited<ReturnType<typeof mountApp>> | undefined;
+  try {
+    const { computed, ref } = await import('vue');
+    // Wall-carrier Date for Shanghai 08:00 on 2026-01-05 (UTC 00:00Z).
+    const value = ref(new Date(2026, 0, 5, 8, 0, 0, 123));
+    const binding = {
+      env: { isForm: true, isEditMode: false, viewMode: 'readonly', fieldPrefix: null },
+      prop: 'At',
+      meta: {} as any,
+      fieldRef: () => value as any,
+      fieldRefOf: () => value as any,
+      recordRef: () => computed(() => ({ Id: '1' })) as any,
+      registerFields: () => {},
+      store: undefined,
+      asView: () => ({ fieldValue: () => value }) as any,
+    };
+    m = mountApp(DatetimeField as any, {
+      props: { binding, renderMode: 'form', displayFormat: 'YYYY-MM-DD HH:mm Z' },
+    });
+    await flushPromises();
+    const ss = m.setupState() as any;
+    expect(ss.toDisplayText?.(value.value)).toBe('2026-01-05 08:00 +08:00');
+    expect(ss.toDisplayText?.(null)).toBe('');
+    expect(ss.toDisplayText?.(new Date('invalid'))).toBe('');
+    m.unmount();
+    // No-Z formats keep wall-carrier dayjs formatting (including fractional seconds).
+    m = mountApp(DatetimeField as any, {
+      props: { binding, renderMode: 'form', displayFormat: 'HH:mm:ss.SSS' },
+    });
+    await flushPromises();
+    const ss2 = m.setupState() as any;
+    expect(ss2.toDisplayText?.(value.value)).toBe('08:00:00.123');
+  } finally {
+    m?.unmount();
+    restoreSfc(ChoyFieldBase as any);
+  }
 });
 
 test('DatetimeField normalizeToDate accepts numeric epoch via Date ctor fallback', async () => {

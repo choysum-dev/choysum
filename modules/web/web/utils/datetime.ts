@@ -109,24 +109,38 @@ export function utcToUserWallDate(input: Date | string | number | null | undefin
   return new Date(wall.year(), wall.month(), wall.date(), wall.hour(), wall.minute(), wall.second(), wall.millisecond());
 }
 
+/** Wall-clock components interpreted in a named IANA zone (month is 1–12). */
+export type UserWallDateParts = {
+  year: number;
+  month: number;
+  day: number;
+  hour: number;
+  minute: number;
+  second: number;
+  millisecond?: number;
+};
+
 /**
- * Interpret a picker Date's local components as wall clock in `tz` and return a UTC Date.
- * Ambiguous DST-fold wall times (e.g. 01:30 on America/New_York fall-back) follow dayjs.tz
- * default occurrence selection — no earlier/later fold flag is available in the FE stack (D21).
+ * Interpret numeric wall-clock parts as local time in `tz` and return a UTC Date.
+ * Prefer this over building a browser-local Date when the host zone may DST-normalize
+ * nonexistent local times (spring-forward gaps) before getters are read.
+ * Ambiguous DST-fold wall times follow dayjs.tz default occurrence (D21).
  */
-export function userWallDateToUtc(wallLocal: Date | null | undefined, tz: string = getUserTimeZone()): Date | null {
-  if (wallLocal == null || Number.isNaN(wallLocal.getTime())) return null;
+export function userWallPartsToUtc(
+  parts: UserWallDateParts,
+  tz: string = getUserTimeZone(),
+): Date | null {
   const stamp = [
-    String(wallLocal.getFullYear()).padStart(4, '0'),
-    String(wallLocal.getMonth() + 1).padStart(2, '0'),
-    String(wallLocal.getDate()).padStart(2, '0'),
+    String(parts.year).padStart(4, '0'),
+    String(parts.month).padStart(2, '0'),
+    String(parts.day).padStart(2, '0'),
   ].join('-');
   const time = [
-    String(wallLocal.getHours()).padStart(2, '0'),
-    String(wallLocal.getMinutes()).padStart(2, '0'),
-    String(wallLocal.getSeconds()).padStart(2, '0'),
+    String(parts.hour).padStart(2, '0'),
+    String(parts.minute).padStart(2, '0'),
+    String(parts.second).padStart(2, '0'),
   ].join(':');
-  const ms = String(wallLocal.getMilliseconds()).padStart(3, '0');
+  const ms = String(parts.millisecond ?? 0).padStart(3, '0');
   try {
     const wall = tzDayjs.tz(`${stamp} ${time}.${ms}`, 'YYYY-MM-DD HH:mm:ss.SSS', tz);
     if (!wall.isValid()) return null;
@@ -134,6 +148,27 @@ export function userWallDateToUtc(wallLocal: Date | null | undefined, tz: string
   } catch {
     return null;
   }
+}
+
+/**
+ * Interpret a picker Date's local components as wall clock in `tz` and return a UTC Date.
+ * Ambiguous DST-fold wall times (e.g. 01:30 on America/New_York fall-back) follow dayjs.tz
+ * default occurrence selection — no earlier/later fold flag is available in the FE stack (D21).
+ */
+export function userWallDateToUtc(wallLocal: Date | null | undefined, tz: string = getUserTimeZone()): Date | null {
+  if (wallLocal == null || Number.isNaN(wallLocal.getTime())) return null;
+  return userWallPartsToUtc(
+    {
+      year: wallLocal.getFullYear(),
+      month: wallLocal.getMonth() + 1,
+      day: wallLocal.getDate(),
+      hour: wallLocal.getHours(),
+      minute: wallLocal.getMinutes(),
+      second: wallLocal.getSeconds(),
+      millisecond: wallLocal.getMilliseconds(),
+    },
+    tz,
+  );
 }
 
 /**
@@ -150,12 +185,13 @@ export function formatUtcInTimeZone(
 }
 
 /**
- * True when a dayjs display format includes an unescaped offset token (`Z` / `z`).
+ * True when a dayjs display format includes an unescaped offset token (`Z` / `ZZ`).
  * Bracket literals like `[Z]` are ignored so storage-style patterns are not treated as offsets.
+ * Lowercase `z` is not included: core dayjs (without advancedFormat) leaves it literal.
  */
 export function displayFormatNeedsZoneOffset(format: string | null | undefined): boolean {
   const stripped = String(format ?? '').replace(/\[[^\]]*]/g, '');
-  return /[Zz]/.test(stripped);
+  return /Z{1,2}/.test(stripped);
 }
 
 /**

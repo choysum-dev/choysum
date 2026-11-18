@@ -49,13 +49,14 @@ import dayjs from 'dayjs';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
 import { useBufferedCommit, type CommitStrategy } from '@/web/web/composables/useBufferedCommit';
 import { createTranslate } from '@/web/web/i18n';
-import { formatDateTimePickerDisplay } from '../internal/dateTimePickerHelpers';
 import {
+  displayFormatNeedsZoneOffset,
+  formatUtcInTimeZone,
   formatUtcIso,
   getUserTimeZone,
   parseUtc,
   userWallDateToUtc,
-  utcToUserWallDate
+  utcToUserWallDate,
 } from '@/web/web/utils/datetime';
 dayjs.extend(customParseFormat);
 
@@ -175,11 +176,17 @@ const fromView = (v: FieldType) => {
 
 const toDisplayText = (v: FieldType) => {
   if (!v) return '';
-  // fieldValue is a user-TZ wall-carrier Date from toView; reuse picker display so Z/z
-  // offsets follow getUserTimeZone() (not the browser zone).
+  // fieldValue is a user-TZ wall-carrier Date from toView.
   if (!(v instanceof Date) || Number.isNaN(v.getTime())) return '';
-  const wall = dayjs(v).format('YYYY-MM-DDTHH:mm:ss');
-  return formatDateTimePickerDisplay(wall, displayFormat.value, getUserTimeZone());
+  const fmt = displayFormat.value;
+  // No offset token: keep local wall-carrier formatting (preserves SSS / locale tokens).
+  if (!displayFormatNeedsZoneOffset(fmt)) {
+    const m = dayjs(v);
+    return m.isValid() ? m.format(fmt) : '';
+  }
+  // Offset tokens (`Z` / `ZZ`): format via user TZ so offset matches query preview.
+  const utc = userWallDateToUtc(v, getUserTimeZone());
+  return utc ? formatUtcInTimeZone(utc, fmt, getUserTimeZone()) : '';
 };
 
 function normalizeToDate(v: any): FieldType {

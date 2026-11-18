@@ -70,9 +70,17 @@ describe('dateTimePickerHelpers', () => {
     expect(formatDateTimePickerDisplay(wall, 'YYYY-MM-DD[T]HH:mm:ss[Z]', tz)).toBe(
       '2026-01-05T08:00:00Z',
     );
-    // Invalid IANA: zone conversion fails → canonical wall fallback (not +00:00).
+    // Invalid IANA: fall back to UTC-parts path (keeps format shape; offset is +00:00).
     expect(formatDateTimePickerDisplay(wall, 'YYYY-MM-DD HH:mm Z', 'Not/A_Zone')).toBe(
-      '2026-01-05 08:00:00',
+      '2026-01-05 08:00 +00:00',
+    );
+    // User-TZ spring-forward gap: keep requested clock (do not show normalized 03:30).
+    expect(
+      formatDateTimePickerDisplay('2026-03-08T02:30:00', 'YYYY-MM-DD HH:mm Z', 'America/New_York'),
+    ).toBe('2026-03-08 02:30 +00:00');
+    // Year 0001–0099 with Z: keep literal year via UTC-parts fallback when tz remap fails.
+    expect(formatDateTimePickerDisplay('0042-01-05T09:00:00', 'YYYY-MM-DD HH:mm Z', 'UTC')).toBe(
+      '0042-01-05 09:00 +00:00',
     );
   });
 

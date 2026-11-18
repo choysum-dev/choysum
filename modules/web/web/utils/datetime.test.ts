@@ -9,6 +9,7 @@ import {
   parseUtc,
   setUserTimeZoneResolver,
   userWallDateToUtc,
+  userWallPartsToUtc,
   utcToUserWallDate,
   dayRange,
 } from './datetime';
@@ -18,10 +19,11 @@ afterEach(() => {
 });
 
 describe('displayFormatNeedsZoneOffset', () => {
-  test('detects unescaped Z/z and ignores bracket literals', () => {
+  test('detects unescaped Z/ZZ and ignores bracket literals and lowercase z', () => {
     expect(displayFormatNeedsZoneOffset('YYYY-MM-DD HH:mm Z')).toBe(true);
-    expect(displayFormatNeedsZoneOffset('YYYY-MM-DD HH:mm:ss Z')).toBe(true);
-    expect(displayFormatNeedsZoneOffset('HH:mm z')).toBe(true);
+    expect(displayFormatNeedsZoneOffset('YYYY-MM-DD HH:mm:ss ZZ')).toBe(true);
+    // Lowercase z is not a core dayjs offset token (needs advancedFormat).
+    expect(displayFormatNeedsZoneOffset('HH:mm z')).toBe(false);
     expect(displayFormatNeedsZoneOffset('YYYY-MM-DD HH:mm')).toBe(false);
     expect(displayFormatNeedsZoneOffset('YYYY-MM-DD[T]HH:mm:ss[Z]')).toBe(false);
     expect(displayFormatNeedsZoneOffset('')).toBe(false);
@@ -101,6 +103,12 @@ describe('utc ↔ user wall', () => {
     expect(utcToUserWallDate(Number.NaN, 'UTC')).toBeNull();
     expect(userWallDateToUtc(null, 'UTC')).toBeNull();
     expect(userWallDateToUtc(new Date('invalid'), 'UTC')).toBeNull();
+    // Numeric parts skip browser-local Date setters (same UTC as wall-carrier for Shanghai).
+    const fromParts = userWallPartsToUtc(
+      { year: 2026, month: 1, day: 5, hour: 8, minute: 0, second: 0 },
+      'Asia/Shanghai',
+    );
+    expect(fromParts?.toISOString()).toBe('2026-01-05T00:00:00.000Z');
   });
 
   test('does not throw when timezone conversion rejects an invalid instant', () => {
