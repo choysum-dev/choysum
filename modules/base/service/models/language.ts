@@ -5,6 +5,7 @@ import { BaseModel, Field, Model } from '@/core/service';
 import { Constraint } from '@/core/service/api/constraint';
 import { condition } from '@/core/service/api/query';
 import { raiseDomainError } from '@/core/service/error';
+import { createServiceByModel, getServiceFactory } from '@/core/service/rpc';
 import { _t, _lt } from '../i18n';
 import { assertCurrencySymbolPosition, assertCurrencySymbolSpacing, assertDirection } from './_normalizers';
 import {
@@ -16,6 +17,72 @@ import {
   isValidPersonNameFormat,
   normalizePersonNameFormat,
 } from '@/core/service/utils/person_name';
+
+/**
+ * Odoo-aligned guard: refuse deactivating a language still preferred by users/contacts.
+ * Cross-app via dial; skipped when auth/partner are not loaded.
+ */
+async function assertLanguageNotReferencedOnDeactivate(languageId: string): Promise<void> {
+  const id = String(languageId || '').trim();
+  if (!id) return;
+
+  if (getServiceFactory('auth.User')) {
+    const User = createServiceByModel<any>('auth.User');
+    const activeUsers = await User.Count(
+      condition({
+        And: [
+          ['LanguageId', '=', id],
+          ['IsActive', '=', true],
+        ],
+      }) as any
+    );
+    if (activeUsers > 0) {
+      raiseDomainError(
+        'base',
+        'InvalidArgument',
+        _t('Cannot deactivate a language that is currently used by users.', {
+          scope: 'service/models/language',
+        })
+      );
+    }
+  }
+
+  if (getServiceFactory('partner.Partner')) {
+    const Partner = createServiceByModel<any>('partner.Partner');
+    const activePartners = await Partner.Count(
+      condition({
+        And: [
+          ['LanguageId', '=', id],
+          ['IsActive', '=', true],
+        ],
+      }) as any
+    );
+    if (activePartners > 0) {
+      raiseDomainError(
+        'base',
+        'InvalidArgument',
+        _t('Cannot deactivate a language that is currently used by contacts.', {
+          scope: 'service/models/language',
+        })
+      );
+    }
+  }
+
+  if (getServiceFactory('auth.User')) {
+    const User = createServiceByModel<any>('auth.User');
+    // Includes inactive users (automated / archived principals), matching Odoo.
+    const anyUsers = await User.Count(['LanguageId', '=', id] as any);
+    if (anyUsers > 0) {
+      raiseDomainError(
+        'base',
+        'InvalidArgument',
+        _t('Cannot deactivate a language that is still referenced by inactive users.', {
+          scope: 'service/models/language',
+        })
+      );
+    }
+  }
+}
 
 export type LanguageFormatKind = 'number' | 'date' | 'time' | 'datetime';
 
@@ -317,7 +384,8 @@ export default class Language extends BaseModel {
 
   /**
    * Unpublish a language from Preferences / guest switcher (sets IsActive=false).
-   * Does not purge terminology. gRPC: base.Language/Deactivate
+   * Refuses when users/contacts still prefer it (Odoo-aligned). Does not purge terminology.
+   * gRPC: base.Language/Deactivate
    */
   public static async Deactivate(req: LanguageDeactivateReq): Promise<LanguageDeactivateResp> {
     const id = String(req?.Id || '').trim();
@@ -449,6 +517,10 @@ export default class Language extends BaseModel {
 
       if (prev === 'en_US' && this.IsActive === false && prevActive) {
         raiseDomainError('base', 'InvalidArgument', _t('The root language en_US cannot be deactivated', { scope: 'service/models/language' }));
+      }
+
+      if (this.IsActive === false && prevActive) {
+        await assertLanguageNotReferencedOnDeactivate(String(this.Id));
       }
     }
   }

@@ -366,6 +366,56 @@ test('base.language: Deactivate blocks deactivating en_US', async () => {
   expect(Boolean((after as any).IsActive)).toBe(true);
 });
 
+test('base.language: Deactivate blocks when an active user prefers the language', async () => {
+  const { createServiceByModel, getServiceFactory } = await import('@/core/service/rpc');
+  if (!getServiceFactory('auth.User') || !getServiceFactory('base.Company')) {
+    return;
+  }
+
+  const User = createServiceByModel<any>('auth.User');
+  const Company = createServiceByModel<any>('base.Company');
+  const companies = await Company.Search(['Code', '=', 'MAIN'] as any, { fields: ['Id'], limit: 1 } as any);
+  const companyId = String((companies?.[0] as { Id?: string } | undefined)?.Id || '').trim();
+  expect(companyId).toBeTruthy();
+
+  const created = await Language.Create(
+    {
+      Name: uid('LangInUse'),
+      Code: `u_${companyCode8()}`.slice(0, 16),
+      Direction: 'ltr' as any,
+      IsActive: true,
+    } as any,
+    ['Id', 'Code'] as any
+  );
+  const langId = String((created as any).Id);
+  const username = `lu_${companyCode8()}`.slice(0, 20);
+
+  await User.Create(
+    {
+      Username: username,
+      Email: `${username}@example.com`,
+      PasswordHash: 'test',
+      FirstName: 'Lang',
+      LastName: 'User',
+      LanguageId: langId,
+      CompanyId: companyId,
+      CompanyIds: [companyId],
+      IsActive: true,
+    } as any,
+    ['Id'] as any
+  );
+
+  let error: unknown;
+  try {
+    await Language.Deactivate({ Id: langId });
+  } catch (err) {
+    error = err;
+  }
+  expect(error instanceof ChoysumError).toBe(true);
+  expect(String((error as ChoysumError).message || '')).toMatch(/used by users/i);
+  expect(Boolean((await Language.Browse(langId, ['IsActive'] as any) as any).IsActive)).toBe(true);
+});
+
 test('base.language: UpdateById cannot change IsActive; Activate/Deactivate can', async () => {
   const suffix = companyCode8();
   const created = await Language.Create(
