@@ -2,7 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { isValidPersonNameFormat } from '@/core/service/utils/person_name';
+import { createTranslate } from '@/web/web/i18n';
 import { useI18nStore } from '@/web/web/stores/i18nStore';
+
+const { _t: _tReloadToast } = createTranslate('base', { scope: 'web/views/LanguageFormView' });
 
 export const GROUPING_SELECTION = ['[3,0]', '[3,2,0]', '[3,3]', '[]'] as const;
 
@@ -191,11 +194,10 @@ export type LanguageReloadToast = {
   description?: string;
 };
 
-type TranslateFn = (src: string, ...args: unknown[]) => string;
-
 /**
- * Build success / info / warning copy for Update translations.
+ * Build success / warning copy for Update translations.
  * ModulesWithPo === 0 is never treated as a successful sync.
+ * Msgids use `_tReloadToast` so `choysum i18n extract` can discover them.
  */
 export function buildLanguageReloadTerminologyToast(opts: {
   code: string;
@@ -203,7 +205,6 @@ export function buildLanguageReloadTerminologyToast(opts: {
   modulesWithPo: number;
   upserted: number;
   isActive?: boolean | null;
-  t: TranslateFn;
 }): LanguageReloadToast {
   const code = String(opts.code || '').trim() || '—';
   const scanned = Math.max(0, Number(opts.modulesScanned) || 0);
@@ -211,13 +212,13 @@ export function buildLanguageReloadTerminologyToast(opts: {
   const upserted = Math.max(0, Number(opts.upserted) || 0);
   const inactiveNote =
     opts.isActive === false
-      ? opts.t('This does not enable the language in Preferences or the guest switcher.')
+      ? _tReloadToast('This does not enable the language in Preferences or the guest switcher.')
       : undefined;
 
   if (withPo > 0) {
     return {
       level: 'success',
-      title: opts.t(
+      title: _tReloadToast(
         'Synced packaged translations for %s: %s terms from %s/%s modules',
         code,
         String(upserted),
@@ -230,9 +231,9 @@ export function buildLanguageReloadTerminologyToast(opts: {
 
   return {
     level: 'warning',
-    title: opts.t('No packaged translations found for %s', code),
+    title: _tReloadToast('No packaged translations found for %s', code),
     description: [
-      opts.t('Scanned %s installed modules; none provide i18n/%s.po.', String(scanned), code),
+      _tReloadToast('Scanned %s installed modules; none provide i18n/%s.po.', String(scanned), code),
       inactiveNote,
     ]
       .filter(Boolean)
@@ -248,7 +249,8 @@ export async function reloadLanguageTerminology(opts: {
   reload: (params: { Code?: string; LanguageId?: string }) => Promise<LanguageReloadTerminologyResult>;
   code?: string;
   languageId?: string;
-  currentLang?: string | null;
+  /** Prefer a getter so the active lang is read after reload completes. */
+  currentLang?: string | null | (() => string | null | undefined);
   revalidateIfCurrent?: () => Promise<unknown>;
   onDone?: (result: LanguageReloadTerminologyResult) => void;
 }): Promise<LanguageReloadTerminologyResult | null> {
@@ -260,7 +262,8 @@ export async function reloadLanguageTerminology(opts: {
     ...(languageId ? { LanguageId: languageId } : {}),
   });
   const resolvedCode = String(result?.Code || code).trim();
-  const current = String(opts.currentLang ?? '').trim();
+  const currentRaw = typeof opts.currentLang === 'function' ? opts.currentLang() : opts.currentLang;
+  const current = String(currentRaw ?? '').trim();
   if (resolvedCode && current && resolvedCode === current && opts.revalidateIfCurrent) {
     try {
       await opts.revalidateIfCurrent();

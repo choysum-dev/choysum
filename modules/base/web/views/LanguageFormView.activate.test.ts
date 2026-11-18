@@ -512,9 +512,7 @@ test('LanguageFormView: shows Update translations for active and inactive rows',
   expect(inactiveWrap.find('[data-testid="language-reload-terminology"]').exists()).toBe(true);
   await inactiveWrap.find('[data-testid="language-reload-terminology"]').trigger('click');
   await flushPromises();
-  expect(inactive.reloadTerminologyCalls).toEqual([
-    { Code: 'zh_HK', LanguageId: 'lang-reload-off' },
-  ]);
+  expect(inactive.reloadTerminologyCalls).toEqual([{ LanguageId: 'lang-reload-off' }]);
   inactiveWrap.unmount();
 
   const active = buildStore({ Id: 'lang-reload-on', Code: 'zh_CN', IsActive: true });

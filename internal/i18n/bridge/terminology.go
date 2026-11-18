@@ -49,6 +49,9 @@ func defaultReloadTerminologyDeps() reloadTerminologyDeps {
 	}
 }
 
+// Swapped in tests to exercise the async factory resolve/reject paths.
+var newReloadTerminologyDeps = defaultReloadTerminologyDeps
+
 // WithTerminology registers sync $choysum.i18n.t against a fixed registry (lookup only).
 // Prefer WithTerminologyProvider when invalidate/import are needed.
 func WithTerminology(reg *store.Registry) jsengine.JsEngineOption {
@@ -251,7 +254,7 @@ func poTextBytes(v *quickjs.Value) ([]byte, error) {
 }
 
 func reloadTerminologyForLangAsyncFactory(jse *quickjsengine.QuickjsEngine, scopeProvider jsengine.ScopeProvider) func(ctx *quickjs.Context, this *quickjs.Value, args []*quickjs.Value) *quickjs.Value {
-	deps := defaultReloadTerminologyDeps()
+	deps := newReloadTerminologyDeps()
 	return func(ctx *quickjs.Context, this *quickjs.Value, args []*quickjs.Value) *quickjs.Value {
 		return ctx.NewPromise(func(resolve, reject func(*quickjs.Value)) {
 			ret := performReloadTerminologyForLang(ctx, jse, scopeProvider, args, deps)

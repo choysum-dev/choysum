@@ -14,6 +14,7 @@ import (
 	"testing"
 
 	"github.com/choysum-dev/choysum/internal/defaultscope"
+	i18nimport "github.com/choysum-dev/choysum/internal/i18n/import"
 	i18nmodels "github.com/choysum-dev/choysum/internal/i18n/models"
 	"github.com/choysum-dev/choysum/internal/i18n/store"
 	"github.com/choysum-dev/choysum/internal/import/runner"
@@ -22,6 +23,8 @@ import (
 	importpkg "github.com/choysum-dev/choysum/pkg/import"
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 )
 
 func newI18nTestScope(t *testing.T) scope.Scope {
@@ -551,7 +554,7 @@ func TestReloadModuleTerminology_importError(t *testing.T) {
 }
 
 func TestReloadTerminologyForLang_onlyTouchesMatchingPo(t *testing.T) {
-	t.Parallel()
+	// Not parallel: stubs package-level listInstalledModulesForTerminology.
 	modulesPath := t.TempDir()
 
 	modA := filepath.Join(modulesPath, "mod_a")
@@ -632,6 +635,12 @@ func TestReloadTerminologyForLang_rejectsEmptyAndPathLang(t *testing.T) {
 	if _, err := ReloadTerminologyForLang(rs, "../zh_CN"); err == nil {
 		t.Fatal("expected error for path-like lang")
 	}
+	if _, err := ReloadTerminologyForLang(rs, "C:foo"); err == nil {
+		t.Fatal("expected error for drive-like lang")
+	}
+	if _, err := ReloadTerminologyForLang(rs, "zh-CN"); err == nil {
+		t.Fatal("expected error for hyphenated lang")
+	}
 	rsNoPath := newI18nTestScopeWithModulesPath(t, "")
 	if _, err := ReloadTerminologyForLang(rsNoPath, "zh_CN"); err == nil {
 		t.Fatal("expected error when modules path is unset")
@@ -639,7 +648,7 @@ func TestReloadTerminologyForLang_rejectsEmptyAndPathLang(t *testing.T) {
 }
 
 func TestReloadTerminologyForLang_emptyInstalledList(t *testing.T) {
-	t.Parallel()
+	// Not parallel: stubs package-level listInstalledModulesForTerminology.
 	modulesPath := t.TempDir()
 	rs := newI18nTestScopeWithModulesPath(t, modulesPath)
 	prevList := listInstalledModulesForTerminology
@@ -654,4 +663,157 @@ func TestReloadTerminologyForLang_emptyInstalledList(t *testing.T) {
 	if stats.ModulesScanned != 0 || stats.ModulesWithPo != 0 || stats.Upserted != 0 {
 		t.Fatalf("unexpected stats: %+v", stats)
 	}
+}
+
+func TestReloadTerminologyForLang_listAndSymlinkErrors(t *testing.T) {
+	modulesPath := t.TempDir()
+	rs := newI18nTestScopeWithModulesPath(t, modulesPath)
+
+	prevList := listInstalledModulesForTerminology
+	t.Cleanup(func() { listInstalledModulesForTerminology = prevList })
+	listInstalledModulesForTerminology = func(scope.Scope) ([]meta.Module, error) {
+		return nil, errors.New("list failed")
+	}
+	if _, err := ReloadTerminologyForLang(rs, "zh_CN"); err == nil || !strings.Contains(err.Error(), "list failed") {
+		t.Fatalf("expected list error, got %v", err)
+	}
+
+	listInstalledModulesForTerminology = prevList
+	prevEval := evalSymlinks
+	t.Cleanup(func() { evalSymlinks = prevEval })
+	evalSymlinks = func(string) (string, error) { return "", errors.New("symlink boom") }
+	if _, err := ReloadTerminologyForLang(rs, "zh_CN"); err == nil || !strings.Contains(err.Error(), "symlink boom") {
+		t.Fatalf("expected symlink error, got %v", err)
+	}
+	evalSymlinks = prevEval
+
+	// Import error aborts the whole reload (fail-fast).
+	badRoot := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(badRoot, "i18n", "zh_CN.po"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	listInstalledModulesForTerminology = func(scope.Scope) ([]meta.Module, error) {
+		return []meta.Module{{Name: "bad", ApplicationStr: "auth", Path: badRoot, Status: meta.Installed}}, nil
+	}
+	if _, err := ReloadTerminologyForLang(rs, "zh_CN"); err == nil {
+		t.Fatal("expected import read error to abort reload")
+	}
+}
+
+func TestListInstalledModulesForTerminology_default(t *testing.T) {
+	t.Parallel()
+	if _, err := listInstalledModulesForTerminology(nil); err == nil {
+		t.Fatal("expected nil scope error")
+	}
+	rs := newI18nTestScope(t)
+	if err := rs.Session().AutoMigrate(&meta.Module{}); err != nil {
+		t.Fatal(err)
+	}
+	mod := meta.Module{Name: "listed_demo", ApplicationStr: "auth", Status: meta.Installed, Path: t.TempDir()}
+	if err := rs.Session().Create(&mod).Error; err != nil {
+		t.Fatal(err)
+	}
+	mods, err := listInstalledModulesForTerminology(rs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(mods) < 1 {
+		t.Fatalf("expected installed modules, got %d", len(mods))
+	}
+}
+
+func TestImportModuleLanguagePo_edges(t *testing.T) {
+	// Not parallel: stubs package-level upsertPackagedTerms / deleteModuleTerms.
+	rs := newI18nTestScope(t)
+	reg := store.RegistryFor(rs)
+
+	hit, _, err := importModuleLanguagePo(rs, reg, nil, "", "zh_CN")
+	if err != nil || hit {
+		t.Fatalf("nil mod: hit=%v err=%v", hit, err)
+	}
+	hit, _, err = importModuleLanguagePo(rs, reg, &meta.Module{Name: "x", ApplicationStr: ""}, "", "zh_CN")
+	if err != nil || hit {
+		t.Fatalf("empty application: hit=%v err=%v", hit, err)
+	}
+	hit, _, err = importModuleLanguagePo(rs, reg, &meta.Module{Name: "web", ApplicationStr: "core"}, "/tmp", "zh_CN")
+	if err != nil || hit {
+		t.Fatalf("core non-core module skip: hit=%v err=%v", hit, err)
+	}
+	hit, _, err = importModuleLanguagePo(rs, reg, &meta.Module{Name: "web", ApplicationStr: "auth"}, "", "zh_CN")
+	if err != nil || hit {
+		t.Fatalf("empty root: hit=%v err=%v", hit, err)
+	}
+
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "i18n", "zh_CN.po"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	hit, _, err = importModuleLanguagePo(rs, reg, &meta.Module{Name: "demo", ApplicationStr: "auth", Path: root}, "", "zh_CN")
+	if err == nil || hit {
+		t.Fatalf("expected read error with hit=false, hit=%v err=%v", hit, err)
+	}
+
+	poRoot := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(poRoot, "i18n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(poRoot, "i18n", "zh_CN.po"), []byte(`
+msgctxt "a@t"
+msgid "Hi"
+msgstr "你好"
+`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	prevUpsert := upsertPackagedTerms
+	t.Cleanup(func() { upsertPackagedTerms = prevUpsert })
+	upsertPackagedTerms = func(scope.Scope, *store.Registry, string, string, string, []byte) (*i18nimport.ImportStats, error) {
+		return nil, errors.New("forced upsert failure")
+	}
+	hit, _, err = importModuleLanguagePo(rs, reg, &meta.Module{Name: "demo", ApplicationStr: "auth", Path: poRoot}, "", "zh_CN")
+	if err == nil || !hit {
+		t.Fatalf("expected upsert error, hit=%v err=%v", hit, err)
+	}
+
+	upsertPackagedTerms = func(scope.Scope, *store.Registry, string, string, string, []byte) (*i18nimport.ImportStats, error) {
+		return &i18nimport.ImportStats{Upserted: 1}, nil
+	}
+	prevDelete := deleteModuleTerms
+	t.Cleanup(func() { deleteModuleTerms = prevDelete })
+	deleteModuleTerms = func(scope.Scope, *store.Registry, string, string) error {
+		return errors.New("forced purge failure")
+	}
+	hit, _, err = importModuleLanguagePo(rs, reg, &meta.Module{Name: "demo", ApplicationStr: "auth", Path: poRoot}, "", "zh_CN")
+	if err == nil || !hit || !strings.Contains(err.Error(), "forced purge failure") {
+		t.Fatalf("expected purge error, hit=%v err=%v", hit, err)
+	}
+}
+
+func TestListInstalledModulesForTerminology_findError(t *testing.T) {
+	t.Parallel()
+	db, err := gorm.Open(sqlite.Open(filepath.Join(t.TempDir(), "find-err.db")), &gorm.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	rs := &coverageScopeNoSessionWithDB{db: db}
+	if _, err := listInstalledModulesForTerminology(rs); err == nil {
+		t.Fatal("expected Find error when meta_module is missing")
+	}
+}
+
+type coverageScopeNoSessionWithDB struct {
+	db *gorm.DB
+}
+
+func (s *coverageScopeNoSessionWithDB) Run(fn func(scope.Scope) error) error { return fn(s) }
+func (s *coverageScopeNoSessionWithDB) Transactor() scope.Transactor {
+	return scopetest.NewPassthroughTransactor(s)
+}
+func (s *coverageScopeNoSessionWithDB) Session() *scope.Session {
+	return &scope.Session{DB: s.db}
+}
+func (s *coverageScopeNoSessionWithDB) WithContext(context.Context) scope.Scope { return s }
+func (s *coverageScopeNoSessionWithDB) Context() context.Context                { return context.Background() }
+func (s *coverageScopeNoSessionWithDB) Logger() *slog.Logger {
+	return slog.New(slog.NewTextHandler(io.Discard, nil))
 }

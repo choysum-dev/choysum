@@ -396,11 +396,11 @@ async function onReloadTerminology(
   reloadBusy.value = true;
   try {
     const i18n = useI18nStore();
+    // Prefer LanguageId so an unsaved Code draft cannot retarget the reload.
     await reloadLanguageTerminology({
       reload: params => reload.call(store, params),
-      code: String(fields.Code || '').trim() || undefined,
       languageId: id,
-      currentLang: i18n.lang,
+      currentLang: () => i18n.lang,
       revalidateIfCurrent: () => i18n.revalidateTerminologyIfStale(),
       onDone: stats => {
         const toast = buildLanguageReloadTerminologyToast({
@@ -409,7 +409,6 @@ async function onReloadTerminology(
           modulesWithPo: Number(stats?.ModulesWithPo || 0),
           upserted: Number(stats?.Upserted || 0),
           isActive: fields.IsActive === true ? true : fields.IsActive === false ? false : null,
-          t: _t,
         });
         try {
           const opts = toast.description ? { description: toast.description } : undefined;

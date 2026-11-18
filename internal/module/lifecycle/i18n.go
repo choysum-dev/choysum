@@ -7,6 +7,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	i18nimport "github.com/choysum-dev/choysum/internal/i18n/import"
@@ -17,6 +18,9 @@ import (
 	"github.com/choysum-dev/choysum/pkg/scope"
 	xfmt "golang.org/x/exp/errors/fmt"
 )
+
+// languageCodePattern allows POSIX-like Language.Code values (e.g. en_US, zh_CN, tl_PH).
+var languageCodePattern = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_]*$`)
 
 // TerminologyReloadStats aggregates packaged PO import counters for hotreload
 // and ReloadTerminologyForLang (per-language resync across installed modules).
@@ -34,6 +38,10 @@ type TerminologyReloadStats struct {
 // frameworkModuleName is the shared platform module. Its PO catalogs are written
 // to core_translation_term (Scheme B); host apps import only their own PO.
 const frameworkModuleName = "core"
+
+// Test hooks for packaged-term upsert / framework purge (production defaults below).
+var upsertPackagedTerms = i18nimport.UpsertPackagedTerms
+var deleteModuleTerms = i18nimport.DeleteModuleTerms
 
 // listInstalledModulesForTerminology lists installed module rows for per-lang reload.
 // Tests may stub this to avoid migrating meta_module.
@@ -61,10 +69,8 @@ func ReloadTerminologyForLang(runtimeScope scope.Scope, lang string) (Terminolog
 	if lang == "" {
 		return out, xfmt.Errorf("language code is required")
 	}
-	// Reject path-like values so lang cannot escape the i18n directory.
-	if filepath.IsAbs(lang) || lang == "." || lang == ".." ||
-		strings.Contains(lang, "/") || strings.Contains(lang, `\`) ||
-		strings.Contains(lang, string(filepath.Separator)) {
+	// Strict allowlist: reject path separators, drive letters, and other non-Code forms.
+	if !languageCodePattern.MatchString(lang) {
 		return out, xfmt.Errorf("invalid language code %q", lang)
 	}
 	if runtimeScope == nil {
@@ -143,7 +149,7 @@ func importModuleLanguagePo(
 		return false, nil, xfmt.Errorf("read %s: %w", poPath, readErr)
 	}
 
-	stats, err = i18nimport.UpsertPackagedTerms(runtimeScope, reg, application, moduleName, lang, raw)
+	stats, err = upsertPackagedTerms(runtimeScope, reg, application, moduleName, lang, raw)
 	if err != nil {
 		return true, stats, xfmt.Errorf("import terminology for module %s lang %s: %w", moduleName, lang, err)
 	}
@@ -281,7 +287,7 @@ func purgeStaleFrameworkTermsFromHost(runtimeScope scope.Scope, hostApplication 
 		return nil
 	}
 	reg := store.RegistryFor(runtimeScope)
-	if err := i18nimport.DeleteModuleTerms(runtimeScope, reg, hostApplication, frameworkModuleName); err != nil {
+	if err := deleteModuleTerms(runtimeScope, reg, hostApplication, frameworkModuleName); err != nil {
 		return xfmt.Errorf("purge stale framework terminology from %s: %w", hostApplication, err)
 	}
 	return nil
@@ -305,7 +311,7 @@ func deleteModuleTerminology(runtimeScope scope.Scope, mod *meta.Module) error {
 		return nil
 	}
 	reg := store.RegistryFor(runtimeScope)
-	if err := i18nimport.DeleteModuleTerms(runtimeScope, reg, application, moduleName); err != nil {
+	if err := deleteModuleTerms(runtimeScope, reg, application, moduleName); err != nil {
 		return xfmt.Errorf("delete terminology for module %s: %w", moduleName, err)
 	}
 	return nil
