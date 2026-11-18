@@ -51,9 +51,8 @@ import { useBufferedCommit, type CommitStrategy } from '@/web/web/composables/us
 import { createTranslate } from '@/web/web/i18n';
 import {
   displayFormatNeedsZoneOffset,
-  formatUtcInTimeZone,
   formatUtcIso,
-  formatWallPartsStamp,
+  formatWallPartsInZone,
   getUserTimeZone,
   parseUtc,
   stripDisplayOffsetTokens,
@@ -188,23 +187,20 @@ const toDisplayText = (v: FieldType) => {
   }
   // Offset tokens (`Z` / `ZZ`): format via user TZ so offset matches query preview.
   const tz = getUserTimeZone();
-  const utc = userWallDateToUtc(v, tz);
-  if (utc) {
-    // Numeric local getters (same wall-carrier contract as toView / picker parts).
-    const expected = formatWallPartsStamp({
+  const zoned = formatWallPartsInZone(
+    {
       year: v.getFullYear(),
       month: v.getMonth() + 1,
       day: v.getDate(),
       hour: v.getHours(),
       minute: v.getMinutes(),
       second: v.getSeconds(),
-    });
-    // Mirror picker: reject DST-gap / year-remap rewrites that still print an offset.
-    if (formatUtcInTimeZone(utc, 'YYYY-MM-DDTHH:mm:ss', tz) === expected) {
-      const wall = formatUtcInTimeZone(utc, fmt, tz);
-      if (wall) return wall;
-    }
-  }
+      millisecond: v.getMilliseconds(),
+    },
+    fmt,
+    tz,
+  );
+  if (zoned) return zoned;
   const m = dayjs(v);
   if (!m.isValid()) return '';
   // Offset-only formats (e.g. `Z`) strip to empty — mirror picker canonical wall.

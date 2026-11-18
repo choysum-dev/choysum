@@ -16,6 +16,42 @@ afterEach(() => {
   setUserTimeZoneResolver(undefined);
 });
 
+/** Wall-carrier Date from explicit local components (setFullYear avoids year<100 remap). */
+function wallCarrier(
+  year: number,
+  month1: number,
+  day: number,
+  hour: number,
+  minute: number,
+  second = 0,
+  millisecond = 0,
+): Date {
+  const local = new Date(0);
+  local.setFullYear(year, month1 - 1, day);
+  local.setHours(hour, minute, second, millisecond);
+  return local;
+}
+
+/** True when host Date setters kept the requested wall (false in host DST gaps). */
+function keepsWall(
+  d: Date,
+  year: number,
+  month1: number,
+  day: number,
+  hour: number,
+  minute: number,
+  second = 0,
+): boolean {
+  return (
+    d.getFullYear() === year &&
+    d.getMonth() === month1 - 1 &&
+    d.getDate() === day &&
+    d.getHours() === hour &&
+    d.getMinutes() === minute &&
+    d.getSeconds() === second
+  );
+}
+
 test('DatetimeField conversion contract > toView-equivalent: UTC ISO → user wall Date components', () => {
   const wall = utcToUserWallDate('2024-11-03T06:00:00.000Z', 'America/New_York');
   expect(wall).not.toBeNull();
@@ -78,7 +114,7 @@ test('DatetimeField toDisplayText: Z offset follows user timezone', async () => 
   try {
     const { computed, ref } = await import('vue');
     // Wall-carrier Date for Shanghai 08:00 on 2026-01-05 (UTC 00:00Z).
-    const value = ref(new Date(2026, 0, 5, 8, 0, 0, 123));
+    const value = ref(wallCarrier(2026, 1, 5, 8, 0, 0, 123));
     const binding = {
       env: { isForm: true, isEditMode: false, viewMode: 'readonly', fieldPrefix: null },
       prop: 'At',
@@ -99,12 +135,15 @@ test('DatetimeField toDisplayText: Z offset follows user timezone', async () => 
     expect(ss.toDisplayText?.(null)).toBe('');
     expect(ss.toDisplayText?.(new Date('invalid'))).toBe('');
     // User-TZ spring-forward gap: keep wall clock, omit offset (no fake +00:00).
+    // Skip when the host zone remaps 02:30 (Date cannot represent a host DST gap).
     setUserTimeZoneResolver(() => 'America/New_York');
-    expect(ss.toDisplayText?.(new Date(2026, 2, 8, 2, 30, 0))).toBe('2026-03-08 02:30');
+    const gap = wallCarrier(2026, 3, 8, 2, 30, 0);
+    if (keepsWall(gap, 2026, 3, 8, 2, 30, 0)) {
+      expect(ss.toDisplayText?.(gap)).toBe('2026-03-08 02:30');
+    }
     // Fall-back fold: ambiguous wall still prints a real user-TZ offset (D21 default occurrence).
-    expect(ss.toDisplayText?.(new Date(2026, 10, 1, 1, 30, 0))).toMatch(
-      /^2026-11-01 01:30 [+-]\d{2}:\d{2}$/,
-    );
+    const fold = wallCarrier(2026, 11, 1, 1, 30, 0);
+    expect(ss.toDisplayText?.(fold)).toMatch(/^2026-11-01 01:30 [+-]\d{2}:\d{2}$/);
     setUserTimeZoneResolver(() => 'Asia/Shanghai');
     m.unmount();
     // No-Z formats keep wall-carrier dayjs formatting (including fractional seconds).
@@ -122,7 +161,9 @@ test('DatetimeField toDisplayText: Z offset follows user timezone', async () => 
     });
     await flushPromises();
     const ss3 = m.setupState() as any;
-    expect(ss3.toDisplayText?.(new Date(2026, 2, 8, 2, 30, 0))).toBe('2026-03-08 02:30:00');
+    if (keepsWall(gap, 2026, 3, 8, 2, 30, 0)) {
+      expect(ss3.toDisplayText?.(gap)).toBe('2026-03-08 02:30:00');
+    }
     // Successful offset-only path (valid zone round-trip) returns the zone offset alone.
     setUserTimeZoneResolver(() => 'Asia/Shanghai');
     expect(ss3.toDisplayText?.(value.value)).toBe('+08:00');

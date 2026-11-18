@@ -130,6 +130,23 @@ export function formatWallPartsStamp(parts: UserWallDateParts): string {
 }
 
 /**
+ * Format wall parts in `tz` when the format needs a zone offset.
+ * Returns null when conversion fails or the round-trip rewrites the clock (DST gap / year remap).
+ */
+export function formatWallPartsInZone(
+  parts: UserWallDateParts,
+  format: string,
+  tz: string = getUserTimeZone(),
+): string | null {
+  const utc = userWallPartsToUtc(parts, tz);
+  if (!utc) return null;
+  const expected = formatWallPartsStamp(parts);
+  if (formatUtcInTimeZone(utc, 'YYYY-MM-DDTHH:mm:ss', tz) !== expected) return null;
+  const wall = formatUtcInTimeZone(utc, format, tz);
+  return wall || null;
+}
+
+/**
  * Interpret numeric wall-clock parts as local time in `tz` and return a UTC Date.
  * Prefer this over building a browser-local Date when the host zone may DST-normalize
  * nonexistent local times (spring-forward gaps) before getters are read.

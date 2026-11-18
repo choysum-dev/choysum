@@ -5,6 +5,7 @@ import {
   displayFormatNeedsZoneOffset,
   formatUtcInTimeZone,
   formatUtcIso,
+  formatWallPartsInZone,
   formatWallPartsStamp,
   getUserTimeZone,
   parseUtc,
@@ -41,6 +42,22 @@ describe('formatWallPartsStamp', () => {
     expect(
       formatWallPartsStamp({ year: 42, month: 1, day: 5, hour: 9, minute: 0, second: 0 }),
     ).toBe('0042-01-05T09:00:00');
+  });
+});
+
+describe('formatWallPartsInZone', () => {
+  test('formats Shanghai offset and returns null on DST gap', () => {
+    const parts = { year: 2026, month: 1, day: 5, hour: 8, minute: 0, second: 0 };
+    expect(formatWallPartsInZone(parts, 'YYYY-MM-DD HH:mm Z', 'Asia/Shanghai')).toBe(
+      '2026-01-05 08:00 +08:00',
+    );
+    expect(
+      formatWallPartsInZone(
+        { year: 2026, month: 3, day: 8, hour: 2, minute: 30, second: 0 },
+        'YYYY-MM-DD HH:mm Z',
+        'America/New_York',
+      ),
+    ).toBeNull();
   });
 });
 

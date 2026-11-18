@@ -6,11 +6,9 @@ import { CalendarDate, parseDate } from '@internationalized/date';
 import { dayjsUtc } from '@/web/web/utils/dayjsUtc';
 import {
   displayFormatNeedsZoneOffset,
-  formatUtcInTimeZone,
-  formatWallPartsStamp,
+  formatWallPartsInZone,
   getUserTimeZone,
   stripDisplayOffsetTokens,
-  userWallPartsToUtc,
 } from '@/web/web/utils/datetime';
 import {
   formatDatePickerValue,
@@ -101,16 +99,9 @@ export function formatDateTimePickerDisplay(
 
   if (displayFormatNeedsZoneOffset(fmt)) {
     const tz = String(timeZone || '').trim() || getUserTimeZone();
-    // Pass numeric parts (not a browser-local Date) so host DST gaps cannot rewrite the clock.
-    const utc = userWallPartsToUtc(parts, tz);
-    if (utc) {
-      const expected = formatWallPartsStamp(parts);
-      const roundTrip = formatUtcInTimeZone(utc, 'YYYY-MM-DDTHH:mm:ss', tz);
-      if (roundTrip === expected) {
-        const wall = formatUtcInTimeZone(utc, fmt, tz);
-        if (wall) return wall;
-      }
-    }
+    // Numeric parts avoid browser-local Date setters that DST-normalize host gaps.
+    const wall = formatWallPartsInZone(parts, fmt, tz);
+    if (wall) return wall;
     // Invalid zone / nonexistent wall / year remap: keep clock, omit offset (no fake +00:00).
     const withoutOffset = stripDisplayOffsetTokens(fmt);
     return withoutOffset ? formatUtcParts(withoutOffset) : canonical;
