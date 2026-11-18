@@ -146,3 +146,33 @@ func TestWarmLanguageErrorsAfterExhaustedRetries(t *testing.T) {
 		t.Fatalf("WarmLanguage error = %v, want exhausted retries", err)
 	}
 }
+
+func TestEnsureLanguageCachedKeepsFailedWarmRetryable(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open(filepath.Join(t.TempDir(), "retry.db")), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	rs := &raceTestScope{
+		ctx:     context.Background(),
+		logger:  slog.New(slog.NewTextHandler(io.Discard, nil)),
+		session: &scope.Session{DB: db},
+	}
+	if err := i18nmodels.MigrateTranslationTermTable(rs, "auth"); err != nil {
+		t.Fatalf("ensure: %v", err)
+	}
+	ts := NewTermStore(rs, "auth")
+	prev := warmAfterLoadHook
+	t.Cleanup(func() { warmAfterLoadHook = prev })
+	warmAfterLoadHook = func(lang string) {
+		ts.mu.Lock()
+		ts.warmEpoch[lang]++
+		ts.mu.Unlock()
+	}
+
+	if _, ok := ts.Lookup("auth", "zh_CN", "a", "x", ""); ok {
+		t.Fatal("expected miss when warm fails")
+	}
+	if _, warmed := ts.cache["zh_CN"]; warmed {
+		t.Fatal("failed warm must not install a permanent empty cache")
+	}
+}

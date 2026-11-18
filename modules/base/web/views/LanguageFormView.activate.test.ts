@@ -226,3 +226,39 @@ test('LanguageFormView: Activate without Browse still succeeds', async () => {
   expect(activateCalls).toEqual([{ Id: 'lang-nobrowse' }]);
   wrapper.unmount();
 });
+
+test('LanguageFormView: edit-mode reload prefers Browse over reloadDisplay', async () => {
+  const { store, activateCalls, browseCalls } = buildStore({
+    Id: 'lang-edit-reload',
+    Code: 'zh_HK',
+    IsActive: false,
+  });
+  let reloadDisplayCalls = 0;
+  const wrapper = mountLanguageForm(store, 'lang-edit-reload');
+  await flushPromises();
+  const setupState = (wrapper.vm as any).$.setupState;
+  setupState.formViewRef = {
+    getViewMode: () => 'edit',
+    reloadDisplay: async () => {
+      reloadDisplayCalls += 1;
+    },
+  };
+  await wrapper.find('[data-testid="language-activate"]').trigger('click');
+  await flushPromises();
+  expect(activateCalls).toEqual([{ Id: 'lang-edit-reload' }]);
+  expect(reloadDisplayCalls).toBe(0);
+  expect(browseCalls.length).toBe(1);
+  wrapper.unmount();
+});
+
+test('LanguageFormView: empty slot recordId does not toggle busy', async () => {
+  const { store, activateCalls } = buildStore({ Id: 'lang-empty-id', Code: 'zh_HK', IsActive: false });
+  const wrapper = mountLanguageForm(store, 'lang-empty-id');
+  await flushPromises();
+  const setupState = (wrapper.vm as any).$.setupState;
+  await setupState.onActivate('  ');
+  await flushPromises();
+  expect(activateCalls.length).toBe(0);
+  expect(setupState.activeBusy).toBe(false);
+  wrapper.unmount();
+});

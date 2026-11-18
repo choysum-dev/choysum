@@ -860,6 +860,8 @@ async function validate(): Promise<boolean> {
 async function reloadDisplay(): Promise<void> {
   const id = effectiveRecordId.value;
   if (!id) return;
+  // Do not replace an in-progress edit/create draft (e.g. Activate completed while editing).
+  if (viewMode.value === 'edit' || viewMode.value === 'create') return;
   await controller.beginDisplay(id);
 }
 

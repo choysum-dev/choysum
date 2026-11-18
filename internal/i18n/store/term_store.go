@@ -29,6 +29,8 @@ type TermStore struct {
 	// lang → epoch bumped by mutations so a concurrent WarmLanguage cannot
 	// overwrite a newer in-memory update with a stale DB snapshot.
 	warmEpoch map[string]uint64
+	// lang → waiters for an in-flight ensureLanguageCached warm (singleflight).
+	warming map[string]chan struct{}
 }
 
 // NewTermStore creates an empty store for the given application.
@@ -39,6 +41,7 @@ func NewTermStore(runtimeScope scope.Scope, application string) *TermStore {
 		cache:        make(map[string]map[string]map[string]map[string]map[string]string),
 		termHash:     make(map[string]string),
 		warmEpoch:    make(map[string]uint64),
+		warming:      make(map[string]chan struct{}),
 	}
 }
 
@@ -136,19 +139,50 @@ func (s *TermStore) EvictLanguage(lang string) {
 // ensureLanguageCached loads lang from DB when it is absent from the hot cache.
 // CLI upgrade warms only the upgrade process; a subsequent `run` starts with an
 // empty TermStore while FE GetTranslations still reads DB — without this, `_t`
-// misses until an in-process PO import. Installs an empty map on warm failure so
-// Lookup does not hammer the DB on every miss.
+// misses until an in-process PO import.
+//
+// Warm failures leave the lang unwarmed so a later Lookup can retry after DB
+// recovery. Concurrent callers for the same lang share one WarmLanguage.
+// A successful warm that still leaves cache empty (e.g. nil session) installs
+// an empty map once so Lookup does not hammer WarmLanguage every miss.
 func (s *TermStore) ensureLanguageCached(lang string) {
 	if lang == "" {
 		return
 	}
+
+	s.mu.Lock()
+	if _, ok := s.cache[lang]; ok {
+		s.mu.Unlock()
+		return
+	}
+	if wait, ok := s.warming[lang]; ok {
+		s.mu.Unlock()
+		<-wait
+		return
+	}
+	done := make(chan struct{})
+	s.warming[lang] = done
+	s.mu.Unlock()
+
+	defer func() {
+		s.mu.Lock()
+		delete(s.warming, lang)
+		close(done)
+		s.mu.Unlock()
+	}()
+
+	if err := s.WarmLanguage(lang); err != nil {
+		// Keep retryable: do not cache a permanent empty miss on DB errors.
+		return
+	}
+
 	s.mu.RLock()
 	_, ok := s.cache[lang]
 	s.mu.RUnlock()
 	if ok {
 		return
 	}
-	_ = s.WarmLanguage(lang)
+
 	s.mu.Lock()
 	if _, ok := s.cache[lang]; !ok {
 		s.cache[lang] = make(map[string]map[string]map[string]map[string]string)

@@ -74,7 +74,9 @@ const props = withDefaults(
       <TriangleAlert class="size-4" />
     </template>
     <template #error-icon>
-      <OctagonX class="size-4" />
+      <slot name="error-icon">
+        <OctagonX class="size-4" />
+      </slot>
     </template>
     <template #loading-icon>
       <div>

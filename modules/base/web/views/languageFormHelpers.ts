@@ -94,6 +94,29 @@ export function languageRowOverrideFields(
 }
 
 /**
+ * Merge form draft fields onto the store row only when the draft Id matches the
+ * slot recordId (avoids stale draft A driving CTAs while record B loads).
+ */
+export function mergeLanguageFormFields(opts: {
+  recordId: string;
+  fromStore: Record<string, unknown>;
+  formData?: Record<string, unknown> | null;
+}): Record<string, unknown> {
+  const id = String(opts.recordId || '').trim();
+  const fromForm = opts.formData && typeof opts.formData === 'object' ? opts.formData : {};
+  const formId = String(fromForm.Id || '').trim();
+  if (id && formId && formId === id) {
+    return { ...opts.fromStore, ...fromForm };
+  }
+  return opts.fromStore;
+}
+
+/** Prefer Browse override over silent display reload while the form is editing. */
+export function shouldPreferBrowseReloadAfterLanguageAction(viewMode: string | null | undefined): boolean {
+  return viewMode === 'edit' || viewMode === 'create';
+}
+
+/**
  * Resolve Language form record id from an explicit prop, else route params/query
  * (same keys as ChoyFormView / useFormViewLifecycle).
  */

@@ -357,6 +357,36 @@ describe('useOnchange.rebind view-mode inject gating', () => {
     }
   });
 
+  test('reset() without viewMode leaves auto-flush enabled', async () => {
+    const onchange = fnRecorder(async () => ({ value: {}, messages: [] }));
+    const store = makeStore(onchange);
+    const draft = ref({ Id: '1', Name: 'A' });
+    let ctrl: ReturnType<typeof getOnchangeController> | undefined;
+
+    const Comp = defineComponent({
+      setup() {
+        ctrl = getOnchangeController(store, 'NoViewMode', {
+          getRoot: () => draft.value,
+          debounceMs: 20,
+        });
+        return () => null;
+      },
+    });
+    const mounted = mountApp(Comp);
+    try {
+      expect(ctrl).toBeTruthy();
+      expect(ctrl!.isPaused()).toBe(false);
+      ctrl!.reset();
+      expect(ctrl!.isPaused()).toBe(false);
+      await ctrl!.markChanged('Name');
+      await sleep(50);
+      expect(onchange.calls.length).toBe(1);
+    } finally {
+      mounted.unmount();
+      disposeOnchange(store);
+    }
+  });
+
   test('honors ancestor-injected view-mode when opts.viewMode is omitted', async () => {
     const onchange = fnRecorder(async () => ({ value: {}, messages: [] }));
     const store = makeStore(onchange);

@@ -12,9 +12,11 @@ import {
   languageRowFields,
   languageRowMatchesId,
   languageRowOverrideFields,
+  mergeLanguageFormFields,
   reloadActiveLanguagesAfterLanguageSave,
   resolveLanguageCurrentRow,
   resolveLanguageRecordId,
+  shouldPreferBrowseReloadAfterLanguageAction,
 } from './languageFormHelpers';
 
 test('languageFormHelpers: selection option catalogs', () => {
@@ -219,4 +221,30 @@ test('languageFormHelpers: activate/deactivate no-op on empty recordId', async (
     recordId: '',
   });
   expect(called).toBe(false);
+});
+
+test('languageFormHelpers: mergeLanguageFormFields only merges matching draft Id', () => {
+  const fromStore = { Id: 'b', Code: 'en_US', IsActive: true };
+  expect(
+    mergeLanguageFormFields({
+      recordId: 'b',
+      fromStore,
+      formData: { Id: 'a', Code: 'zh_CN', IsActive: false },
+    })
+  ).toEqual(fromStore);
+  expect(
+    mergeLanguageFormFields({
+      recordId: 'b',
+      fromStore,
+      formData: { Id: 'b', IsActive: false },
+    })
+  ).toEqual({ Id: 'b', Code: 'en_US', IsActive: false });
+  expect(mergeLanguageFormFields({ recordId: 'b', fromStore, formData: null })).toEqual(fromStore);
+});
+
+test('languageFormHelpers: shouldPreferBrowseReloadAfterLanguageAction', () => {
+  expect(shouldPreferBrowseReloadAfterLanguageAction('edit')).toBe(true);
+  expect(shouldPreferBrowseReloadAfterLanguageAction('create')).toBe(true);
+  expect(shouldPreferBrowseReloadAfterLanguageAction('display')).toBe(false);
+  expect(shouldPreferBrowseReloadAfterLanguageAction(undefined)).toBe(false);
 });

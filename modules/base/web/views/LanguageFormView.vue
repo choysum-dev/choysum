@@ -13,9 +13,9 @@ SPDX-License-Identifier: Apache-2.0
     @update-success="reloadActiveLanguagesAfterLanguageSave"
     @create-success="reloadActiveLanguagesAfterLanguageSave"
   >
-    <template #secondary-actions="{ formData, recordId: slotRecordId }">
+    <template #secondary-actions="{ formData, recordId: slotRecordId, loading }">
       <ChoyButton
-        v-if="showActivateFor(formData, slotRecordId)"
+        v-if="!loading && showActivateFor(formData, slotRecordId)"
         type="button"
         size="default"
         data-testid="language-activate"
@@ -27,7 +27,7 @@ SPDX-License-Identifier: Apache-2.0
         {{ _t('Activate') }}
       </ChoyButton>
       <ChoyButton
-        v-else-if="showDeactivateFor(formData, slotRecordId)"
+        v-else-if="!loading && showDeactivateFor(formData, slotRecordId)"
         type="button"
         size="default"
         variant="outline"
@@ -175,8 +175,10 @@ import {
   isLanguageCodeReadonly,
   languageRowFields,
   languageRowOverrideFields,
+  mergeLanguageFormFields,
   reloadActiveLanguagesAfterLanguageSave,
   resolveLanguageCurrentRow,
+  shouldPreferBrowseReloadAfterLanguageAction,
   type LanguageRowOverride,
 } from './languageFormHelpers';
 
@@ -198,6 +200,7 @@ const { recordId, viewMode, showHeader, createAction } = props;
 type FormViewApi = {
   reloadDisplay?: () => Promise<void>;
   refresh?: () => Promise<void>;
+  getViewMode?: () => string | null | undefined;
 };
 const formViewRef = ref<FormViewApi | null>(null);
 
@@ -222,14 +225,10 @@ function resolveRowFields(
     records: (store as any)?.state?.records,
     rows: (store as any)?.state?.result?.rows,
   });
-  const fromForm = formData && typeof formData === 'object' ? formData : {};
-  const formMatched = !!(
-    String(fromForm.Id || '').trim() ||
-    String(fromForm.Code || '').trim() ||
-    'IsActive' in fromForm
-  );
-  if (formMatched) return { id, fields: { ...fromStore, ...fromForm } };
-  return { id, fields: fromStore };
+  return {
+    id,
+    fields: mergeLanguageFormFields({ recordId: id, fromStore, formData }),
+  };
 }
 
 function rowMatched(fields: Record<string, unknown>): boolean {
@@ -265,6 +264,11 @@ async function reloadRecordViaBrowse(id: string): Promise<void> {
 /** Prefer silent form reload so the sheet IsActive matches the header CTA. */
 async function reloadRecord(id: string): Promise<void> {
   const form = formViewRef.value;
+  // Keep unsaved edit/create drafts; Browse override still flips the header CTA.
+  if (shouldPreferBrowseReloadAfterLanguageAction(form?.getViewMode?.())) {
+    await reloadRecordViaBrowse(id);
+    return;
+  }
   try {
     if (form?.reloadDisplay) {
       await form.reloadDisplay();
@@ -284,11 +288,21 @@ async function reloadRecord(id: string): Promise<void> {
 
 async function onActivate(slotRecordId: string | undefined): Promise<void> {
   if (activeBusy.value) return;
-  activeBusy.value = true;
   const id = String(slotRecordId || '').trim();
+  if (!id) return;
+  const activate = (store as any)?.Activate;
+  if (typeof activate !== 'function') {
+    try {
+      ChoyMessage.error(_t('Activate failed'));
+    } catch {
+      // Toast host may be absent in FE unit tests.
+    }
+    return;
+  }
+  activeBusy.value = true;
   try {
     await activateLanguage({
-      activate: req => (store as any).Activate(req),
+      activate: req => activate.call(store, req),
       recordId: id,
       reloadRecord: () => reloadRecord(id),
     });
@@ -306,11 +320,21 @@ async function onActivate(slotRecordId: string | undefined): Promise<void> {
 
 async function onDeactivate(slotRecordId: string | undefined): Promise<void> {
   if (activeBusy.value) return;
-  activeBusy.value = true;
   const id = String(slotRecordId || '').trim();
+  if (!id) return;
+  const deactivate = (store as any)?.Deactivate;
+  if (typeof deactivate !== 'function') {
+    try {
+      ChoyMessage.error(_t('Deactivate failed'));
+    } catch {
+      // Toast host may be absent in FE unit tests.
+    }
+    return;
+  }
+  activeBusy.value = true;
   try {
     await deactivateLanguage({
-      deactivate: req => (store as any).Deactivate(req),
+      deactivate: req => deactivate.call(store, req),
       recordId: id,
       reloadRecord: () => reloadRecord(id),
     });
