@@ -5,6 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <ChoyFormView
+    ref="formViewRef"
     v-bind="{ store, recordId, viewMode, showHeader, createAction }"
     :action-ids="{ create: languageActions.create, edit: languageActions.edit, copy: languageActions.copy, delete: languageActions.delete }"
     :has-action="hasAction"
@@ -22,6 +23,7 @@ SPDX-License-Identifier: Apache-2.0
         :aria-busy="activeBusy || undefined"
         @click="() => void onActivate(slotRecordId)"
       >
+        <CircleCheck class="size-4" aria-hidden="true" />
         {{ _t('Activate') }}
       </ChoyButton>
       <ChoyButton
@@ -34,6 +36,7 @@ SPDX-License-Identifier: Apache-2.0
         :aria-busy="activeBusy || undefined"
         @click="() => void onDeactivate(slotRecordId)"
       >
+        <CircleOff class="size-4" aria-hidden="true" />
         {{ _t('Deactivate') }}
       </ChoyButton>
     </template>
@@ -147,6 +150,7 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import type { RouteLocationRaw } from 'vue-router';
+import { CircleCheck, CircleOff } from 'lucide-vue-next';
 import type { ModelStore } from '@/web/web/stores/modelStore';
 import type Language from '@/base/service/models/language';
 import { defineModelActions } from '@/core/web/resource';
@@ -191,9 +195,15 @@ const { hasAction } = usePermission();
 const store = resolvePageStore(props.store, 'LanguageFormView');
 const { recordId, viewMode, showHeader, createAction } = props;
 
+type FormViewApi = {
+  reloadDisplay?: () => Promise<void>;
+  refresh?: () => Promise<void>;
+};
+const formViewRef = ref<FormViewApi | null>(null);
+
 const activeBusy = ref(false);
 /**
- * Local override after Activate/Deactivate.
+ * Local override after Activate/Deactivate when form reload is unavailable.
  * Scoped via languageRowOverrideFields(id) — stale overrides for other recordIds are ignored.
  */
 const rowOverride = ref<LanguageRowOverride | null>(null);
@@ -238,7 +248,7 @@ function showDeactivateFor(formData: Record<string, unknown> | undefined, slotRe
   return !!id && rowMatched(fields) && fields.IsActive === true;
 }
 
-async function reloadRecord(id: string): Promise<void> {
+async function reloadRecordViaBrowse(id: string): Promise<void> {
   const rid = String(id || '').trim();
   if (!rid) return;
   if (typeof (store as any)?.Browse !== 'function') return;
@@ -250,6 +260,26 @@ async function reloadRecord(id: string): Promise<void> {
     // Do not clear an override that belongs to a different record after navigation.
     rowOverride.value = null;
   }
+}
+
+/** Prefer silent form reload so the sheet IsActive matches the header CTA. */
+async function reloadRecord(id: string): Promise<void> {
+  const form = formViewRef.value;
+  try {
+    if (form?.reloadDisplay) {
+      await form.reloadDisplay();
+      rowOverride.value = null;
+      return;
+    }
+    if (form?.refresh) {
+      await form.refresh();
+      rowOverride.value = null;
+      return;
+    }
+  } catch {
+    // Fall through to Browse override so the header CTA can still flip.
+  }
+  await reloadRecordViaBrowse(id);
 }
 
 async function onActivate(slotRecordId: string | undefined): Promise<void> {

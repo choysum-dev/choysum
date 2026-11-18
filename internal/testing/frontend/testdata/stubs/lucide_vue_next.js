@@ -38,6 +38,7 @@ export const ChevronUp = icon('ChevronUp');
 export const CircleAlert = icon('CircleAlert');
 export const CircleCheck = icon('CircleCheck');
 export const CircleHelp = icon('CircleHelp');
+export const CircleOff = icon('CircleOff');
 export const Clock = icon('Clock');
 export const Copy = icon('Copy');
 export const Database = icon('Database');

@@ -22,7 +22,7 @@ SPDX-License-Identifier: Apache-2.0
               Left chrome contract (List / Kanban / Form):
               [primary] [page title][⋮] [secondary…]
               create/edit: primary=Save/Cancel, Reset in ⋮ (no trailing secondary).
-              display: primary=New, secondary=Edit/Copy/Delete after the title cluster.
+              display: primary=New; after title: #secondary-actions then Edit/Copy/Delete.
               settings: primary=Save/Discard only (no CRUD / Reset overflow).
             -->
             <!-- Settings chrome: Save/Discard; dirty gates enablement. -->
@@ -123,7 +123,19 @@ SPDX-License-Identifier: Apache-2.0
               </template>
             </ChoyPageTitleActions>
 
-            <!-- Secondary (display only): Edit/Copy/Delete after the title cluster. -->
+            <!--
+              Same tray as title/⋮ (List/Kanban secondary-actions parity) — no ActionBar separator.
+              Product CTAs (e.g. Activate) render before Edit/Copy/Delete.
+            -->
+            <slot
+              v-if="!isSettingsPresentation && resolvedShowActions && viewMode === 'display'"
+              name="secondary-actions"
+              :form-data="exposedFormData"
+              :record-id="effectiveRecordId"
+              :view-mode="viewMode"
+              :loading="loading"
+            />
+            <!-- Built-in secondary: Edit/Copy/Delete after product #secondary-actions. -->
             <template v-if="!isSettingsPresentation && resolvedShowActions && viewMode === 'display' && effectiveRecordId">
               <ChoyButton
                 v-if="canEdit"
@@ -159,15 +171,6 @@ SPDX-License-Identifier: Apache-2.0
                 {{ _t('Delete') }}
               </ChoyButton>
             </template>
-            <!-- Same tray as title/⋮ (List/Kanban secondary-actions parity) — no ActionBar separator. -->
-            <slot
-              v-if="!isSettingsPresentation && resolvedShowActions && viewMode === 'display'"
-              name="secondary-actions"
-              :form-data="exposedFormData"
-              :record-id="effectiveRecordId"
-              :view-mode="viewMode"
-              :loading="loading"
-            />
           </template>
           <!-- Only register when filled — empty tray would paint a dangling ActionBar separator. -->
           <template v-if="resolvedShowActions && !!slots['user-actions']" #user-actions>
@@ -396,7 +399,7 @@ defineSlots<{
   /** Primary actions before the page title (default: New in display). */
   'system-actions'(): any;
   /**
-   * Display-only CTAs after the title/⋮ cluster (and after Edit/Copy/Delete when shown).
+   * Display-only CTAs after the title/⋮ cluster, before Edit/Copy/Delete.
    * Same tray as List/Kanban `#secondary-actions` — no ActionBar separator.
    * `recordId` is the effective identity (prop, else route peek) — same as Edit/Copy/Delete.
    */
@@ -851,12 +854,21 @@ async function validate(): Promise<boolean> {
   return ok;
 }
 
+/** Reload display draft from the server without the overflow-refresh success toast. */
+async function reloadDisplay(): Promise<void> {
+  const id = effectiveRecordId.value;
+  if (!id) return;
+  await controller.beginDisplay(id);
+}
+
 defineExpose({
   submit: handleSubmit,
   validate,
   /** Runs dirty confirmation, then cancelHandler / route back / display reload. */
   cancel: handleCancel,
   refresh: handleRefresh,
+  /** Silent beginDisplay — for post-action sheet sync (e.g. Activate). */
+  reloadDisplay,
   reset: handleReset,
   copy: handleCopy,
   getFormData: () => toRaw(exposedFormData.value) as any,
