@@ -8,6 +8,7 @@ import {
   getUserTimeZone,
   parseUtc,
   setUserTimeZoneResolver,
+  stripDisplayOffsetTokens,
   userWallDateToUtc,
   userWallPartsToUtc,
   utcToUserWallDate,
@@ -29,6 +30,16 @@ describe('displayFormatNeedsZoneOffset', () => {
     expect(displayFormatNeedsZoneOffset('')).toBe(false);
     expect(displayFormatNeedsZoneOffset(null)).toBe(false);
     expect(displayFormatNeedsZoneOffset(undefined)).toBe(false);
+  });
+});
+
+describe('stripDisplayOffsetTokens', () => {
+  test('removes Z/ZZ outside brackets and keeps bracket literals', () => {
+    expect(stripDisplayOffsetTokens('YYYY-MM-DD HH:mm Z')).toBe('YYYY-MM-DD HH:mm');
+    expect(stripDisplayOffsetTokens('YYYY-MM-DD HH:mm ZZ')).toBe('YYYY-MM-DD HH:mm');
+    expect(stripDisplayOffsetTokens('YYYY-MM-DD[T]HH:mm:ss[Z]')).toBe('YYYY-MM-DD[T]HH:mm:ss[Z]');
+    expect(stripDisplayOffsetTokens('HH:mm Z[')).toBe('HH:mm [');
+    expect(stripDisplayOffsetTokens('Z')).toBe('');
   });
 });
 

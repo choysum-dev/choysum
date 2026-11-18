@@ -84,6 +84,15 @@ describe('dateTimePickerHelpers', () => {
     );
     // Offset-only format with failed zone → canonical wall (nothing left after stripping Z).
     expect(formatDateTimePickerDisplay(wall, 'Z', 'Not/A_Zone')).toBe('2026-01-05 08:00:00');
+    // Bracket literals in the failed-zone path must stay (covers stripDisplayOffsetTokens).
+    expect(formatDateTimePickerDisplay(wall, 'YYYY-MM-DD[T]HH:mm Z', 'Not/A_Zone')).toBe(
+      '2026-01-05T08:00',
+    );
+    expect(formatDateTimePickerDisplay(wall, 'YYYY-MM-DD HH:mm ZZ', 'Not/A_Zone')).toBe(
+      '2026-01-05 08:00',
+    );
+    // Unclosed `[` is kept as a trailing literal fragment after stripping Z.
+    expect(formatDateTimePickerDisplay(wall, 'HH:mm Z[', 'Not/A_Zone')).toBe('08:00 [');
   });
 
   test('parses legacy YYYY-MM-DDTHH:mm with second default 0', () => {

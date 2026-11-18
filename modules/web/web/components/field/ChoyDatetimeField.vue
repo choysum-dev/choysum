@@ -55,6 +55,7 @@ import {
   formatUtcIso,
   getUserTimeZone,
   parseUtc,
+  stripDisplayOffsetTokens,
   userWallDateToUtc,
   utcToUserWallDate,
 } from '@/web/web/utils/datetime';
@@ -187,7 +188,18 @@ const toDisplayText = (v: FieldType) => {
   // Offset tokens (`Z` / `ZZ`): format via user TZ so offset matches query preview.
   const tz = getUserTimeZone();
   const utc = userWallDateToUtc(v, tz);
-  return utc ? formatUtcInTimeZone(utc, fmt, tz) : '';
+  if (utc) {
+    const expected = dayjs(v).format('YYYY-MM-DDTHH:mm:ss');
+    // Mirror picker: reject DST-gap / year-remap rewrites that still print an offset.
+    if (formatUtcInTimeZone(utc, 'YYYY-MM-DDTHH:mm:ss', tz) === expected) {
+      const wall = formatUtcInTimeZone(utc, fmt, tz);
+      if (wall) return wall;
+    }
+  }
+  const m = dayjs(v);
+  if (!m.isValid()) return '';
+  const withoutOffset = stripDisplayOffsetTokens(fmt);
+  return withoutOffset ? m.format(withoutOffset) : '';
 };
 
 function normalizeToDate(v: any): FieldType {

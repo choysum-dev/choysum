@@ -98,6 +98,10 @@ test('DatetimeField toDisplayText: Z offset follows user timezone', async () => 
     expect(ss.toDisplayText?.(value.value)).toBe('2026-01-05 08:00 +08:00');
     expect(ss.toDisplayText?.(null)).toBe('');
     expect(ss.toDisplayText?.(new Date('invalid'))).toBe('');
+    // User-TZ spring-forward gap: keep wall clock, omit offset (no fake +00:00).
+    setUserTimeZoneResolver(() => 'America/New_York');
+    expect(ss.toDisplayText?.(new Date(2026, 2, 8, 2, 30, 0))).toBe('2026-03-08 02:30');
+    setUserTimeZoneResolver(() => 'Asia/Shanghai');
     m.unmount();
     // No-Z formats keep wall-carrier dayjs formatting (including fractional seconds).
     m = mountApp(DatetimeField as any, {

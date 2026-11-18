@@ -8,6 +8,7 @@ import {
   displayFormatNeedsZoneOffset,
   formatUtcInTimeZone,
   getUserTimeZone,
+  stripDisplayOffsetTokens,
   userWallPartsToUtc,
 } from '@/web/web/utils/datetime';
 import {
@@ -68,30 +69,6 @@ export function parseDateTimePickerValue(
     minute,
     second,
   };
-}
-
-/** Drop unescaped `Z`/`ZZ` so a failed zone path can keep wall clock without a false `+00:00`. */
-function stripDisplayOffsetTokens(format: string): string {
-  let out = '';
-  for (let i = 0; i < format.length; ) {
-    if (format[i] === '[') {
-      const end = format.indexOf(']', i + 1);
-      if (end < 0) {
-        out += format.slice(i);
-        break;
-      }
-      out += format.slice(i, end + 1);
-      i = end + 1;
-      continue;
-    }
-    if (format[i] === 'Z') {
-      i += format[i + 1] === 'Z' ? 2 : 1;
-      continue;
-    }
-    out += format[i];
-    i += 1;
-  }
-  return out.replace(/[ \t]{2,}/g, ' ').trim();
 }
 
 /**

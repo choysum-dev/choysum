@@ -184,6 +184,34 @@ export function formatUtcInTimeZone(
   return wall ? wall.format(format) : '';
 }
 
+
+/**
+ * Remove unescaped `Z`/`ZZ` tokens (bracket literals kept) so a failed zone path can
+ * keep the wall clock without emitting a false `+00:00` offset.
+ */
+export function stripDisplayOffsetTokens(format: string): string {
+  let out = '';
+  for (let i = 0; i < format.length; ) {
+    if (format[i] === '[') {
+      const end = format.indexOf(']', i + 1);
+      if (end < 0) {
+        out += format.slice(i);
+        break;
+      }
+      out += format.slice(i, end + 1);
+      i = end + 1;
+      continue;
+    }
+    if (format[i] === 'Z') {
+      i += format[i + 1] === 'Z' ? 2 : 1;
+      continue;
+    }
+    out += format[i];
+    i += 1;
+  }
+  return out.replace(/[ \t]{2,}/g, ' ').trim();
+}
+
 /**
  * True when a dayjs display format includes an unescaped offset token (`Z` / `ZZ`).
  * Bracket literals like `[Z]` are ignored so storage-style patterns are not treated as offsets.
