@@ -15,6 +15,11 @@ import type {
 import type { createFormController } from '@/web/web/controllers/formController';
 import type { useOnchangeAggregation } from '@/web/web/composables/useOnchangeAggregation';
 import type { provideOnchange } from '@/web/web/composables/useOnchange';
+import { createTranslate } from '@/web/web/i18n';
+
+// Same msgctxt as ChoyFormView so toast msgids stay under FormView and extract can discover them
+// (literals live here, not in the SFC).
+const { _t: _tFormToast } = createTranslate('web', { scope: 'web/components/view/FormView' });
 
 type FormController = ReturnType<typeof createFormController>;
 type OnchangeCtrl = ReturnType<typeof provideOnchange>;
@@ -35,7 +40,6 @@ export type UseFormViewSubmitOpts<T extends BaseModel> = {
   emit: (event: string, payload?: any) => void;
   router: Router;
   detailsTitle: { src: string };
-  _t: (key: string, ...args: any[]) => string;
 };
 
 /** Path to open after a successful create, including copy that still sits on the source record URL. */
@@ -63,13 +67,13 @@ export function useFormViewSubmit<T extends BaseModel>(opts: UseFormViewSubmitOp
 
   async function validateForm() {
     if (opts.fieldErrors.value.size > 0) {
-      if (opts.resolvedShowMessages.value) ChoyMessage.error(opts._t('Please fix the errors in the form first'));
+      if (opts.resolvedShowMessages.value) ChoyMessage.error(_tFormToast('Please fix the errors in the form first'));
       return false;
     }
     for (const validate of opts.fieldClientValidators.values()) {
       const message = await validate();
       if (message) {
-        if (opts.resolvedShowMessages.value) ChoyMessage.error(opts._t('Please fix the errors in the form first'));
+        if (opts.resolvedShowMessages.value) ChoyMessage.error(_tFormToast('Please fix the errors in the form first'));
         return false;
       }
     }
@@ -168,7 +172,11 @@ export function useFormViewSubmit<T extends BaseModel>(opts: UseFormViewSubmitOp
       if (!handledByHandler) {
         await runDefaultSubmit();
         if (opts.resolvedShowMessages.value)
-          ChoyMessage.success(opts.viewMode.value === 'create' ? opts._t('Created successfully') : opts._t('Saved successfully'));
+          ChoyMessage.success(
+            opts.viewMode.value === 'create'
+              ? _tFormToast('Created successfully')
+              : _tFormToast('Saved successfully'),
+          );
         if (modeForEmit === 'create') {
           let defaultPrevented = false;
           opts.emit('create-success', {
@@ -210,7 +218,9 @@ export function useFormViewSubmit<T extends BaseModel>(opts: UseFormViewSubmitOp
         };
       } else {
         const handledRecord = (handlerRecord as any) || (toRaw(opts.exposedFormData.value) as any) || null;
-        const msg = handlerSuccessMessage || (modeForEmit === 'create' ? opts._t('Created successfully') : opts._t('Saved successfully'));
+        const msg =
+          handlerSuccessMessage ||
+          (modeForEmit === 'create' ? _tFormToast('Created successfully') : _tFormToast('Saved successfully'));
         if (opts.resolvedShowMessages.value && !handlerSkipSuccessMessage) ChoyMessage.success(msg);
 
         if (modeForEmit === 'create') {
@@ -231,7 +241,7 @@ export function useFormViewSubmit<T extends BaseModel>(opts: UseFormViewSubmitOp
         };
       }
     } catch (e: any) {
-      if (opts.resolvedShowMessages.value) ChoyMessage.error(e?.message || opts._t('Operation failed'));
+      if (opts.resolvedShowMessages.value) ChoyMessage.error(e?.message || _tFormToast('Operation failed'));
       const err = e instanceof Error ? e : new Error(String(e));
       opts.emit('action-error', { action: opts.viewMode.value === 'create' ? 'create' : 'update', error: err });
       return {

@@ -75,7 +75,6 @@ function mountSubmit(opts?: {
         emit,
         router,
         detailsTitle: { src: 'Details title' },
-        _t: (k: string) => k,
       });
       return () => h('div');
     },
@@ -380,7 +379,6 @@ describe('useFormViewSubmit', () => {
           emit: fnRecorder(() => {}),
           router,
           detailsTitle: { src: 'T' },
-          _t: (k: string) => k,
         });
         return () => h('div');
       },

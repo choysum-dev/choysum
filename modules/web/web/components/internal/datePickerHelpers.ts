@@ -2,6 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { CalendarDate, parseDate } from '@internationalized/date';
+import dayjs from 'dayjs';
+import customParseFormat from 'dayjs/plugin/customParseFormat';
+
+dayjs.extend(customParseFormat);
 
 export type DatePickerDateParts = {
   year: number;
@@ -72,4 +76,25 @@ export function todayDatePickerValue(date: Date = new Date()): CalendarDate {
 /** Clears the picker model (null). */
 export function clearDatePickerValue(): null {
   return null;
+}
+
+/**
+ * Trigger label for a YYYY-MM-DD model value.
+ * When displayFormat is set, formats with dayjs; otherwise returns the canonical ISO date.
+ */
+export function formatDatePickerDisplay(
+  value: string | null | undefined,
+  displayFormat?: string | null,
+): string {
+  const parsed = parseDatePickerValue(value);
+  if (!parsed) {
+    return String(value ?? '').trim();
+  }
+  const iso = formatDatePickerValue(parsed);
+  const fmt = String(displayFormat || '').trim();
+  if (!fmt || fmt === 'YYYY-MM-DD') {
+    return iso;
+  }
+  const m = dayjs(iso, 'YYYY-MM-DD', true);
+  return m.isValid() ? m.format(fmt) : iso;
 }

@@ -32,6 +32,9 @@ describe('dateTimePickerHelpers', () => {
       second: 7,
     });
     expect(formatDateTimePickerDisplay('2026-10-20T09:49:07')).toBe('2026-10-20 09:49:07');
+    expect(formatDateTimePickerDisplay('2026-10-20T09:49:07', 'DD.MM.YYYY HH:mm')).toBe(
+      '20.10.2026 09:49',
+    );
   });
 
   test('parses legacy YYYY-MM-DDTHH:mm with second default 0', () => {

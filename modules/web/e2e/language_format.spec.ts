@@ -175,6 +175,44 @@ async function updateLanguageSeparators(baseURL: string, languageId: string) {
   expect(String(row?.DecimalSeparator ?? ''), 'DecimalSeparator after UpdateById').toBe(',');
 }
 
+async function updateLanguageDateAndWeekStart(
+  baseURL: string,
+  languageId: string,
+  values: { DateFormat: string; FirstDayOfWeek: string }
+) {
+  const { client, basePb } = await makeLanguageClient(baseURL);
+  const resp: any = await client.updateById(
+    create(basePb.LanguageUpdateByIdReqSchema, {
+      id: languageId,
+      values: toValue(values),
+      returnFields: toValue(['Id', 'Code', 'DateFormat', 'FirstDayOfWeek']),
+      options: toValue({}),
+    })
+  );
+  const raw = fromValue(resp.result);
+  const row = Array.isArray(raw) ? raw[0] : raw;
+  expect(String(row?.DateFormat ?? ''), 'DateFormat after UpdateById').toBe(values.DateFormat);
+  expect(String(row?.FirstDayOfWeek ?? ''), 'FirstDayOfWeek after UpdateById').toBe(values.FirstDayOfWeek);
+}
+
+/**
+ * Same overlay refresh Language form Save uses (`loadActiveLanguages`), without a full page reload.
+ */
+async function reloadActiveLanguageOverlaysLive(): Promise<boolean> {
+  return page.evaluate(async () => {
+    const root =
+      document.querySelector('#app') ||
+      document.querySelector('[data-v-app]') ||
+      document.body;
+    const app = (root as any)?.__vue_app__;
+    const pinia = app?.config?.globalProperties?.$pinia;
+    const store = pinia?._s?.get?.('choysum.web.i18n');
+    if (!store || typeof store.loadActiveLanguages !== 'function') {
+      return false;
+    }
+    return !!(await store.loadActiveLanguages());
+  });
+}
 test('base T2.6: Language thousand separator change updates exchange rate list display', async () => {
   test.setTimeout(180_000);
   test.skip(runtime.scenario !== 'default', 'only runs under default scenario');
@@ -212,4 +250,69 @@ test('base T2.6: Language thousand separator change updates exchange rate list d
     )
     .toMatch(/1\.234\.567,/);
   expect(beforeText).toMatch(/1,234,567/);
+});
+
+test('base: Language DateFormat + FirstDayOfWeek update applies live to date field and calendar', async () => {
+  test.setTimeout(180_000);
+  test.skip(runtime.scenario !== 'default', 'only runs under default scenario');
+
+  const baseURL = runtime.baseURL;
+  await loginAsE2EAdmin(page, baseURL);
+
+  // Seeded zh_CN uses YYYY-MM-DD + Monday week start; fixture date is 2026-07-22.
+  await page.goto(`${baseURL}/web/base/exchange-rates`, { waitUntil: 'domcontentloaded' });
+  await expect(page.locator('body')).toBeVisible();
+  const dateCell = page.locator('.choy-field-display-text', { hasText: /2026/ }).first();
+  await expect(dateCell).toBeVisible({ timeout: 30_000 });
+  await expect
+    .poll(async () => ((await dateCell.textContent()) || '').trim(), { timeout: 30_000 })
+    .toMatch(/2026-07-22/);
+
+  const languageId = await resolveLanguageIdByCode(baseURL, 'zh_CN');
+  await updateLanguageDateAndWeekStart(baseURL, languageId, {
+    DateFormat: 'DD.MM.YYYY',
+    FirstDayOfWeek: '0',
+  });
+
+  const activeLangs = page.waitForResponse(
+    { urlIncludes: '/base.Language/GetActiveLanguages', method: 'POST' },
+    { timeout: 45_000 }
+  );
+  const reloaded = await reloadActiveLanguageOverlaysLive();
+  expect(reloaded, 'loadActiveLanguages via pinia (live, no full reload)').toBe(true);
+  await activeLangs;
+
+  await expect
+    .poll(async () => ((await dateCell.textContent()) || '').trim(), { timeout: 30_000 })
+    .toMatch(/22\.07\.2026/);
+
+  // Open create form calendar and assert Sunday-first week headers.
+  await page.goto(`${baseURL}/web/base/exchange-rates/new`, { waitUntil: 'domcontentloaded' });
+  const dateTrigger = page.locator('[data-anchor="choy.internal.date-picker"]').first();
+  await expect(dateTrigger).toBeVisible({ timeout: 30_000 });
+  await dateTrigger.click();
+  const headTexts = await page.evaluate(() => {
+    const root = document.querySelector('.choy-date-picker__calendar');
+    if (!root) return [] as string[];
+    // DatePicker uses reka-ui CalendarHeadCell directly (no data-slot); weekday row is first.
+    const row = root.querySelector('.flex');
+    const cells = row ? Array.from(row.children) : [];
+    const fromRow = cells.map(el => String(el.textContent || '').trim()).filter(Boolean);
+    if (fromRow.length >= 7) return fromRow.slice(0, 7);
+    return Array.from(root.querySelectorAll('.text-muted-foreground'))
+      .map(el => String(el.textContent || '').trim())
+      .filter(t => t.length > 0 && t.length <= 4)
+      .slice(0, 7);
+  });
+  expect(headTexts.length, `weekday headers: ${JSON.stringify(headTexts)}`).toBe(7);
+  // Sunday-first: first label should be Sunday in en/zh short forms (S / 日 / Sun / 周日 …).
+  expect(headTexts[0], `first weekday with FirstDayOfWeek=0: ${JSON.stringify(headTexts)}`).toMatch(
+    /^(S|Su|Sun|周日|日|dom|Do)/i
+  );
+
+  // Restore zh_CN defaults so later specs in the same run keep a known baseline.
+  await updateLanguageDateAndWeekStart(baseURL, languageId, {
+    DateFormat: 'YYYY-MM-DD',
+    FirstDayOfWeek: '1',
+  });
 });

@@ -392,6 +392,10 @@ export const useI18nStore = defineStore(
           nextRows.length > 0
             ? nextRows
             : DEFAULT_ACTIVE_LANGS.map(code => ({ Code: code }));
+        // Language form save / Activate refresh overlays without setLang; keep <html dir> in sync.
+        if (isClient) {
+          updateDocumentDirection(activeLanguage.value.textDirection);
+        }
         return true;
       } catch (error) {
         if (generation !== activeLanguagesGeneration) {

@@ -6,12 +6,29 @@
  */
 
 import { computed, h, ref } from 'vue';
+import { createPinia, setActivePinia } from 'pinia';
 
 import { flushPromises, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
+import { useI18nStore } from '@/web/web/stores/i18nStore';
 import ChoyFieldBase from './ChoyFieldBase.vue';
 import ChoyDateField from './ChoyDateField.vue';
 import ChoyDatetimeField from './ChoyDatetimeField.vue';
 import ChoyTimeField from './ChoyTimeField.vue';
+
+/** Pin ISO-like Language formats so display assertions stay stable across locales. */
+function seedIsoLanguageFormats() {
+  setActivePinia(createPinia());
+  const i18n = useI18nStore();
+  i18n.lang = 'en_US';
+  i18n.activeLanguages = [{ Code: 'en_US' }];
+  i18n.formatByCode = {
+    en_US: {
+      DateFormat: 'YYYY-MM-DD',
+      TimeFormat: 'HH:mm:ss',
+      FirstDayOfWeek: 0,
+    },
+  };
+}
 
 const lastBaseProps: { current: Record<string, unknown> | null } = { current: null };
 
@@ -72,6 +89,10 @@ async function runRule(rules: any[], value: unknown): Promise<Error | undefined>
 }
 
 describe('Choy temporal field cells', () => {
+  beforeEach(() => {
+    seedIsoLanguageFormats();
+  });
+
   afterEach(() => {
     restoreSfc(ChoyFieldBase as any);
     lastBaseProps.current = null;

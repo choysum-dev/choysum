@@ -316,6 +316,27 @@ describe('useI18nStore.revalidateTerminologyIfStale / reloadTerminology', () => 
     expect(store.formatByCode.en_US?.PersonNameFormat).toBe('{FirstName} {LastName}');
   });
 
+  test('loadActiveLanguages: syncs document direction for current lang', async () => {
+    const store = useI18nStore();
+    store.lang = 'ar_001';
+    store.isInitialized = true;
+    document.documentElement.setAttribute('dir', 'ltr');
+    setI18nCreateStoreForTests(
+      () =>
+        ({
+          GetActiveLanguages: async () => [
+            { Code: 'ar_001', Direction: 'rtl', Name: 'Arabic' },
+            { Code: 'en_US', Direction: 'ltr', Name: 'English' },
+          ],
+        }) as any,
+    );
+    const ok = await store.loadActiveLanguages();
+    expect(ok).toBe(true);
+    expect(store.activeLanguage.textDirection).toBe('rtl');
+    expect(document.documentElement.getAttribute('dir')).toBe('rtl');
+    expect(document.documentElement.style.getPropertyValue('--choy-direction')).toBe('rtl');
+  });
+
   test('setLang: pending switch is not no-opped by a same-as-current request', async () => {
     const store = useI18nStore();
     store.isInitialized = true;

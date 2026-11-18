@@ -6,6 +6,7 @@ import {
   formatPersonName,
   isValidPersonNameFormat,
   normalizePersonNameFormat,
+  personNameFieldOrder,
 } from './person_name';
 
 test('normalizePersonNameFormat: empty/invalid → default', () => {
@@ -44,4 +45,13 @@ test('formatPersonName: strips unknown tokens', () => {
 
 test('formatPersonName: invalid template falls back to default', () => {
   expect(formatPersonName({ FirstName: 'A', LastName: 'B' }, 'no-tokens')).toBe('A B');
+});
+
+test('personNameFieldOrder: follows first token occurrence', () => {
+  expect(personNameFieldOrder('{FirstName} {LastName}')).toEqual(['FirstName', 'LastName']);
+  expect(personNameFieldOrder('{LastName}{FirstName}')).toEqual(['LastName', 'FirstName']);
+  expect(personNameFieldOrder('{LastName}, {FirstName}')).toEqual(['LastName', 'FirstName']);
+  expect(personNameFieldOrder('{FirstName}')).toEqual(['FirstName', 'LastName']);
+  expect(personNameFieldOrder('{LastName}')).toEqual(['LastName', 'FirstName']);
+  expect(personNameFieldOrder('')).toEqual(['FirstName', 'LastName']);
 });

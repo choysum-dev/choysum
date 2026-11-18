@@ -44,6 +44,7 @@ import type { UseField } from '@/web/web/composables/useField';
 import type { NarrowAggProp, TemporalAggFns } from '@/web/web/composables/useField';
 import ChoyFieldBase, { type FieldStateExpr, type FormItemProps } from './ChoyFieldBase.vue';
 import TimePicker from '../internal/TimePicker.vue';
+import { resolveActiveTimeDisplayFormat } from '../internal/calendarLocale';
 import dayjs from 'dayjs';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
 import { useBufferedCommit, type CommitStrategy } from '@/web/web/composables/useBufferedCommit';
@@ -88,7 +89,7 @@ const props = withDefaults(
   }>(),
   {
     rules: () => [],
-    displayFormat: 'HH:mm:ss',
+    displayFormat: undefined,
     valueFormat: 'HH:mm:ss',
     required: false,
     readonly: false,
@@ -107,7 +108,7 @@ const props = withDefaults(
 
 const binding = (props.binding ?? useField<T, P, V>({ store: props.store as ModelStore<T>, prop: props.prop as P, agg: props.agg })) as UseField<T, V>;
 
-const displayFormat = computed(() => props.displayFormat || 'HH:mm:ss');
+const displayFormat = computed(() => resolveActiveTimeDisplayFormat(props.displayFormat));
 const storageFormat = computed(() => props.valueFormat || 'HH:mm:ss');
 
 // Parse strings into Dayjs, preferring the storage format before fallback candidates.
@@ -228,6 +229,7 @@ const ChoyTimeCell = defineComponent({
         ...(p.pickerProps || {}),
         class: 'choy-time-picker w-full',
         placeholder: _t('Select time'),
+        displayFormat: p.displayFormat,
         modelValue: value,
         'onUpdate:modelValue': (raw: string | null) => {
           buffer.setEditing(raw ? normalizeToDate(raw) : null);

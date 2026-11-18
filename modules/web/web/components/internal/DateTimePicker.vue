@@ -49,6 +49,7 @@ SPDX-License-Identifier: Apache-2.0
             v-slot="{ weekDays, grid }"
             v-model="calendarValue"
             :locale="resolveCalendarLocale()"
+            :week-starts-on="resolveCalendarWeekStartsOn()"
             :min-value="datePickerMinValue"
             :max-value="datePickerMaxValue"
             class="choy-datetime-picker__calendar"
@@ -231,7 +232,7 @@ import { CalendarClock, ChevronLeft, ChevronRight, X } from 'lucide-vue-next';
 import { CalendarDate } from '@internationalized/date';
 import { cn, type ClassValue } from '../../lib/utils';
 import { createTranslate } from '@/web/web/i18n';
-import { resolveCalendarLocale } from './calendarLocale';
+import { resolveCalendarLocale, resolveCalendarWeekStartsOn } from './calendarLocale';
 import Button from '../vendor/ui/button/Button.vue';
 import Popover from '../vendor/ui/popover/Popover.vue';
 import PopoverContent from '../vendor/ui/popover/PopoverContent.vue';
@@ -264,6 +265,8 @@ const props = withDefaults(
     placeholder?: string;
     disabled?: boolean;
     clearable?: boolean;
+    /** Dayjs pattern for the trigger label; model stays YYYY-MM-DDTHH:mm:ss. */
+    displayFormat?: string;
     id?: string;
     'aria-invalid'?: boolean | 'true' | 'false';
     'aria-required'?: boolean | 'true' | 'false';
@@ -273,6 +276,7 @@ const props = withDefaults(
     placeholder: undefined,
     disabled: false,
     clearable: true,
+    displayFormat: undefined,
   },
 );
 
@@ -314,11 +318,9 @@ const calendarValue = computed<DateValue | undefined>({
   },
 });
 
-const displayText = computed(() => {
-  const formatted = formatDateTimePickerDisplay(modelValue.value);
-  if (formatted) return formatted;
-  return String(modelValue.value ?? '').trim();
-});
+const displayText = computed(() =>
+  formatDateTimePickerDisplay(modelValue.value, props.displayFormat),
+);
 
 function scrollSelectedIntoView(): void {
   for (const root of [hourListEl.value, minuteListEl.value, secondListEl.value]) {
