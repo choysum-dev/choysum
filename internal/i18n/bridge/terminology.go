@@ -12,6 +12,7 @@ import (
 	i18nimport "github.com/choysum-dev/choysum/internal/i18n/import"
 	"github.com/choysum-dev/choysum/internal/i18n/models"
 	"github.com/choysum-dev/choysum/internal/i18n/store"
+	"github.com/choysum-dev/choysum/internal/module/lifecycle"
 	"github.com/choysum-dev/choysum/pkg/jsengine"
 	"github.com/choysum-dev/choysum/pkg/jsengine/quickjsengine"
 	"github.com/choysum-dev/choysum/pkg/scope"
@@ -28,6 +29,20 @@ type upsertPackagedDeps struct {
 func defaultUpsertPackagedDeps() upsertPackagedDeps {
 	return upsertPackagedDeps{
 		upsert: i18nimport.UpsertPackagedTerms,
+		marshal: func(ctx *quickjs.Context, v any) (*quickjs.Value, error) {
+			return ctx.Marshal(v)
+		},
+	}
+}
+
+type reloadTerminologyDeps struct {
+	reload  func(runtimeScope scope.Scope, lang string) (lifecycle.TerminologyReloadStats, error)
+	marshal func(ctx *quickjs.Context, v any) (*quickjs.Value, error)
+}
+
+func defaultReloadTerminologyDeps() reloadTerminologyDeps {
+	return reloadTerminologyDeps{
+		reload: lifecycle.ReloadTerminologyForLang,
 		marshal: func(ctx *quickjs.Context, v any) (*quickjs.Value, error) {
 			return ctx.Marshal(v)
 		},
@@ -94,6 +109,9 @@ func installI18nObject(jse *quickjsengine.QuickjsEngine, scopeProvider jsengine.
 	}
 	if scopeProvider != nil && reg != nil {
 		i18nObj.Set("upsertPackagedTerms", jse.Ctx.NewFunction(upsertPackagedTermsAsyncFactory(jse, scopeProvider, reg)))
+	}
+	if scopeProvider != nil {
+		i18nObj.Set("reloadTerminologyForLang", jse.Ctx.NewFunction(reloadTerminologyForLangAsyncFactory(jse, scopeProvider)))
 	}
 	choysumObj.Set("i18n", i18nObj)
 	globalsObj.Set("$choysum", choysumObj)
@@ -230,4 +248,70 @@ func poTextBytes(v *quickjs.Value) ([]byte, error) {
 		return v.ToByteArray(uint(v.ByteLen()))
 	}
 	return nil, fmt.Errorf("poText must be a string or Uint8Array")
+}
+
+func reloadTerminologyForLangAsyncFactory(jse *quickjsengine.QuickjsEngine, scopeProvider jsengine.ScopeProvider) func(ctx *quickjs.Context, this *quickjs.Value, args []*quickjs.Value) *quickjs.Value {
+	deps := defaultReloadTerminologyDeps()
+	return func(ctx *quickjs.Context, this *quickjs.Value, args []*quickjs.Value) *quickjs.Value {
+		return ctx.NewPromise(func(resolve, reject func(*quickjs.Value)) {
+			ret := performReloadTerminologyForLang(ctx, jse, scopeProvider, args, deps)
+			if ret.IsError() {
+				defer ret.Free()
+				reject(ret)
+				return
+			}
+			defer ret.Free()
+			resolve(ret)
+		})
+	}
+}
+
+func performReloadTerminologyForLang(
+	ctx *quickjs.Context,
+	jse *quickjsengine.QuickjsEngine,
+	scopeProvider jsengine.ScopeProvider,
+	args []*quickjs.Value,
+	deps reloadTerminologyDeps,
+) *quickjs.Value {
+	if deps.reload == nil {
+		deps.reload = defaultReloadTerminologyDeps().reload
+	}
+	if deps.marshal == nil {
+		deps.marshal = defaultReloadTerminologyDeps().marshal
+	}
+	if len(args) < 1 || args[0] == nil || args[0].IsUndefined() || args[0].IsNull() {
+		return ctx.NewError(fmt.Errorf("reloadTerminologyForLang requires lang"))
+	}
+	lang := strings.TrimSpace(args[0].String())
+	if lang == "" {
+		return ctx.NewError(fmt.Errorf("reloadTerminologyForLang: lang is required"))
+	}
+
+	execCtx := jse.ExecContext()
+	rs := jsengine.ResolveScope(scopeProvider, execCtx)
+	if rs == nil || rs.Session() == nil {
+		return ctx.NewError(fmt.Errorf("reloadTerminologyForLang: missing runtime session"))
+	}
+	stats, err := deps.reload(rs, lang)
+	if err != nil {
+		return ctx.NewError(err)
+	}
+	payload := map[string]any{
+		"code":            stats.Lang,
+		"modulesScanned":  stats.ModulesScanned,
+		"modulesWithPo":   stats.ModulesWithPo,
+		"upserted":        stats.Upserted,
+		"skippedOverride": stats.SkippedOverride,
+		"rejectedNoCtxt":  stats.RejectedNoCtxt,
+		"skippedObsolete": stats.SkippedObsolete,
+		"purgedRetired":   stats.PurgedRetired,
+	}
+	if payload["code"] == "" {
+		payload["code"] = lang
+	}
+	val, marshalErr := deps.marshal(ctx, payload)
+	if marshalErr != nil {
+		return ctx.NewError(marshalErr)
+	}
+	return val
 }

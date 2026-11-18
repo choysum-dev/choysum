@@ -14,6 +14,7 @@ import {
   languageRowOverrideFields,
   mergeLanguageFormFields,
   reloadActiveLanguagesAfterLanguageSave,
+  reloadLanguageTerminology,
   resolveLanguageCurrentRow,
   resolveLanguageRecordId,
   shouldPreferBrowseReloadAfterLanguageAction,
@@ -204,6 +205,65 @@ test('languageFormHelpers: deactivateLanguage still refreshes overlays when relo
     },
   });
   expect(calls).toEqual(['deactivate', 'reloadRecord', 'reloadActive']);
+});
+
+test('languageFormHelpers: reloadLanguageTerminology calls reload and revalidates current lang', async () => {
+  const calls: string[] = [];
+  const result = await reloadLanguageTerminology({
+    reload: async params => {
+      calls.push(`reload:${params.Code}:${params.LanguageId}`);
+      return { Code: 'zh_CN', Upserted: 2, ModulesScanned: 1, ModulesWithPo: 1 };
+    },
+    code: 'zh_CN',
+    languageId: 'lang-1',
+    currentLang: 'zh_CN',
+    revalidateIfCurrent: async () => {
+      calls.push('revalidate');
+    },
+    onDone: r => {
+      calls.push(`done:${r.Upserted}`);
+    },
+  });
+  expect(result?.Upserted).toBe(2);
+  expect(calls).toEqual(['reload:zh_CN:lang-1', 'revalidate', 'done:2']);
+});
+
+test('languageFormHelpers: reloadLanguageTerminology skips revalidate when lang differs', async () => {
+  let revalidated = false;
+  await reloadLanguageTerminology({
+    reload: async () => ({ Code: 'fr_FR', Upserted: 1 }),
+    code: 'fr_FR',
+    currentLang: 'en_US',
+    revalidateIfCurrent: async () => {
+      revalidated = true;
+    },
+  });
+  expect(revalidated).toBe(false);
+});
+
+test('languageFormHelpers: reloadLanguageTerminology swallows revalidate failures', async () => {
+  const result = await reloadLanguageTerminology({
+    reload: async () => ({ Code: 'zh_CN', Upserted: 1 }),
+    code: 'zh_CN',
+    currentLang: 'zh_CN',
+    revalidateIfCurrent: async () => {
+      throw new Error('revalidate failed');
+    },
+  });
+  expect(result?.Upserted).toBe(1);
+});
+
+test('languageFormHelpers: reloadLanguageTerminology no-op without code/id', async () => {
+  let called = false;
+  const out = await reloadLanguageTerminology({
+    reload: async () => {
+      called = true;
+      return {};
+    },
+    code: '  ',
+  });
+  expect(out).toBeNull();
+  expect(called).toBe(false);
 });
 
 test('languageFormHelpers: activate/deactivate no-op on empty recordId', async () => {

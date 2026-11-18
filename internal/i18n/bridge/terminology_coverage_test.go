@@ -14,6 +14,7 @@ import (
 	"github.com/buke/quickjs-go"
 	i18nimport "github.com/choysum-dev/choysum/internal/i18n/import"
 	"github.com/choysum-dev/choysum/internal/i18n/store"
+	"github.com/choysum-dev/choysum/internal/module/lifecycle"
 	"github.com/choysum-dev/choysum/internal/testing/scopetest"
 	"github.com/choysum-dev/choysum/pkg/jsengine"
 	"github.com/choysum-dev/choysum/pkg/jsengine/quickjsengine"
@@ -328,5 +329,91 @@ func TestPerformUpsertPackagedTermsBranches(t *testing.T) {
 	defer emptyDeps.Free()
 	if !emptyDeps.IsError() {
 		t.Fatal("expected validation error with empty deps defaults")
+	}
+}
+
+func TestPerformReloadTerminologyForLang(t *testing.T) {
+	store.ResetSharedRegistryForTests()
+	t.Cleanup(store.ResetSharedRegistryForTests)
+
+	db, err := gorm.Open(sqlite.Open(filepath.Join(t.TempDir(), "reload.db")), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	rs := &coverageScope{
+		ctx:     context.Background(),
+		logger:  slog.New(slog.NewTextHandler(io.Discard, nil)),
+		session: &scope.Session{DB: db},
+	}
+	provider := jsengine.StaticScopeProvider(rs)
+	engine := newCoverageEngine(t, WithTerminologyProvider(provider))
+
+	missing := performReloadTerminologyForLang(engine.Ctx, engine, provider, nil, reloadTerminologyDeps{})
+	defer missing.Free()
+	if !missing.IsError() {
+		t.Fatal("expected error when lang arg missing")
+	}
+
+	emptyLang := performReloadTerminologyForLang(engine.Ctx, engine, provider, []*quickjs.Value{
+		engine.Ctx.String("  "),
+	}, reloadTerminologyDeps{})
+	defer emptyLang.Free()
+	if !emptyLang.IsError() {
+		t.Fatal("expected error for blank lang")
+	}
+
+	nilSession := performReloadTerminologyForLang(engine.Ctx, engine, jsengine.StaticScopeProvider(nil), []*quickjs.Value{
+		engine.Ctx.String("zh_CN"),
+	}, reloadTerminologyDeps{})
+	defer nilSession.Free()
+	if !nilSession.IsError() {
+		t.Fatal("expected error for missing session")
+	}
+
+	deps := reloadTerminologyDeps{
+		reload: func(_ scope.Scope, lang string) (lifecycle.TerminologyReloadStats, error) {
+			if lang != "zh_CN" {
+				t.Fatalf("lang=%q", lang)
+			}
+			return lifecycle.TerminologyReloadStats{
+				Lang:            "zh_CN",
+				ModulesScanned:  2,
+				ModulesWithPo:   1,
+				Upserted:        3,
+				SkippedOverride: 1,
+				RejectedNoCtxt:  0,
+				SkippedObsolete: 0,
+				PurgedRetired:   0,
+			}, nil
+		},
+	}
+	ok := performReloadTerminologyForLang(engine.Ctx, engine, provider, []*quickjs.Value{
+		engine.Ctx.String("zh_CN"),
+	}, deps)
+	defer ok.Free()
+	if ok.IsError() {
+		t.Fatalf("unexpected error: %v", ok.String())
+	}
+	scanned := ok.Get("modulesScanned")
+	defer scanned.Free()
+	if int(scanned.ToInt64()) != 2 {
+		t.Fatalf("modulesScanned=%v, want 2", scanned.ToInt64())
+	}
+	upserted := ok.Get("upserted")
+	defer upserted.Free()
+	if int(upserted.ToInt64()) != 3 {
+		t.Fatalf("upserted=%v, want 3", upserted.ToInt64())
+	}
+
+	failReload := performReloadTerminologyForLang(engine.Ctx, engine, provider, []*quickjs.Value{
+		engine.Ctx.String("zh_CN"),
+	}, reloadTerminologyDeps{
+		reload: func(scope.Scope, string) (lifecycle.TerminologyReloadStats, error) {
+			return lifecycle.TerminologyReloadStats{}, fmt.Errorf("boom")
+		},
+	})
+	defer failReload.Free()
+	if !failReload.IsError() {
+		t.Fatal("expected reload error")
 	}
 }

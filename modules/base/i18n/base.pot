@@ -1098,11 +1098,21 @@ msgctxt "service/models/language"
 msgid "Language code cannot be changed"
 msgstr ""
 
+#: service/models/language.ts
+msgctxt "service/models/language"
+msgid "Language code is required"
+msgstr ""
+
 #: service/models/language.ts:373
 #: service/models/language.ts:398
 #: service/models/language.ts:440
 msgctxt "service/models/language"
 msgid "Language not found"
+msgstr ""
+
+#: service/models/language.ts
+msgctxt "service/models/language"
+msgid "Terminology reload is not available in this runtime"
 msgstr ""
 
 #: service/models/language.ts:468
@@ -2063,6 +2073,21 @@ msgstr ""
 #: web/views/LanguageFormView.vue:147
 msgctxt "web/views/LanguageFormView"
 msgid "Activate failed"
+msgstr ""
+
+#: web/views/LanguageFormView.vue
+msgctxt "web/views/LanguageFormView"
+msgid "Update translations"
+msgstr ""
+
+#: web/views/LanguageFormView.vue
+msgctxt "web/views/LanguageFormView"
+msgid "Update translations failed"
+msgstr ""
+
+#: web/views/LanguageFormView.vue
+msgctxt "web/views/LanguageFormView"
+msgid "Updated translations for %s: %s terms from %s/%s modules"
 msgstr ""
 
 #: web/views/LanguageFormView.vue:27

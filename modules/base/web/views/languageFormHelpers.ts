@@ -170,3 +170,46 @@ export async function deactivateLanguage(opts: {
   }
   await (opts.reloadActiveLanguages || reloadActiveLanguagesAfterLanguageSave)();
 }
+
+export type LanguageReloadTerminologyResult = {
+  Code?: string;
+  ModulesScanned?: number;
+  ModulesWithPo?: number;
+  Upserted?: number;
+  SkippedOverride?: number;
+  RejectedNoCtxt?: number;
+  SkippedObsolete?: number;
+  PurgedRetired?: number;
+};
+
+/**
+ * Call Language.ReloadTerminology then optionally refresh the FE catalog when the
+ * current UI language matches the reloaded Code.
+ */
+export async function reloadLanguageTerminology(opts: {
+  reload: (params: { Code?: string; LanguageId?: string }) => Promise<LanguageReloadTerminologyResult>;
+  code?: string;
+  languageId?: string;
+  currentLang?: string | null;
+  revalidateIfCurrent?: () => Promise<unknown>;
+  onDone?: (result: LanguageReloadTerminologyResult) => void;
+}): Promise<LanguageReloadTerminologyResult | null> {
+  const code = String(opts.code || '').trim();
+  const languageId = String(opts.languageId || '').trim();
+  if (!code && !languageId) return null;
+  const result = await opts.reload({
+    ...(code ? { Code: code } : {}),
+    ...(languageId ? { LanguageId: languageId } : {}),
+  });
+  const resolvedCode = String(result?.Code || code).trim();
+  const current = String(opts.currentLang ?? '').trim();
+  if (resolvedCode && current && resolvedCode === current && opts.revalidateIfCurrent) {
+    try {
+      await opts.revalidateIfCurrent();
+    } catch {
+      // Catalog refresh is best-effort; toast still reports import stats.
+    }
+  }
+  opts.onDone?.(result);
+  return result;
+}

@@ -294,6 +294,17 @@ declare var $choysum: {
       purgedRetired: number;
       lang: string;
     }>;
+    /** Re-import i18n/<lang>.po for every installed module that has that file. */
+    reloadTerminologyForLang?: (lang: string) => Promise<{
+      code: string;
+      modulesScanned: number;
+      modulesWithPo: number;
+      upserted: number;
+      skippedOverride: number;
+      rejectedNoCtxt: number;
+      skippedObsolete: number;
+      purgedRetired: number;
+    }>;
   };
 
   /**

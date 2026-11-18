@@ -14,9 +14,9 @@ import (
 	"testing"
 
 	"github.com/choysum-dev/choysum/internal/defaultscope"
-	"github.com/choysum-dev/choysum/internal/import/runner"
 	i18nmodels "github.com/choysum-dev/choysum/internal/i18n/models"
 	"github.com/choysum-dev/choysum/internal/i18n/store"
+	"github.com/choysum-dev/choysum/internal/import/runner"
 	"github.com/choysum-dev/choysum/internal/testing/scopetest"
 	"github.com/choysum-dev/choysum/pkg/config"
 	importpkg "github.com/choysum-dev/choysum/pkg/import"
@@ -547,5 +547,111 @@ func TestReloadModuleTerminology_importError(t *testing.T) {
 	rs := newI18nTestScopeWithModulesPath(t, modulesPath)
 	if _, err := ReloadModuleTerminology(rs, "demo"); err == nil {
 		t.Fatal("expected import error from forced Run failure")
+	}
+}
+
+func TestReloadTerminologyForLang_onlyTouchesMatchingPo(t *testing.T) {
+	t.Parallel()
+	modulesPath := t.TempDir()
+
+	modA := filepath.Join(modulesPath, "mod_a")
+	modB := filepath.Join(modulesPath, "mod_b")
+	for _, root := range []string{modA, modB} {
+		if err := os.MkdirAll(filepath.Join(root, "i18n"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.WriteFile(filepath.Join(modA, "i18n", "zh_CN.po"), []byte(`
+msgctxt "a@title"
+msgid "Alpha"
+msgstr "甲"
+`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// mod_b has a different language only — must not be imported for zh_CN.
+	if err := os.WriteFile(filepath.Join(modB, "i18n", "en_US.po"), []byte(`
+msgctxt "b@title"
+msgid "Beta"
+msgstr "Beta"
+`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	rs := newI18nTestScopeWithModulesPath(t, modulesPath)
+	prevList := listInstalledModulesForTerminology
+	t.Cleanup(func() { listInstalledModulesForTerminology = prevList })
+	listInstalledModulesForTerminology = func(scope.Scope) ([]meta.Module, error) {
+		return []meta.Module{
+			{Name: "mod_a", ApplicationStr: "auth", Path: modA, Status: meta.Installed},
+			{Name: "mod_b", ApplicationStr: "auth", Path: modB, Status: meta.Installed},
+		}, nil
+	}
+
+	stats, err := ReloadTerminologyForLang(rs, "zh_CN")
+	if err != nil {
+		t.Fatalf("ReloadTerminologyForLang: %v", err)
+	}
+	if stats.ModulesScanned != 2 {
+		t.Fatalf("ModulesScanned=%d, want 2", stats.ModulesScanned)
+	}
+	if stats.ModulesWithPo != 1 {
+		t.Fatalf("ModulesWithPo=%d, want 1", stats.ModulesWithPo)
+	}
+	if stats.Upserted < 1 {
+		t.Fatalf("Upserted=%d, want >= 1", stats.Upserted)
+	}
+	if stats.Lang != "zh_CN" {
+		t.Fatalf("Lang=%q, want zh_CN", stats.Lang)
+	}
+
+	var alpha i18nmodels.TranslationTerm
+	if err := rs.Session().Table("auth_translation_term").Where("src = ?", "Alpha").Take(&alpha).Error; err != nil {
+		t.Fatalf("expected Alpha term: %v", err)
+	}
+	if alpha.Value != "甲" {
+		t.Fatalf("Alpha value=%q, want 甲", alpha.Value)
+	}
+	var betaCount int64
+	if err := rs.Session().Table("auth_translation_term").Where("src = ?", "Beta").Count(&betaCount).Error; err != nil {
+		t.Fatal(err)
+	}
+	if betaCount != 0 {
+		t.Fatalf("Beta rows=%d, want 0 (en_US.po must not be imported)", betaCount)
+	}
+}
+
+func TestReloadTerminologyForLang_rejectsEmptyAndPathLang(t *testing.T) {
+	t.Parallel()
+	rs := newI18nTestScope(t)
+	if _, err := ReloadTerminologyForLang(rs, "  "); err == nil {
+		t.Fatal("expected error for empty lang")
+	}
+	if _, err := ReloadTerminologyForLang(nil, "zh_CN"); err == nil {
+		t.Fatal("expected error for nil scope")
+	}
+	if _, err := ReloadTerminologyForLang(rs, "../zh_CN"); err == nil {
+		t.Fatal("expected error for path-like lang")
+	}
+	rsNoPath := newI18nTestScopeWithModulesPath(t, "")
+	if _, err := ReloadTerminologyForLang(rsNoPath, "zh_CN"); err == nil {
+		t.Fatal("expected error when modules path is unset")
+	}
+}
+
+func TestReloadTerminologyForLang_emptyInstalledList(t *testing.T) {
+	t.Parallel()
+	modulesPath := t.TempDir()
+	rs := newI18nTestScopeWithModulesPath(t, modulesPath)
+	prevList := listInstalledModulesForTerminology
+	t.Cleanup(func() { listInstalledModulesForTerminology = prevList })
+	listInstalledModulesForTerminology = func(scope.Scope) ([]meta.Module, error) {
+		return nil, nil
+	}
+	stats, err := ReloadTerminologyForLang(rs, "zh_CN")
+	if err != nil {
+		t.Fatalf("ReloadTerminologyForLang: %v", err)
+	}
+	if stats.ModulesScanned != 0 || stats.ModulesWithPo != 0 || stats.Upserted != 0 {
+		t.Fatalf("unexpected stats: %+v", stats)
 	}
 }
