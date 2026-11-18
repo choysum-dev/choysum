@@ -133,13 +133,40 @@ func (s *TermStore) EvictLanguage(lang string) {
 	s.mu.Unlock()
 }
 
-// Lookup returns a cached translation. ok=false on miss (including unwarmed lang).
+// ensureLanguageCached loads lang from DB when it is absent from the hot cache.
+// CLI upgrade warms only the upgrade process; a subsequent `run` starts with an
+// empty TermStore while FE GetTranslations still reads DB — without this, `_t`
+// misses until an in-process PO import. Installs an empty map on warm failure so
+// Lookup does not hammer the DB on every miss.
+func (s *TermStore) ensureLanguageCached(lang string) {
+	if lang == "" {
+		return
+	}
+	s.mu.RLock()
+	_, ok := s.cache[lang]
+	s.mu.RUnlock()
+	if ok {
+		return
+	}
+	_ = s.WarmLanguage(lang)
+	s.mu.Lock()
+	if _, ok := s.cache[lang]; !ok {
+		s.cache[lang] = make(map[string]map[string]map[string]map[string]string)
+		s.termHash[lang] = emptyTermHash()
+	}
+	s.mu.Unlock()
+}
+
+// Lookup returns a cached translation. ok=false on miss.
+// Unwarmed languages are loaded from DB once before the cache read.
 func (s *TermStore) Lookup(module, lang, scopeKey, src, kind string) (string, bool) {
 	module = strings.TrimSpace(module)
 	lang = strings.TrimSpace(lang)
 	scopeKey = strings.TrimSpace(scopeKey)
 	src = strings.TrimSpace(src)
 	kind = i18nmodels.NormalizeKind(kind)
+
+	s.ensureLanguageCached(lang)
 
 	s.mu.RLock()
 	defer s.mu.RUnlock()
