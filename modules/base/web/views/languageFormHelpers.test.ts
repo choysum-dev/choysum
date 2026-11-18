@@ -3,6 +3,7 @@
 
 import {
   activateLanguage,
+  buildLanguageReloadTerminologyToast,
   deactivateLanguage,
   GROUPING_SELECTION,
   FIRST_DAY_SELECTION,
@@ -14,6 +15,7 @@ import {
   languageRowOverrideFields,
   mergeLanguageFormFields,
   reloadActiveLanguagesAfterLanguageSave,
+  reloadLanguageTerminology,
   resolveLanguageCurrentRow,
   resolveLanguageRecordId,
   shouldPreferBrowseReloadAfterLanguageAction,
@@ -204,6 +206,113 @@ test('languageFormHelpers: deactivateLanguage still refreshes overlays when relo
     },
   });
   expect(calls).toEqual(['deactivate', 'reloadRecord', 'reloadActive']);
+});
+
+test('languageFormHelpers: buildLanguageReloadTerminologyToast branches on result', () => {
+  const ok = buildLanguageReloadTerminologyToast({
+    code: 'zh_CN',
+    modulesScanned: 8,
+    modulesWithPo: 8,
+    upserted: 12,
+    isActive: true,
+  });
+  expect(ok.level).toBe('success');
+  expect(ok.title).toContain('Synced packaged translations');
+  expect(ok.title).toContain('zh_CN');
+  expect(ok.description).toBeUndefined();
+
+  const inactiveOk = buildLanguageReloadTerminologyToast({
+    code: 'zh_CN',
+    modulesScanned: 8,
+    modulesWithPo: 2,
+    upserted: 3,
+    isActive: false,
+  });
+  expect(inactiveOk.level).toBe('success');
+  expect(inactiveOk.description).toMatch(/does not enable|不会/i);
+
+  const missing = buildLanguageReloadTerminologyToast({
+    code: 'tl_PH',
+    modulesScanned: 8,
+    modulesWithPo: 0,
+    upserted: 0,
+    isActive: false,
+  });
+  expect(missing.level).toBe('warning');
+  expect(missing.title).toContain('tl_PH');
+  expect(missing.description).toMatch(/i18n\/tl_PH\.po/);
+  expect(missing.description).toMatch(/does not enable|不会/i);
+
+  const enUs = buildLanguageReloadTerminologyToast({
+    code: 'en_US',
+    modulesScanned: 8,
+    modulesWithPo: 0,
+    upserted: 0,
+    isActive: true,
+  });
+  expect(enUs.level).toBe('warning');
+  expect(enUs.title).toContain('en_US');
+  expect(enUs.description).toMatch(/i18n\/en_US\.po/);
+});
+
+test('languageFormHelpers: reloadLanguageTerminology calls reload and revalidates current lang', async () => {
+  const calls: string[] = [];
+  let activeLang = 'en_US';
+  const result = await reloadLanguageTerminology({
+    reload: async params => {
+      calls.push(`reload:${params.Code}:${params.LanguageId}`);
+      activeLang = 'zh_CN';
+      return { Code: 'zh_CN', Upserted: 2, ModulesScanned: 1, ModulesWithPo: 1 };
+    },
+    languageId: 'lang-1',
+    currentLang: () => activeLang,
+    revalidateIfCurrent: async () => {
+      calls.push('revalidate');
+    },
+    onDone: r => {
+      calls.push(`done:${r.Upserted}`);
+    },
+  });
+  expect(result?.Upserted).toBe(2);
+  expect(calls).toEqual(['reload:undefined:lang-1', 'revalidate', 'done:2']);
+});
+
+test('languageFormHelpers: reloadLanguageTerminology skips revalidate when lang differs', async () => {
+  let revalidated = false;
+  await reloadLanguageTerminology({
+    reload: async () => ({ Code: 'fr_FR', Upserted: 1 }),
+    code: 'fr_FR',
+    currentLang: 'en_US',
+    revalidateIfCurrent: async () => {
+      revalidated = true;
+    },
+  });
+  expect(revalidated).toBe(false);
+});
+
+test('languageFormHelpers: reloadLanguageTerminology swallows revalidate failures', async () => {
+  const result = await reloadLanguageTerminology({
+    reload: async () => ({ Code: 'zh_CN', Upserted: 1 }),
+    code: 'zh_CN',
+    currentLang: 'zh_CN',
+    revalidateIfCurrent: async () => {
+      throw new Error('revalidate failed');
+    },
+  });
+  expect(result?.Upserted).toBe(1);
+});
+
+test('languageFormHelpers: reloadLanguageTerminology no-op without code/id', async () => {
+  let called = false;
+  const out = await reloadLanguageTerminology({
+    reload: async () => {
+      called = true;
+      return {};
+    },
+    code: '  ',
+  });
+  expect(out).toBeNull();
+  expect(called).toBe(false);
 });
 
 test('languageFormHelpers: activate/deactivate no-op on empty recordId', async () => {

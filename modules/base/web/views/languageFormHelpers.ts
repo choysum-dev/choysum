@@ -2,7 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { isValidPersonNameFormat } from '@/core/service/utils/person_name';
+import { createTranslate } from '@/web/web/i18n';
 import { useI18nStore } from '@/web/web/stores/i18nStore';
+
+const { _t: _tReloadToast } = createTranslate('base', { scope: 'web/views/LanguageFormView' });
 
 export const GROUPING_SELECTION = ['[3,0]', '[3,2,0]', '[3,3]', '[]'] as const;
 
@@ -169,4 +172,105 @@ export async function deactivateLanguage(opts: {
     // Row refresh is best-effort; overlays still refresh below.
   }
   await (opts.reloadActiveLanguages || reloadActiveLanguagesAfterLanguageSave)();
+}
+
+export type LanguageReloadTerminologyResult = {
+  Code?: string;
+  ModulesScanned?: number;
+  ModulesWithPo?: number;
+  Upserted?: number;
+  SkippedOverride?: number;
+  RejectedNoCtxt?: number;
+  SkippedObsolete?: number;
+  PurgedRetired?: number;
+};
+
+export type LanguageReloadToastLevel = 'success' | 'warning';
+
+/** Toast payload after ReloadTerminology, branched on whether packaged PO was found. */
+export type LanguageReloadToast = {
+  level: LanguageReloadToastLevel;
+  title: string;
+  description?: string;
+};
+
+/**
+ * Build success / warning copy for Update translations.
+ * ModulesWithPo === 0 is never treated as a successful sync.
+ * Msgids use `_tReloadToast` so `choysum i18n extract` can discover them.
+ */
+export function buildLanguageReloadTerminologyToast(opts: {
+  code: string;
+  modulesScanned: number;
+  modulesWithPo: number;
+  upserted: number;
+  isActive?: boolean | null;
+}): LanguageReloadToast {
+  const code = String(opts.code || '').trim() || '—';
+  const scanned = Math.max(0, Number(opts.modulesScanned) || 0);
+  const withPo = Math.max(0, Number(opts.modulesWithPo) || 0);
+  const upserted = Math.max(0, Number(opts.upserted) || 0);
+  const inactiveNote =
+    opts.isActive === false
+      ? _tReloadToast('This does not enable the language in Preferences or the guest switcher.')
+      : undefined;
+
+  if (withPo > 0) {
+    return {
+      level: 'success',
+      title: _tReloadToast(
+        'Synced packaged translations for %s: %s terms from %s/%s modules',
+        code,
+        String(upserted),
+        String(withPo),
+        String(scanned)
+      ),
+      ...(inactiveNote ? { description: inactiveNote } : {}),
+    };
+  }
+
+  return {
+    level: 'warning',
+    title: _tReloadToast('No packaged translations found for %s', code),
+    description: [
+      _tReloadToast('Scanned %s installed modules; none provide i18n/%s.po.', String(scanned), code),
+      inactiveNote,
+    ]
+      .filter(Boolean)
+      .join(' '),
+  };
+}
+
+/**
+ * Call Language.ReloadTerminology then optionally refresh the FE catalog when the
+ * current UI language matches the reloaded Code.
+ */
+export async function reloadLanguageTerminology(opts: {
+  reload: (params: { Code?: string; LanguageId?: string }) => Promise<LanguageReloadTerminologyResult>;
+  code?: string;
+  languageId?: string;
+  /** Prefer a getter so the active lang is read after reload completes. */
+  currentLang?: string | null | (() => string | null | undefined);
+  revalidateIfCurrent?: () => Promise<unknown>;
+  onDone?: (result: LanguageReloadTerminologyResult) => void;
+}): Promise<LanguageReloadTerminologyResult | null> {
+  const code = String(opts.code || '').trim();
+  const languageId = String(opts.languageId || '').trim();
+  if (!code && !languageId) return null;
+  const result = await opts.reload({
+    ...(code ? { Code: code } : {}),
+    ...(languageId ? { LanguageId: languageId } : {}),
+  });
+  const resolvedCode = String(result?.Code || code).trim();
+  const currentRaw = typeof opts.currentLang === 'function' ? opts.currentLang() : opts.currentLang;
+  const current = String(currentRaw ?? '').trim();
+  if (resolvedCode && current && resolvedCode === current && opts.revalidateIfCurrent) {
+    try {
+      await opts.revalidateIfCurrent();
+    } catch {
+      // Catalog refresh is best-effort; toast still reports import stats.
+    }
+  }
+  opts.onDone?.(result);
+  return result;
 }

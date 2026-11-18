@@ -7,6 +7,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	i18nimport "github.com/choysum-dev/choysum/internal/i18n/import"
@@ -18,18 +19,147 @@ import (
 	xfmt "golang.org/x/exp/errors/fmt"
 )
 
-// TerminologyReloadStats aggregates packaged PO import counters for hotreload logs.
+// languageCodePattern allows POSIX-like Language.Code values (e.g. en_US, zh_CN, tl_PH).
+var languageCodePattern = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_]*$`)
+
+// TerminologyReloadStats aggregates packaged PO import counters for hotreload
+// and ReloadTerminologyForLang (per-language resync across installed modules).
 type TerminologyReloadStats struct {
 	Upserted        int
 	SkippedOverride int
 	RejectedNoCtxt  int
 	SkippedObsolete int
 	PurgedRetired   int
+	ModulesScanned  int
+	ModulesWithPo   int
+	Lang            string
 }
 
 // frameworkModuleName is the shared platform module. Its PO catalogs are written
 // to core_translation_term (Scheme B); host apps import only their own PO.
 const frameworkModuleName = "core"
+
+// Test hooks for packaged-term upsert / framework purge (production defaults below).
+var upsertPackagedTerms = i18nimport.UpsertPackagedTerms
+var deleteModuleTerms = i18nimport.DeleteModuleTerms
+
+// listInstalledModulesForTerminology lists installed module rows for per-lang reload.
+// Tests may stub this to avoid migrating meta_module.
+var listInstalledModulesForTerminology = func(runtimeScope scope.Scope) ([]meta.Module, error) {
+	if runtimeScope == nil || runtimeScope.Session() == nil {
+		return nil, xfmt.Errorf("runtime session is nil")
+	}
+	var mods []meta.Module
+	if err := runtimeScope.Session().
+		Where("status = ?", meta.Installed).
+		Order("id ASC").
+		Find(&mods).Error; err != nil {
+		return nil, xfmt.Errorf("list installed modules: %w", err)
+	}
+	return mods, nil
+}
+
+// ReloadTerminologyForLang re-imports i18n/<lang>.po for every installed module
+// that has that file. Does not change Language.IsActive. Prefer this over
+// ImportModuleI18nDir when only one language must be refreshed.
+func ReloadTerminologyForLang(runtimeScope scope.Scope, lang string) (TerminologyReloadStats, error) {
+	out := TerminologyReloadStats{}
+	lang = strings.TrimSpace(lang)
+	out.Lang = lang
+	if lang == "" {
+		return out, xfmt.Errorf("language code is required")
+	}
+	// Strict allowlist: reject path separators, drive letters, and other non-Code forms.
+	if !languageCodePattern.MatchString(lang) {
+		return out, xfmt.Errorf("invalid language code %q", lang)
+	}
+	if runtimeScope == nil {
+		return out, xfmt.Errorf("runtime scope is nil")
+	}
+
+	modulesPath := strings.TrimSpace(runtimeOptionsFromScope(runtimeScope).modulesPath)
+	if modulesPath == "" {
+		return out, xfmt.Errorf("modules path is not configured")
+	}
+	resolvedModulesPath, err := evalSymlinks(modulesPath)
+	if err != nil {
+		return out, xfmt.Errorf("resolve modules path %q: %w", modulesPath, err)
+	}
+
+	mods, err := listInstalledModulesForTerminology(runtimeScope)
+	if err != nil {
+		return out, err
+	}
+	out.ModulesScanned = len(mods)
+	reg := store.RegistryFor(runtimeScope)
+
+	for i := range mods {
+		mod := &mods[i]
+		hit, stats, impErr := importModuleLanguagePo(runtimeScope, reg, mod, resolvedModulesPath, lang)
+		if impErr != nil {
+			return out, impErr
+		}
+		if !hit {
+			continue
+		}
+		out.ModulesWithPo++
+		if stats != nil {
+			out.Upserted += stats.Upserted
+			out.SkippedOverride += stats.SkippedOverride
+			out.RejectedNoCtxt += stats.RejectedNoCtxt
+			out.SkippedObsolete += stats.SkippedObsolete
+			out.PurgedRetired += stats.PurgedRetired
+		}
+	}
+	return out, nil
+}
+
+// importModuleLanguagePo upserts a single modules/<m>/i18n/<lang>.po when present.
+// Missing file is a no-op (hit=false). Applies the same Scheme B application rules
+// as importModuleTerminology.
+func importModuleLanguagePo(
+	runtimeScope scope.Scope,
+	reg *store.Registry,
+	mod *meta.Module,
+	modulesPath, lang string,
+) (hit bool, stats *i18nimport.ImportStats, err error) {
+	if mod == nil {
+		return false, nil, nil
+	}
+	application := strings.TrimSpace(mod.ApplicationStr)
+	moduleName := strings.TrimSpace(mod.Name)
+	lang = strings.TrimSpace(lang)
+	if moduleName == "" || lang == "" || application == "" {
+		return false, nil, nil
+	}
+	if application == frameworkModuleName && moduleName != frameworkModuleName {
+		return false, nil, nil
+	}
+
+	moduleRoot := resolveModuleRoot(mod, modulesPath, moduleName)
+	if moduleRoot == "" {
+		return false, nil, nil
+	}
+	poPath := filepath.Join(moduleRoot, "i18n", lang+".po")
+	raw, readErr := os.ReadFile(poPath)
+	if readErr != nil {
+		if os.IsNotExist(readErr) {
+			return false, nil, nil
+		}
+		return false, nil, xfmt.Errorf("read %s: %w", poPath, readErr)
+	}
+
+	stats, err = upsertPackagedTerms(runtimeScope, reg, application, moduleName, lang, raw)
+	if err != nil {
+		return true, stats, xfmt.Errorf("import terminology for module %s lang %s: %w", moduleName, lang, err)
+	}
+	if application != frameworkModuleName {
+		if purgeErr := purgeStaleFrameworkTermsFromHost(runtimeScope, application); purgeErr != nil {
+			return true, stats, purgeErr
+		}
+	}
+	return true, stats, nil
+}
 
 // ReloadModuleTerminology re-imports modules/<module>/i18n/*.po into TranslationTerm
 // without a full module Upgrade. Used by server hotreload when a .po file changes.
@@ -157,7 +287,7 @@ func purgeStaleFrameworkTermsFromHost(runtimeScope scope.Scope, hostApplication 
 		return nil
 	}
 	reg := store.RegistryFor(runtimeScope)
-	if err := i18nimport.DeleteModuleTerms(runtimeScope, reg, hostApplication, frameworkModuleName); err != nil {
+	if err := deleteModuleTerms(runtimeScope, reg, hostApplication, frameworkModuleName); err != nil {
 		return xfmt.Errorf("purge stale framework terminology from %s: %w", hostApplication, err)
 	}
 	return nil
@@ -181,7 +311,7 @@ func deleteModuleTerminology(runtimeScope scope.Scope, mod *meta.Module) error {
 		return nil
 	}
 	reg := store.RegistryFor(runtimeScope)
-	if err := i18nimport.DeleteModuleTerms(runtimeScope, reg, application, moduleName); err != nil {
+	if err := deleteModuleTerms(runtimeScope, reg, application, moduleName); err != nil {
 		return xfmt.Errorf("delete terminology for module %s: %w", moduleName, err)
 	}
 	return nil

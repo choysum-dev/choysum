@@ -30,9 +30,11 @@ function buildStore(row: { Id: string; Code: string; IsActive: boolean; Name?: s
   browse?: () => Promise<unknown>;
   activate?: (req: unknown) => Promise<unknown>;
   deactivate?: (req: unknown) => Promise<unknown>;
+  reloadTerminology?: (req: unknown) => Promise<unknown>;
 }) {
   const activateCalls: unknown[] = [];
   const deactivateCalls: unknown[] = [];
+  const reloadTerminologyCalls: unknown[] = [];
   const updateByIdCalls: unknown[] = [];
   const browseCalls: unknown[] = [];
   const store = {
@@ -56,6 +58,20 @@ function buildStore(row: { Id: string; Code: string; IsActive: boolean; Name?: s
       if (opts?.deactivate) return opts.deactivate(req);
       return { Id: row.Id, Code: row.Code, IsActive: false };
     },
+    ReloadTerminology: async (req: unknown) => {
+      reloadTerminologyCalls.push(req);
+      if (opts?.reloadTerminology) return opts.reloadTerminology(req);
+      return {
+        Code: row.Code,
+        ModulesScanned: 1,
+        ModulesWithPo: 1,
+        Upserted: 2,
+        SkippedOverride: 0,
+        RejectedNoCtxt: 0,
+        SkippedObsolete: 0,
+        PurgedRetired: 0,
+      };
+    },
     UpdateById: async (...args: unknown[]) => {
       updateByIdCalls.push(args);
       return row;
@@ -66,7 +82,7 @@ function buildStore(row: { Id: string; Code: string; IsActive: boolean; Name?: s
       return { ...row, IsActive: !row.IsActive };
     },
   };
-  return { store, activateCalls, deactivateCalls, updateByIdCalls, browseCalls };
+  return { store, activateCalls, deactivateCalls, reloadTerminologyCalls, updateByIdCalls, browseCalls };
 }
 
 function mountLanguageForm(store: unknown, recordId: string) {
@@ -176,6 +192,7 @@ test('LanguageFormView: hides activate actions without write permission', async 
   await flushPromises();
   expect(wrapper.find('[data-testid="language-activate"]').exists()).toBe(false);
   expect(wrapper.find('[data-testid="language-deactivate"]').exists()).toBe(false);
+  expect(wrapper.find('[data-testid="language-reload-terminology"]').exists()).toBe(false);
   wrapper.unmount();
 });
 
@@ -488,6 +505,154 @@ test('LanguageFormView: empty Browse keeps override for a different record', asy
   wrapper.unmount();
 });
 
+test('LanguageFormView: shows Update translations for active and inactive rows', async () => {
+  const inactive = buildStore({ Id: 'lang-reload-off', Code: 'zh_HK', IsActive: false });
+  const inactiveWrap = mountLanguageForm(inactive.store, 'lang-reload-off');
+  await flushPromises();
+  expect(inactiveWrap.find('[data-testid="language-reload-terminology"]').exists()).toBe(true);
+  await inactiveWrap.find('[data-testid="language-reload-terminology"]').trigger('click');
+  await flushPromises();
+  expect(inactive.reloadTerminologyCalls).toEqual([{ LanguageId: 'lang-reload-off' }]);
+  inactiveWrap.unmount();
+
+  const active = buildStore({ Id: 'lang-reload-on', Code: 'zh_CN', IsActive: true });
+  const activeWrap = mountLanguageForm(active.store, 'lang-reload-on');
+  await flushPromises();
+  expect(activeWrap.find('[data-testid="language-reload-terminology"]').exists()).toBe(true);
+  activeWrap.unmount();
+});
+
+test('LanguageFormView: ReloadTerminology toast branches by packaged PO result', async () => {
+  const levels: string[] = [];
+  const titles: string[] = [];
+  const orig = {
+    success: ChoyMessage.success,
+    warning: ChoyMessage.warning,
+  };
+  ChoyMessage.success = ((msg: string) => {
+    levels.push('success');
+    titles.push(String(msg));
+    return 0;
+  }) as typeof ChoyMessage.success;
+  ChoyMessage.warning = ((msg: string) => {
+    levels.push('warning');
+    titles.push(String(msg));
+    return 0;
+  }) as typeof ChoyMessage.warning;
+  try {
+    const ok = buildStore(
+      { Id: 'lang-toast-ok', Code: 'zh_CN', IsActive: true },
+      {
+        reloadTerminology: async () => ({
+          Code: 'zh_CN',
+          ModulesScanned: 8,
+          ModulesWithPo: 8,
+          Upserted: 12,
+        }),
+      }
+    );
+    const okWrap = mountLanguageForm(ok.store, 'lang-toast-ok');
+    await flushPromises();
+    await (okWrap.vm as any).$.setupState.onReloadTerminology('lang-toast-ok', {
+      Id: 'lang-toast-ok',
+      Code: 'zh_CN',
+      IsActive: true,
+    });
+    await flushPromises();
+    okWrap.unmount();
+
+    const missing = buildStore(
+      { Id: 'lang-toast-tl', Code: 'tl_PH', IsActive: false },
+      {
+        reloadTerminology: async () => ({
+          Code: 'tl_PH',
+          ModulesScanned: 8,
+          ModulesWithPo: 0,
+          Upserted: 0,
+        }),
+      }
+    );
+    const tlWrap = mountLanguageForm(missing.store, 'lang-toast-tl');
+    await flushPromises();
+    await (tlWrap.vm as any).$.setupState.onReloadTerminology('lang-toast-tl', {
+      Id: 'lang-toast-tl',
+      Code: 'tl_PH',
+      IsActive: false,
+    });
+    await flushPromises();
+    tlWrap.unmount();
+
+    expect(levels).toEqual(['success', 'warning']);
+    expect(titles[0]).toMatch(/Synced packaged translations|zh_CN/i);
+    expect(titles[1]).toMatch(/tl_PH/i);
+  } finally {
+    ChoyMessage.success = orig.success;
+    ChoyMessage.warning = orig.warning;
+  }
+});
+
+test('LanguageFormView: missing ReloadTerminology method is handled', async () => {
+  const { store } = buildStore({ Id: 'lang-reload-missing', Code: 'zh_HK', IsActive: false });
+  delete (store as any).ReloadTerminology;
+  const wrapper = mountLanguageForm(store, 'lang-reload-missing');
+  await flushPromises();
+  await wrapper.find('[data-testid="language-reload-terminology"]').trigger('click');
+  await flushPromises();
+  expect(wrapper.find('[data-testid="language-reload-terminology"]').exists()).toBe(true);
+  wrapper.unmount();
+});
+
+test('LanguageFormView: ReloadTerminology rejection surfaces error and clears busy', async () => {
+  const toasts: string[] = [];
+  const origError = ChoyMessage.error;
+  ChoyMessage.error = ((msg: string) => {
+    toasts.push(String(msg));
+    return 0;
+  }) as typeof ChoyMessage.error;
+  try {
+    let rejectReload!: (err: Error) => void;
+    const gate = new Promise<never>((_, reject) => {
+      rejectReload = reject;
+    });
+    const { store, reloadTerminologyCalls } = buildStore(
+      { Id: 'lang-reload-fail', Code: 'zh_HK', IsActive: false },
+      {
+        reloadTerminology: async () => {
+          await gate;
+        },
+      }
+    );
+    const wrapper = mountLanguageForm(store, 'lang-reload-fail');
+    await flushPromises();
+    const setupState = (wrapper.vm as any).$.setupState;
+    const pending = setupState.onReloadTerminology('lang-reload-fail', {
+      Id: 'lang-reload-fail',
+      Code: 'zh_HK',
+      IsActive: false,
+    });
+    await flushPromises();
+    expect(setupState.reloadBusy).toBe(true);
+    rejectReload(new Error('reload denied'));
+    let settled: 'ok' | 'err' = 'ok';
+    await pending.then(
+      () => {
+        settled = 'ok';
+      },
+      () => {
+        settled = 'err';
+      }
+    );
+    await flushPromises();
+    expect(settled).toBe('ok');
+    expect(reloadTerminologyCalls.length).toBe(1);
+    expect(toasts).toEqual(['reload denied']);
+    expect(setupState.reloadBusy).toBe(false);
+    wrapper.unmount();
+  } finally {
+    ChoyMessage.error = origError;
+  }
+});
+
 test('LanguageFormView: loading slot hides Activate/Deactivate', async () => {
   const { store } = buildStore({ Id: 'lang-loading', Code: 'zh_HK', IsActive: false });
   stubSfc(ChoyFormView as any, {
@@ -508,6 +673,7 @@ test('LanguageFormView: loading slot hides Activate/Deactivate', async () => {
     await flushPromises();
     expect(wrapper.find('[data-testid="language-activate"]').exists()).toBe(false);
     expect(wrapper.find('[data-testid="language-deactivate"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="language-reload-terminology"]').exists()).toBe(false);
     wrapper.unmount();
   } finally {
     restoreSfc(ChoyFormView as any);

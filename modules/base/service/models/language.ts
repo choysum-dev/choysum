@@ -121,6 +121,44 @@ export type LanguageDeactivateResp = {
   IsActive: false;
 };
 
+/** ReloadTerminology command envelope (gRPC: base.Language/ReloadTerminology). */
+export type ReloadTerminologyParams = {
+  /** POSIX Language.Code; preferred when known. */
+  Code?: string;
+  /** Optional Language row id (resolved to Code via Browse). */
+  LanguageId?: string;
+};
+
+/** Aggregated packaged-PO reload stats for one language across installed modules. */
+export type ReloadTerminologyResult = {
+  Code: string;
+  ModulesScanned: number;
+  ModulesWithPo: number;
+  Upserted: number;
+  SkippedOverride: number;
+  RejectedNoCtxt: number;
+  SkippedObsolete: number;
+  PurgedRetired: number;
+};
+
+type ReloadTerminologyHostStats = {
+  code?: string;
+  modulesScanned?: number;
+  modulesWithPo?: number;
+  upserted?: number;
+  skippedOverride?: number;
+  rejectedNoCtxt?: number;
+  skippedObsolete?: number;
+  purgedRetired?: number;
+};
+
+function reloadTerminologyHost(): {
+  reloadTerminologyForLang?: (lang: string) => Promise<ReloadTerminologyHostStats>;
+} {
+  const root = globalThis as { $choysum?: { i18n?: { reloadTerminologyForLang?: (lang: string) => Promise<ReloadTerminologyHostStats> } } };
+  return root.$choysum?.i18n || {};
+}
+
 /**
  * Per-row refcounted gate for Activate/Deactivate → UpdateById.
  * Keyed by Language Id so a concurrent Activate on A cannot authorize UpdateById(IsActive) on B.
@@ -405,6 +443,56 @@ export default class Language extends BaseModel {
         IsActive: false,
       };
     });
+  }
+
+  /**
+   * Re-import packaged PO terminology for one POSIX language across installed modules.
+   * Does not change IsActive. gRPC: base.Language/ReloadTerminology
+   */
+  public static async ReloadTerminology(params: ReloadTerminologyParams): Promise<ReloadTerminologyResult> {
+    const codeParam = String(params?.Code || '').trim();
+    const languageId = String(params?.LanguageId || '').trim();
+    if (!codeParam && !languageId) {
+      raiseDomainError(
+        'base',
+        'InvalidArgument',
+        _t('Code or LanguageId is required', { scope: 'service/models/language' })
+      );
+    }
+
+    let code = codeParam;
+    if (!code) {
+      const row = await this.Browse(languageId, ['Id', 'Code', 'IsActive'] as const);
+      if (!row) {
+        raiseDomainError('base', 'NotFound', _t('Language not found', { scope: 'service/models/language' }));
+      }
+      code = String((row as Language).Code || '').trim();
+    }
+    if (!code) {
+      raiseDomainError('base', 'InvalidArgument', _t('Language code is required', { scope: 'service/models/language' }));
+    }
+
+    const host = reloadTerminologyHost();
+    const reload = host.reloadTerminologyForLang;
+    if (typeof reload !== 'function') {
+      raiseDomainError(
+        'base',
+        'InvalidArgument',
+        _t('Terminology reload is not available in this runtime', { scope: 'service/models/language' })
+      );
+    }
+
+    const stats = await reload!(code);
+    return {
+      Code: String(stats?.code || code),
+      ModulesScanned: Number(stats?.modulesScanned || 0),
+      ModulesWithPo: Number(stats?.modulesWithPo || 0),
+      Upserted: Number(stats?.upserted || 0),
+      SkippedOverride: Number(stats?.skippedOverride || 0),
+      RejectedNoCtxt: Number(stats?.rejectedNoCtxt || 0),
+      SkippedObsolete: Number(stats?.skippedObsolete || 0),
+      PurgedRetired: Number(stats?.purgedRetired || 0),
+    };
   }
 
   /**

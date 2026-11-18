@@ -517,3 +517,95 @@ test('base.language: Activate on one row does not authorize UpdateById IsActive 
   expect(Boolean((await Language.Browse(idB, ['IsActive'] as any) as any).IsActive)).toBe(false);
   expect(Boolean((await Language.Browse(idA, ['IsActive'] as any) as any).IsActive)).toBe(true);
 });
+
+test('base.language: ReloadTerminology resolves Code/Id, stubs host, leaves IsActive', async () => {
+  const suffix = companyCode8();
+  const created = await Language.Create(
+    {
+      Name: uid('LangReload'),
+      Code: `rl_${suffix}`.slice(0, 16),
+      Direction: 'ltr' as any,
+      IsActive: false,
+    } as any,
+    ['Id', 'Code', 'IsActive'] as any
+  );
+  const id = String((created as any).Id);
+  const code = String((created as any).Code);
+
+  const root = globalThis as any;
+  const prev = root.$choysum;
+  const calls: string[] = [];
+  root.$choysum = {
+    ...(prev || {}),
+    i18n: {
+      ...(prev?.i18n || {}),
+      reloadTerminologyForLang: async (lang: string) => {
+        calls.push(lang);
+        return {
+          code: lang,
+          modulesScanned: 3,
+          modulesWithPo: 2,
+          upserted: 5,
+          skippedOverride: 1,
+          rejectedNoCtxt: 0,
+          skippedObsolete: 0,
+          purgedRetired: 0,
+        };
+      },
+    },
+  };
+  try {
+    let missing: unknown;
+    try {
+      await Language.ReloadTerminology({});
+    } catch (err) {
+      missing = err;
+    }
+    expect(missing instanceof ChoysumError).toBe(true);
+    expect(String((missing as ChoysumError).message || '')).toMatch(/Code or LanguageId/i);
+
+    const byId = await Language.ReloadTerminology({ LanguageId: id });
+    expect(byId.Code).toBe(code);
+    expect(byId.ModulesScanned).toBe(3);
+    expect(byId.ModulesWithPo).toBe(2);
+    expect(byId.Upserted).toBe(5);
+    expect(byId.SkippedOverride).toBe(1);
+    expect(calls).toEqual([code]);
+
+    const byCode = await Language.ReloadTerminology({ Code: code });
+    expect(byCode.Upserted).toBe(5);
+    expect(calls).toEqual([code, code]);
+
+    expect(Boolean((await Language.Browse(id, ['IsActive'] as any) as any).IsActive)).toBe(false);
+
+    let missingHost: unknown;
+    const i18nPrev = root.$choysum.i18n;
+    root.$choysum.i18n = { ...(i18nPrev || {}) };
+    delete root.$choysum.i18n.reloadTerminologyForLang;
+    try {
+      await Language.ReloadTerminology({ Code: code });
+    } catch (err) {
+      missingHost = err;
+    }
+    expect(missingHost instanceof ChoysumError).toBe(true);
+    expect(String((missingHost as ChoysumError).message || '')).toMatch(/not available/i);
+
+    let notFound: unknown;
+    root.$choysum.i18n = {
+      ...(i18nPrev || {}),
+      reloadTerminologyForLang: async (lang: string) => {
+        calls.push(lang);
+        return { code: lang, modulesScanned: 0, modulesWithPo: 0, upserted: 0 };
+      },
+    };
+    try {
+      await Language.ReloadTerminology({ LanguageId: 'missing-lang-id-xyz' });
+    } catch (err) {
+      notFound = err;
+    }
+    expect(notFound instanceof ChoysumError).toBe(true);
+    expect(String((notFound as ChoysumError).message || '')).toMatch(/not found/i);
+  } finally {
+    root.$choysum = prev;
+  }
+});

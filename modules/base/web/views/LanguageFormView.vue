@@ -19,7 +19,7 @@ SPDX-License-Identifier: Apache-2.0
         type="button"
         size="default"
         data-testid="language-activate"
-        :disabled="activeBusy"
+        :disabled="activeBusy || reloadBusy"
         :aria-busy="activeBusy || undefined"
         @click="() => void onActivate(slotRecordId)"
       >
@@ -32,12 +32,25 @@ SPDX-License-Identifier: Apache-2.0
         size="default"
         variant="outline"
         data-testid="language-deactivate"
-        :disabled="activeBusy"
+        :disabled="activeBusy || reloadBusy"
         :aria-busy="activeBusy || undefined"
         @click="() => void onDeactivate(slotRecordId)"
       >
         <CircleOff class="size-4" aria-hidden="true" />
         {{ _t('Deactivate') }}
+      </ChoyButton>
+      <ChoyButton
+        v-if="!loading && showReloadTerminologyFor(formData, slotRecordId)"
+        type="button"
+        size="default"
+        variant="outline"
+        data-testid="language-reload-terminology"
+        :disabled="activeBusy || reloadBusy"
+        :aria-busy="reloadBusy || undefined"
+        @click="() => void onReloadTerminology(slotRecordId, formData)"
+      >
+        <Languages class="size-4" aria-hidden="true" />
+        {{ _t('Update translations') }}
       </ChoyButton>
     </template>
 
@@ -150,7 +163,7 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import type { RouteLocationRaw } from 'vue-router';
-import { CircleCheck, CircleOff } from 'lucide-vue-next';
+import { CircleCheck, CircleOff, Languages } from 'lucide-vue-next';
 import type { ModelStore } from '@/web/web/stores/modelStore';
 import type Language from '@/base/service/models/language';
 import { defineModelActions } from '@/core/web/resource';
@@ -158,6 +171,7 @@ import { usePermission } from '@/auth/web/composables/usePermission';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { createTranslate } from '@/web/web/i18n';
 import { ChoyMessage } from '@/web/web/composables/useChoyMessage';
+import { useI18nStore } from '@/web/web/stores/i18nStore';
 import {
   ChoyBooleanField,
   ChoyButton,
@@ -176,7 +190,9 @@ import {
   languageRowFields,
   languageRowOverrideFields,
   mergeLanguageFormFields,
+  buildLanguageReloadTerminologyToast,
   reloadActiveLanguagesAfterLanguageSave,
+  reloadLanguageTerminology,
   resolveLanguageCurrentRow,
   shouldPreferBrowseReloadAfterLanguageAction,
   type LanguageRowOverride,
@@ -205,6 +221,7 @@ type FormViewApi = {
 const formViewRef = ref<FormViewApi | null>(null);
 
 const activeBusy = ref(false);
+const reloadBusy = ref(false);
 /**
  * Local override after Activate/Deactivate when form reload is unavailable.
  * Scoped via languageRowOverrideFields(id) — stale overrides for other recordIds are ignored.
@@ -247,6 +264,16 @@ function showDeactivateFor(formData: Record<string, unknown> | undefined, slotRe
   return !!id && rowMatched(fields) && fields.IsActive === true;
 }
 
+/** Update translations is available for any matched row (active or not). */
+function showReloadTerminologyFor(
+  formData: Record<string, unknown> | undefined,
+  slotRecordId: string | undefined
+): boolean {
+  if (!canWriteLanguage.value) return false;
+  const { id, fields } = resolveRowFields(formData, slotRecordId);
+  return !!id && rowMatched(fields);
+}
+
 async function reloadRecordViaBrowse(id: string): Promise<void> {
   const rid = String(id || '').trim();
   if (!rid) return;
@@ -287,7 +314,7 @@ async function reloadRecord(id: string): Promise<void> {
 }
 
 async function onActivate(slotRecordId: string | undefined): Promise<void> {
-  if (activeBusy.value) return;
+  if (activeBusy.value || reloadBusy.value) return;
   const id = String(slotRecordId || '').trim();
   if (!id) return;
   const activate = (store as any)?.Activate;
@@ -319,7 +346,7 @@ async function onActivate(slotRecordId: string | undefined): Promise<void> {
 }
 
 async function onDeactivate(slotRecordId: string | undefined): Promise<void> {
-  if (activeBusy.value) return;
+  if (activeBusy.value || reloadBusy.value) return;
   const id = String(slotRecordId || '').trim();
   if (!id) return;
   const deactivate = (store as any)?.Deactivate;
@@ -347,6 +374,60 @@ async function onDeactivate(slotRecordId: string | undefined): Promise<void> {
     }
   } finally {
     activeBusy.value = false;
+  }
+}
+
+async function onReloadTerminology(
+  slotRecordId: string | undefined,
+  formData: Record<string, unknown> | undefined
+): Promise<void> {
+  if (reloadBusy.value || activeBusy.value) return;
+  const { id, fields } = resolveRowFields(formData, slotRecordId);
+  if (!id) return;
+  const reload = (store as any)?.ReloadTerminology;
+  if (typeof reload !== 'function') {
+    try {
+      ChoyMessage.error(_t('Update translations failed'));
+    } catch {
+      // Toast host may be absent in FE unit tests.
+    }
+    return;
+  }
+  reloadBusy.value = true;
+  try {
+    const i18n = useI18nStore();
+    // Prefer LanguageId so an unsaved Code draft cannot retarget the reload.
+    await reloadLanguageTerminology({
+      reload: params => reload.call(store, params),
+      languageId: id,
+      currentLang: () => i18n.lang,
+      revalidateIfCurrent: () => i18n.revalidateTerminologyIfStale(),
+      onDone: stats => {
+        const toast = buildLanguageReloadTerminologyToast({
+          code: String(stats?.Code || fields.Code || '').trim() || id,
+          modulesScanned: Number(stats?.ModulesScanned || 0),
+          modulesWithPo: Number(stats?.ModulesWithPo || 0),
+          upserted: Number(stats?.Upserted || 0),
+          isActive: fields.IsActive === true ? true : fields.IsActive === false ? false : null,
+        });
+        try {
+          const opts = toast.description ? { description: toast.description } : undefined;
+          if (toast.level === 'success') ChoyMessage.success(toast.title, opts);
+          else ChoyMessage.warning(toast.title, opts);
+        } catch {
+          // Toast host may be absent in FE unit tests.
+        }
+      },
+    });
+  } catch (err: any) {
+    const message = String(err?.message || err || _t('Update translations failed'));
+    try {
+      ChoyMessage.error(message);
+    } catch {
+      // Toast host may be absent in FE unit tests.
+    }
+  } finally {
+    reloadBusy.value = false;
   }
 }
 </script>
