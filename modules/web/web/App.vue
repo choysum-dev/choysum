@@ -6,7 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 <template>
   <div class="choy-app h-full w-full overflow-hidden bg-background text-foreground">
     <router-view />
-    <Toaster rich-colors close-button />
+    <ChoyToaster />
     <ChoyConfirmHost />
     <ChoyDialogHost />
     <ChoyLoadingSlowHint />
@@ -19,7 +19,7 @@ SPDX-License-Identifier: Apache-2.0
  * (see applyChoyThemePreference from setupApp).
  */
 import { onMounted, onUnmounted } from 'vue';
-import Toaster from './components/vendor/ui/sonner/Sonner.vue';
+import ChoyToaster from './components/layout/ChoyToaster.vue';
 import ChoyConfirmHost from './components/layout/ChoyConfirmHost.vue';
 import ChoyDialogHost from './components/layout/ChoyDialogHost.vue';
 import ChoyLoadingSlowHint from './components/layout/ChoyLoadingSlowHint.vue';
