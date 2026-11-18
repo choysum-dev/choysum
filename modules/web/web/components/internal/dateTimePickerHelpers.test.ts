@@ -70,18 +70,20 @@ describe('dateTimePickerHelpers', () => {
     expect(formatDateTimePickerDisplay(wall, 'YYYY-MM-DD[T]HH:mm:ss[Z]', tz)).toBe(
       '2026-01-05T08:00:00Z',
     );
-    // Invalid IANA: fall back to UTC-parts path (keeps format shape; offset is +00:00).
+    // Invalid IANA: keep wall clock, omit offset (do not claim +00:00).
     expect(formatDateTimePickerDisplay(wall, 'YYYY-MM-DD HH:mm Z', 'Not/A_Zone')).toBe(
-      '2026-01-05 08:00 +00:00',
+      '2026-01-05 08:00',
     );
-    // User-TZ spring-forward gap: keep requested clock (do not show normalized 03:30).
+    // User-TZ spring-forward gap: keep requested clock without a fake UTC offset.
     expect(
       formatDateTimePickerDisplay('2026-03-08T02:30:00', 'YYYY-MM-DD HH:mm Z', 'America/New_York'),
-    ).toBe('2026-03-08 02:30 +00:00');
-    // Year 0001–0099 with Z: keep literal year via UTC-parts fallback when tz remap fails.
+    ).toBe('2026-03-08 02:30');
+    // Year 0001–0099 with Z: keep literal year; omit offset when tz remap fails round-trip.
     expect(formatDateTimePickerDisplay('0042-01-05T09:00:00', 'YYYY-MM-DD HH:mm Z', 'UTC')).toBe(
-      '0042-01-05 09:00 +00:00',
+      '0042-01-05 09:00',
     );
+    // Offset-only format with failed zone → canonical wall (nothing left after stripping Z).
+    expect(formatDateTimePickerDisplay(wall, 'Z', 'Not/A_Zone')).toBe('2026-01-05 08:00:00');
   });
 
   test('parses legacy YYYY-MM-DDTHH:mm with second default 0', () => {

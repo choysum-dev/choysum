@@ -185,8 +185,9 @@ const toDisplayText = (v: FieldType) => {
     return m.isValid() ? m.format(fmt) : '';
   }
   // Offset tokens (`Z` / `ZZ`): format via user TZ so offset matches query preview.
-  const utc = userWallDateToUtc(v, getUserTimeZone());
-  return utc ? formatUtcInTimeZone(utc, fmt, getUserTimeZone()) : '';
+  const tz = getUserTimeZone();
+  const utc = userWallDateToUtc(v, tz);
+  return utc ? formatUtcInTimeZone(utc, fmt, tz) : '';
 };
 
 function normalizeToDate(v: any): FieldType {

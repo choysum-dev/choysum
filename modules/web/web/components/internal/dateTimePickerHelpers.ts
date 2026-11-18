@@ -70,6 +70,30 @@ export function parseDateTimePickerValue(
   };
 }
 
+/** Drop unescaped `Z`/`ZZ` so a failed zone path can keep wall clock without a false `+00:00`. */
+function stripDisplayOffsetTokens(format: string): string {
+  let out = '';
+  for (let i = 0; i < format.length; ) {
+    if (format[i] === '[') {
+      const end = format.indexOf(']', i + 1);
+      if (end < 0) {
+        out += format.slice(i);
+        break;
+      }
+      out += format.slice(i, end + 1);
+      i = end + 1;
+      continue;
+    }
+    if (format[i] === 'Z') {
+      i += format[i + 1] === 'Z' ? 2 : 1;
+      continue;
+    }
+    out += format[i];
+    i += 1;
+  }
+  return out.replace(/[ \t]{2,}/g, ' ').trim();
+}
+
 /**
  * Display text for the trigger.
  * Default: space instead of T (YYYY-MM-DD HH:mm:ss). Optional dayjs displayFormat overrides.
@@ -88,13 +112,13 @@ export function formatDateTimePickerDisplay(
   const canonical = `${date} ${String(parts.hour).padStart(2, '0')}:${String(parts.minute).padStart(2, '0')}:${String(parts.second).padStart(2, '0')}`;
   if (!fmt) return canonical;
 
-  const formatUtcParts = (): string => {
+  const formatUtcParts = (format: string): string => {
     // Format validated parts in UTC so year 0001–0099 and DST gaps stay literal.
     const instant = new Date(0);
     instant.setUTCFullYear(parts.year, parts.month - 1, parts.day);
     instant.setUTCHours(parts.hour, parts.minute, parts.second, 0);
     const m = dayjsUtc.utc(instant);
-    return m.isValid() ? m.format(fmt) : canonical;
+    return m.isValid() ? m.format(format) : canonical;
   };
 
   if (displayFormatNeedsZoneOffset(fmt)) {
@@ -104,16 +128,17 @@ export function formatDateTimePickerDisplay(
     if (utc) {
       const expected = `${date}T${String(parts.hour).padStart(2, '0')}:${String(parts.minute).padStart(2, '0')}:${String(parts.second).padStart(2, '0')}`;
       const roundTrip = formatUtcInTimeZone(utc, 'YYYY-MM-DDTHH:mm:ss', tz);
-      // User-TZ gap / year remap: keep requested wall clock via UTC-parts path.
       if (roundTrip === expected) {
         const wall = formatUtcInTimeZone(utc, fmt, tz);
         if (wall) return wall;
       }
     }
-    return formatUtcParts();
+    // Invalid zone / nonexistent wall / year remap: keep clock, omit offset (no fake +00:00).
+    const withoutOffset = stripDisplayOffsetTokens(fmt);
+    return withoutOffset ? formatUtcParts(withoutOffset) : canonical;
   }
 
-  return formatUtcParts();
+  return formatUtcParts(fmt);
 }
 
 /** Now in the local calendar + clock (seconds precision). */
