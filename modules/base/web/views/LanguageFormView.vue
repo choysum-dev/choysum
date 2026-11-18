@@ -12,27 +12,27 @@ SPDX-License-Identifier: Apache-2.0
     @update-success="reloadActiveLanguagesAfterLanguageSave"
     @create-success="reloadActiveLanguagesAfterLanguageSave"
   >
-    <template #secondary-actions>
+    <template #secondary-actions="{ formData, recordId: slotRecordId }">
       <ChoyButton
-        v-if="showActivate"
+        v-if="showActivateFor(formData, slotRecordId)"
         type="button"
         size="default"
         data-testid="language-activate"
         :disabled="activeBusy"
         :aria-busy="activeBusy || undefined"
-        @click="() => void onActivate()"
+        @click="() => void onActivate(slotRecordId)"
       >
         {{ _t('Activate') }}
       </ChoyButton>
       <ChoyButton
-        v-else-if="showDeactivate"
+        v-else-if="showDeactivateFor(formData, slotRecordId)"
         type="button"
         size="default"
         variant="outline"
         data-testid="language-deactivate"
         :disabled="activeBusy"
         :aria-busy="activeBusy || undefined"
-        @click="() => void onDeactivate()"
+        @click="() => void onDeactivate(slotRecordId)"
       >
         {{ _t('Deactivate') }}
       </ChoyButton>
@@ -146,7 +146,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { useRoute, type RouteLocationRaw } from 'vue-router';
+import type { RouteLocationRaw } from 'vue-router';
 import type { ModelStore } from '@/web/web/stores/modelStore';
 import type Language from '@/base/service/models/language';
 import { defineModelActions } from '@/core/web/resource';
@@ -173,7 +173,6 @@ import {
   languageRowOverrideFields,
   reloadActiveLanguagesAfterLanguageSave,
   resolveLanguageCurrentRow,
-  resolveLanguageRecordId,
   type LanguageRowOverride,
 } from './languageFormHelpers';
 
@@ -190,16 +189,7 @@ const props = withDefaults(
 const languageActions = defineModelActions('base.Language', { entityTitle: _lt('Language') });
 const { hasAction } = usePermission();
 const store = resolvePageStore(props.store, 'LanguageFormView');
-const route = useRoute();
-/** Prop wins; otherwise route `:id` (Language.vue does not pass recordId). */
-const recordId = computed(() =>
-  resolveLanguageRecordId({
-    recordId: props.recordId,
-    routeParams: route.params as Record<string, unknown>,
-    routeQuery: route.query as Record<string, unknown>,
-  })
-);
-const { viewMode, showHeader, createAction } = props;
+const { recordId, viewMode, showHeader, createAction } = props;
 
 const activeBusy = ref(false);
 /**
@@ -210,51 +200,67 @@ const rowOverride = ref<LanguageRowOverride | null>(null);
 
 const canWriteLanguage = computed(() => hasAction(languageActions.edit));
 
-const currentRow = computed(() => {
-  const overrideFields = languageRowOverrideFields(rowOverride.value, recordId.value);
-  if (overrideFields) return overrideFields;
-  return resolveLanguageCurrentRow({
-    recordId: recordId.value,
+function resolveRowFields(
+  formData: Record<string, unknown> | undefined,
+  slotRecordId: string | undefined
+): { id: string; fields: Record<string, unknown> } {
+  const id = String(slotRecordId || '').trim();
+  const overrideFields = languageRowOverrideFields(rowOverride.value, id);
+  if (overrideFields) return { id, fields: overrideFields };
+  const fromStore = resolveLanguageCurrentRow({
+    recordId: id,
     records: (store as any)?.state?.records,
     rows: (store as any)?.state?.result?.rows,
   });
-});
+  const fromForm = formData && typeof formData === 'object' ? formData : {};
+  const formMatched = !!(
+    String(fromForm.Id || '').trim() ||
+    String(fromForm.Code || '').trim() ||
+    'IsActive' in fromForm
+  );
+  if (formMatched) return { id, fields: { ...fromStore, ...fromForm } };
+  return { id, fields: fromStore };
+}
 
-const hasMatchedRow = computed(() => {
-  const rec = currentRow.value;
-  return !!(String(rec.Id || '').trim() || String(rec.Code || '').trim());
-});
+function rowMatched(fields: Record<string, unknown>): boolean {
+  return !!(String(fields.Id || '').trim() || String(fields.Code || '').trim());
+}
 
-const showActivate = computed(
-  () => canWriteLanguage.value && hasMatchedRow.value && currentRow.value.IsActive !== true
-);
-const showDeactivate = computed(
-  () => canWriteLanguage.value && hasMatchedRow.value && currentRow.value.IsActive === true
-);
+function showActivateFor(formData: Record<string, unknown> | undefined, slotRecordId: string | undefined): boolean {
+  if (!canWriteLanguage.value) return false;
+  const { id, fields } = resolveRowFields(formData, slotRecordId);
+  return !!id && rowMatched(fields) && fields.IsActive !== true;
+}
 
-async function reloadRecord(): Promise<void> {
-  const id = String(recordId.value || '').trim();
-  if (!id) return;
+function showDeactivateFor(formData: Record<string, unknown> | undefined, slotRecordId: string | undefined): boolean {
+  if (!canWriteLanguage.value) return false;
+  const { id, fields } = resolveRowFields(formData, slotRecordId);
+  return !!id && rowMatched(fields) && fields.IsActive === true;
+}
+
+async function reloadRecord(id: string): Promise<void> {
+  const rid = String(id || '').trim();
+  if (!rid) return;
   if (typeof (store as any)?.Browse !== 'function') return;
-  const browsed = await (store as any).Browse(id, ['Id', 'Code', 'IsActive', 'Name']);
-  // Drop stale Browse results after the user navigated to another Language.
-  if (String(recordId.value || '').trim() !== id) return;
+  const browsed = await (store as any).Browse(rid, ['Id', 'Code', 'IsActive', 'Name']);
   const fields = languageRowFields(browsed);
   if (fields && (String(fields.Id || '').trim() || String(fields.Code || '').trim())) {
-    rowOverride.value = { id, fields: { ...fields } };
-  } else {
+    rowOverride.value = { id: rid, fields: { ...fields } };
+  } else if (!rowOverride.value || rowOverride.value.id === rid) {
+    // Do not clear an override that belongs to a different record after navigation.
     rowOverride.value = null;
   }
 }
 
-async function onActivate(): Promise<void> {
+async function onActivate(slotRecordId: string | undefined): Promise<void> {
   if (activeBusy.value) return;
   activeBusy.value = true;
+  const id = String(slotRecordId || '').trim();
   try {
     await activateLanguage({
       activate: req => (store as any).Activate(req),
-      recordId: String(recordId.value || ''),
-      reloadRecord,
+      recordId: id,
+      reloadRecord: () => reloadRecord(id),
     });
   } catch (err: any) {
     const message = String(err?.message || err || _t('Activate failed'));
@@ -268,14 +274,15 @@ async function onActivate(): Promise<void> {
   }
 }
 
-async function onDeactivate(): Promise<void> {
+async function onDeactivate(slotRecordId: string | undefined): Promise<void> {
   if (activeBusy.value) return;
   activeBusy.value = true;
+  const id = String(slotRecordId || '').trim();
   try {
     await deactivateLanguage({
       deactivate: req => (store as any).Deactivate(req),
-      recordId: String(recordId.value || ''),
-      reloadRecord,
+      recordId: id,
+      reloadRecord: () => reloadRecord(id),
     });
   } catch (err: any) {
     const message = String(err?.message || err || _t('Deactivate failed'));

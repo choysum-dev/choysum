@@ -163,11 +163,21 @@ SPDX-License-Identifier: Apache-2.0
             <slot
               v-if="!isSettingsPresentation && resolvedShowActions && viewMode === 'display'"
               name="secondary-actions"
+              :form-data="exposedFormData"
+              :record-id="effectiveRecordId"
+              :view-mode="viewMode"
+              :loading="loading"
             />
           </template>
           <!-- Only register when filled — empty tray would paint a dangling ActionBar separator. -->
           <template v-if="resolvedShowActions && !!slots['user-actions']" #user-actions>
-            <slot name="user-actions" />
+            <slot
+              name="user-actions"
+              :form-data="exposedFormData"
+              :record-id="effectiveRecordId"
+              :view-mode="viewMode"
+              :loading="loading"
+            />
           </template>
           <!-- Keep #center registered so the thirds grid does not collapse. -->
           <template #center>
@@ -388,9 +398,20 @@ defineSlots<{
   /**
    * Display-only CTAs after the title/⋮ cluster (and after Edit/Copy/Delete when shown).
    * Same tray as List/Kanban `#secondary-actions` — no ActionBar separator.
+   * `recordId` is the effective identity (prop, else route peek) — same as Edit/Copy/Delete.
    */
-  'secondary-actions'(): any;
-  'user-actions'(): any;
+  'secondary-actions'(props: {
+    formData: Partial<ClientModel<T>>;
+    recordId?: string;
+    viewMode: ViewMode;
+    loading: boolean;
+  }): any;
+  'user-actions'(props: {
+    formData: Partial<ClientModel<T>>;
+    recordId?: string;
+    viewMode: ViewMode;
+    loading: boolean;
+  }): any;
   statusbar(): any;
   'button-box'(): any;
   'header-right'(): any;
@@ -839,6 +860,8 @@ defineExpose({
   reset: handleReset,
   copy: handleCopy,
   getFormData: () => toRaw(exposedFormData.value) as any,
+  /** Effective record id (prop, else route peek). */
+  getRecordId: () => effectiveRecordId.value,
   getViewMode: () => viewMode.value,
   isLoading: () => loading.value,
 });
