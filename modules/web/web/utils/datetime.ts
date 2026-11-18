@@ -106,7 +106,74 @@ export function utcToUserWallDate(input: Date | string | number | null | undefin
   if (input == null || input === '') return null;
   const wall = utcInstantInZone(input, tz);
   if (!wall) return null;
-  return new Date(wall.year(), wall.month(), wall.date(), wall.hour(), wall.minute(), wall.second(), wall.millisecond());
+  // setFullYear — `new Date(year<100, …)` remaps to 19xx.
+  const local = new Date(0);
+  local.setFullYear(wall.year(), wall.month(), wall.date());
+  local.setHours(wall.hour(), wall.minute(), wall.second(), wall.millisecond());
+  return local;
+}
+
+/** Wall-clock components interpreted in a named IANA zone (month is 1–12). */
+export type UserWallDateParts = {
+  year: number;
+  month: number;
+  day: number;
+  hour: number;
+  minute: number;
+  second: number;
+  millisecond?: number;
+};
+
+/** `YYYY-MM-DDTHH:mm:ss` stamp from wall parts (shared by picker/field round-trip guards). */
+export function formatWallPartsStamp(parts: UserWallDateParts): string {
+  return `${String(parts.year).padStart(4, '0')}-${String(parts.month).padStart(2, '0')}-${String(parts.day).padStart(2, '0')}T${String(parts.hour).padStart(2, '0')}:${String(parts.minute).padStart(2, '0')}:${String(parts.second).padStart(2, '0')}`;
+}
+
+/**
+ * Format wall parts in `tz` when the format needs a zone offset.
+ * Returns null when conversion fails or the round-trip rewrites the clock (DST gap / year remap).
+ */
+export function formatWallPartsInZone(
+  parts: UserWallDateParts,
+  format: string,
+  tz: string = getUserTimeZone(),
+): string | null {
+  const utc = userWallPartsToUtc(parts, tz);
+  if (!utc) return null;
+  const expected = formatWallPartsStamp(parts);
+  if (formatUtcInTimeZone(utc, 'YYYY-MM-DDTHH:mm:ss', tz) !== expected) return null;
+  const wall = formatUtcInTimeZone(utc, format, tz);
+  return wall || null;
+}
+
+/**
+ * Interpret numeric wall-clock parts as local time in `tz` and return a UTC Date.
+ * Prefer this over building a browser-local Date when the host zone may DST-normalize
+ * nonexistent local times (spring-forward gaps) before getters are read.
+ * Ambiguous DST-fold wall times follow dayjs.tz default occurrence (D21).
+ */
+export function userWallPartsToUtc(
+  parts: UserWallDateParts,
+  tz: string = getUserTimeZone(),
+): Date | null {
+  const stamp = [
+    String(parts.year).padStart(4, '0'),
+    String(parts.month).padStart(2, '0'),
+    String(parts.day).padStart(2, '0'),
+  ].join('-');
+  const time = [
+    String(parts.hour).padStart(2, '0'),
+    String(parts.minute).padStart(2, '0'),
+    String(parts.second).padStart(2, '0'),
+  ].join(':');
+  const ms = String(parts.millisecond ?? 0).padStart(3, '0');
+  try {
+    const wall = tzDayjs.tz(`${stamp} ${time}.${ms}`, 'YYYY-MM-DD HH:mm:ss.SSS', tz);
+    if (!wall.isValid()) return null;
+    return wall.utc().toDate();
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -116,24 +183,18 @@ export function utcToUserWallDate(input: Date | string | number | null | undefin
  */
 export function userWallDateToUtc(wallLocal: Date | null | undefined, tz: string = getUserTimeZone()): Date | null {
   if (wallLocal == null || Number.isNaN(wallLocal.getTime())) return null;
-  const stamp = [
-    String(wallLocal.getFullYear()).padStart(4, '0'),
-    String(wallLocal.getMonth() + 1).padStart(2, '0'),
-    String(wallLocal.getDate()).padStart(2, '0'),
-  ].join('-');
-  const time = [
-    String(wallLocal.getHours()).padStart(2, '0'),
-    String(wallLocal.getMinutes()).padStart(2, '0'),
-    String(wallLocal.getSeconds()).padStart(2, '0'),
-  ].join(':');
-  const ms = String(wallLocal.getMilliseconds()).padStart(3, '0');
-  try {
-    const wall = tzDayjs.tz(`${stamp} ${time}.${ms}`, 'YYYY-MM-DD HH:mm:ss.SSS', tz);
-    if (!wall.isValid()) return null;
-    return wall.utc().toDate();
-  } catch {
-    return null;
-  }
+  return userWallPartsToUtc(
+    {
+      year: wallLocal.getFullYear(),
+      month: wallLocal.getMonth() + 1,
+      day: wallLocal.getDate(),
+      hour: wallLocal.getHours(),
+      minute: wallLocal.getMinutes(),
+      second: wallLocal.getSeconds(),
+      millisecond: wallLocal.getMilliseconds(),
+    },
+    tz,
+  );
 }
 
 /**
@@ -147,6 +208,64 @@ export function formatUtcInTimeZone(
   if (input == null || input === '') return '';
   const wall = utcInstantInZone(input, tz);
   return wall ? wall.format(format) : '';
+}
+
+
+/**
+ * Remove unescaped `Z`/`ZZ` tokens (bracket literals kept) so a failed zone path can
+ * keep the wall clock without emitting a false `+00:00` offset.
+ * Unmatched `[` is kept as a single literal character so a following `Z` is still stripped.
+ * Whitespace inside closed bracket literals is left unchanged.
+ */
+export function stripDisplayOffsetTokens(format: string): string {
+  let out = '';
+  for (let i = 0; i < format.length; ) {
+    if (format[i] === '[') {
+      const end = format.indexOf(']', i + 1);
+      if (end < 0) {
+        // Keep `[` only and keep scanning so a later Z/ZZ can still be removed.
+        out += '[';
+        i += 1;
+        continue;
+      }
+      out += format.slice(i, end + 1);
+      i = end + 1;
+      continue;
+    }
+    if (format[i] === 'Z') {
+      i += format[i + 1] === 'Z' ? 2 : 1;
+      continue;
+    }
+    out += format[i];
+    i += 1;
+  }
+  return out.trim();
+}
+
+/**
+ * True when a dayjs display format includes an unescaped offset token (`Z` / `ZZ`).
+ * Closed bracket literals are ignored; an unmatched `[` is skipped the same way as
+ * `stripDisplayOffsetTokens` so a following `Z` still counts as an offset token.
+ * Lowercase `z` is not included: core dayjs (without advancedFormat) leaves it literal.
+ */
+export function displayFormatNeedsZoneOffset(format: string | null | undefined): boolean {
+  const src = String(format ?? '');
+  let stripped = '';
+  for (let i = 0; i < src.length; ) {
+    if (src[i] === '[') {
+      const end = src.indexOf(']', i + 1);
+      if (end < 0) {
+        // Skip the unmatched `[` only; keep scanning for a later Z/ZZ.
+        i += 1;
+        continue;
+      }
+      i = end + 1;
+      continue;
+    }
+    stripped += src[i];
+    i += 1;
+  }
+  return /Z{1,2}/.test(stripped);
 }
 
 /**

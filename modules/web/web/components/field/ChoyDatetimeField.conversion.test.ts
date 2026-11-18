@@ -5,7 +5,52 @@
  * Conversion helpers used by DatetimeField (toView/fromView) — cover the FE hub paths
  * without mounting field UI (framework prefers pure-logic Vitest for coverage).
  */
-import { formatUtcIso, userWallDateToUtc, utcToUserWallDate } from '@/web/web/utils/datetime';
+import {
+  formatUtcIso,
+  setUserTimeZoneResolver,
+  userWallDateToUtc,
+  utcToUserWallDate,
+} from '@/web/web/utils/datetime';
+
+afterEach(() => {
+  setUserTimeZoneResolver(undefined);
+});
+
+/** Wall-carrier Date from explicit local components (setFullYear avoids year<100 remap). */
+function wallCarrier(
+  year: number,
+  month1: number,
+  day: number,
+  hour: number,
+  minute: number,
+  second = 0,
+  millisecond = 0,
+): Date {
+  const local = new Date(0);
+  local.setFullYear(year, month1 - 1, day);
+  local.setHours(hour, minute, second, millisecond);
+  return local;
+}
+
+/** True when host Date setters kept the requested wall (false in host DST gaps). */
+function keepsWall(
+  d: Date,
+  year: number,
+  month1: number,
+  day: number,
+  hour: number,
+  minute: number,
+  second = 0,
+): boolean {
+  return (
+    d.getFullYear() === year &&
+    d.getMonth() === month1 - 1 &&
+    d.getDate() === day &&
+    d.getHours() === hour &&
+    d.getMinutes() === minute &&
+    d.getSeconds() === second
+  );
+}
 
 test('DatetimeField conversion contract > toView-equivalent: UTC ISO → user wall Date components', () => {
   const wall = utcToUserWallDate('2024-11-03T06:00:00.000Z', 'America/New_York');
@@ -38,6 +83,94 @@ test('DatetimeField conversion contract > pads short fractional seconds like Dat
   expect(padded).toBe('2024-07-01T12:00:00.100Z');
   const wall = utcToUserWallDate(padded, 'UTC');
   expect(wall!.getMilliseconds()).toBe(100);
+});
+
+test('DatetimeField toDisplayText: Z offset follows user timezone', async () => {
+  setUserTimeZoneResolver(() => 'Asia/Shanghai');
+  const { h } = await import('vue');
+  const { createPinia, setActivePinia } = await import('pinia');
+  setActivePinia(createPinia());
+  const { flushPromises, mountApp, restoreSfc, stubSfc } = await import('@/web/web/__tests__/mountApp');
+  const DatetimeField = (await import('./ChoyDatetimeField.vue')).default;
+  const ChoyFieldBase = (await import('./ChoyFieldBase.vue')).default;
+  stubSfc(ChoyFieldBase as any, {
+    name: 'ChoyFieldBase',
+    props: {
+      binding: { type: Object, required: false },
+      rules: { type: Array, default: () => [] },
+      toView: { type: Function, default: undefined },
+      fromView: { type: Function, default: undefined },
+    },
+    setup(props: any, { slots }: any) {
+      return () =>
+        h('div', [
+          slots.display?.({
+            fieldValue: () => (props.binding as any)?.fieldRef?.() ?? { value: null },
+          }),
+        ]);
+    },
+  });
+  let m: Awaited<ReturnType<typeof mountApp>> | undefined;
+  try {
+    const { computed, ref } = await import('vue');
+    // Wall-carrier Date for Shanghai 08:00 on 2026-01-05 (UTC 00:00Z).
+    const value = ref(wallCarrier(2026, 1, 5, 8, 0, 0, 123));
+    const binding = {
+      env: { isForm: true, isEditMode: false, viewMode: 'readonly', fieldPrefix: null },
+      prop: 'At',
+      meta: {} as any,
+      fieldRef: () => value as any,
+      fieldRefOf: () => value as any,
+      recordRef: () => computed(() => ({ Id: '1' })) as any,
+      registerFields: () => {},
+      store: undefined,
+      asView: () => ({ fieldValue: () => value }) as any,
+    };
+    m = mountApp(DatetimeField as any, {
+      props: { binding, renderMode: 'form', displayFormat: 'YYYY-MM-DD HH:mm Z' },
+    });
+    await flushPromises();
+    const ss = m.setupState() as any;
+    expect(ss.toDisplayText?.(value.value)).toBe('2026-01-05 08:00 +08:00');
+    expect(ss.toDisplayText?.(null)).toBe('');
+    expect(ss.toDisplayText?.(new Date('invalid'))).toBe('');
+    // User-TZ spring-forward gap: keep wall clock, omit offset (no fake +00:00).
+    // Skip when the host zone remaps 02:30 (Date cannot represent a host DST gap).
+    setUserTimeZoneResolver(() => 'America/New_York');
+    const gap = wallCarrier(2026, 3, 8, 2, 30, 0);
+    if (keepsWall(gap, 2026, 3, 8, 2, 30, 0)) {
+      expect(ss.toDisplayText?.(gap)).toBe('2026-03-08 02:30');
+    }
+    // Fall-back fold: ambiguous wall still prints a real user-TZ offset (D21 default occurrence).
+    const fold = wallCarrier(2026, 11, 1, 1, 30, 0);
+    expect(ss.toDisplayText?.(fold)).toMatch(/^2026-11-01 01:30 [+-]\d{2}:\d{2}$/);
+    setUserTimeZoneResolver(() => 'Asia/Shanghai');
+    m.unmount();
+    // No-Z formats keep wall-carrier dayjs formatting (including fractional seconds).
+    m = mountApp(DatetimeField as any, {
+      props: { binding, renderMode: 'form', displayFormat: 'HH:mm:ss.SSS' },
+    });
+    await flushPromises();
+    const ss2 = m.setupState() as any;
+    expect(ss2.toDisplayText?.(value.value)).toBe('08:00:00.123');
+    m.unmount();
+    // Offset-only format with failed zone → canonical wall (not blank).
+    setUserTimeZoneResolver(() => 'America/New_York');
+    m = mountApp(DatetimeField as any, {
+      props: { binding, renderMode: 'form', displayFormat: 'Z' },
+    });
+    await flushPromises();
+    const ss3 = m.setupState() as any;
+    if (keepsWall(gap, 2026, 3, 8, 2, 30, 0)) {
+      expect(ss3.toDisplayText?.(gap)).toBe('2026-03-08 02:30:00');
+    }
+    // Successful offset-only path (valid zone round-trip) returns the zone offset alone.
+    setUserTimeZoneResolver(() => 'Asia/Shanghai');
+    expect(ss3.toDisplayText?.(value.value)).toBe('+08:00');
+  } finally {
+    m?.unmount();
+    restoreSfc(ChoyFieldBase as any);
+  }
 });
 
 test('DatetimeField normalizeToDate accepts numeric epoch via Date ctor fallback', async () => {

@@ -50,11 +50,14 @@ import customParseFormat from 'dayjs/plugin/customParseFormat';
 import { useBufferedCommit, type CommitStrategy } from '@/web/web/composables/useBufferedCommit';
 import { createTranslate } from '@/web/web/i18n';
 import {
+  displayFormatNeedsZoneOffset,
   formatUtcIso,
+  formatWallPartsInZone,
   getUserTimeZone,
   parseUtc,
+  stripDisplayOffsetTokens,
   userWallDateToUtc,
-  utcToUserWallDate
+  utcToUserWallDate,
 } from '@/web/web/utils/datetime';
 dayjs.extend(customParseFormat);
 
@@ -174,9 +177,35 @@ const fromView = (v: FieldType) => {
 
 const toDisplayText = (v: FieldType) => {
   if (!v) return '';
-  // fieldValue is a user-TZ wall-carrier Date from toView; format local components as-is.
+  // fieldValue is a user-TZ wall-carrier Date from toView.
+  if (!(v instanceof Date) || Number.isNaN(v.getTime())) return '';
+  const fmt = displayFormat.value;
+  // No offset token: keep local wall-carrier formatting (preserves SSS / locale tokens).
+  if (!displayFormatNeedsZoneOffset(fmt)) {
+    const m = dayjs(v);
+    return m.isValid() ? m.format(fmt) : '';
+  }
+  // Offset tokens (`Z` / `ZZ`): format via user TZ so offset matches query preview.
+  const tz = getUserTimeZone();
+  const zoned = formatWallPartsInZone(
+    {
+      year: v.getFullYear(),
+      month: v.getMonth() + 1,
+      day: v.getDate(),
+      hour: v.getHours(),
+      minute: v.getMinutes(),
+      second: v.getSeconds(),
+      millisecond: v.getMilliseconds(),
+    },
+    fmt,
+    tz,
+  );
+  if (zoned) return zoned;
   const m = dayjs(v);
-  return m.isValid() ? m.format(displayFormat.value) : '';
+  if (!m.isValid()) return '';
+  // Offset-only formats (e.g. `Z`) strip to empty — mirror picker canonical wall.
+  const withoutOffset = stripDisplayOffsetTokens(fmt) || 'YYYY-MM-DD HH:mm:ss';
+  return m.format(withoutOffset);
 };
 
 function normalizeToDate(v: any): FieldType {

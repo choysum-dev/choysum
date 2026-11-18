@@ -5,6 +5,12 @@ import { CalendarDate, parseDate } from '@internationalized/date';
 
 import { dayjsUtc } from '@/web/web/utils/dayjsUtc';
 import {
+  displayFormatNeedsZoneOffset,
+  formatWallPartsInZone,
+  getUserTimeZone,
+  stripDisplayOffsetTokens,
+} from '@/web/web/utils/datetime';
+import {
   formatDatePickerValue,
   parseDatePickerValue,
   todayDatePickerValue,
@@ -67,24 +73,41 @@ export function parseDateTimePickerValue(
 /**
  * Display text for the trigger.
  * Default: space instead of T (YYYY-MM-DD HH:mm:ss). Optional dayjs displayFormat overrides.
+ * When the format includes offset tokens (`Z` / `ZZ`), wall parts are interpreted in `timeZone`
+ * (user TZ) so the offset matches query preview — not browser/UTC.
  */
 export function formatDateTimePickerDisplay(
   value: string | null | undefined,
   displayFormat?: string | null,
+  timeZone?: string | null,
 ): string {
   const parts = parseDateTimePickerValue(value);
   if (!parts) return String(value ?? '').trim();
   const fmt = String(displayFormat || '').trim();
-  if (fmt) {
-    // Build from validated parts in UTC (avoids Date.UTC year<100 remap and local DST gaps).
+  const date = formatDatePickerValue(parts);
+  const canonical = `${date} ${String(parts.hour).padStart(2, '0')}:${String(parts.minute).padStart(2, '0')}:${String(parts.second).padStart(2, '0')}`;
+  if (!fmt) return canonical;
+
+  const formatUtcParts = (format: string): string => {
+    // Format validated parts in UTC so year 0001–0099 and DST gaps stay literal.
     const instant = new Date(0);
     instant.setUTCFullYear(parts.year, parts.month - 1, parts.day);
     instant.setUTCHours(parts.hour, parts.minute, parts.second, 0);
     const m = dayjsUtc.utc(instant);
-    if (m.isValid()) return m.format(fmt);
+    return m.isValid() ? m.format(format) : canonical;
+  };
+
+  if (displayFormatNeedsZoneOffset(fmt)) {
+    const tz = String(timeZone || '').trim() || getUserTimeZone();
+    // Numeric parts avoid browser-local Date setters that DST-normalize host gaps.
+    const wall = formatWallPartsInZone(parts, fmt, tz);
+    if (wall) return wall;
+    // Invalid zone / nonexistent wall / year remap: keep clock, omit offset (no fake +00:00).
+    const withoutOffset = stripDisplayOffsetTokens(fmt);
+    return withoutOffset ? formatUtcParts(withoutOffset) : canonical;
   }
-  const date = formatDatePickerValue(parts);
-  return `${date} ${String(parts.hour).padStart(2, '0')}:${String(parts.minute).padStart(2, '0')}:${String(parts.second).padStart(2, '0')}`;
+
+  return formatUtcParts(fmt);
 }
 
 /** Now in the local calendar + clock (seconds precision). */

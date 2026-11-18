@@ -2,18 +2,77 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import {
+  displayFormatNeedsZoneOffset,
   formatUtcInTimeZone,
   formatUtcIso,
+  formatWallPartsInZone,
+  formatWallPartsStamp,
   getUserTimeZone,
   parseUtc,
   setUserTimeZoneResolver,
+  stripDisplayOffsetTokens,
   userWallDateToUtc,
+  userWallPartsToUtc,
   utcToUserWallDate,
   dayRange,
 } from './datetime';
 
 afterEach(() => {
   setUserTimeZoneResolver(undefined);
+});
+
+describe('displayFormatNeedsZoneOffset', () => {
+  test('detects unescaped Z/ZZ and ignores bracket literals and lowercase z', () => {
+    expect(displayFormatNeedsZoneOffset('YYYY-MM-DD HH:mm Z')).toBe(true);
+    expect(displayFormatNeedsZoneOffset('YYYY-MM-DD HH:mm:ss ZZ')).toBe(true);
+    // Lowercase z is not a core dayjs offset token (needs advancedFormat).
+    expect(displayFormatNeedsZoneOffset('HH:mm z')).toBe(false);
+    expect(displayFormatNeedsZoneOffset('YYYY-MM-DD HH:mm')).toBe(false);
+    expect(displayFormatNeedsZoneOffset('YYYY-MM-DD[T]HH:mm:ss[Z]')).toBe(false);
+    // Unmatched `[` is skipped like stripDisplayOffsetTokens — following Z still counts.
+    expect(displayFormatNeedsZoneOffset('HH:mm [Z')).toBe(true);
+    expect(displayFormatNeedsZoneOffset('')).toBe(false);
+    expect(displayFormatNeedsZoneOffset(null)).toBe(false);
+    expect(displayFormatNeedsZoneOffset(undefined)).toBe(false);
+  });
+});
+
+describe('formatWallPartsStamp', () => {
+  test('pads wall parts as YYYY-MM-DDTHH:mm:ss', () => {
+    expect(
+      formatWallPartsStamp({ year: 42, month: 1, day: 5, hour: 9, minute: 0, second: 0 }),
+    ).toBe('0042-01-05T09:00:00');
+  });
+});
+
+describe('formatWallPartsInZone', () => {
+  test('formats Shanghai offset and returns null on DST gap', () => {
+    const parts = { year: 2026, month: 1, day: 5, hour: 8, minute: 0, second: 0 };
+    expect(formatWallPartsInZone(parts, 'YYYY-MM-DD HH:mm Z', 'Asia/Shanghai')).toBe(
+      '2026-01-05 08:00 +08:00',
+    );
+    expect(
+      formatWallPartsInZone(
+        { year: 2026, month: 3, day: 8, hour: 2, minute: 30, second: 0 },
+        'YYYY-MM-DD HH:mm Z',
+        'America/New_York',
+      ),
+    ).toBeNull();
+  });
+});
+
+describe('stripDisplayOffsetTokens', () => {
+  test('removes Z/ZZ outside brackets and keeps bracket literals', () => {
+    expect(stripDisplayOffsetTokens('YYYY-MM-DD HH:mm Z')).toBe('YYYY-MM-DD HH:mm');
+    expect(stripDisplayOffsetTokens('YYYY-MM-DD HH:mm ZZ')).toBe('YYYY-MM-DD HH:mm');
+    expect(stripDisplayOffsetTokens('YYYY-MM-DD[T]HH:mm:ss[Z]')).toBe('YYYY-MM-DD[T]HH:mm:ss[Z]');
+    expect(stripDisplayOffsetTokens('HH:mm Z[')).toBe('HH:mm [');
+    // Unmatched `[` must not hide a following Z from stripping (avoids dayjs still expanding Z).
+    expect(stripDisplayOffsetTokens('HH:mm [Z')).toBe('HH:mm [');
+    // Internal bracket whitespace must stay (do not collapse `[A  B]` → `[A B]`).
+    expect(stripDisplayOffsetTokens('HH:mm [A  B] Z')).toBe('HH:mm [A  B]');
+    expect(stripDisplayOffsetTokens('Z')).toBe('');
+  });
 });
 
 describe('getUserTimeZone', () => {
@@ -72,6 +131,18 @@ describe('utc ↔ user wall', () => {
     expect(wall!.getMinutes()).toBe(0);
   });
 
+  test('preserves years 0001–0099 on the wall-carrier Date', () => {
+    const early = utcToUserWallDate('0001-01-05T12:00:00.000Z', 'UTC');
+    expect(early).not.toBeNull();
+    expect(early!.getFullYear()).toBe(1);
+    expect(early!.getMonth()).toBe(0);
+    expect(early!.getDate()).toBe(5);
+    expect(early!.getHours()).toBe(12);
+    // Modern years must still round-trip through the same constructor path.
+    const modern = utcToUserWallDate('2024-06-30T16:00:00.000Z', 'UTC');
+    expect(modern!.getFullYear()).toBe(2024);
+  });
+
   test('maps America/New_York wall back to the same UTC instant', () => {
     const utcIso = '2024-03-10T05:00:00.000Z'; // New York spring-forward midnight
     const wall = utcToUserWallDate(utcIso, 'America/New_York');
@@ -87,6 +158,12 @@ describe('utc ↔ user wall', () => {
     expect(utcToUserWallDate(Number.NaN, 'UTC')).toBeNull();
     expect(userWallDateToUtc(null, 'UTC')).toBeNull();
     expect(userWallDateToUtc(new Date('invalid'), 'UTC')).toBeNull();
+    // Numeric parts skip browser-local Date setters (same UTC as wall-carrier for Shanghai).
+    const fromParts = userWallPartsToUtc(
+      { year: 2026, month: 1, day: 5, hour: 8, minute: 0, second: 0 },
+      'Asia/Shanghai',
+    );
+    expect(fromParts?.toISOString()).toBe('2026-01-05T00:00:00.000Z');
   });
 
   test('does not throw when timezone conversion rejects an invalid instant', () => {
