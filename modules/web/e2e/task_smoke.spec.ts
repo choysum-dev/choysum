@@ -15,6 +15,7 @@ type TaskPbModule = {
   Job: any;
   Schedule: any;
   JobGetJobReqSchema: any;
+  JobCancelJobReqSchema: any;
   ScheduleCreateReqSchema: any;
   ScheduleTriggerScheduleReqSchema: any;
   ScheduleDeleteByIdReqSchema: any;
@@ -271,6 +272,19 @@ test('task: create schedule and trigger job via gRPC-web', async () => {
   const triggerResult = fromValue(triggerResp.result);
   const jobId = String(triggerResult?.jobId || triggerResult?.JobId || triggerResult?.jobID || '');
   expect(jobId).not.toBe('');
+
+  // E2E dispatch poll_interval_ms is 1000. Cancel before the worker claims the job and
+  // holds SQLite while running auth.User/Login — otherwise GetJob can stall on the lock.
+  try {
+    await (jobClient as any).cancelJob(
+      create(taskPb.JobCancelJobReqSchema, {
+        jobId,
+        reason: 'e2e-smoke-cancel-before-dispatch',
+      })
+    );
+  } catch {
+    // Already finished or not cancelable; still attempt GetJob below.
+  }
 
   const jobResp: any = await (jobClient as any).getJob(
     create(taskPb.JobGetJobReqSchema, {

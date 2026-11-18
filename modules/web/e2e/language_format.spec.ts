@@ -155,24 +155,53 @@ async function resolveLanguageIdByCode(baseURL: string, code: string): Promise<s
   return id;
 }
 
-async function updateLanguageSeparators(baseURL: string, languageId: string) {
+async function updateLanguageSeparators(
+  baseURL: string,
+  languageId: string,
+  values: {
+    DecimalSeparator: string;
+    ThousandSeparator: string;
+    Grouping: string;
+  } = {
+    DecimalSeparator: ',',
+    ThousandSeparator: '.',
+    Grouping: '[3,0]',
+  }
+) {
   const { client, basePb } = await makeLanguageClient(baseURL);
   const resp: any = await client.updateById(
     create(basePb.LanguageUpdateByIdReqSchema, {
       id: languageId,
-      values: toValue({
-        DecimalSeparator: ',',
-        ThousandSeparator: '.',
-        Grouping: '[3,0]',
-      }),
+      values: toValue(values),
       returnFields: toValue(['Id', 'Code', 'DecimalSeparator', 'ThousandSeparator', 'Grouping']),
       options: toValue({}),
     })
   );
   const raw = fromValue(resp.result);
   const row = Array.isArray(raw) ? raw[0] : raw;
-  expect(String(row?.ThousandSeparator ?? ''), 'ThousandSeparator after UpdateById').toBe('.');
-  expect(String(row?.DecimalSeparator ?? ''), 'DecimalSeparator after UpdateById').toBe(',');
+  expect(String(row?.ThousandSeparator ?? ''), 'ThousandSeparator after UpdateById').toBe(
+    values.ThousandSeparator
+  );
+  expect(String(row?.DecimalSeparator ?? ''), 'DecimalSeparator after UpdateById').toBe(
+    values.DecimalSeparator
+  );
+}
+
+/** Weekday header labels from the open date-picker calendar (first row). */
+async function readDatePickerWeekdayHeaders(): Promise<string[]> {
+  return page.evaluate(() => {
+    const root = document.querySelector('.choy-date-picker__calendar');
+    if (!root) return [] as string[];
+    // DatePicker uses reka-ui CalendarHeadCell directly (no data-slot); weekday row is first.
+    const row = root.querySelector('.flex');
+    const cells = row ? Array.from(row.children) : [];
+    const fromRow = cells.map(el => String(el.textContent || '').trim()).filter(Boolean);
+    if (fromRow.length >= 7) return fromRow.slice(0, 7);
+    return Array.from(root.querySelectorAll('.text-muted-foreground'))
+      .map(el => String(el.textContent || '').trim())
+      .filter(t => t.length > 0 && t.length <= 4)
+      .slice(0, 7);
+  });
 }
 
 async function updateLanguageDateAndWeekStart(
@@ -230,26 +259,35 @@ test('base T2.6: Language thousand separator change updates exchange rate list d
   expect(beforeText).toMatch(/1,234,567/);
 
   const languageId = await resolveLanguageIdByCode(baseURL, 'zh_CN');
-  await updateLanguageSeparators(baseURL, languageId);
+  try {
+    await updateLanguageSeparators(baseURL, languageId);
 
-  // Full reload so i18n init re-fetches GetActiveLanguages overlays (authoritative for list formatting).
-  const activeLangs = page.waitForResponse(
-    { urlIncludes: '/base.Language/GetActiveLanguages', method: 'POST' },
-    { timeout: 45_000 }
-  );
-  await page.goto(`${baseURL}/web/base/exchange-rates`, { waitUntil: 'domcontentloaded' });
-  await page.reload({ waitUntil: 'domcontentloaded' });
-  await activeLangs;
-  await expect
-    .poll(
-      async () => {
-        const texts = await page.locator('.choy-field-display-text').allTextContents();
-        return texts.map(t => String(t || '').trim()).find(t => /1[,.]234[,.]567/.test(t)) || '';
-      },
+    // Full reload so i18n init re-fetches GetActiveLanguages overlays (authoritative for list formatting).
+    const activeLangs = page.waitForResponse(
+      { urlIncludes: '/base.Language/GetActiveLanguages', method: 'POST' },
       { timeout: 45_000 }
-    )
-    .toMatch(/1\.234\.567,/);
-  expect(beforeText).toMatch(/1,234,567/);
+    );
+    await page.goto(`${baseURL}/web/base/exchange-rates`, { waitUntil: 'domcontentloaded' });
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await activeLangs;
+    await expect
+      .poll(
+        async () => {
+          const texts = await page.locator('.choy-field-display-text').allTextContents();
+          return texts.map(t => String(t || '').trim()).find(t => /1[,.]234[,.]567/.test(t)) || '';
+        },
+        { timeout: 45_000 }
+      )
+      .toMatch(/1\.234\.567,/);
+    expect(beforeText).toMatch(/1,234,567/);
+  } finally {
+    // Restore seeded separators so later specs (and e2e retries) keep a known baseline.
+    await updateLanguageSeparators(baseURL, languageId, {
+      DecimalSeparator: '.',
+      ThousandSeparator: ',',
+      Grouping: '[3,0]',
+    });
+  }
 });
 
 test('base: Language DateFormat + FirstDayOfWeek update applies live to date field and calendar', async () => {
@@ -268,51 +306,66 @@ test('base: Language DateFormat + FirstDayOfWeek update applies live to date fie
     .poll(async () => ((await dateCell.textContent()) || '').trim(), { timeout: 30_000 })
     .toMatch(/2026-07-22/);
 
-  const languageId = await resolveLanguageIdByCode(baseURL, 'zh_CN');
-  await updateLanguageDateAndWeekStart(baseURL, languageId, {
-    DateFormat: 'DD.MM.YYYY',
-    FirstDayOfWeek: '0',
-  });
-
-  const activeLangs = page.waitForResponse(
-    { urlIncludes: '/base.Language/GetActiveLanguages', method: 'POST' },
-    { timeout: 45_000 }
-  );
-  const reloaded = await reloadActiveLanguageOverlaysLive();
-  expect(reloaded, 'loadActiveLanguages via pinia (live, no full reload)').toBe(true);
-  await activeLangs;
-
-  await expect
-    .poll(async () => ((await dateCell.textContent()) || '').trim(), { timeout: 30_000 })
-    .toMatch(/22\.07\.2026/);
-
-  // Open create form calendar and assert Sunday-first week headers.
+  // Open create-form calendar before overlay update so week-start is observed on the same document.
   await page.goto(`${baseURL}/web/base/exchange-rates/new`, { waitUntil: 'domcontentloaded' });
   const dateTrigger = page.locator('[data-anchor="choy.internal.date-picker"]').first();
   await expect(dateTrigger).toBeVisible({ timeout: 30_000 });
   await dateTrigger.click();
-  const headTexts = await page.evaluate(() => {
-    const root = document.querySelector('.choy-date-picker__calendar');
-    if (!root) return [] as string[];
-    // DatePicker uses reka-ui CalendarHeadCell directly (no data-slot); weekday row is first.
-    const row = root.querySelector('.flex');
-    const cells = row ? Array.from(row.children) : [];
-    const fromRow = cells.map(el => String(el.textContent || '').trim()).filter(Boolean);
-    if (fromRow.length >= 7) return fromRow.slice(0, 7);
-    return Array.from(root.querySelectorAll('.text-muted-foreground'))
-      .map(el => String(el.textContent || '').trim())
-      .filter(t => t.length > 0 && t.length <= 4)
-      .slice(0, 7);
-  });
-  expect(headTexts.length, `weekday headers: ${JSON.stringify(headTexts)}`).toBe(7);
-  // Sunday-first: first label should be Sunday in en/zh short forms (S / 日 / Sun / 周日 …).
-  expect(headTexts[0], `first weekday with FirstDayOfWeek=0: ${JSON.stringify(headTexts)}`).toMatch(
-    /^(S|Su|Sun|周日|日|dom|Do)/i
+  const beforeHeads = await readDatePickerWeekdayHeaders();
+  expect(beforeHeads.length, `weekday headers before: ${JSON.stringify(beforeHeads)}`).toBe(7);
+  // Monday-first for seeded zh_CN (一 / 周一 / Mon …) — not Sunday 日 alone.
+  expect(beforeHeads[0], `Monday-first before overlay: ${JSON.stringify(beforeHeads)}`).toMatch(
+    /^(一|周一|星期一|Mon|Mo|M|lun|Lu)$/i
   );
+  // Dismiss calendar so the next open re-reads weekStartsOn from the store.
+  await page.keyboard.press('Escape');
 
-  // Restore zh_CN defaults so later specs in the same run keep a known baseline.
-  await updateLanguageDateAndWeekStart(baseURL, languageId, {
-    DateFormat: 'YYYY-MM-DD',
-    FirstDayOfWeek: '1',
-  });
+  const languageId = await resolveLanguageIdByCode(baseURL, 'zh_CN');
+  try {
+    await updateLanguageDateAndWeekStart(baseURL, languageId, {
+      DateFormat: 'DD.MM.YYYY',
+      FirstDayOfWeek: '0',
+    });
+
+    const activeLangs = page.waitForResponse(
+      { urlIncludes: '/base.Language/GetActiveLanguages', method: 'POST' },
+      { timeout: 45_000 }
+    );
+    const reloaded = await reloadActiveLanguageOverlaysLive();
+    expect(reloaded, 'loadActiveLanguages via pinia (live, no full reload)').toBe(true);
+    await activeLangs;
+
+    // Same document: reopen calendar and assert Sunday-first without navigation.
+    await dateTrigger.click();
+    const afterHeads = await readDatePickerWeekdayHeaders();
+    expect(afterHeads.length, `weekday headers after: ${JSON.stringify(afterHeads)}`).toBe(7);
+    // zh-CN short Sunday is 日; reject bare "S" (also matches Sat) and Saturday forms.
+    expect(afterHeads[0], `Sunday-first after overlay: ${JSON.stringify(afterHeads)}`).toMatch(
+      /^(Su|Sun|周日|星期日|日|domingo|dom|Do)$/i
+    );
+    expect(afterHeads[0], `must not be Saturday: ${JSON.stringify(afterHeads)}`).not.toMatch(
+      /^(Sat|Saturday|六|周六|星期六|sáb)/i
+    );
+    await page.keyboard.press('Escape');
+
+    // DateFormat overlay on the list (live, after returning from create form).
+    await page.goto(`${baseURL}/web/base/exchange-rates`, { waitUntil: 'domcontentloaded' });
+    const liveDateCell = page.locator('.choy-field-display-text', { hasText: /2026/ }).first();
+    await expect(liveDateCell).toBeVisible({ timeout: 30_000 });
+    const listLangs = page.waitForResponse(
+      { urlIncludes: '/base.Language/GetActiveLanguages', method: 'POST' },
+      { timeout: 45_000 }
+    );
+    expect(await reloadActiveLanguageOverlaysLive()).toBe(true);
+    await listLangs;
+    await expect
+      .poll(async () => ((await liveDateCell.textContent()) || '').trim(), { timeout: 30_000 })
+      .toMatch(/22\.07\.2026/);
+  } finally {
+    // Restore zh_CN defaults even when an assertion fails mid-test.
+    await updateLanguageDateAndWeekStart(baseURL, languageId, {
+      DateFormat: 'YYYY-MM-DD',
+      FirstDayOfWeek: '1',
+    });
+  }
 });

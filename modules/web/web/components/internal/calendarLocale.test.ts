@@ -67,7 +67,28 @@ test('resolveActive*DisplayFormat: override wins; else Language overlay', () => 
     de_DE: { DateFormat: 'DD.MM.YYYY', TimeFormat: 'HH:mm:ss' },
   };
   expect(resolveActiveDateDisplayFormat('YYYY/MM/DD')).toBe('YYYY/MM/DD');
+  expect(resolveActiveTimeDisplayFormat('h:mm A')).toBe('h:mm A');
+  expect(resolveActiveDateTimeDisplayFormat('YYYY/MM/DD HH:mm')).toBe('YYYY/MM/DD HH:mm');
   expect(resolveActiveDateDisplayFormat()).toBe('DD.MM.YYYY');
   expect(resolveActiveTimeDisplayFormat()).toBe('HH:mm:ss');
   expect(resolveActiveDateTimeDisplayFormat()).toBe('DD.MM.YYYY HH:mm:ss');
+});
+
+test('resolveActive*DisplayFormat: missing pinia uses calendarLocale defaults', () => {
+  setActivePinia(undefined as any);
+  expect(resolveActiveDateDisplayFormat()).toBe('YYYY-MM-DD');
+  expect(resolveActiveTimeDisplayFormat()).toBe('HH:mm:ss');
+  expect(resolveActiveDateTimeDisplayFormat()).toBe('YYYY-MM-DD HH:mm:ss');
+});
+
+test('resolveActive*DisplayFormat: whitespace Language formats fall back after trim', () => {
+  setActivePinia(createPinia());
+  const store = useI18nStore();
+  store.lang = 'xx_XX';
+  store.activeLanguages = [{ Code: 'xx_XX' }];
+  // Truthy but blank after trim — resolveFormatConfig keeps the string; calendarLocale trims.
+  store.formatByCode = { xx_XX: { DateFormat: '   ', TimeFormat: '   ' } };
+  expect(resolveActiveDateDisplayFormat()).toBe('YYYY-MM-DD');
+  expect(resolveActiveTimeDisplayFormat()).toBe('HH:mm:ss');
+  expect(resolveActiveDateTimeDisplayFormat()).toBe('YYYY-MM-DD HH:mm:ss');
 });

@@ -3,8 +3,10 @@
 
 import dayjs from 'dayjs';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
+import utc from 'dayjs/plugin/utc';
 
 dayjs.extend(customParseFormat);
+dayjs.extend(utc);
 
 /** Local wall clock with seconds: HH:mm:ss */
 export type TimePickerParts = {
@@ -53,7 +55,8 @@ export function formatTimePickerDisplay(
   if (!fmt || fmt === 'HH:mm:ss') {
     return canonical;
   }
-  const m = dayjs(canonical, 'HH:mm:ss', true);
+  // Fixed UTC calendar day: time-only values must not inherit today's DST gap.
+  const m = dayjs.utc(`1970-01-01T${canonical}`, 'YYYY-MM-DDTHH:mm:ss', true);
   return m.isValid() ? m.format(fmt) : canonical;
 }
 

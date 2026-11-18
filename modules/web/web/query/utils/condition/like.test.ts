@@ -51,6 +51,15 @@ test('valueToPreview date/time: follows explicit displayFormat override', () => 
   expect(valueToPreview('=', '14:05:06', { fieldType: 'time', displayFormat: 'HH:mm' })).toBe('14:05');
 });
 
+test('valueToPreview date: formats stored ISO date-with-time values', () => {
+  expect(
+    valueToPreview('=', '2024-07-01T00:00:00Z', { fieldType: 'date', displayFormat: 'DD/MM/YYYY' }),
+  ).toBe('01/07/2024');
+  expect(
+    valueToPreview('=', '2024-07-01T00:00:00', { fieldType: 'date', displayFormat: 'DD.MM.YYYY' }),
+  ).toBe('01.07.2024');
+});
+
 test('valueToPreview datetime wall-clock: formats datetime Date values and custom display formats', () => {
   const d = new Date('2024-06-30T16:00:00.000Z');
   expect(valueToPreview('=', d, { fieldType: 'datetime', timeZone: 'Asia/Shanghai' })).toBe('2024-07-01 00:00:00');

@@ -75,14 +75,15 @@ export function personNameFieldOrder(template?: string | null): PersonNameFieldP
   let firstPos = -1;
   let lastPos = -1;
   for (const match of pattern.matchAll(TOKEN_RE)) {
-    const name = match[1] || '';
-    const at = match.index ?? -1;
+    const name = match[1];
+    if (name !== 'FirstName' && name !== 'LastName') continue;
+    const at = match.index as number;
     if (name === 'FirstName' && firstPos < 0) firstPos = at;
     if (name === 'LastName' && lastPos < 0) lastPos = at;
   }
   if (firstPos >= 0 && lastPos >= 0) {
     return firstPos <= lastPos ? ['FirstName', 'LastName'] : ['LastName', 'FirstName'];
   }
-  if (lastPos >= 0 && firstPos < 0) return ['LastName', 'FirstName'];
+  if (lastPos >= 0) return ['LastName', 'FirstName'];
   return ['FirstName', 'LastName'];
 }
