@@ -200,7 +200,7 @@ const menuTriggerLabel = computed(() =>
 /** Vendor Sidebar uses physical left|right; pin to inline-start via textDirection. */
 const sidebarSide = computed<'left' | 'right'>(() => {
   try {
-    return useI18nStore().activeLanguage.textDirection === 'rtl' ? 'right' : 'left'
+    return useI18nStore().activeLanguage?.textDirection === 'rtl' ? 'right' : 'left'
   } catch {
     return 'left'
   }

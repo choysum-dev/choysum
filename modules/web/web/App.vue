@@ -36,7 +36,7 @@ import { useI18nStore } from './stores/i18nStore';
 
 const i18nStore = useI18nStore();
 const rekaDir = computed<'ltr' | 'rtl'>(() =>
-  i18nStore.activeLanguage.textDirection === 'rtl' ? 'rtl' : 'ltr',
+  i18nStore.activeLanguage?.textDirection === 'rtl' ? 'rtl' : 'ltr',
 );
 
 onMounted(() => {

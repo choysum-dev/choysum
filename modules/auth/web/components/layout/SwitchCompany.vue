@@ -564,9 +564,13 @@ const enabledCompanyCount = computed(() => effectiveCurrentEnabledCompanyIds.val
 const canSwitchCompanies = computed(() => allowedCompanyIds.value.length >= 2);
 
 /** Popover opens toward the content canvas (opposite the sidebar edge). */
-const popupSide = computed<'left' | 'right'>(() =>
-  useI18nStore().activeLanguage.textDirection === 'rtl' ? 'left' : 'right',
-);
+const popupSide = computed<'left' | 'right'>(() => {
+  try {
+    return useI18nStore().activeLanguage?.textDirection === 'rtl' ? 'left' : 'right';
+  } catch {
+    return 'right';
+  }
+});
 
 const childrenMap = computed(() => buildCompanyChildrenMap(companies.value));
 

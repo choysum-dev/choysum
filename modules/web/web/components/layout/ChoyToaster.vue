@@ -35,7 +35,7 @@ const attrs = useAttrs();
 
 const toastDir = computed<'ltr' | 'rtl'>(() => {
   try {
-    return useI18nStore().activeLanguage.textDirection === 'rtl' ? 'rtl' : 'ltr';
+    return useI18nStore().activeLanguage?.textDirection === 'rtl' ? 'rtl' : 'ltr';
   } catch {
     return 'ltr';
   }

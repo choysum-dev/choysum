@@ -92,7 +92,7 @@ const useFlyout = computed(
 /** Popovers open toward the content canvas (opposite the sidebar edge). */
 function resolveRailPopupSide(): 'left' | 'right' {
   try {
-    return useI18nStore().activeLanguage.textDirection === 'rtl' ? 'left' : 'right'
+    return useI18nStore().activeLanguage?.textDirection === 'rtl' ? 'left' : 'right'
   } catch {
     return 'right'
   }

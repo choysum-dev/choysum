@@ -46,7 +46,7 @@ const { state, isMobile } = useSidebar();
 
 function resolveTipSide(): 'left' | 'right' {
   try {
-    return useI18nStore().activeLanguage.textDirection === 'rtl' ? 'left' : 'right';
+    return useI18nStore().activeLanguage?.textDirection === 'rtl' ? 'left' : 'right';
   } catch {
     return 'right';
   }

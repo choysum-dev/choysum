@@ -63,7 +63,7 @@ const store = useConfirmChoyStore();
 
 function resolveConfirmDir(): 'ltr' | 'rtl' {
   try {
-    return useI18nStore().activeLanguage.textDirection === 'rtl' ? 'rtl' : 'ltr';
+    return useI18nStore().activeLanguage?.textDirection === 'rtl' ? 'rtl' : 'ltr';
   } catch {
     return 'ltr';
   }

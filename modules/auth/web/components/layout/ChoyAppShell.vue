@@ -167,7 +167,7 @@ export default defineComponent({
 
     /** Dropdown opens toward the content canvas (opposite the sidebar edge). */
     const userMenuSide = computed<'left' | 'right'>(() =>
-      i18nStore.activeLanguage.textDirection === 'rtl' ? 'left' : 'right',
+      i18nStore.activeLanguage?.textDirection === 'rtl' ? 'left' : 'right',
     );
 
     const userMenuLabel = computed(() => {
