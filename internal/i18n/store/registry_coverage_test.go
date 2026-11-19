@@ -75,7 +75,9 @@ func TestRegistryWarmRuntimeCache(t *testing.T) {
 	)`).Error; err != nil {
 		t.Fatalf("create meta_module: %v", err)
 	}
-	if err := db.Exec(`CREATE TABLE base_language (id text primary key, code text)`).Error; err != nil {
+	if err := db.Exec(`CREATE TABLE base_language (
+		id text primary key, code text, deleted_at datetime
+	)`).Error; err != nil {
 		t.Fatalf("create base_language: %v", err)
 	}
 	if err := i18nmodels.MigrateTranslationTermTable(rs, "auth"); err != nil {
@@ -88,7 +90,11 @@ func TestRegistryWarmRuntimeCache(t *testing.T) {
 	).Error; err != nil {
 		t.Fatalf("seed module: %v", err)
 	}
-	if err := db.Exec(`INSERT INTO base_language (id, code) VALUES ('1','zh_CN')`).Error; err != nil {
+	if err := db.Exec(
+		`INSERT INTO base_language (id, code, deleted_at) VALUES
+			('1','zh_CN', NULL),
+			('2','de_DE', '2020-01-01')`,
+	).Error; err != nil {
 		t.Fatalf("seed language: %v", err)
 	}
 	if err := rs.Session().Table("auth_translation_term").Create(&i18nmodels.TranslationTerm{

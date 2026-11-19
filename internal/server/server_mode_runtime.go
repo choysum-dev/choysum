@@ -4,6 +4,7 @@
 package server
 
 import (
+	"context"
 	"sort"
 	"strings"
 	"time"
@@ -95,6 +96,10 @@ func (s *GRPCWebServer) finishApplicationModeStartup(result applicationModeStart
 	// memory-only on the JS thread; sync DB warm there deadlocks the SQLite pool.
 	reg := i18nstore.RegistryFor(s.runtimeScope)
 	const warmAttempts = 3
+	warmCtx := context.Background()
+	if s.runtimeScope != nil && s.runtimeScope.Context() != nil {
+		warmCtx = s.runtimeScope.Context()
+	}
 	var warmErr error
 	for attempt := 1; attempt <= warmAttempts; attempt++ {
 		warmErr = reg.WarmRuntimeCache()
@@ -104,7 +109,11 @@ func (s *GRPCWebServer) finishApplicationModeStartup(result applicationModeStart
 		if attempt < warmAttempts {
 			s.runtimeScope.Logger().Warn("terminology cache warm retry", "attempt", attempt, "error", warmErr)
 			// Brief backoff so transient SQLite lock / pool contention can clear.
-			time.Sleep(time.Duration(attempt) * 100 * time.Millisecond)
+			select {
+			case <-warmCtx.Done():
+				return result.summary(), warmCtx.Err()
+			case <-time.After(time.Duration(attempt) * 100 * time.Millisecond):
+			}
 			continue
 		}
 		s.runtimeScope.Logger().Warn("terminology cache warm incomplete", "attempts", warmAttempts, "error", warmErr)

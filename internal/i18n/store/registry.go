@@ -158,7 +158,11 @@ func (r *Registry) WarmRuntimeCache() error {
 	langs := map[string]struct{}{}
 	if session.Migrator().HasTable("base_language") {
 		var codes []string
-		if err := session.Table("base_language").Distinct("code").Pluck("code", &codes).Error; err != nil {
+		lq := session.Table("base_language").Distinct("code")
+		if session.Migrator().HasColumn("base_language", "deleted_at") {
+			lq = lq.Where("deleted_at IS NULL")
+		}
+		if err := lq.Pluck("code", &codes).Error; err != nil {
 			return fmt.Errorf("list language codes for terminology warm: %w", err)
 		}
 		for _, code := range codes {
@@ -171,13 +175,19 @@ func (r *Registry) WarmRuntimeCache() error {
 
 	var firstErr error
 	appNames := sortedMapKeys(apps)
+	appsWithTermTable := make([]string, 0, len(appNames))
 	for _, app := range appNames {
 		tableName := i18nmodels.TranslationTermTableName(app)
 		if !session.Migrator().HasTable(tableName) {
 			continue
 		}
+		appsWithTermTable = append(appsWithTermTable, app)
 		var termLangs []string
-		if err := session.Table(tableName).Distinct("lang").Pluck("lang", &termLangs).Error; err != nil {
+		tq := session.Table(tableName).Distinct("lang")
+		if session.Migrator().HasColumn(tableName, "deleted_at") {
+			tq = tq.Where("deleted_at IS NULL")
+		}
+		if err := tq.Pluck("lang", &termLangs).Error; err != nil {
 			if firstErr == nil {
 				firstErr = fmt.Errorf("list term langs for %s: %w", app, err)
 			}
@@ -195,7 +205,7 @@ func (r *Registry) WarmRuntimeCache() error {
 	}
 
 	langCodes := sortedMapKeys(langs)
-	for _, app := range appNames {
+	for _, app := range appsWithTermTable {
 		ts := r.StoreFor(app)
 		for _, lang := range langCodes {
 			if err := ts.WarmLanguage(lang); err != nil && firstErr == nil {

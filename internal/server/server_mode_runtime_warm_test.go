@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/choysum-dev/choysum/internal/i18n/store"
 	"github.com/choysum-dev/choysum/internal/testing/scopetest"
@@ -53,6 +54,39 @@ func TestFinishApplicationModeStartupWarnsWhenWarmFails(t *testing.T) {
 	}
 	if !strings.Contains(out, "terminology cache warm incomplete") {
 		t.Fatalf("expected warm incomplete log, got %q", out)
+	}
+}
+
+func TestFinishApplicationModeStartupAbortsWarmBackoffOnCancel(t *testing.T) {
+	store.ResetSharedRegistryForTests()
+	t.Cleanup(store.ResetSharedRegistryForTests)
+
+	db, err := gorm.Open(sqlite.Open(filepath.Join(t.TempDir(), "warm-cancel.db")), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	if err := db.Exec(`CREATE TABLE meta_module (id text primary key, name text, status text)`).Error; err != nil {
+		t.Fatalf("create meta_module: %v", err)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	rs := &warmFailScope{
+		ctx:     ctx,
+		logger:  slog.New(slog.NewTextHandler(io.Discard, nil)),
+		session: &scope.Session{DB: db},
+	}
+	srv := &GRPCWebServer{
+		runtimeScope: rs,
+		jsExecutor:   &readyHooksMockExec{},
+	}
+	started := time.Now()
+	_, err = srv.finishApplicationModeStartup(applicationModeStartupResult{Reload: true})
+	if err == nil {
+		t.Fatal("expected context cancellation error")
+	}
+	if time.Since(started) > 150*time.Millisecond {
+		t.Fatalf("cancelled warm backoff took too long: %v", time.Since(started))
 	}
 }
 
