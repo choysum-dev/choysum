@@ -775,6 +775,8 @@ const allSelected = computed(() => {
  * Keep header/body horizontal scroll locked together. Under dir=rtl, scrollLeft
  * may be 0 or negative depending on the engine; copying the raw value still
  * aligns both panes when they share the same direction and minWidth grid.
+ * Clear the re-entrancy flag synchronously after the assignment so a second
+ * scroll in the same frame (header↔body) is not dropped until the next paint.
  */
 let syncingHorizontalScroll = false;
 
@@ -787,13 +789,7 @@ function syncHorizontalScroll(
   }
   syncingHorizontalScroll = true;
   target.scrollLeft = source.scrollLeft;
-  if (typeof requestAnimationFrame === 'function') {
-    requestAnimationFrame(() => {
-      syncingHorizontalScroll = false;
-    });
-  } else {
-    syncingHorizontalScroll = false;
-  }
+  syncingHorizontalScroll = false;
 }
 
 function onBodyScroll(): void {

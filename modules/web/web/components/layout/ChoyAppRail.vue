@@ -90,13 +90,14 @@ const useFlyout = computed(
 )
 
 /** Popovers open toward the content canvas (opposite the sidebar edge). */
-const railPopupSide = computed<'left' | 'right'>(() => {
+function resolveRailPopupSide(): 'left' | 'right' {
   try {
     return useI18nStore().activeLanguage.textDirection === 'rtl' ? 'left' : 'right'
   } catch {
     return 'right'
   }
-})
+}
+const railPopupSide = computed(resolveRailPopupSide)
 
 function isActive(app: MenuItem): boolean {
   return menuApi?.activeApp.value?.id === app.id

@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
+import { createPinia, setActivePinia } from 'pinia';
 import { flushPromises, mountApp } from '@/web/web/__tests__/mountApp';
 import ChoyConfirmHost from './ChoyConfirmHost.vue';
 import {
@@ -108,6 +109,20 @@ describe('ChoyConfirmHost', () => {
         expect(e).toBe('cancel');
       },
     );
+    mounted.unmount();
+  });
+
+  test('resolveConfirmDir falls back to ltr when i18n store is unavailable', async () => {
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const mounted = mountApp(ChoyConfirmHost as any, { plugins: [pinia] });
+    await flushPromises();
+    const state = mounted.setupState() as any;
+    expect(typeof state.resolveConfirmDir).toBe('function');
+    expect(state.resolveConfirmDir()).toBe('ltr');
+    setActivePinia(undefined as any);
+    expect(state.resolveConfirmDir()).toBe('ltr');
+    setActivePinia(pinia);
     mounted.unmount();
   });
 });

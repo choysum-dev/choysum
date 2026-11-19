@@ -61,13 +61,14 @@ import { useI18nStore } from '../../stores/i18nStore';
  */
 const store = useConfirmChoyStore();
 
-const confirmDir = computed<'ltr' | 'rtl'>(() => {
+function resolveConfirmDir(): 'ltr' | 'rtl' {
   try {
     return useI18nStore().activeLanguage.textDirection === 'rtl' ? 'rtl' : 'ltr';
   } catch {
     return 'ltr';
   }
-});
+}
+const confirmDir = computed(resolveConfirmDir);
 
 /** Force used direction even if Reka's dir attr stays ltr. */
 const contentStyle = computed(() => ({
@@ -89,11 +90,12 @@ const copyStyle = computed(() => ({
 }));
 
 /**
- * Keep actions on the same physical side as form toolbars (inline-start of the
- * page chrome): right in both LTR (flex-end) and RTL (flex-start).
+ * Keep actions on the physical right (same as form toolbars). Force LTR on the
+ * footer so flex-end is always the right edge even if a child resets direction.
  */
 const footerStyle = computed(() => ({
-  justifyContent: confirmDir.value === 'rtl' ? 'flex-start' : 'flex-end',
+  direction: 'ltr' as const,
+  justifyContent: 'flex-end' as const,
 }));
 const open = computed({
   get: () => store.open,

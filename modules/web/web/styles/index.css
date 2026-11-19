@@ -79,9 +79,10 @@ html {
   [data-slot='menubar-radio-item']
 )
   > span.absolute {
-  inset-inline-start: 0.5rem;
+  /* Physical resets first: later left/right would override inset-inline-*. */
   left: auto;
   right: auto;
+  inset-inline-start: 0.5rem;
 }
 
 /* SubTrigger chevron uses kit ml-auto on the svg itself. */
@@ -90,9 +91,9 @@ html {
   [data-slot='menubar-sub-trigger']
 )
   > svg:last-of-type {
-  margin-inline-start: auto;
   margin-left: 0;
   margin-right: 0;
+  margin-inline-start: auto;
 }
 
 :is(
@@ -100,16 +101,16 @@ html {
   [data-slot='menubar-shortcut'],
   [data-slot='command-shortcut']
 ) {
-  margin-inline-start: auto;
   margin-left: 0;
   margin-right: 0;
+  margin-inline-start: auto;
 }
 
 /* Kit FieldError list indent (ChoyFieldBase host). */
 [data-slot='field-error'] ul {
-  margin-inline-start: 1rem;
   margin-left: 0;
   margin-right: 0;
+  margin-inline-start: 1rem;
 }
 
 /* Chatter / Bubble kit [button]:text-left */
@@ -120,17 +121,17 @@ html {
 
 /* NativeSelect chevron (Calendar month/year and any product host). */
 [data-slot='native-select-wrapper'] > svg {
-  inset-inline-end: 0.875rem;
-  right: auto;
   left: auto;
+  right: auto;
+  inset-inline-end: 0.875rem;
 }
 
 /* TagsInput delete spacing when product mounts kit TagsInput. */
 [data-slot='tags-input-item'] > button,
 [data-slot='tags-input-item'] > [role='button'] {
-  margin-inline-end: 0.25rem;
   margin-left: 0;
   margin-right: 0;
+  margin-inline-end: 0.25rem;
 }
 
 /* Accordion trigger when product mounts kit Accordion. */
@@ -195,14 +196,14 @@ html {
 
 /* RangeCalendar prev/next: kit absolute left-1 / right-1 + physical Chevron. */
 [data-slot='range-calendar-prev-button'] {
-  inset-inline-start: 0.25rem;
   left: auto;
   right: auto;
+  inset-inline-start: 0.25rem;
 }
 [data-slot='range-calendar-next-button'] {
-  inset-inline-end: 0.25rem;
   left: auto;
   right: auto;
+  inset-inline-end: 0.25rem;
 }
 :where([dir='rtl'], [dir='rtl'] *)
   :is(
@@ -218,14 +219,14 @@ html {
  * Match via class token so vertical (left-1/2 + rotate-90) stays centered.
  */
 [data-slot='carousel-previous'][class*='-left-12'] {
-  inset-inline-start: -3rem;
   left: auto;
   right: auto;
+  inset-inline-start: -3rem;
 }
 [data-slot='carousel-next'][class*='-right-12'] {
-  inset-inline-end: -3rem;
   left: auto;
   right: auto;
+  inset-inline-end: -3rem;
 }
 :where([dir='rtl'], [dir='rtl'] *)
   :is([data-slot='carousel-previous'], [data-slot='carousel-next'])
@@ -238,14 +239,14 @@ html {
  * Prefer logical insets via data-align already stamped on the host.
  */
 [data-slot='bubble-reactions'][data-align='start'] {
-  inset-inline-start: 0.75rem;
   left: auto;
   right: auto;
+  inset-inline-start: 0.75rem;
 }
 [data-slot='bubble-reactions'][data-align='end'] {
-  inset-inline-end: 0.75rem;
   left: auto;
   right: auto;
+  inset-inline-end: 0.75rem;
 }
 
 /*
@@ -628,11 +629,12 @@ html[dir='rtl'] .choy-statusbar-field__control .choy-statusbar-opt[data-edge='fi
 
 html[dir='rtl'] .choy-statusbar-field__control .choy-statusbar-opt[data-edge='last'] {
   border-radius: 0.35rem 0 0 0.35rem;
+  /* Flat left edge; inward notch on the right (mirror of LTR last). */
   clip-path: polygon(
     0 0,
-    calc(100% - var(--choy-statusbar-chevron)) 0,
-    100% 50%,
-    calc(100% - var(--choy-statusbar-chevron)) 100%,
+    100% 0,
+    calc(100% - var(--choy-statusbar-chevron)) 50%,
+    100% 100%,
     0 100%
   );
 }

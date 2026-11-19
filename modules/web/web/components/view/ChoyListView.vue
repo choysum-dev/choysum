@@ -219,9 +219,14 @@ SPDX-License-Identifier: Apache-2.0
                   :aria-label="_t('Toggle group %s', String(row.label ?? ''))"
                   @click.stop="onToggleGroup(row.key)"
                 >
+                  <ChevronDown
+                    v-if="isExpanded(row.key)"
+                    class="size-3.5 transition-transform duration-100"
+                    aria-hidden="true"
+                  />
                   <ChevronRight
+                    v-else
                     class="size-3.5 transition-transform duration-100 rtl:rotate-180"
-                    :class="{ 'rotate-90': isExpanded(row.key) }"
                     aria-hidden="true"
                   />
                 </button>
@@ -337,7 +342,7 @@ import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
 import ChoyPageTitleActions from '@/web/web/components/layout/ChoyPageTitleActions.vue';
 import { Separator } from '@/web/web/components/vendor/ui/separator';
 import DropdownMenuItem from '@/web/web/components/vendor/ui/dropdown-menu/DropdownMenuItem.vue';
-import { Check, ChevronRight, Plus, RefreshCw, Trash2, X } from 'lucide-vue-next';
+import { Check, ChevronDown, ChevronRight, Plus, RefreshCw, Trash2, X } from 'lucide-vue-next';
 
 defineOptions({ name: 'ChoyListView', inheritAttrs: false });
 

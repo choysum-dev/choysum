@@ -44,11 +44,12 @@ defineProps<{
 
 const { state, isMobile } = useSidebar();
 
-const tipSide = computed<'left' | 'right'>(() => {
+function resolveTipSide(): 'left' | 'right' {
   try {
     return useI18nStore().activeLanguage.textDirection === 'rtl' ? 'left' : 'right';
   } catch {
     return 'right';
   }
-});
+}
+const tipSide = computed(resolveTipSide);
 </script>

@@ -8,7 +8,7 @@ SPDX-License-Identifier: Apache-2.0
     <ChoyDialogContent
       class="module-op-dialog flex max-h-[min(85vh,40rem)] w-[min(92vw,32rem)] max-w-[min(92vw,32rem)] flex-col gap-0 overflow-hidden p-0"
       data-testid="module-op-dialog"
-      :show-close-button="true"
+      :show-close-button="!(planLoading || executeLoading)"
       :dismissible="!(planLoading || executeLoading)"
     >
       <ChoyDialogHeader class="shrink-0 space-y-1 border-b border-border px-6 py-4 text-start">

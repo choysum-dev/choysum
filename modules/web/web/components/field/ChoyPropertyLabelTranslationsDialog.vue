@@ -8,7 +8,7 @@ SPDX-License-Identifier: Apache-2.0
     <ChoyDialogContent
       class="choy-property-label-translations-dialog max-w-xl"
       :show-close-button="false"
-      :dismissible="!loading"
+      :dismissible="true"
       @open-auto-focus.prevent
     >
       <ChoyDialogHeader class="text-start">
@@ -39,7 +39,7 @@ SPDX-License-Identifier: Apache-2.0
         </form>
       </div>
       <ChoyDialogFooter>
-        <ChoyButton type="button" variant="outline" :disabled="loading" @click="visible = false">{{ _t('Cancel') }}</ChoyButton>
+        <ChoyButton type="button" variant="outline" @click="visible = false">{{ _t('Cancel') }}</ChoyButton>
         <ChoyButton
           type="button"
           data-testid="choy-property-label-translations-save"

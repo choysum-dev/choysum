@@ -483,4 +483,31 @@ describe('ChoyAppRail', () => {
     expect(ss.openFlyoutKey).toBeNull();
     mounted.unmount();
   });
+
+  test('resolveRailPopupSide falls back to right when i18n store is unavailable', async () => {
+    const menuPlugin = createMenuPlugin();
+    menuPlugin.manager.addMenu({
+      id: 'meta',
+      title: 'Module Management',
+      children: [{ id: 'meta-board', title: 'Module Board', path: '/meta/modules' }],
+    } as any);
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    pinViewportWidth(1280);
+    const { router } = createFeStubRouter({
+      route: { path: '/meta/modules', fullPath: '/meta/modules', meta: {} },
+    });
+    const i18n = createI18n({ legacy: false, locale: 'en', messages: { en: {} } });
+    const mounted = mountApp(ChoyAppRail as any, {
+      plugins: [menuPlugin, pinia, router, i18n],
+    });
+    await flushPromises();
+    const ss = mounted.setupState() as any;
+    expect(typeof ss.resolveRailPopupSide).toBe('function');
+    expect(ss.resolveRailPopupSide()).toBe('right');
+    setActivePinia(undefined as any);
+    expect(ss.resolveRailPopupSide()).toBe('right');
+    setActivePinia(pinia);
+    mounted.unmount();
+  });
 });
