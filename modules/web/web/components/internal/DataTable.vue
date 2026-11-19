@@ -131,7 +131,7 @@ SPDX-License-Identifier: Apache-2.0
           tabindex="0"
           class="grid min-h-list-row w-full border-b border-border/60 text-sm transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           :class="[
-            item.start != null ? 'absolute left-0' : undefined,
+            item.start != null ? 'absolute start-0' : undefined,
             rowIsSelected(item.row) ? 'bg-muted hover:bg-muted' : undefined,
             dataTableIsGroupLikeRow(item.row) ? 'bg-muted/30' : undefined,
             handleRowClass(item),
@@ -685,6 +685,13 @@ const tableMinWidth = computed(() =>
   table.getVisibleLeafColumns().reduce((sum, col) => sum + col.getSize(), 0),
 );
 
+// After column width changes, re-lock header to body (RTL scrollLeft zero point can drift).
+watch(tableMinWidth, () => {
+  void nextTick(() => {
+    syncHorizontalScroll(parentRef.value, headerRef.value);
+  });
+});
+
 watch(
   rowSelection,
   (state) => {
@@ -764,22 +771,37 @@ const allSelected = computed(() => {
   return false;
 });
 
-function onBodyScroll(): void {
-  const parent = parentRef.value;
-  const header = headerRef.value;
-  if (!parent || !header || header.scrollLeft === parent.scrollLeft) {
+/**
+ * Keep header/body horizontal scroll locked together. Under dir=rtl, scrollLeft
+ * may be 0 or negative depending on the engine; copying the raw value still
+ * aligns both panes when they share the same direction and minWidth grid.
+ */
+let syncingHorizontalScroll = false;
+
+function syncHorizontalScroll(
+  source: { scrollLeft: number } | null | undefined,
+  target: { scrollLeft: number } | null | undefined,
+): void {
+  if (!source || !target || syncingHorizontalScroll || source.scrollLeft === target.scrollLeft) {
     return;
   }
-  header.scrollLeft = parent.scrollLeft;
+  syncingHorizontalScroll = true;
+  target.scrollLeft = source.scrollLeft;
+  if (typeof requestAnimationFrame === 'function') {
+    requestAnimationFrame(() => {
+      syncingHorizontalScroll = false;
+    });
+  } else {
+    syncingHorizontalScroll = false;
+  }
+}
+
+function onBodyScroll(): void {
+  syncHorizontalScroll(parentRef.value, headerRef.value);
 }
 
 function onHeaderScroll(): void {
-  const parent = parentRef.value;
-  const header = headerRef.value;
-  if (!parent || !header || parent.scrollLeft === header.scrollLeft) {
-    return;
-  }
-  parent.scrollLeft = header.scrollLeft;
+  syncHorizontalScroll(headerRef.value, parentRef.value);
 }
 
 const interactiveRowClickSelector =
@@ -934,6 +956,15 @@ function onRowKeydown(event: KeyboardEvent, row: (typeof rows.value)[number] | u
 </script>
 
 <style>
+/*
+ * Inherit html[dir] so header/body share the same scrollLeft coordinate space
+ * under RTL (engines disagree when one pane is treated as LTR).
+ */
+.choy-data-table__header,
+.choy-data-table__body {
+  direction: inherit;
+}
+
 /* Keep overflow-x for scroll sync with the body; hide the duplicate track. */
 .choy-data-table__header {
   scrollbar-width: none;

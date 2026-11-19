@@ -11,6 +11,7 @@ import { translateTerm } from '../../i18n'
 import { useMenu } from '../../composables/useMenu'
 import { useMenuStore } from '../../stores/menuStore'
 import { useLayoutStore } from '../../stores/layoutStore'
+import { useI18nStore } from '../../stores/i18nStore'
 import { firstGrapheme } from './appRailGlyph'
 import { APP_RAIL_HOVER_CLOSE_MS, APP_RAIL_HOVER_OPEN_MS } from './appRailHover'
 import ChoyAppRailFlyout from './ChoyAppRailFlyout.vue'
@@ -87,6 +88,15 @@ const apps = computed(() => {
 const useFlyout = computed(
   () => !!layoutStore && layoutStore.sidebarMode === 'collapsed' && !sidebarIsMobile.value,
 )
+
+/** Popovers open toward the content canvas (opposite the sidebar edge). */
+const railPopupSide = computed<'left' | 'right'>(() => {
+  try {
+    return useI18nStore().activeLanguage.textDirection === 'rtl' ? 'left' : 'right'
+  } catch {
+    return 'right'
+  }
+})
 
 function isActive(app: MenuItem): boolean {
   return menuApi?.activeApp.value?.id === app.id
@@ -276,7 +286,7 @@ watch(useFlyout, (enabled) => {
                   </SidebarMenuButton>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent
-                  side="right"
+                  :side="railPopupSide"
                   align="start"
                   :side-offset="4"
                   class="min-w-[10rem]"
@@ -329,7 +339,7 @@ watch(useFlyout, (enabled) => {
                 <TooltipContent
                   v-if="tooltipOpen[appKey(app)] && !sidebarIsMobile"
                   data-testid="choy-shell-app-rail-tooltip"
-                  side="right"
+                  :side="railPopupSide"
                   align="center"
                   :side-offset="8"
                 >

@@ -47,7 +47,7 @@ test('ModuleCatalogKanbanCard.vue shows author, license, summary, and install CT
   wrapper.unmount();
 });
 
-test('ModuleCatalogKanbanCard.vue license-only uses ml-auto; progress and uninstall', async () => {
+test('ModuleCatalogKanbanCard.vue license-only uses ms-auto; progress and uninstall', async () => {
   const wrapper = mount(ModuleCatalogKanbanCard as any, {
     props: {
       card: makeCard({ ModuleName: 'core', License: 'Apache-2.0' }),
@@ -63,7 +63,7 @@ test('ModuleCatalogKanbanCard.vue license-only uses ml-auto; progress and uninst
   expect(wrapper.find('[data-testid="module-catalog-card-author"]').exists()).toBe(false);
   const license = wrapper.find('[data-testid="module-catalog-card-license"]');
   expect(license.exists()).toBe(true);
-  expect(String(license.element?.className || '')).toContain('ml-auto');
+  expect(String(license.element?.className || '')).toContain('ms-auto');
   expect(wrapper.find('[data-testid="module-catalog-card-primary-progress"]').exists()).toBe(true);
   expect(wrapper.find('[data-testid="module-catalog-card-uninstall"]').exists()).toBe(true);
   wrapper.unmount();

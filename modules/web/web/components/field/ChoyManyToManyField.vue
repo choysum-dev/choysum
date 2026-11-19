@@ -135,8 +135,11 @@ SPDX-License-Identifier: Apache-2.0
     <ChoyDialogContent
       class="choy-relation-picker-dialog flex max-h-[min(85vh,40rem)] w-[min(90vw,56rem)] max-w-[min(90vw,56rem)] flex-col gap-3 overflow-hidden"
       :style="{ width: typeof searchViewWidth === 'number' ? searchViewWidth + 'px' : searchViewWidth }"
+      :show-close-button="false"
     >
-      <ChoyDialogTitle class="shrink-0">{{ effectiveSearchViewTitle }}</ChoyDialogTitle>
+      <ChoyDialogHeader class="shrink-0 text-start">
+        <ChoyDialogTitle>{{ effectiveSearchViewTitle }}</ChoyDialogTitle>
+      </ChoyDialogHeader>
       <div class="choy-relation-picker-list min-h-[16rem] flex-1 overflow-hidden">
         <ChoyViewScope view-mode="display" :kind="'List'">
           <component
@@ -156,10 +159,10 @@ SPDX-License-Identifier: Apache-2.0
           />
         </ChoyViewScope>
       </div>
-      <div class="mt-1 flex shrink-0 justify-end gap-2">
+      <ChoyDialogFooter class="mt-1 shrink-0">
         <ChoyButton type="button" variant="outline" @click="dialogVisible = false">{{ _t('Cancel') }}</ChoyButton>
         <ChoyButton type="button" @click="confirmAdd">{{ _t('OK') }}</ChoyButton>
-      </div>
+      </ChoyDialogFooter>
     </ChoyDialogContent>
   </ChoyDialog>
 </template>
@@ -173,7 +176,13 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts" generic="T extends BaseModel, P extends FieldPath<T, ClientModel<BaseModel>[]>, V = FieldPathType<T, P>">
 import { computed, ref, type Component, nextTick, watch, onMounted, inject, provide, Ref } from 'vue';
 import { Trash2 } from 'lucide-vue-next';
-import { ChoyDialog, ChoyDialogContent, ChoyDialogTitle } from '@/web/web/components/layout/choyDialog';
+import {
+  ChoyDialog,
+  ChoyDialogContent,
+  ChoyDialogFooter,
+  ChoyDialogHeader,
+  ChoyDialogTitle,
+} from '@/web/web/components/layout/choyDialog';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
 import { RELATION_PICKER_CLOSE_KEY } from '@/web/web/components/field/relationPickerContext';
 import type { RuleItem } from 'async-validator';

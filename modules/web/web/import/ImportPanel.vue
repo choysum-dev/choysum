@@ -5,8 +5,15 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <ChoyDialog v-model:open="visible">
-    <ChoyDialogContent class="import-panel-dialog" @open-auto-focus.prevent>
-      <ChoyDialogTitle>{{ title }}</ChoyDialogTitle>
+    <ChoyDialogContent
+      class="import-panel-dialog"
+      :show-close-button="false"
+      :dismissible="!busy"
+      @open-auto-focus.prevent
+    >
+      <ChoyDialogHeader class="text-start">
+        <ChoyDialogTitle>{{ title }}</ChoyDialogTitle>
+      </ChoyDialogHeader>
       <ChoyStepper :model-value="stepValue" :steps="stepperSteps" readonly class="import-panel-stepper my-3" />
 
       <section v-if="step === 0" class="min-h-[180px]">
@@ -57,7 +64,7 @@ SPDX-License-Identifier: Apache-2.0
         <div v-else-if="importError" role="alert" class="mt-3">{{ importError }}</div>
       </section>
 
-      <div class="mt-4 flex justify-end gap-2" data-slot="dialog-footer">
+      <ChoyDialogFooter>
         <ChoyButton size="sm" variant="outline" :disabled="busy" @click="visible = false">{{ cancelLabel }}</ChoyButton>
         <ChoyButton
           v-if="step === 0"
@@ -72,14 +79,20 @@ SPDX-License-Identifier: Apache-2.0
           {{ importActionLabel }}
         </ChoyButton>
         <ChoyButton v-else-if="importDone" size="sm" variant="default" @click="finish">{{ doneLabel }}</ChoyButton>
-      </div>
+      </ChoyDialogFooter>
     </ChoyDialogContent>
   </ChoyDialog>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { ChoyDialog, ChoyDialogContent, ChoyDialogTitle } from '@/web/web/components/layout/choyDialog';
+import {
+  ChoyDialog,
+  ChoyDialogContent,
+  ChoyDialogFooter,
+  ChoyDialogHeader,
+  ChoyDialogTitle,
+} from '@/web/web/components/layout/choyDialog';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
 import ChoyStepper, { type ChoyStepperStep } from '@/web/web/components/layout/ChoyStepper.vue';
 type UploadFile = { raw?: File | null; name?: string };

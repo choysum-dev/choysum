@@ -56,7 +56,7 @@ SPDX-License-Identifier: Apache-2.0
         :aria-label="prevLabel"
         @click="goPrev"
       >
-        <ChevronLeft class="size-4" aria-hidden="true" />
+        <ChevronLeft class="size-4 rtl:rotate-180" aria-hidden="true" />
       </ChoyButton>
       <ChoyButton
         type="button"
@@ -67,7 +67,7 @@ SPDX-License-Identifier: Apache-2.0
         :aria-label="nextLabel"
         @click="goNext"
       >
-        <ChevronRight class="size-4" aria-hidden="true" />
+        <ChevronRight class="size-4 rtl:rotate-180" aria-hidden="true" />
       </ChoyButton>
     </ChoyButtonGroup>
   </div>

@@ -79,7 +79,7 @@ SPDX-License-Identifier: Apache-2.0
                 <button
                   v-if="sortableEnabled"
                   type="button"
-                  class="absolute left-1 top-1.5 z-10 inline-flex size-7 cursor-grab items-center justify-center rounded-md text-muted-foreground opacity-0 transition-opacity hover:bg-muted hover:text-foreground group-hover/card:opacity-100 group-focus-within/card:opacity-100 active:cursor-grabbing"
+                  class="absolute start-1 top-1.5 z-10 inline-flex size-7 cursor-grab items-center justify-center rounded-md text-muted-foreground opacity-0 transition-opacity hover:bg-muted hover:text-foreground group-hover/card:opacity-100 group-focus-within/card:opacity-100 active:cursor-grabbing"
                   :aria-label="_t('Reorder')"
                   data-testid="choy-o2m-kanban-handle"
                   draggable="true"
@@ -94,7 +94,7 @@ SPDX-License-Identifier: Apache-2.0
                   type="button"
                   size="icon"
                   variant="ghost"
-                  class="absolute right-1.5 top-1.5 z-10 size-7 text-muted-foreground opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive group-hover/card:opacity-100 group-focus-within/card:opacity-100"
+                  class="absolute end-1.5 top-1.5 z-10 size-7 text-muted-foreground opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive group-hover/card:opacity-100 group-focus-within/card:opacity-100"
                   :aria-label="_t('Delete')"
                   data-testid="choy-o2m-kanban-delete"
                   @click.stop="handleRemoveItem(index)"
@@ -104,8 +104,8 @@ SPDX-License-Identifier: Apache-2.0
                 <div
                   :class="[
                     'min-w-0',
-                    removable || sortableEnabled ? 'pr-8' : '',
-                    sortableEnabled ? 'pl-7' : '',
+                    removable || sortableEnabled ? 'pe-8' : '',
+                    sortableEnabled ? 'ps-7' : '',
                   ]"
                 >
                   <slot
@@ -223,8 +223,11 @@ SPDX-License-Identifier: Apache-2.0
     <ChoyDialogContent
       class="choy-relation-picker-dialog flex max-h-[min(85vh,40rem)] w-[min(90vw,48rem)] max-w-[min(90vw,48rem)] flex-col gap-3 overflow-hidden"
       :style="{ width: typeof dialogWidth === 'number' ? dialogWidth + 'px' : dialogWidth }"
+      :show-close-button="false"
     >
-      <ChoyDialogTitle class="shrink-0">{{ dialogTitleText }}</ChoyDialogTitle>
+      <ChoyDialogHeader class="shrink-0 text-start">
+        <ChoyDialogTitle>{{ dialogTitleText }}</ChoyDialogTitle>
+      </ChoyDialogHeader>
       <div class="min-h-0 flex-1 overflow-auto">
         <component
           v-if="formView"
@@ -257,10 +260,10 @@ SPDX-License-Identifier: Apache-2.0
             @click="handleDialogRemove"
           >{{ _t('Delete') }}</ChoyButton>
         </div>
-        <div class="flex shrink-0 justify-end gap-2">
+        <ChoyDialogFooter class="w-auto shrink-0 border-0 p-0">
           <ChoyButton type="button" variant="outline" @click="handleDialogCancel">{{ _t('Cancel') }}</ChoyButton>
           <ChoyButton v-if="dialogMode !== 'display'" type="button" @click="handleDialogSubmit">{{ _t('Save') }}</ChoyButton>
-        </div>
+        </ChoyDialogFooter>
       </div>
     </ChoyDialogContent>
   </ChoyDialog>
@@ -269,7 +272,13 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts" generic="T extends BaseModel, P extends FieldPath<T, ClientModel<BaseModel>[]>, V = FieldPathType<T, P>">
 import { computed, ref, watch, onMounted, provide, useSlots, nextTick, type Component } from 'vue';
 import { GripVertical, Trash2 } from 'lucide-vue-next';
-import { ChoyDialog, ChoyDialogContent, ChoyDialogTitle } from '@/web/web/components/layout/choyDialog';
+import {
+  ChoyDialog,
+  ChoyDialogContent,
+  ChoyDialogFooter,
+  ChoyDialogHeader,
+  ChoyDialogTitle,
+} from '@/web/web/components/layout/choyDialog';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
 import { confirmChoyAction } from '../../composables/confirmChoyAction';
 import type { RuleItem } from 'async-validator';

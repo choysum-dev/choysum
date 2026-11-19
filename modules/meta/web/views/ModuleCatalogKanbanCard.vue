@@ -48,8 +48,8 @@ SPDX-License-Identifier: Apache-2.0
         >{{ moduleCatalogKanbanCardAuthor(card) }}</span>
         <span
           v-if="moduleCatalogKanbanCardLicense(card)"
-          class="min-w-0 shrink-0 truncate text-right"
-          :class="moduleCatalogKanbanCardAuthor(card) ? 'max-w-[45%]' : 'ml-auto'"
+          class="min-w-0 shrink-0 truncate text-end"
+          :class="moduleCatalogKanbanCardAuthor(card) ? 'max-w-[45%]' : 'ms-auto'"
           :title="moduleCatalogKanbanCardLicense(card)"
           data-testid="module-catalog-card-license"
         >{{ moduleCatalogKanbanCardLicense(card) }}</span>

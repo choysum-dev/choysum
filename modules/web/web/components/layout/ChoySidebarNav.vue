@@ -137,10 +137,10 @@ function onLeafClick(item: MenuItem) {
   width: 100%;
 }
 /*
- * Nested Settings → app → leaf: keep left guide-line inset, but flush the
- * submenu's right edge to the parent menu-button so long labels (e.g.
- * Property Definitions) get the same usable width as the parent row.
- * Prefer data-slot: kit once mis-tagged data-sidebar as menu-badge.
+ * Nested Settings → app → leaf: keep an inline-start guide line, flush the
+ * submenu's inline-end to the parent menu-button so long labels get the same
+ * usable width as the parent row. Prefer data-slot: kit once mis-tagged
+ * data-sidebar as menu-badge. Override kit border-l / translate-x-px.
  */
 .choy-sidebar-nav :deep([data-slot='sidebar-menu-sub']),
 .choy-sidebar-nav :deep([data-sidebar='menu-sub']) {
@@ -148,6 +148,15 @@ function onLeafClick(item: MenuItem) {
   margin-inline-end: 0;
   padding-inline-start: 0.5rem;
   padding-inline-end: 0;
+  /* Beat kit border-l / translate-x-px (FullCSS utilities load after scoped). */
+  border-left-width: 0 !important;
+  border-right-width: 0 !important;
+  border-inline-start-width: 1px !important;
+  border-inline-start-style: solid !important;
+  border-inline-start-color: var(--color-sidebar-border, var(--border)) !important;
+  border-inline-end-width: 0 !important;
+  transform: none !important;
+  translate: none !important;
 }
 .choy-sidebar-nav :deep([data-sidebar='menu-button']),
 .choy-sidebar-nav :deep([data-sidebar='menu-sub-button']) {
@@ -158,11 +167,21 @@ function onLeafClick(item: MenuItem) {
   line-height: 1.25rem;
   border-radius: var(--radius-sm, 0.375rem);
   color: var(--color-sidebar-foreground);
+  text-align: start !important;
 }
 .choy-sidebar-nav :deep([data-sidebar='menu-sub-button']) {
   width: 100%;
   padding-inline-start: 0.75rem;
   padding-inline-end: 0.5rem;
+  /* Override kit -translate-x-px (physical). */
+  transform: none !important;
+  translate: none !important;
+}
+.choy-sidebar-nav :deep([data-sidebar='menu-badge']),
+.choy-sidebar-nav :deep([data-slot='sidebar-menu-badge']) {
+  inset-inline-end: 0.25rem !important;
+  right: auto !important;
+  left: auto !important;
 }
 .choy-sidebar-nav :deep([data-sidebar='menu-button']:hover),
 .choy-sidebar-nav :deep([data-sidebar='menu-sub-button']:hover) {

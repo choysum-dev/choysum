@@ -84,7 +84,7 @@ SPDX-License-Identifier: Apache-2.0
                     id="setup-submit"
                     type="submit"
                     size="lg"
-                    class="submit-button ml-auto"
+                    class="submit-button ms-auto"
                     :disabled="submitting"
                   >
                     <template v-if="step === 'review'">

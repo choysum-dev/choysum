@@ -66,7 +66,7 @@ SPDX-License-Identifier: Apache-2.0
         </ChoySidebarMenuButton>
       </ChoyPopoverTrigger>
       <ChoyPopoverContent
-        side="right"
+        :side="popupSide"
         align="start"
         :side-offset="4"
         class="w-72 min-w-56 rounded-lg p-0"
@@ -210,6 +210,7 @@ import { useAuthStore } from '@/auth/web/stores/auth';
 import { createModelStore } from '@/web/web/stores/registry';
 import type Company from '@/base/service/models/company';
 import { createTranslate } from '@/web/web/i18n';
+import { useI18nStore } from '@/web/web/stores/i18nStore';
 import { collapsedIdentityTooltip } from './collapsed_identity_tooltip';
 import { syncCompanyDraftsFromJwt } from './o_switch_company_draft';
 import SwitchCompanyPanel from './SwitchCompanyPanel.vue';
@@ -561,6 +562,11 @@ const effectiveCurrentEnabledCompanyIds = computed(() => {
 const enabledCompanyCount = computed(() => effectiveCurrentEnabledCompanyIds.value.length);
 
 const canSwitchCompanies = computed(() => allowedCompanyIds.value.length >= 2);
+
+/** Popover opens toward the content canvas (opposite the sidebar edge). */
+const popupSide = computed<'left' | 'right'>(() =>
+  useI18nStore().activeLanguage.textDirection === 'rtl' ? 'left' : 'right',
+);
 
 const childrenMap = computed(() => buildCompanyChildrenMap(companies.value));
 

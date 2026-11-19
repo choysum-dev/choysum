@@ -14,6 +14,13 @@ import { useBreadcrumbStore } from '@/web/web/stores/breadcrumbStore';
 import type { createFormController } from '@/web/web/controllers/formController';
 import type { provideOnchange } from '@/web/web/composables/useOnchange';
 import type { useOnchangeAggregation } from '@/web/web/composables/useOnchangeAggregation';
+import { createTranslate } from '@/web/web/i18n';
+
+/** Matches zh_CN msgctxt for discard confirm (not FormView's toolbar scope). */
+const { _t: _tConfirmDiscard } = createTranslate('web', {
+  path: 'web/composables/useFormViewLifecycle',
+  location: 'confirmDiscardIfDirty',
+});
 
 type FormController = ReturnType<typeof createFormController>;
 type OnchangeCtrl = ReturnType<typeof provideOnchange>;
@@ -103,14 +110,17 @@ export function useFormViewLifecycle<T extends BaseModel>(opts: UseFormViewLifec
     if (leaving || !isFormDirty()) return true;
     // One dialog at a time: a second Cancel click must not stack confirms.
     if (leaveConfirmPending) return false;
-    const _t = opts._t;
     leaveConfirmPending = true;
     try {
-      await confirmChoyAction(_t('You have unsaved changes. Discard them?'), _t('Unsaved changes'), {
-        confirmText: _t('Discard'),
-        cancelText: _t('Cancel'),
-        destructive: true,
-      });
+      await confirmChoyAction(
+        _tConfirmDiscard('You have unsaved changes. Discard them?'),
+        _tConfirmDiscard('Unsaved changes'),
+        {
+          confirmText: _tConfirmDiscard('Discard'),
+          cancelText: _tConfirmDiscard('Cancel'),
+          destructive: true,
+        }
+      );
       return true;
     } catch {
       return false;

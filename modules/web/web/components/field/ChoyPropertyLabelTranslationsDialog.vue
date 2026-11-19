@@ -5,8 +5,15 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <ChoyDialog v-model:open="visible">
-    <ChoyDialogContent class="choy-property-label-translations-dialog max-w-xl" @open-auto-focus.prevent>
-      <ChoyDialogTitle>{{ dialogTitle }}</ChoyDialogTitle>
+    <ChoyDialogContent
+      class="choy-property-label-translations-dialog max-w-xl"
+      :show-close-button="false"
+      :dismissible="!loading"
+      @open-auto-focus.prevent
+    >
+      <ChoyDialogHeader class="text-start">
+        <ChoyDialogTitle>{{ dialogTitle }}</ChoyDialogTitle>
+      </ChoyDialogHeader>
       <div class="min-h-[120px]" :aria-busy="loading || undefined">
         <form class="flex flex-col gap-3.5" @submit.prevent>
           <div
@@ -31,8 +38,8 @@ SPDX-License-Identifier: Apache-2.0
           </div>
         </form>
       </div>
-      <div class="mt-4 flex justify-end gap-2">
-        <ChoyButton type="button" variant="outline" @click="visible = false">{{ _t('Cancel') }}</ChoyButton>
+      <ChoyDialogFooter>
+        <ChoyButton type="button" variant="outline" :disabled="loading" @click="visible = false">{{ _t('Cancel') }}</ChoyButton>
         <ChoyButton
           type="button"
           data-testid="choy-property-label-translations-save"
@@ -41,14 +48,20 @@ SPDX-License-Identifier: Apache-2.0
         >
           {{ _t('Save translations') }}
         </ChoyButton>
-      </div>
+      </ChoyDialogFooter>
     </ChoyDialogContent>
   </ChoyDialog>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { ChoyDialog, ChoyDialogContent, ChoyDialogTitle } from '@/web/web/components/layout/choyDialog';
+import {
+  ChoyDialog,
+  ChoyDialogContent,
+  ChoyDialogFooter,
+  ChoyDialogHeader,
+  ChoyDialogTitle,
+} from '@/web/web/components/layout/choyDialog';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
 import ChoyInput from '@/web/web/components/vendor/ui/input/Input.vue';
 import { ChoyMessage } from '../../composables/useChoyMessage';

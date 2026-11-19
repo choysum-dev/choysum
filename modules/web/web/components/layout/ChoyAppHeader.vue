@@ -33,7 +33,7 @@ SPDX-License-Identifier: Apache-2.0
         :aria-label="menuTriggerLabel"
         @click="onMenuTriggerClick"
       >
-        <PanelLeft class="size-4" aria-hidden="true" />
+        <PanelLeft class="size-4 rtl:rotate-180" aria-hidden="true" />
       </ChoyButton>
       <Separator
         orientation="vertical"

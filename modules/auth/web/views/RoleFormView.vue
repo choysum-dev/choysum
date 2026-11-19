@@ -104,7 +104,7 @@ SPDX-License-Identifier: Apache-2.0
             <template #node="{ row, label }">
               <button
                 type="button"
-                class="rfv-ui-resource-node inline-flex items-center gap-1.5 cursor-pointer rounded px-1 m-0 border-0 bg-transparent font-[inherit] text-inherit leading-[inherit] text-left"
+                class="rfv-ui-resource-node inline-flex items-center gap-1.5 cursor-pointer rounded px-1 m-0 border-0 bg-transparent font-[inherit] text-inherit leading-[inherit] text-start"
                 :class="{ 'is-inspected bg-primary/10 text-primary': isInspectedUiResourceRow(inspectedUiResourceId, row) }"
                 @click.stop="inspectUiResource(row)"
               >
@@ -116,7 +116,7 @@ SPDX-License-Identifier: Apache-2.0
           <div v-if="inspectedUiResource" class="rfv-ui-requires mt-3 rounded-md border border-border bg-background px-3 py-2.5">
             <div class="rfv-ui-requires__title mb-1.5 text-[13px] font-semibold">
               {{ _t('Requires → derived Method RPCs') }}
-              <span class="rfv-ui-requires__resource ml-2 font-medium text-foreground">{{ inspectedUiResourceLabel }}</span>
+              <span class="rfv-ui-requires__resource ms-2 font-medium text-foreground">{{ inspectedUiResourceLabel }}</span>
             </div>
             <p class="mb-2 text-sm leading-relaxed text-foreground/70">
               {{
@@ -125,7 +125,7 @@ SPDX-License-Identifier: Apache-2.0
                 )
               }}
             </p>
-            <ul v-if="inspectedRequires.length > 0" class="rfv-ui-requires__list m-0 list-disc pl-[18px] text-[13px] leading-relaxed">
+            <ul v-if="inspectedRequires.length > 0" class="rfv-ui-requires__list m-0 list-disc ps-[18px] text-[13px] leading-relaxed">
               <li v-for="req in inspectedRequires" :key="req">
                 <code>{{ req }}</code>
               </li>

@@ -16,7 +16,7 @@ SPDX-License-Identifier: Apache-2.0
       </div>
     </TooltipTrigger>
     <TooltipContent
-      side="right"
+      :side="tipSide"
       align="center"
       :hidden="state !== 'collapsed' || isMobile || !label"
     >
@@ -26,12 +26,14 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script lang="ts" setup>
+import { computed } from 'vue';
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from '../vendor/ui/tooltip';
 import { useSidebar } from '../vendor/ui/sidebar/index';
+import { useI18nStore } from '../../stores/i18nStore';
 
 defineOptions({ name: 'ChoyCollapsedIdentityTipHost' });
 
@@ -41,4 +43,12 @@ defineProps<{
 }>();
 
 const { state, isMobile } = useSidebar();
+
+const tipSide = computed<'left' | 'right'>(() => {
+  try {
+    return useI18nStore().activeLanguage.textDirection === 'rtl' ? 'left' : 'right';
+  } catch {
+    return 'right';
+  }
+});
 </script>

@@ -167,12 +167,12 @@ const DefinitionLinesTable = defineComponent({
 
     return () => {
       const header = h('thead', [
-        h('tr', { class: 'border-b border-border bg-muted/40 text-left text-muted-foreground' }, [
+        h('tr', { class: 'border-b border-border bg-muted/40 text-start text-muted-foreground' }, [
           props.canMutate ? h('th', { class: 'w-9 px-1 py-1.5 font-medium' }) : null,
           h(
             'th',
             {
-              class: 'w-11 whitespace-nowrap px-2 py-1.5 text-right font-medium tabular-nums text-muted-foreground',
+              class: 'w-11 whitespace-nowrap px-2 py-1.5 text-end font-medium tabular-nums text-muted-foreground',
               'data-testid': 'choy-properties-definition-index-header',
             },
             props.indexHeader,
@@ -276,7 +276,7 @@ const DefinitionLinesTable = defineComponent({
                   h(
                     'td',
                     {
-                      class: 'w-11 whitespace-nowrap px-2 py-1.5 text-right tabular-nums text-muted-foreground',
+                      class: 'w-11 whitespace-nowrap px-2 py-1.5 text-end tabular-nums text-muted-foreground',
                       'data-testid': 'choy-properties-definition-index',
                     },
                     String(index + 1),

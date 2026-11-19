@@ -211,7 +211,7 @@ SPDX-License-Identifier: Apache-2.0
           <!-- Automatically inject the leading group column in grouped mode -->
           <ChoyTableColumn v-if="isGroupMode" col-key="__group_label" :sortable="false">
             <template #default="{ row }">
-              <div v-if="row?.kind === 'group'" class="inline-flex min-w-0 items-center gap-1.5" :style="{ paddingLeft: `${row.depth * 16}px` }">
+              <div v-if="row?.kind === 'group'" class="inline-flex min-w-0 items-center gap-1.5" :style="{ paddingInlineStart: `${row.depth * 16}px` }">
                 <button
                   type="button"
                   class="inline-flex size-4 shrink-0 items-center justify-center rounded-sm text-muted-foreground hover:bg-accent hover:text-foreground"
@@ -220,7 +220,7 @@ SPDX-License-Identifier: Apache-2.0
                   @click.stop="onToggleGroup(row.key)"
                 >
                   <ChevronRight
-                    class="size-3.5 transition-transform duration-100"
+                    class="size-3.5 transition-transform duration-100 rtl:rotate-180"
                     :class="{ 'rotate-90': isExpanded(row.key) }"
                     aria-hidden="true"
                   />

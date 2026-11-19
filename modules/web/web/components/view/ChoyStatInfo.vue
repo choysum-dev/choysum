@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
   <button
     v-if="visible"
     type="button"
-    class="choy-stat-info inline-flex items-center gap-2 min-w-[72px] px-2.5 py-1.5 m-0 border border-border rounded-md bg-background text-foreground leading-tight text-left cursor-pointer transition-[background-color,border-color] duration-150 ease-in-out hover:enabled:bg-muted disabled:opacity-55 disabled:cursor-not-allowed"
+    class="choy-stat-info inline-flex items-center gap-2 min-w-[72px] px-2.5 py-1.5 m-0 border border-border rounded-md bg-background text-foreground leading-tight text-start cursor-pointer transition-[background-color,border-color] duration-150 ease-in-out hover:enabled:bg-muted disabled:opacity-55 disabled:cursor-not-allowed"
     :class="{ 'is-disabled opacity-55 cursor-not-allowed': disabled }"
     :disabled="disabled"
     v-bind="$attrs"

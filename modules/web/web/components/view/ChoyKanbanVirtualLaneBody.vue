@@ -21,7 +21,7 @@ SPDX-License-Identifier: Apache-2.0
         :key="String(item.key)"
         :ref="measureElement"
         :data-index="item.index"
-        class="choy-kanban-view__card absolute left-0 top-0 w-full rounded-md border border-border bg-card p-3 shadow-xs outline-none transition-colors hover:bg-accent/40 focus-visible:ring-2 focus-visible:ring-ring"
+        class="choy-kanban-view__card absolute start-0 top-0 w-full rounded-md border border-border bg-card p-3 shadow-xs outline-none transition-colors hover:bg-accent/40 focus-visible:ring-2 focus-visible:ring-ring"
         :class="laneDrag ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'"
         :style="{ transform: `translateY(${item.start}px)` }"
         :data-card-id="cards[item.index]?.id"

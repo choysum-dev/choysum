@@ -16,7 +16,7 @@ SPDX-License-Identifier: Apache-2.0
     >
       <template v-if="showSidebar">
         <ChoySidebarBridge />
-        <Sidebar collapsible="icon" side="left">
+        <Sidebar collapsible="icon" :side="sidebarSide">
           <!-- Height/padding locked in product CSS so kit p-2 cannot shrink the band. -->
           <SidebarHeader class="choy-shell__sidebar-header">
             <div
@@ -146,6 +146,7 @@ import {
 } from '../vendor/ui/sidebar/index'
 import { useLayoutStore } from '../../stores/layoutStore'
 import { useCompanyScopeViewKey } from '../../stores/companyScopeView'
+import { useI18nStore } from '../../stores/i18nStore'
 import { shellMenuTriggerLabel } from './choyWebShellChrome'
 
 /**
@@ -195,6 +196,15 @@ const menuTriggerLabel = computed(() =>
     t: (key) => tLayout(key),
   }),
 )
+
+/** Vendor Sidebar uses physical left|right; pin to inline-start via textDirection. */
+const sidebarSide = computed<'left' | 'right'>(() => {
+  try {
+    return useI18nStore().activeLanguage.textDirection === 'rtl' ? 'right' : 'left'
+  } catch {
+    return 'left'
+  }
+})
 </script>
 
 <style>
@@ -256,15 +266,19 @@ html.dark .choy-shell[data-shell-mode='app'],
   height: auto !important;
   box-sizing: border-box !important;
   /*
-   * No right edge: inset <main> gutters already separate the rail from the
-   * white surface (a hairline would sit in the chrome gap and look redundant).
+   * Kill kit content-edge hairlines on both sides. Desktop Sidebar uses
+   * physical group-data-[side=left]:border-r / [side=right]:border-l; a single
+   * border-inline-end:0 does not reliably override the opposite physical
+   * longhand when side flips under rtl. Inset <main> gutters already separate
+   * the rail from the canvas — a hairline in the chrome gap looks redundant.
    */
+  border-left: 0 !important;
   border-right: 0 !important;
   box-shadow: none !important;
   border-radius: var(--choy-shell-inset-radius);
   /*
-   * Keep overflow visible so SidebarRail's outside hit target (-right-4) is not
-   * clipped. Rounding still applies via the inner sidebar surface background.
+   * Keep overflow visible so SidebarRail's outside hit target is not clipped.
+   * Rounding still applies via the inner sidebar surface background.
    */
   overflow: visible;
   transition-property: left, right, width;
@@ -272,11 +286,57 @@ html.dark .choy-shell[data-shell-mode='app'],
   transition-timing-function: linear;
 }
 
+/* Pin the absolute panel to the declared side (kit left-0/right-0 can lose to dir). */
+.choy-shell[data-shell-mode='app'] [data-slot='sidebar'][data-side='left'] > .fixed {
+  left: 0 !important;
+  right: auto !important;
+}
+.choy-shell[data-shell-mode='app'] [data-slot='sidebar'][data-side='right'] > .fixed {
+  left: auto !important;
+  right: 0 !important;
+}
+
 .choy-shell[data-shell-mode='app'] [data-slot='sidebar'] > .fixed > [data-sidebar='sidebar'] {
+  position: relative;
   border-radius: inherit;
   /* Clip chrome content to the radius without eating the rail sibling hit box…
    * Rail is a child of this node, so clip only non-rail bands below. */
   overflow: visible;
+}
+
+/*
+ * SidebarRail: product wants the outer edge (LTR → leftmost, RTL → rightmost),
+ * not kit’s content-facing overhang. Keep the full w-4 strip inside the panel so
+ * inset cannot steal hover/click; clear Tailwind v4 `translate` (not `transform`).
+ */
+.choy-shell[data-shell-mode='app'] [data-slot='sidebar'][data-side='left'] [data-sidebar='rail'] {
+  right: auto !important;
+  left: 0 !important;
+  translate: none !important;
+  transform: none !important;
+}
+.choy-shell[data-shell-mode='app'] [data-slot='sidebar'][data-side='right'] [data-sidebar='rail'] {
+  left: auto !important;
+  right: 0 !important;
+  translate: none !important;
+  transform: none !important;
+}
+/* Hairline on the outer edge of the hit strip (kit centers via after:left-1/2). */
+.choy-shell[data-shell-mode='app'] [data-slot='sidebar'][data-side='left'] [data-sidebar='rail']::after {
+  inset-inline: auto !important;
+  inset-block: 0 !important;
+  left: 0 !important;
+  right: auto !important;
+  translate: none !important;
+  transform: none !important;
+}
+.choy-shell[data-shell-mode='app'] [data-slot='sidebar'][data-side='right'] [data-sidebar='rail']::after {
+  inset-inline: auto !important;
+  inset-block: 0 !important;
+  left: auto !important;
+  right: 0 !important;
+  translate: none !important;
+  transform: none !important;
 }
 
 .choy-shell[data-shell-mode='app']

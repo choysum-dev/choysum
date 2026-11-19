@@ -8,9 +8,12 @@ SPDX-License-Identifier: Apache-2.0
     <ChoyDialogContent
       class="choy-properties-definition-item-dialog flex max-h-[min(85vh,44rem)] w-[min(90vw,32rem)] max-w-[min(90vw,32rem)] flex-col gap-4 overflow-hidden"
       data-testid="choy-properties-definition-item-dialog"
+      :show-close-button="false"
       @open-auto-focus.prevent
     >
-      <ChoyDialogTitle class="shrink-0">{{ dialogTitle }}</ChoyDialogTitle>
+      <ChoyDialogHeader class="shrink-0 text-start">
+        <ChoyDialogTitle>{{ dialogTitle }}</ChoyDialogTitle>
+      </ChoyDialogHeader>
       <div class="min-h-0 overflow-y-auto">
         <ChoyFormView
           v-if="formStore"
@@ -180,12 +183,17 @@ SPDX-License-Identifier: Apache-2.0
           </template>
         </ChoyFormView>
       </div>
-      <div
-        class="dialog-footer flex shrink-0 flex-col-reverse gap-2 sm:flex-row sm:justify-end"
-        data-slot="dialog-footer"
-        data-testid="choy-properties-definition-item-footer"
-      >
+      <ChoyDialogFooter class="shrink-0" data-testid="choy-properties-definition-item-footer">
         <template v-if="readonly">
+          <ChoyButton
+            type="button"
+            size="default"
+            variant="outline"
+            data-testid="choy-properties-definition-item-cancel"
+            @click="onFooterCancel"
+          >
+            {{ _t('Close') }}
+          </ChoyButton>
           <ChoyButton
             v-if="canEdit"
             type="button"
@@ -195,15 +203,6 @@ SPDX-License-Identifier: Apache-2.0
             @click="onRequestEdit"
           >
             {{ _t('Edit') }}
-          </ChoyButton>
-          <ChoyButton
-            type="button"
-            size="default"
-            variant="outline"
-            data-testid="choy-properties-definition-item-cancel"
-            @click="onFooterCancel"
-          >
-            {{ _t('Close') }}
           </ChoyButton>
         </template>
         <template v-else>
@@ -226,7 +225,7 @@ SPDX-License-Identifier: Apache-2.0
             {{ _t('Apply') }}
           </ChoyButton>
         </template>
-      </div>
+      </ChoyDialogFooter>
     </ChoyDialogContent>
   </ChoyDialog>
 
@@ -247,7 +246,13 @@ import { createTranslate } from '@/web/web/i18n';
 import { confirmChoyAction } from '@/web/web/composables/confirmChoyAction';
 import { useI18nStore } from '@/web/web/stores/i18nStore';
 import { createUiModelStore, type UiModelStore } from '@/web/web/stores/uiModelStore';
-import { ChoyDialog, ChoyDialogContent, ChoyDialogTitle } from '@/web/web/components/layout/choyDialog';
+import {
+  ChoyDialog,
+  ChoyDialogContent,
+  ChoyDialogFooter,
+  ChoyDialogHeader,
+  ChoyDialogTitle,
+} from '@/web/web/components/layout/choyDialog';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
 import ChoyFormView from '@/web/web/components/view/ChoyFormView.vue';
 import type { FormSubmitHandler } from '@/web/web/components/view/formViewTypes';

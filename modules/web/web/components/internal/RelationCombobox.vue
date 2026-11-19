@@ -31,7 +31,7 @@ SPDX-License-Identifier: Apache-2.0
       <button
         v-if="showClear"
         type="button"
-        class="absolute top-1/2 right-1.5 inline-flex -translate-y-1/2 text-foreground/50 hover:text-foreground"
+        class="absolute top-1/2 end-1.5 inline-flex -translate-y-1/2 text-foreground/50 hover:text-foreground"
         :aria-label="clearLabel"
         data-testid="choy-relation-clear"
         tabindex="-1"
@@ -97,7 +97,7 @@ SPDX-License-Identifier: Apache-2.0
                 <ComboboxItem
                   v-if="displayOptions[virtualRow.index]"
                   :value="displayOptions[virtualRow.index]!.id"
-                  class="absolute left-0 flex w-full cursor-default select-none items-center rounded-sm py-1.5 pe-2 ps-2 text-sm outline-none data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground"
+                  class="absolute start-0 flex w-full cursor-default select-none items-center rounded-sm py-1.5 pe-2 ps-2 text-sm outline-none data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground"
                   :style="{
                     transform: `translateY(${virtualRow.start}px)`,
                     height: `${virtualRow.size}px`,
@@ -117,7 +117,7 @@ SPDX-License-Identifier: Apache-2.0
         <button
           v-if="searchMore"
           type="button"
-          class="block w-full cursor-pointer select-none border-t border-border px-3 py-2 text-left text-sm text-primary transition-colors hover:bg-muted focus:outline-none focus-visible:bg-muted"
+          class="block w-full cursor-pointer select-none border-t border-border px-3 py-2 text-start text-sm text-primary transition-colors hover:bg-muted focus:outline-none focus-visible:bg-muted"
           data-testid="choy-relation-search-more"
           @click="onSearchMore"
         >
@@ -279,7 +279,7 @@ const inputClass = computed(() =>
       : cn(
           'flex h-control rounded-md border border-input px-3 py-1 shadow-xs',
           controlFocusRing,
-          showClear.value && 'pr-8',
+          showClear.value && 'pe-8',
         ),
   ),
 );

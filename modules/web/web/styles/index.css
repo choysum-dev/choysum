@@ -54,6 +54,117 @@ html {
 }
 
 /*
+ * Nested-menu chevrons (kit SubTrigger bakes ChevronRight; portals sit outside
+ * shell scoped CSS). Flip under rtl so the arrow points toward the open side.
+ * Prefer this over patching vendor/ui *SubTrigger SFCs.
+ */
+:where([dir='rtl'], [dir='rtl'] *)
+  :is(
+    [data-slot='dropdown-menu-sub-trigger'],
+    [data-slot='context-menu-sub-trigger'],
+    [data-slot='menubar-sub-trigger']
+  )
+  > svg:last-of-type {
+  rotate: 180deg;
+}
+
+/*
+ * Portaled menus: kit still uses physical left-2 / ml-auto. Prefer product
+ * logical insets over patching vendor Context/Menubar SFCs.
+ */
+:is(
+  [data-slot='context-menu-checkbox-item'],
+  [data-slot='context-menu-radio-item'],
+  [data-slot='menubar-checkbox-item'],
+  [data-slot='menubar-radio-item']
+)
+  > span.absolute {
+  inset-inline-start: 0.5rem;
+  left: auto;
+  right: auto;
+}
+
+/* SubTrigger chevron uses kit ml-auto on the svg itself. */
+:is(
+  [data-slot='context-menu-sub-trigger'],
+  [data-slot='menubar-sub-trigger']
+)
+  > svg:last-of-type {
+  margin-inline-start: auto;
+  margin-left: 0;
+  margin-right: 0;
+}
+
+:is(
+  [data-slot='context-menu-shortcut'],
+  [data-slot='menubar-shortcut'],
+  [data-slot='command-shortcut']
+) {
+  margin-inline-start: auto;
+  margin-left: 0;
+  margin-right: 0;
+}
+
+/* Kit FieldError list indent (ChoyFieldBase host). */
+[data-slot='field-error'] ul {
+  margin-inline-start: 1rem;
+  margin-left: 0;
+  margin-right: 0;
+}
+
+/* Chatter / Bubble kit [button]:text-left */
+[data-slot='bubble-content'] button,
+[data-slot='bubble-content'] a {
+  text-align: start;
+}
+
+/* NativeSelect chevron (Calendar month/year and any product host). */
+[data-slot='native-select-wrapper'] > svg {
+  inset-inline-end: 0.875rem;
+  right: auto;
+  left: auto;
+}
+
+/* TagsInput delete spacing when product mounts kit TagsInput. */
+[data-slot='tags-input-item'] > button,
+[data-slot='tags-input-item'] > [role='button'] {
+  margin-inline-end: 0.25rem;
+  margin-left: 0;
+  margin-right: 0;
+}
+
+/* Accordion trigger when product mounts kit Accordion. */
+[data-slot='accordion-trigger'] {
+  text-align: start;
+}
+
+/* Marker label alignment. */
+[data-slot='marker'] {
+  text-align: start;
+}
+
+/*
+ * Confirm host (portaled AlertDialog): physical align + plaintext bidi.
+ * text-align:start + plaintext follows the paragraph base (English → left);
+ * physical left/right keeps the block on the reading-start edge while plaintext
+ * stops trailing "?" from mirroring to the visual start under direction:rtl.
+ */
+[data-testid='choy-confirm-dialog'][dir='rtl'] [data-slot='alert-dialog-header'],
+[data-testid='choy-confirm-dialog'][dir='rtl'] [data-slot='alert-dialog-title'],
+[data-testid='choy-confirm-dialog'][dir='rtl'] [data-slot='alert-dialog-description'] {
+  text-align: right !important;
+}
+[data-testid='choy-confirm-dialog'][dir='ltr'] [data-slot='alert-dialog-header'],
+[data-testid='choy-confirm-dialog'][dir='ltr'] [data-slot='alert-dialog-title'],
+[data-testid='choy-confirm-dialog'][dir='ltr'] [data-slot='alert-dialog-description'] {
+  text-align: left !important;
+}
+[data-testid='choy-confirm-dialog'] [data-slot='alert-dialog-title'],
+[data-testid='choy-confirm-dialog'] [data-slot='alert-dialog-description'] {
+  unicode-bidi: plaintext;
+}
+
+/*
  * Product-wide thin scrollbars (Form / List / shell / popovers).
  * Stay in @layer base so utilities like .scrollbar-none can still hide tracks.
  */
@@ -274,7 +385,9 @@ html {
 }
 
 [data-slot='field'].choy-field-base[data-orientation='horizontal'] .choy-field-base__edit-wrap {
+  display: flex;
   min-height: var(--choy-control-height, 2rem);
+  align-items: center;
 }
 
 /* Field ↔ field rhythm for FieldGroup stacks (ChoyGrid default is gap-2). */
@@ -393,6 +506,29 @@ html {
     100% 100%,
     0 100%,
     var(--choy-statusbar-chevron) 50%
+  );
+}
+
+/* Mirror first/last geometry under RTL (padding is already logical). */
+html[dir='rtl'] .choy-statusbar-field__control .choy-statusbar-opt[data-edge='first'] {
+  border-radius: 0 0.35rem 0.35rem 0;
+  clip-path: polygon(
+    var(--choy-statusbar-chevron) 0,
+    100% 0,
+    100% 100%,
+    var(--choy-statusbar-chevron) 100%,
+    0 50%
+  );
+}
+
+html[dir='rtl'] .choy-statusbar-field__control .choy-statusbar-opt[data-edge='last'] {
+  border-radius: 0.35rem 0 0 0.35rem;
+  clip-path: polygon(
+    0 0,
+    calc(100% - var(--choy-statusbar-chevron)) 0,
+    100% 50%,
+    calc(100% - var(--choy-statusbar-chevron)) 100%,
+    0 100%
   );
 }
 

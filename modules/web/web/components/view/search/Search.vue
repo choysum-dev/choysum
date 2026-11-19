@@ -112,7 +112,7 @@ SPDX-License-Identifier: Apache-2.0
             @blur="onInputBlur"
           />
 
-          <InputGroupAddon align="inline-end" class="choy-search__suffix gap-0 border-l border-border ps-0">
+          <InputGroupAddon align="inline-end" class="choy-search__suffix gap-0 border-s border-border ps-0">
             <ChoyButton
               v-if="hasClearableSearch"
               size="icon"
@@ -324,8 +324,10 @@ SPDX-License-Identifier: Apache-2.0
     </Popover>
 
     <ChoyDialog v-model:open="isEditorOpen">
-      <ChoyDialogContent class="max-w-5xl gap-5">
-        <ChoyDialogTitle>{{ filterEditorTitle }}</ChoyDialogTitle>
+      <ChoyDialogContent class="max-w-5xl gap-5" :show-close-button="false">
+        <ChoyDialogHeader class="text-start">
+          <ChoyDialogTitle>{{ filterEditorTitle }}</ChoyDialogTitle>
+        </ChoyDialogHeader>
       <SearchFilter
         v-if="draftFilter"
         :store="store"
@@ -344,8 +346,10 @@ SPDX-License-Identifier: Apache-2.0
     </ChoyDialog>
 
     <ChoyDialog v-model:open="saveFavoriteOpen">
-      <ChoyDialogContent class="max-w-md">
-        <ChoyDialogTitle>{{ saveFavoriteDialogTitle }}</ChoyDialogTitle>
+      <ChoyDialogContent class="max-w-md" :show-close-button="false" :dismissible="!saveFavoriteSaving">
+        <ChoyDialogHeader class="text-start">
+          <ChoyDialogTitle>{{ saveFavoriteDialogTitle }}</ChoyDialogTitle>
+        </ChoyDialogHeader>
       <form class="flex flex-col gap-3" @submit.prevent>
         <div class="flex flex-col gap-1.5">
           <label class="text-sm font-medium text-foreground" for="choy-search-fav-name">{{ _t('Name') }}</label>
@@ -366,10 +370,10 @@ SPDX-License-Identifier: Apache-2.0
           {{ _t('Share with all users') }}
         </label>
       </form>
-      <div class="mt-4 flex justify-end gap-2">
-        <ChoyButton size="sm" variant="outline" @click="saveFavoriteOpen = false">{{ _t('Cancel') }}</ChoyButton>
+      <ChoyDialogFooter>
+        <ChoyButton size="sm" variant="outline" :disabled="saveFavoriteSaving" @click="saveFavoriteOpen = false">{{ _t('Cancel') }}</ChoyButton>
         <ChoyButton size="sm" variant="default" :disabled="saveFavoriteSaving" @click="onConfirmSaveFavorite">{{ _t('Save') }}</ChoyButton>
-      </div>
+      </ChoyDialogFooter>
       </ChoyDialogContent>
     </ChoyDialog>
   </div>
@@ -414,7 +418,13 @@ import { useRoute } from 'vue-router';
 import { Search, ChevronDown, Check, Pencil, X, Funnel, Layers, Star } from 'lucide-vue-next';
 import ChoyBadge from '@/web/web/components/layout/ChoyBadge.vue';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
-import { ChoyDialog, ChoyDialogContent, ChoyDialogTitle } from '@/web/web/components/layout/choyDialog';
+import {
+  ChoyDialog,
+  ChoyDialogContent,
+  ChoyDialogFooter,
+  ChoyDialogHeader,
+  ChoyDialogTitle,
+} from '@/web/web/components/layout/choyDialog';
 import Checkbox from '@/web/web/components/vendor/ui/checkbox/Checkbox.vue';
 import Input from '@/web/web/components/vendor/ui/input/Input.vue';
 import {
@@ -1375,17 +1385,23 @@ watch(
   height: auto !important;
   min-height: 0;
   padding-block: 0 !important;
-  margin: 0;
+  /* Kill kit physical ml-/mr- negative seams; use logical zeros instead. */
+  margin: 0 !important;
+  margin-inline: 0 !important;
 }
 
 .choy-search__main :deep(.choy-search__leading) {
   padding-inline: 0 !important;
-  margin-inline-start: 0;
+  margin-inline-start: 0 !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
 }
 
 .choy-search__main :deep(.choy-search__suffix) {
   padding-inline: 0 !important;
-  margin-inline-end: 0;
+  margin-inline-end: 0 !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
 }
 
 .choy-search__tags {
