@@ -22,7 +22,7 @@ SPDX-License-Identifier: Apache-2.0
           :key="String(row.key)"
           :ref="measureElement"
           :data-index="row.index"
-          class="absolute left-0 grid w-full"
+          class="absolute start-0 grid w-full"
           :style="{
             transform: `translateY(${row.start}px)`,
             gap: `${gapPx}px`,

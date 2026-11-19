@@ -29,7 +29,7 @@ SPDX-License-Identifier: Apache-2.0
       >
         <div
           class="choy-relation-tree__row flex items-center gap-1 py-0.5 text-sm"
-          :style="{ paddingLeft: `${row.depth * 16}px` }"
+          :style="{ paddingInlineStart: `${row.depth * 16}px` }"
           @click="onRowClick(row, $event)"
         >
           <button

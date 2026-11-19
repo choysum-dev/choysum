@@ -205,7 +205,7 @@ SPDX-License-Identifier: Apache-2.0
       <FieldError
         v-if="showErrorOverlay"
         :id="formErrorId"
-        class="choy-field-base__error--overlay absolute left-0 top-full z-10 mt-0.5 w-full"
+        class="choy-field-base__error--overlay absolute start-0 top-full z-10 mt-0.5 w-full"
       >
         {{ displayError }}
       </FieldError>
@@ -294,7 +294,7 @@ SPDX-License-Identifier: Apache-2.0
         <FieldError
           v-if="serverErrorForRow(row, $index) && inlineErrorSpace === 'overlay'"
           :id="`${inputIdForRow(row)}-error`"
-          class="choy-field-base__error--overlay absolute left-0 top-full z-10 mt-0.5 w-full whitespace-normal"
+          class="choy-field-base__error--overlay absolute start-0 top-full z-10 mt-0.5 w-full whitespace-normal"
         >
           {{ serverErrorForRow(row, $index) }}
         </FieldError>
@@ -424,7 +424,7 @@ SPDX-License-Identifier: Apache-2.0
     <p
       v-else-if="showErrorOverlay"
       :id="formErrorId"
-      class="choy-field-base__error choy-field-base__error--overlay absolute left-0 top-full z-10 mt-0.5 w-full whitespace-normal text-sm font-normal leading-4 text-destructive"
+      class="choy-field-base__error choy-field-base__error--overlay absolute start-0 top-full z-10 mt-0.5 w-full whitespace-normal text-sm font-normal leading-4 text-destructive"
       data-slot="field-error"
       :title="displayError || undefined"
       role="alert"

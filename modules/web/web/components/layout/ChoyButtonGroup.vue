@@ -13,10 +13,10 @@ SPDX-License-Identifier: Apache-2.0
         // Drop per-button shadow so adjacent outline borders share one edge.
         // Also join nested buttons (e.g. TooltipRoot wrapping each control).
         '[&>*]:shadow-none [&>*_button]:shadow-none',
-        '[&>*:not(:first-child)]:rounded-l-none [&>*:not(:first-child)]:border-l-0',
-        '[&>*:not(:first-child)_button]:rounded-l-none [&>*:not(:first-child)_button]:border-l-0',
-        '[&>*:not(:last-child)]:rounded-r-none',
-        '[&>*:not(:last-child)_button]:rounded-r-none',
+        '[&>*:not(:first-child)]:rounded-s-none [&>*:not(:first-child)]:border-s-0',
+        '[&>*:not(:first-child)_button]:rounded-s-none [&>*:not(:first-child)_button]:border-s-0',
+        '[&>*:not(:last-child)]:rounded-e-none',
+        '[&>*:not(:last-child)_button]:rounded-e-none',
         props.class,
       )
     "

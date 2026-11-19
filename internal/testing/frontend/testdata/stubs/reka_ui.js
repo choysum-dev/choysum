@@ -70,6 +70,15 @@ export function useFilter() {
   };
 }
 
+/** Passthrough provider — real Reka injects dir/locale; FE unit only needs the slot. */
+export const ConfigProvider = defineComponent({
+  name: 'ConfigProvider',
+  inheritAttrs: false,
+  setup(_, { slots, attrs }) {
+    return () => (slots.default ? slots.default({}) : null);
+  },
+});
+
 export const CalendarCell = stub('CalendarCell');
 export const CalendarCellTrigger = stub('CalendarCellTrigger');
 export const CalendarGrid = stub('CalendarGrid');

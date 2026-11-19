@@ -8,7 +8,8 @@ SPDX-License-Identifier: Apache-2.0
     <ChoyDialogContent
       class="module-op-dialog flex max-h-[min(85vh,40rem)] w-[min(92vw,32rem)] max-w-[min(92vw,32rem)] flex-col gap-0 overflow-hidden p-0"
       data-testid="module-op-dialog"
-      :show-close-button="true"
+      :show-close-button="!(planLoading || executeLoading)"
+      :dismissible="!(planLoading || executeLoading)"
     >
       <ChoyDialogHeader class="shrink-0 space-y-1 border-b border-border px-6 py-4 text-start">
         <ChoyDialogTitle>{{ titleText }}</ChoyDialogTitle>
@@ -38,7 +39,7 @@ SPDX-License-Identifier: Apache-2.0
                   v-for="item in plan.changingModules"
                   :key="item.moduleName"
                   class="flex flex-col gap-0.5"
-                  :class="item.role === 'target' ? '' : 'ms-3 border-l border-border/80 ps-2.5'"
+                  :class="item.role === 'target' ? '' : 'ms-3 border-s border-border/80 ps-2.5'"
                   data-testid="module-op-changing-row"
                   :data-role="item.role || ''"
                 >
@@ -86,7 +87,7 @@ SPDX-License-Identifier: Apache-2.0
                 @click="satisfiedOpen = !satisfiedOpen"
               >
                 <ChevronRight
-                  class="size-3.5 shrink-0 transition-transform"
+                  class="size-3.5 shrink-0 transition-transform rtl:rotate-180"
                   :class="{ 'rotate-90': satisfiedOpen }"
                   aria-hidden="true"
                 />
@@ -101,7 +102,7 @@ SPDX-License-Identifier: Apache-2.0
               </button>
               <ul
                 v-if="satisfiedOpen"
-                class="m-0 ms-4 flex list-none flex-col gap-0.5 border-l border-border ps-3 p-0 text-sm text-muted-foreground"
+                class="m-0 ms-4 flex list-none flex-col gap-0.5 border-s border-border ps-3 p-0 text-sm text-muted-foreground"
                 data-testid="module-op-satisfied-list"
               >
                 <li
@@ -220,7 +221,7 @@ SPDX-License-Identifier: Apache-2.0
         </div>
       </div>
 
-      <div class="flex shrink-0 justify-end gap-2 border-t border-border px-6 py-3">
+      <ChoyDialogFooter class="shrink-0 border-t border-border px-6 py-3">
         <ChoyButton
           type="button"
           variant="outline"
@@ -254,7 +255,7 @@ SPDX-License-Identifier: Apache-2.0
             {{ _t('Done') }}
           </ChoyButton>
         </template>
-      </div>
+      </ChoyDialogFooter>
     </ChoyDialogContent>
   </ChoyDialog>
 </template>
@@ -277,6 +278,7 @@ import {
   ChoyButton,
   ChoyDialog,
   ChoyDialogContent,
+  ChoyDialogFooter,
   ChoyDialogHeader,
   ChoyDialogTitle,
   ChoyMessage,

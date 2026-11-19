@@ -9,7 +9,7 @@ SPDX-License-Identifier: Apache-2.0
     extracted as candidates; keep any dynamic-only utilities listed here.
   -->
   <span
-    class="hidden border-l-2 border-l-success border-l-warning border-border/60 bg-success/15 bg-warning/10 bg-warning/20 text-success text-warning"
+    class="hidden border-s-2 border-s-success border-s-warning border-border/60 bg-success/15 bg-warning/10 bg-warning/20 text-success text-warning"
     hidden
     aria-hidden="true"
   />
@@ -20,8 +20,8 @@ SPDX-License-Identifier: Apache-2.0
       isRoot
         ? 'overflow-hidden rounded-lg border border-border'
         : [
-            'mt-2 rounded-md border border-border/60 border-l-2 ps-3',
-            group.logic === 'Or' ? 'border-l-warning bg-warning/10' : 'border-l-success bg-success/15',
+            'mt-2 rounded-md border border-border/60 border-s-2 ps-3',
+            group.logic === 'Or' ? 'border-s-warning bg-warning/10' : 'border-s-success bg-success/15',
           ],
     ]"
     :style="isRoot ? rootShellStyle() : undefined"
@@ -255,3 +255,22 @@ function nodeKey(n: any) {
   return (n.tempId || n.id) as string;
 }
 </script>
+
+<style scoped>
+/*
+ * Kit ToggleGroupItem uses physical first:rounded-l / last:rounded-r when
+ * data-spacing=0. Prefer logical corners under RTL without editing vendor.
+ */
+.osf-group__logic :deep([data-slot='toggle-group-item'][data-spacing='0']:first-child) {
+  border-start-start-radius: calc(var(--radius-md) - 2px) !important;
+  border-end-start-radius: calc(var(--radius-md) - 2px) !important;
+  border-start-end-radius: 0 !important;
+  border-end-end-radius: 0 !important;
+}
+.osf-group__logic :deep([data-slot='toggle-group-item'][data-spacing='0']:last-child) {
+  border-start-end-radius: calc(var(--radius-md) - 2px) !important;
+  border-end-end-radius: calc(var(--radius-md) - 2px) !important;
+  border-start-start-radius: 0 !important;
+  border-end-start-radius: 0 !important;
+}
+</style>

@@ -12,7 +12,7 @@ SPDX-License-Identifier: Apache-2.0
         role="status"
         aria-live="polite"
         :aria-label="plainMessage"
-        class="choy-loading-slow-hint pointer-events-none fixed bottom-4 right-4 z-[100] flex max-w-sm items-start gap-2 rounded-md border border-border/60 bg-background/90 px-2.5 py-1.5 text-sm text-foreground shadow-sm backdrop-blur"
+        class="choy-loading-slow-hint pointer-events-none fixed bottom-4 end-4 z-[100] flex max-w-sm items-start gap-2 rounded-md border border-border/60 bg-background/90 px-2.5 py-1.5 text-sm text-foreground shadow-sm backdrop-blur"
       >
         <ChoySpinner class="mt-0.5 size-3.5 shrink-0 text-primary" />
         <!-- Trusted product i18n; split on &lt;br /&gt; so we never bind raw HTML. -->

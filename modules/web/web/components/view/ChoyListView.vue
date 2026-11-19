@@ -211,7 +211,7 @@ SPDX-License-Identifier: Apache-2.0
           <!-- Automatically inject the leading group column in grouped mode -->
           <ChoyTableColumn v-if="isGroupMode" col-key="__group_label" :sortable="false">
             <template #default="{ row }">
-              <div v-if="row?.kind === 'group'" class="inline-flex min-w-0 items-center gap-1.5" :style="{ paddingLeft: `${row.depth * 16}px` }">
+              <div v-if="row?.kind === 'group'" class="inline-flex min-w-0 items-center gap-1.5" :style="{ paddingInlineStart: `${row.depth * 16}px` }">
                 <button
                   type="button"
                   class="inline-flex size-4 shrink-0 items-center justify-center rounded-sm text-muted-foreground hover:bg-accent hover:text-foreground"
@@ -219,9 +219,14 @@ SPDX-License-Identifier: Apache-2.0
                   :aria-label="_t('Toggle group %s', String(row.label ?? ''))"
                   @click.stop="onToggleGroup(row.key)"
                 >
-                  <ChevronRight
+                  <ChevronDown
+                    v-if="isExpanded(row.key)"
                     class="size-3.5 transition-transform duration-100"
-                    :class="{ 'rotate-90': isExpanded(row.key) }"
+                    aria-hidden="true"
+                  />
+                  <ChevronRight
+                    v-else
+                    class="size-3.5 transition-transform duration-100 rtl:rotate-180"
                     aria-hidden="true"
                   />
                 </button>
@@ -337,7 +342,7 @@ import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
 import ChoyPageTitleActions from '@/web/web/components/layout/ChoyPageTitleActions.vue';
 import { Separator } from '@/web/web/components/vendor/ui/separator';
 import DropdownMenuItem from '@/web/web/components/vendor/ui/dropdown-menu/DropdownMenuItem.vue';
-import { Check, ChevronRight, Plus, RefreshCw, Trash2, X } from 'lucide-vue-next';
+import { Check, ChevronDown, ChevronRight, Plus, RefreshCw, Trash2, X } from 'lucide-vue-next';
 
 defineOptions({ name: 'ChoyListView', inheritAttrs: false });
 

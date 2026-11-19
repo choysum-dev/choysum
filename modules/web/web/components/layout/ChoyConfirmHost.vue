@@ -5,14 +5,24 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <AlertDialog v-model:open="open">
-    <AlertDialogContent class="sm:max-w-md" data-testid="choy-confirm-dialog">
-      <AlertDialogHeader>
-        <AlertDialogTitle>{{ store.title }}</AlertDialogTitle>
-        <AlertDialogDescription class="whitespace-pre-wrap">
+    <!--
+      Reka may still stamp dir=ltr on the portaled node; inline direction +
+      physical text/footer alignment follow confirmDir so RTL cannot lose to kit
+      sm:text-left / default useDirection.
+    -->
+    <AlertDialogContent
+      class="sm:max-w-md"
+      data-testid="choy-confirm-dialog"
+      :dir="confirmDir"
+      :style="contentStyle"
+    >
+      <AlertDialogHeader class="text-start" :style="headerStyle">
+        <AlertDialogTitle :style="copyStyle">{{ store.title }}</AlertDialogTitle>
+        <AlertDialogDescription class="whitespace-pre-wrap" :style="copyStyle">
           {{ store.message }}
         </AlertDialogDescription>
       </AlertDialogHeader>
-      <AlertDialogFooter>
+      <AlertDialogFooter :style="footerStyle">
         <!--
           Capture settles the Promise before Reka AlertDialog emits update:open=false,
           so the v-model setter does not treat Action/Cancel as overlay dismiss.
@@ -43,12 +53,50 @@ import AlertDialogFooter from '../vendor/ui/alert-dialog/AlertDialogFooter.vue';
 import AlertDialogHeader from '../vendor/ui/alert-dialog/AlertDialogHeader.vue';
 import AlertDialogTitle from '../vendor/ui/alert-dialog/AlertDialogTitle.vue';
 import { resolveConfirmChoy, useConfirmChoyStore } from '../../composables/confirmChoyAction';
+import { useI18nStore } from '../../stores/i18nStore';
 
 /**
  * App-root host for confirmChoyAction / confirmChoyChoice.
  * Uses AlertDialog chrome; Promise / store contract is unchanged.
  */
 const store = useConfirmChoyStore();
+
+function resolveConfirmDir(): 'ltr' | 'rtl' {
+  try {
+    return useI18nStore().activeLanguage?.textDirection === 'rtl' ? 'rtl' : 'ltr';
+  } catch {
+    return 'ltr';
+  }
+}
+const confirmDir = computed(resolveConfirmDir);
+
+/** Force used direction even if Reka's dir attr stays ltr. */
+const contentStyle = computed(() => ({
+  direction: confirmDir.value,
+}));
+
+/** Physical align: kit sm:text-left / CSS start+plaintext otherwise wins under RTL. */
+const headerStyle = computed(() => ({
+  textAlign: confirmDir.value === 'rtl' ? 'right' : 'left',
+}));
+
+/**
+ * Plaintext keeps English punctuation (trailing ?) from mirroring under
+ * direction:rtl; pair with physical text-align, not start.
+ */
+const copyStyle = computed(() => ({
+  textAlign: confirmDir.value === 'rtl' ? 'right' : 'left',
+  unicodeBidi: 'plaintext' as const,
+}));
+
+/**
+ * Keep actions on the physical right (same as form toolbars). Force LTR on the
+ * footer so flex-end is always the right edge even if a child resets direction.
+ */
+const footerStyle = computed(() => ({
+  direction: 'ltr' as const,
+  justifyContent: 'flex-end' as const,
+}));
 const open = computed({
   get: () => store.open,
   set: (v: boolean) => {

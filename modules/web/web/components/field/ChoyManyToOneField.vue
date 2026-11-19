@@ -42,7 +42,7 @@ SPDX-License-Identifier: Apache-2.0
         >
           <template v-if="showNameCreateEntry" #footer>
             <div
-              class="block w-full cursor-pointer select-none px-3 py-2 text-left text-sm text-primary transition-colors hover:bg-muted focus:outline-none focus-visible:bg-muted"
+              class="block w-full cursor-pointer select-none px-3 py-2 text-start text-sm text-primary transition-colors hover:bg-muted focus:outline-none focus-visible:bg-muted"
               role="button"
               tabindex="0"
               data-testid="choy-m2o-name-create"
@@ -78,8 +78,11 @@ SPDX-License-Identifier: Apache-2.0
     <ChoyDialogContent
       class="choy-relation-picker-dialog flex max-h-[min(85vh,40rem)] w-[min(90vw,56rem)] max-w-[min(90vw,56rem)] flex-col gap-3 overflow-hidden"
       :style="{ width: typeof searchViewWidth === 'number' ? searchViewWidth + 'px' : searchViewWidth }"
+      :show-close-button="false"
     >
-      <ChoyDialogTitle class="shrink-0">{{ effectiveSearchViewTitle }}</ChoyDialogTitle>
+      <ChoyDialogHeader class="shrink-0 text-start">
+        <ChoyDialogTitle>{{ effectiveSearchViewTitle }}</ChoyDialogTitle>
+      </ChoyDialogHeader>
       <div class="choy-relation-picker-list min-h-[16rem] flex-1 overflow-hidden">
         <ChoyViewScope view-mode="display" :kind="'List'">
           <component
@@ -101,10 +104,10 @@ SPDX-License-Identifier: Apache-2.0
           />
         </ChoyViewScope>
       </div>
-      <div class="mt-1 flex shrink-0 justify-end gap-2">
+      <ChoyDialogFooter class="mt-1 shrink-0">
         <ChoyButton type="button" variant="outline" @click="dialogVisible = false">{{ _t('Cancel') }}</ChoyButton>
         <ChoyButton type="button" @click="confirmPick">{{ _t('OK') }}</ChoyButton>
-      </div>
+      </ChoyDialogFooter>
     </ChoyDialogContent>
   </ChoyDialog>
 </template>
@@ -118,7 +121,13 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts" generic="T extends BaseModel, P extends FieldPath<T, ClientModel<BaseModel> | null | undefined>, V = FieldPathType<T, P>">
 import { ref, computed, inject, provide, Ref, getCurrentInstance } from 'vue';
-import { ChoyDialog, ChoyDialogContent, ChoyDialogTitle } from '@/web/web/components/layout/choyDialog';
+import {
+  ChoyDialog,
+  ChoyDialogContent,
+  ChoyDialogFooter,
+  ChoyDialogHeader,
+  ChoyDialogTitle,
+} from '@/web/web/components/layout/choyDialog';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
 import { ChoyMessage } from '../../composables/useChoyMessage';
 import { RELATION_PICKER_CLOSE_KEY } from '@/web/web/components/field/relationPickerContext';

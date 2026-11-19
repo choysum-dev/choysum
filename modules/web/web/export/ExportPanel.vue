@@ -5,8 +5,15 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <ChoyDialog v-model:open="visible">
-    <ChoyDialogContent class="export-panel-dialog" @open-auto-focus.prevent>
-      <ChoyDialogTitle>{{ title }}</ChoyDialogTitle>
+    <ChoyDialogContent
+      class="export-panel-dialog"
+      :show-close-button="false"
+      :dismissible="!busy"
+      @open-auto-focus.prevent
+    >
+      <ChoyDialogHeader class="text-start">
+        <ChoyDialogTitle>{{ title }}</ChoyDialogTitle>
+      </ChoyDialogHeader>
       <div class="flex flex-col gap-3">
         <p class="m-0 text-foreground">{{ scopeSummary }}</p>
 
@@ -53,19 +60,25 @@ SPDX-License-Identifier: Apache-2.0
         <div v-else-if="exportError" role="alert" class="mt-1">{{ exportError }}</div>
       </div>
 
-      <div class="export-panel-footer" data-slot="dialog-footer">
+      <ChoyDialogFooter>
         <ChoyButton size="sm" variant="outline" :disabled="busy" @click="visible = false">{{ cancelLabel }}</ChoyButton>
         <ChoyButton v-if="!exportDone" size="sm" variant="outline" :disabled="busy" @click="runPreview">{{ previewActionLabel }}</ChoyButton>
         <ChoyButton v-if="!exportDone" size="sm" variant="default" :disabled="busy" @click="commitExport">{{ exportActionLabel }}</ChoyButton>
         <ChoyButton v-else size="sm" variant="default" @click="visible = false">{{ doneLabel }}</ChoyButton>
-      </div>
+      </ChoyDialogFooter>
     </ChoyDialogContent>
   </ChoyDialog>
 </template>
 
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue';
-import { ChoyDialog, ChoyDialogContent, ChoyDialogTitle } from '@/web/web/components/layout/choyDialog';
+import {
+  ChoyDialog,
+  ChoyDialogContent,
+  ChoyDialogFooter,
+  ChoyDialogHeader,
+  ChoyDialogTitle,
+} from '@/web/web/components/layout/choyDialog';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
 import { describeExportFields, previewExport, runExport, ExportMode, type ExportFieldNode, type ExportReport } from '@/core/web/export/client';
 import { downloadExportCsvBytes, suggestExportFileName } from '@/core/web/export/download_csv';

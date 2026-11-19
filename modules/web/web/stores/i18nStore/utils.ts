@@ -86,29 +86,14 @@ export function detectBestLang(allowedCodes?: readonly string[]): string {
 }
 
 /**
- * Update the HTML document direction and related CSS variables on the client only.
+ * Update the HTML document direction on the client only.
+ * Layout uses CSS logical properties / Tailwind start|end and rtl: variants against html[dir].
  */
 export function updateDocumentDirection(textDirection: string) {
   if (!isClient) return;
 
   document.documentElement.setAttribute('dir', textDirection);
   document.documentElement.classList.remove('rtl');
-
-  const isRtl = textDirection === 'rtl';
-  const docStyle = document.documentElement.style;
-
-  docStyle.setProperty('--choy-direction', textDirection);
-  docStyle.setProperty('--choy-start', isRtl ? 'right' : 'left');
-  docStyle.setProperty('--choy-end', isRtl ? 'left' : 'right');
-  docStyle.setProperty('--choy-text-align', isRtl ? 'right' : 'left');
-  docStyle.setProperty('--choy-transform-direction', isRtl ? '100%' : '-100%');
-  docStyle.setProperty('--choy-direction-transform-factor', isRtl ? '1' : '-1');
-  docStyle.setProperty('--choy-direction-inset-start', isRtl ? 'right' : 'left');
-  docStyle.setProperty('--choy-direction-inset-end', isRtl ? 'left' : 'right');
-  docStyle.setProperty('--choy-direction-rotate', isRtl ? '180deg' : '0deg');
-  docStyle.setProperty('--choy-direction-flip', isRtl ? '-1' : '1');
-  docStyle.setProperty('--choy-border-start-width', '1px');
-  docStyle.setProperty('--choy-border-end-width', '1px');
 }
 
 type RelativeUnit = Intl.RelativeTimeFormatUnit;

@@ -10,7 +10,9 @@ SPDX-License-Identifier: Apache-2.0
   >
     <BreadcrumbList>
       <template v-for="(seg, segIndex) in displaySegments" :key="seg.key">
-        <BreadcrumbSeparator v-if="segIndex > 0" />
+        <BreadcrumbSeparator v-if="segIndex > 0">
+          <ChevronRight class="rtl:rotate-180" />
+        </BreadcrumbSeparator>
         <BreadcrumbItem>
           <BreadcrumbEllipsis
             v-if="seg.type === 'ellipsis'"
@@ -53,6 +55,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { computed } from 'vue';
+import { ChevronRight } from 'lucide-vue-next';
 import { RouterLink, type RouteLocationRaw } from 'vue-router';
 import type { ClassValue } from '../../lib/utils';
 import Breadcrumb from '../vendor/ui/breadcrumb/Breadcrumb.vue';

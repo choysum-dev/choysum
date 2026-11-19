@@ -5,8 +5,15 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <ChoyDialog v-model:open="visible">
-    <ChoyDialogContent class="choy-field-translations-dialog max-w-xl" @open-auto-focus.prevent>
-      <ChoyDialogTitle>{{ dialogTitle }}</ChoyDialogTitle>
+    <ChoyDialogContent
+      class="choy-field-translations-dialog max-w-xl"
+      :show-close-button="false"
+      :dismissible="!saving"
+      @open-auto-focus.prevent
+    >
+      <ChoyDialogHeader class="text-start">
+        <ChoyDialogTitle>{{ dialogTitle }}</ChoyDialogTitle>
+      </ChoyDialogHeader>
       <div class="choy-field-translations-dialog__body min-h-[120px]" :aria-busy="loading || undefined">
         <form class="choy-field-translations-dialog__form flex flex-col gap-3.5" @submit.prevent>
           <div v-for="row in rows" :key="row.code" class="choy-field-translations-dialog__row grid grid-cols-[168px_1fr] items-start gap-3">
@@ -24,19 +31,25 @@ SPDX-License-Identifier: Apache-2.0
           </div>
         </form>
       </div>
-      <div class="mt-4 flex justify-end gap-2">
-        <ChoyButton type="button" variant="outline" @click="visible = false">{{ _t('Cancel') }}</ChoyButton>
+      <ChoyDialogFooter>
+        <ChoyButton type="button" variant="outline" :disabled="saving" @click="visible = false">{{ _t('Cancel') }}</ChoyButton>
         <ChoyButton type="button" :disabled="saving" @click="handleSave">
           {{ _t('Save translations') }}
         </ChoyButton>
-      </div>
+      </ChoyDialogFooter>
     </ChoyDialogContent>
   </ChoyDialog>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { ChoyDialog, ChoyDialogContent, ChoyDialogTitle } from '@/web/web/components/layout/choyDialog';
+import {
+  ChoyDialog,
+  ChoyDialogContent,
+  ChoyDialogFooter,
+  ChoyDialogHeader,
+  ChoyDialogTitle,
+} from '@/web/web/components/layout/choyDialog';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
 import ChoyInput from '@/web/web/components/vendor/ui/input/Input.vue';
 import { ChoyMessage } from '../../composables/useChoyMessage';

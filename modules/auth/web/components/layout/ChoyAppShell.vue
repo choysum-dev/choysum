@@ -57,7 +57,7 @@ SPDX-License-Identifier: Apache-2.0
           </ChoySidebarMenuButton>
         </ChoyDropdownMenuTrigger>
         <ChoyDropdownMenuContent
-          side="right"
+          :side="userMenuSide"
           align="end"
           class="min-w-56 rounded-lg"
           @close-auto-focus="onUserMenuCloseAutoFocus"
@@ -164,6 +164,11 @@ export default defineComponent({
       stopInterrupt = undefined;
     });
 
+
+    /** Dropdown opens toward the content canvas (opposite the sidebar edge). */
+    const userMenuSide = computed<'left' | 'right'>(() =>
+      i18nStore.activeLanguage?.textDirection === 'rtl' ? 'left' : 'right',
+    );
 
     const userMenuLabel = computed(() => {
       const user = (authStore.currentUser as any) || {};
@@ -275,6 +280,7 @@ export default defineComponent({
       _t,
       collaborationCaps,
       userMenuOpen,
+      userMenuSide,
       userMenuLabel,
       userIdentityTooltip,
       userMenuMeta,

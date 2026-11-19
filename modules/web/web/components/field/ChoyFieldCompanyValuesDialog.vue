@@ -5,12 +5,19 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <ChoyDialog v-model:open="visible">
-    <ChoyDialogContent class="choy-field-company-values-dialog max-w-xl" @open-auto-focus.prevent>
-      <ChoyDialogTitle>{{ dialogTitle }}</ChoyDialogTitle>
+    <ChoyDialogContent
+      class="choy-field-company-values-dialog max-w-xl"
+      :show-close-button="false"
+      :dismissible="!saving"
+      @open-auto-focus.prevent
+    >
+      <ChoyDialogHeader class="text-start">
+        <ChoyDialogTitle>{{ dialogTitle }}</ChoyDialogTitle>
+      </ChoyDialogHeader>
       <div class="choy-field-company-values-dialog__body min-h-[120px]" :aria-busy="loading || undefined">
         <form class="choy-field-company-values-dialog__form flex flex-col gap-3.5" @submit.prevent>
           <div v-for="row in rows" :key="row.companyId" class="choy-field-company-values-dialog__row flex items-start gap-3">
-            <label class="choy-field-company-values-dialog__label min-w-28 shrink-0 text-left leading-8 text-foreground">{{ row.label }}</label>
+            <label class="choy-field-company-values-dialog__label min-w-28 shrink-0 text-start leading-8 text-foreground">{{ row.label }}</label>
             <div class="choy-field-company-values-dialog__control min-w-0 flex-1">
               <ChoyInput
                 v-model="row.value"
@@ -21,19 +28,25 @@ SPDX-License-Identifier: Apache-2.0
           </div>
         </form>
       </div>
-      <div class="dialog-footer" data-slot="dialog-footer">
-        <ChoyButton type="button" variant="outline" @click="visible = false">{{ _t('Cancel') }}</ChoyButton>
+      <ChoyDialogFooter>
+        <ChoyButton type="button" variant="outline" :disabled="saving" @click="visible = false">{{ _t('Cancel') }}</ChoyButton>
         <ChoyButton type="button" :disabled="saving" @click="handleSave">
           {{ _t('Save company values') }}
         </ChoyButton>
-      </div>
+      </ChoyDialogFooter>
     </ChoyDialogContent>
   </ChoyDialog>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { ChoyDialog, ChoyDialogContent, ChoyDialogTitle } from '@/web/web/components/layout/choyDialog';
+import {
+  ChoyDialog,
+  ChoyDialogContent,
+  ChoyDialogFooter,
+  ChoyDialogHeader,
+  ChoyDialogTitle,
+} from '@/web/web/components/layout/choyDialog';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
 import ChoyInput from '@/web/web/components/vendor/ui/input/Input.vue';
 import { ChoyMessage } from '../../composables/useChoyMessage';

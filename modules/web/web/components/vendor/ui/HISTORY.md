@@ -36,6 +36,28 @@ new HISTORY entry describing what was re-copied vs re-patched.
 
 ## Entries (newest first)
 
+### 2026-11-19 — AlertDialogHeader `sm:text-left` → `sm:text-start`
+
+- **What:** `AlertDialogHeader.vue` default classes now use logical
+  `sm:text-start` (same as `DialogHeader`), not physical `sm:text-left`.
+- **Why product CSS alone was insufficient:** Portaled confirm copy under
+  `html[dir=rtl]` stayed left-aligned because the kit utility is physical left;
+  `DialogHeader` already used the logical form — this is kit-default alignment.
+- **Do not regress:** Keep `sm:text-start` on refresh; do not restore
+  `sm:text-left`.
+
+### 2026-11-19 — Switch thumb via margin-inline-start (RTL-safe)
+
+- **Why product override was insufficient:** Thumb “on” position must live in the
+  kit control; ChoyBooleanField only hosts the Switch.
+- **Change:** Drop class `ms-auto` for the checked thumb; set
+  `marginInlineStart: auto | 0` on the thumb via Vue style binding (same pattern
+  as checked track colors). Parks the thumb on the **inline-end** edge under both
+  `dir=ltr` and `dir=rtl` without depending on utility emit.
+- **Do not regress:** Do not restore physical `translate-x-*` / `left-*` for the
+  thumb; keep Vue style binding so checked chrome does not rely on
+  `data-[state=checked]:*` or `ms-auto` being present in FullCSS.
+
 ### 2026-11-18 — Sonner error-icon slot forward
 
 - **What:** `#error-icon` wraps kit default `OctagonX` in `<slot name="error-icon">`

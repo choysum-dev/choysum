@@ -195,13 +195,11 @@ test('formatCurrency: returns string on Intl failure', () => {
   expect(formatCurrency(9.99, 'bad', { decimalDigits: 1 }, 'USD')).toBe('9.99');
 });
 
-test('updateDocumentDirection: sets dir and CSS variables on documentElement', () => {
+test('updateDocumentDirection: sets dir on documentElement', () => {
   updateDocumentDirection('rtl');
   expect(document.documentElement.getAttribute('dir')).toBe('rtl');
-  expect(document.documentElement.style.getPropertyValue('--choy-direction')).toBe('rtl');
-  expect(document.documentElement.style.getPropertyValue('--choy-start')).toBe('right');
   updateDocumentDirection('ltr');
-  expect(document.documentElement.style.getPropertyValue('--choy-start')).toBe('left');
+  expect(document.documentElement.getAttribute('dir')).toBe('ltr');
 });
 
 test('matchBestLang: picks first allowed when tags miss', () => {

@@ -508,4 +508,62 @@ describe('DataTable virtualize', () => {
     mounted.root?.scrollToRow?.(Number.NaN);
     mounted.unmount();
   });
+
+  test('header and body horizontal scrollLeft stay locked', async () => {
+    const wideColumns: ColumnDef<Row, unknown>[] = [
+      {
+        accessorKey: 'Name',
+        header: 'Name',
+        size: 900,
+        cell: (ctx) => String(ctx.getValue() ?? ''),
+      },
+      {
+        accessorKey: 'Id',
+        header: 'Id',
+        size: 900,
+        cell: (ctx) => String(ctx.getValue() ?? ''),
+      },
+    ];
+    const mounted = mountApp(DataTable as any, {
+      props: {
+        columns: wideColumns,
+        data: rows,
+        height: 160,
+        virtualize: false,
+        enableRowSelection: false,
+      },
+      reactiveProps: true,
+    });
+    await flushPromises();
+    const header = mounted.q('.choy-data-table__header') as HTMLElement | null;
+    const body = mounted.q('.choy-data-table__body') as HTMLElement | null;
+    expect(header).toBeTruthy();
+    expect(body).toBeTruthy();
+    // Force overflow metrics for the QuickJS layout harness.
+    Object.defineProperty(body!, 'clientWidth', { configurable: true, get: () => 320 });
+    Object.defineProperty(body!, 'scrollWidth', { configurable: true, get: () => 1800 });
+    Object.defineProperty(header!, 'clientWidth', { configurable: true, get: () => 320 });
+    Object.defineProperty(header!, 'scrollWidth', { configurable: true, get: () => 1800 });
+
+    body!.scrollLeft = 120;
+    body!.dispatchEvent(new Event('scroll'));
+    expect(header!.scrollLeft).toBe(120);
+
+    // Equal values short-circuit without rewriting.
+    body!.dispatchEvent(new Event('scroll'));
+    expect(header!.scrollLeft).toBe(120);
+
+    header!.scrollLeft = 40;
+    header!.dispatchEvent(new Event('scroll'));
+    expect(body!.scrollLeft).toBe(40);
+
+    // Column width change re-locks via tableMinWidth watch.
+    mounted.props.columns = [
+      { ...wideColumns[0], size: 1000 },
+      { ...wideColumns[1], size: 1000 },
+    ];
+    await flushPromises();
+    expect(header!.scrollLeft).toBe(body!.scrollLeft);
+    mounted.unmount();
+  });
 });

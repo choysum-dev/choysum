@@ -59,14 +59,14 @@ SPDX-License-Identifier: Apache-2.0
                 :aria-label="_t('Previous month')"
                 class="inline-flex size-8 items-center justify-center rounded-md border border-border hover:bg-muted"
               >
-                <ChevronLeft class="size-4" />
+                <ChevronLeft class="size-4 rtl:rotate-180" />
               </CalendarPrev>
               <CalendarHeading class="text-sm font-medium" />
               <CalendarNext
                 :aria-label="_t('Next month')"
                 class="inline-flex size-8 items-center justify-center rounded-md border border-border hover:bg-muted"
               >
-                <ChevronRight class="size-4" />
+                <ChevronRight class="size-4 rtl:rotate-180" />
               </CalendarNext>
             </CalendarHeader>
             <div class="flex flex-col gap-4">

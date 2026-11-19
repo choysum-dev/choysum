@@ -62,7 +62,7 @@ SPDX-License-Identifier: Apache-2.0
           </div>
           <div class="text-foreground/60">
             {{ _t('Seq') }} {{ cardSequence(card) }}
-            <span v-if="!cardIsActive(card)" class="ml-2 text-amber-700">{{ _t('Inactive') }}</span>
+            <span v-if="!cardIsActive(card)" class="ms-2 text-amber-700">{{ _t('Inactive') }}</span>
           </div>
         </div>
       </template>

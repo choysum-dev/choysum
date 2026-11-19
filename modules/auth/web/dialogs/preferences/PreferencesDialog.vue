@@ -538,12 +538,16 @@ async function onPreferencesSubmit(ctx: {
   padding-top: 0.5rem;
 }
 
-/* Settings rows: Field chrome owns label|control; keep label column compact. */
+/* Settings rows: Field chrome owns label|control; compact label track via tokens. */
+.choy-preferences-dialog {
+  --choy-field-label-min: 4.5rem;
+  --choy-field-label-max: 4.5rem;
+}
 .choy-preferences-dialog__setting :deep([data-anchor='choy.field-base'][data-orientation='horizontal']) {
-  gap: 0.75rem;
+  gap: var(--choy-field-label-control-gap);
 }
 .choy-preferences-dialog__setting :deep(.choy-field-base__label-row) {
-  width: 4.5rem;
+  width: var(--choy-field-label-min);
   flex-shrink: 0;
   padding-top: 0.5rem;
   font-size: 0.875rem;
@@ -554,6 +558,6 @@ async function onPreferencesSubmit(ctx: {
 }
 .choy-preferences-dialog__hint {
   margin-top: 0.25rem;
-  margin-inline-start: calc(4.5rem + 0.75rem);
+  margin-inline-start: calc(var(--choy-field-label-min) + var(--choy-field-label-control-gap));
 }
 </style>

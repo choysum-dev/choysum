@@ -54,6 +54,223 @@ html {
 }
 
 /*
+ * Nested-menu chevrons (kit SubTrigger bakes ChevronRight; portals sit outside
+ * shell scoped CSS). Flip under rtl so the arrow points toward the open side.
+ * Prefer this over patching vendor/ui *SubTrigger SFCs.
+ */
+:where([dir='rtl'], [dir='rtl'] *)
+  :is(
+    [data-slot='dropdown-menu-sub-trigger'],
+    [data-slot='context-menu-sub-trigger'],
+    [data-slot='menubar-sub-trigger']
+  )
+  > svg:last-of-type {
+  rotate: 180deg;
+}
+
+/*
+ * Portaled menus: kit still uses physical left-2 / ml-auto. Prefer product
+ * logical insets over patching vendor Context/Menubar SFCs.
+ */
+:is(
+  [data-slot='context-menu-checkbox-item'],
+  [data-slot='context-menu-radio-item'],
+  [data-slot='menubar-checkbox-item'],
+  [data-slot='menubar-radio-item']
+)
+  > span.absolute {
+  /* Physical resets first: later left/right would override inset-inline-*. */
+  left: auto;
+  right: auto;
+  inset-inline-start: 0.5rem;
+}
+
+/* SubTrigger chevron uses kit ml-auto on the svg itself. */
+:is(
+  [data-slot='context-menu-sub-trigger'],
+  [data-slot='menubar-sub-trigger']
+)
+  > svg:last-of-type {
+  margin-left: 0;
+  margin-right: 0;
+  margin-inline-start: auto;
+}
+
+:is(
+  [data-slot='context-menu-shortcut'],
+  [data-slot='menubar-shortcut'],
+  [data-slot='command-shortcut']
+) {
+  margin-left: 0;
+  margin-right: 0;
+  margin-inline-start: auto;
+}
+
+/* Kit FieldError list indent (ChoyFieldBase host). */
+[data-slot='field-error'] ul {
+  margin-left: 0;
+  margin-right: 0;
+  margin-inline-start: 1rem;
+}
+
+/* Chatter / Bubble kit [button]:text-left */
+[data-slot='bubble-content'] button,
+[data-slot='bubble-content'] a {
+  text-align: start;
+}
+
+/* NativeSelect chevron (Calendar month/year and any product host). */
+[data-slot='native-select-wrapper'] > svg {
+  left: auto;
+  right: auto;
+  inset-inline-end: 0.875rem;
+}
+
+/* TagsInput delete spacing when product mounts kit TagsInput. */
+[data-slot='tags-input-item'] > button,
+[data-slot='tags-input-item'] > [role='button'] {
+  margin-left: 0;
+  margin-right: 0;
+  margin-inline-end: 0.25rem;
+}
+
+/* Accordion trigger when product mounts kit Accordion. */
+[data-slot='accordion-trigger'] {
+  text-align: start;
+}
+
+/* Marker label alignment. */
+[data-slot='marker'] {
+  text-align: start;
+}
+
+/*
+ * OTP / Pin slots: kit bakes first:rounded-l / last:rounded-r / border-r.
+ * Reset physical edges and re-apply logical start/end radii + borders so the
+ * strip mirrors under html[dir=rtl] without editing vendor InputOTP/PinInput.
+ */
+:is([data-slot='input-otp-slot'], [data-slot='pin-input-slot']) {
+  border-top-left-radius: 0 !important;
+  border-top-right-radius: 0 !important;
+  border-bottom-left-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
+  border-left-width: 0 !important;
+  border-right-width: 0 !important;
+  border-inline-end-width: 1px !important;
+  border-inline-start-width: 0 !important;
+}
+:is([data-slot='input-otp-slot'], [data-slot='pin-input-slot']):first-child {
+  border-start-start-radius: var(--radius-md) !important;
+  border-end-start-radius: var(--radius-md) !important;
+  border-inline-start-width: 1px !important;
+}
+:is([data-slot='input-otp-slot'], [data-slot='pin-input-slot']):last-child {
+  border-start-end-radius: var(--radius-md) !important;
+  border-end-end-radius: var(--radius-md) !important;
+}
+
+/*
+ * RangeCalendar selection pill: kit uses physical rounded-l/r on cells.
+ * Map selection-start → inline-start corner, selection-end → inline-end.
+ */
+[data-slot='range-calendar-cell']:has([data-selected]),
+[data-slot='range-calendar-cell']:first-child:has([data-selected]),
+[data-slot='range-calendar-cell']:last-child:has([data-selected]),
+[data-slot='range-calendar-cell']:has([data-selected][data-selection-start]),
+[data-slot='range-calendar-cell']:has([data-selected][data-selection-end]) {
+  border-top-left-radius: 0 !important;
+  border-top-right-radius: 0 !important;
+  border-bottom-left-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
+}
+[data-slot='range-calendar-cell']:first-child:has([data-selected]),
+[data-slot='range-calendar-cell']:has([data-selected][data-selection-start]) {
+  border-start-start-radius: var(--radius-md) !important;
+  border-end-start-radius: var(--radius-md) !important;
+}
+[data-slot='range-calendar-cell']:last-child:has([data-selected]),
+[data-slot='range-calendar-cell']:has([data-selected][data-selection-end]) {
+  border-start-end-radius: var(--radius-md) !important;
+  border-end-end-radius: var(--radius-md) !important;
+}
+
+/* RangeCalendar prev/next: kit absolute left-1 / right-1 + physical Chevron. */
+[data-slot='range-calendar-prev-button'] {
+  left: auto;
+  right: auto;
+  inset-inline-start: 0.25rem;
+}
+[data-slot='range-calendar-next-button'] {
+  left: auto;
+  right: auto;
+  inset-inline-end: 0.25rem;
+}
+:where([dir='rtl'], [dir='rtl'] *)
+  :is(
+    [data-slot='range-calendar-prev-button'],
+    [data-slot='range-calendar-next-button']
+  )
+  > svg {
+  rotate: 180deg;
+}
+
+/*
+ * Carousel side buttons: kit -left-12 / -right-12 (horizontal only).
+ * Match via class token so vertical (left-1/2 + rotate-90) stays centered.
+ */
+[data-slot='carousel-previous'][class*='-left-12'] {
+  left: auto;
+  right: auto;
+  inset-inline-start: -3rem;
+}
+[data-slot='carousel-next'][class*='-right-12'] {
+  left: auto;
+  right: auto;
+  inset-inline-end: -3rem;
+}
+:where([dir='rtl'], [dir='rtl'] *)
+  :is([data-slot='carousel-previous'], [data-slot='carousel-next'])
+  > svg {
+  rotate: 180deg;
+}
+
+/*
+ * BubbleReactions align variant maps start→left-3 / end→right-3 in kit cva.
+ * Prefer logical insets via data-align already stamped on the host.
+ */
+[data-slot='bubble-reactions'][data-align='start'] {
+  left: auto;
+  right: auto;
+  inset-inline-start: 0.75rem;
+}
+[data-slot='bubble-reactions'][data-align='end'] {
+  left: auto;
+  right: auto;
+  inset-inline-end: 0.75rem;
+}
+
+/*
+ * Confirm host (portaled AlertDialog): physical align + plaintext bidi.
+ * text-align:start + plaintext follows the paragraph base (English → left);
+ * physical left/right keeps the block on the reading-start edge while plaintext
+ * stops trailing "?" from mirroring to the visual start under direction:rtl.
+ */
+[data-testid='choy-confirm-dialog'][dir='rtl'] [data-slot='alert-dialog-header'],
+[data-testid='choy-confirm-dialog'][dir='rtl'] [data-slot='alert-dialog-title'],
+[data-testid='choy-confirm-dialog'][dir='rtl'] [data-slot='alert-dialog-description'] {
+  text-align: right !important;
+}
+[data-testid='choy-confirm-dialog'][dir='ltr'] [data-slot='alert-dialog-header'],
+[data-testid='choy-confirm-dialog'][dir='ltr'] [data-slot='alert-dialog-title'],
+[data-testid='choy-confirm-dialog'][dir='ltr'] [data-slot='alert-dialog-description'] {
+  text-align: left !important;
+}
+[data-testid='choy-confirm-dialog'] [data-slot='alert-dialog-title'],
+[data-testid='choy-confirm-dialog'] [data-slot='alert-dialog-description'] {
+  unicode-bidi: plaintext;
+}
+
+/*
  * Product-wide thin scrollbars (Form / List / shell / popovers).
  * Stay in @layer base so utilities like .scrollbar-none can still hide tracks.
  */
@@ -274,7 +491,9 @@ html {
 }
 
 [data-slot='field'].choy-field-base[data-orientation='horizontal'] .choy-field-base__edit-wrap {
+  display: flex;
   min-height: var(--choy-control-height, 2rem);
+  align-items: center;
 }
 
 /* Field ↔ field rhythm for FieldGroup stacks (ChoyGrid default is gap-2). */
@@ -393,6 +612,30 @@ html {
     100% 100%,
     0 100%,
     var(--choy-statusbar-chevron) 50%
+  );
+}
+
+/* Mirror first/last geometry under RTL (padding is already logical). */
+html[dir='rtl'] .choy-statusbar-field__control .choy-statusbar-opt[data-edge='first'] {
+  border-radius: 0 0.35rem 0.35rem 0;
+  clip-path: polygon(
+    var(--choy-statusbar-chevron) 0,
+    100% 0,
+    100% 100%,
+    var(--choy-statusbar-chevron) 100%,
+    0 50%
+  );
+}
+
+html[dir='rtl'] .choy-statusbar-field__control .choy-statusbar-opt[data-edge='last'] {
+  border-radius: 0.35rem 0 0 0.35rem;
+  /* Flat left edge; inward notch on the right (mirror of LTR last). */
+  clip-path: polygon(
+    0 0,
+    100% 0,
+    calc(100% - var(--choy-statusbar-chevron)) 50%,
+    100% 100%,
+    0 100%
   );
 }
 

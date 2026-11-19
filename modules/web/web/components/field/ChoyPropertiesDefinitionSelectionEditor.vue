@@ -11,7 +11,7 @@ SPDX-License-Identifier: Apache-2.0
     <div class="w-full overflow-x-auto">
       <table class="w-full border-collapse text-sm">
         <thead>
-          <tr class="border-b border-border bg-muted/40 text-left text-muted-foreground">
+          <tr class="border-b border-border bg-muted/40 text-start text-muted-foreground">
             <th v-if="!readonly" class="w-9 px-1 py-1.5 font-medium" />
             <th class="whitespace-nowrap px-3 py-1.5 font-medium">{{ _t('Value') }}</th>
             <th class="min-w-[10rem] px-3 py-1.5 font-medium">{{ _t('Label') }}</th>

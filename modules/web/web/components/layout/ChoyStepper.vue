@@ -173,8 +173,8 @@ function onStepperUpdate(next: number | undefined): void {
 
 .choy-stepper :deep(.choy-stepper__separator) {
   top: 1.25rem;
-  left: calc(50% + 1.25rem);
-  right: calc(-50% + 1.25rem);
+  inset-inline-start: calc(50% + 1.25rem);
+  inset-inline-end: calc(-50% + 1.25rem);
   background-color: var(--color-border);
 }
 

@@ -8,7 +8,14 @@ SPDX-License-Identifier: Apache-2.0
     Product toast host over the L2 sonner kit. Kit keeps upstream defaults;
     product error icon + close-button hover tokens live here.
   -->
-  <Toaster class="choy-toaster" rich-colors close-button v-bind="attrs">
+  <Toaster
+    class="choy-toaster"
+    rich-colors
+    close-button
+    v-bind="attrs"
+    :dir="toastDir"
+    :position="toastPosition"
+  >
     <template #error-icon>
       <!-- Alert mark for error status; close-button already uses the X glyph. -->
       <CircleAlert class="size-4" />
@@ -17,13 +24,26 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { useAttrs } from 'vue';
+import { computed, useAttrs } from 'vue';
 import { CircleAlert } from 'lucide-vue-next';
 import Toaster from '../vendor/ui/sonner/Sonner.vue';
+import { useI18nStore } from '../../stores/i18nStore';
 
 defineOptions({ inheritAttrs: false });
 
 const attrs = useAttrs();
+
+const toastDir = computed<'ltr' | 'rtl'>(() => {
+  try {
+    return useI18nStore().activeLanguage?.textDirection === 'rtl' ? 'rtl' : 'ltr';
+  } catch {
+    return 'ltr';
+  }
+});
+
+const toastPosition = computed(() =>
+  toastDir.value === 'rtl' ? 'bottom-left' : 'bottom-right',
+);
 </script>
 
 <style>

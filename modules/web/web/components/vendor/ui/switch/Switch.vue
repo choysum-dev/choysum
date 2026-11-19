@@ -19,11 +19,19 @@ const props = defineProps<{
 
 const checked = defineModel<boolean>({ default: false });
 
-/** Checked chrome via Vue binding + tokens — avoids relying on data-[state=*]:* utilities in the served bundle. */
+/**
+ * Checked chrome via Vue binding + tokens — avoids relying on data-[state=*]:*
+ * or margin utilities in the served bundle. marginInlineStart:auto parks the
+ * thumb on the inline-end edge so LTR and RTL both read “on” toward the end.
+ */
 const rootStyle = computed(() => ({
   paddingInline: '2px',
   backgroundColor: checked.value ? 'var(--choy-color-primary)' : 'var(--choy-color-input)',
   borderColor: checked.value ? 'var(--choy-color-primary)' : 'var(--choy-color-border)',
+}));
+
+const thumbStyle = computed(() => ({
+  marginInlineStart: checked.value ? 'auto' : '0',
 }));
 </script>
 
@@ -48,12 +56,8 @@ const rootStyle = computed(() => ({
   >
     <SwitchThumb
       data-slot="switch-thumb"
-      :class="
-        cn(
-          'pointer-events-none block size-4 rounded-full bg-background shadow-sm ring-1 ring-border',
-          checked ? 'ms-auto' : undefined,
-        )
-      "
+      class="pointer-events-none block size-4 rounded-full bg-background shadow-sm ring-1 ring-border transition-[margin] duration-100"
+      :style="thumbStyle"
     />
   </SwitchRoot>
 </template>
