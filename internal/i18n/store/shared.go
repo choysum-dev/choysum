@@ -31,18 +31,21 @@ func RegistryFor(runtimeScope scope.Scope) *Registry {
 		sharedRegistry = NewRegistry(durable)
 		return sharedRegistry
 	}
-	// Nil input must not replace a warmed registry with a cold nil-scope one.
-	if durable == nil {
+	// Nil / unusable input must not replace a warmed registry with a cold one.
+	newPool, newOK := runtimeConnPool(durable)
+	if !newOK {
 		return sharedRegistry
 	}
-	if !scopesShareRuntimeDB(sharedRegistry.runtimeScope, durable) {
-		// Cold replacement: callers (startup / finishApplicationModeStartup) must
-		// WarmRuntimeCache again. Do not warm under sharedMu (DB I/O while locked).
-		if durable.Logger() != nil {
-			durable.Logger().Warn("terminology registry replaced with cold cache; WarmRuntimeCache required")
-		}
-		sharedRegistry = NewRegistry(durable)
+	oldPool, oldOK := runtimeConnPool(sharedRegistry.runtimeScope)
+	if oldOK && oldPool == newPool {
+		return sharedRegistry
 	}
+	// Cold replacement: callers (startup / finishApplicationModeStartup) must
+	// WarmRuntimeCache again. Do not warm under sharedMu (DB I/O while locked).
+	if durable.Logger() != nil {
+		durable.Logger().Warn("terminology registry replaced with cold cache; WarmRuntimeCache required")
+	}
+	sharedRegistry = NewRegistry(durable)
 	return sharedRegistry
 }
 
@@ -69,6 +72,18 @@ func durableRuntimeScope(runtimeScope scope.Scope) scope.Scope {
 	return runtimeScope.WithContext(scope.ContextWithoutTransaction(ctx))
 }
 
+// runtimeConnPool returns the shared SQL ConnPool for a scope, if usable.
+func runtimeConnPool(runtimeScope scope.Scope) (pool any, ok bool) {
+	if runtimeScope == nil {
+		return nil, false
+	}
+	session := runtimeScope.Session()
+	if session == nil || session.DB == nil || session.DB.Config == nil || session.DB.ConnPool == nil {
+		return nil, false
+	}
+	return session.DB.ConnPool, true
+}
+
 // scopesShareRuntimeDB reports whether two scopes use the same SQL pool.
 func scopesShareRuntimeDB(a, b scope.Scope) bool {
 	if a == nil || b == nil {
@@ -77,17 +92,10 @@ func scopesShareRuntimeDB(a, b scope.Scope) bool {
 	if a == b {
 		return true
 	}
-	sa, sb := a.Session(), b.Session()
-	if sa == nil || sb == nil || sa.DB == nil || sb.DB == nil {
+	pa, oka := runtimeConnPool(a)
+	pb, okb := runtimeConnPool(b)
+	if !oka || !okb {
 		return false
 	}
-	// Uninitialized *gorm.DB has nil Config; reading ConnPool can panic.
-	if sa.DB.Config == nil || sb.DB.Config == nil {
-		return false
-	}
-	// WithContext clones *gorm.DB but keeps the same ConnPool (SQL pool).
-	if sa.DB.ConnPool == nil || sb.DB.ConnPool == nil {
-		return false
-	}
-	return sa.DB.ConnPool == sb.DB.ConnPool
+	return pa == pb
 }

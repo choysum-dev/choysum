@@ -35,6 +35,13 @@ func TestRegistryForNilScopeKeepsExisting(t *testing.T) {
 	if got := store.RegistryFor(nil); got != reg {
 		t.Fatal("RegistryFor(nil) must keep the existing warmed registry")
 	}
+	unusable := &sharedScope{
+		ctx:    context.Background(),
+		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+	}
+	if got := store.RegistryFor(unusable); got != reg {
+		t.Fatal("RegistryFor with unusable pool must keep the existing warmed registry")
+	}
 	app, ok := reg.ApplicationForModule("auth")
 	if !ok || app != "auth" {
 		t.Fatalf("cache after RegistryFor(nil) = %q ok=%v", app, ok)

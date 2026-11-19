@@ -189,6 +189,12 @@ func (r *Registry) WarmRuntimeCache(ctx context.Context) error {
 	appNames := sortedMapKeys(apps)
 	appsWithTermTable := make([]string, 0, len(appNames))
 	for _, app := range appNames {
+		if err := ctx.Err(); err != nil {
+			if firstErr == nil {
+				firstErr = err
+			}
+			return firstErr
+		}
 		tableName := i18nmodels.TranslationTermTableName(app)
 		if !session.Migrator().HasTable(tableName) {
 			continue
