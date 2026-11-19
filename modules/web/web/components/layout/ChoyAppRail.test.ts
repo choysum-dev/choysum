@@ -11,7 +11,11 @@ import { useMenuStore } from '../../stores/menuStore';
 import { useLayoutStore } from '../../stores/layoutStore';
 import { pinViewportWidth } from '../../stores/layoutStore/pinViewport';
 import ChoyAppRail from './ChoyAppRail.vue';
-import { APP_RAIL_HOVER_CLOSE_MS, APP_RAIL_HOVER_OPEN_MS } from './appRailHover';
+import {
+  APP_RAIL_HOVER_CLOSE_MS,
+  APP_RAIL_HOVER_OPEN_MS,
+  APP_RAIL_LEAF_SUPPRESS_MS,
+} from './appRailHover';
 import { SidebarProvider } from '../vendor/ui/sidebar/index';
 
 const createFeStubRouter = (VueRouter as any).createFeStubRouter;
@@ -19,6 +23,7 @@ const createFeStubRouter = (VueRouter as any).createFeStubRouter;
 /** CI slack over production hover delays. */
 const HOVER_OPEN_WAIT_MS = APP_RAIL_HOVER_OPEN_MS * 3;
 const HOVER_CLOSE_WAIT_MS = APP_RAIL_HOVER_CLOSE_MS * 2;
+const LEAF_SUPPRESS_WAIT_MS = APP_RAIL_LEAF_SUPPRESS_MS + APP_RAIL_HOVER_OPEN_MS * 2;
 
 function mountRail(opts: {
   menus: Array<Record<string, unknown>>;
@@ -108,6 +113,65 @@ describe('ChoyAppRail', () => {
     items[1]!.click();
     await flushPromises();
     expect(pushes).toContain('/base/companies');
+    mounted.unmount();
+  });
+
+  test('expanded app select blurs rail focus ring after click', async () => {
+    const { mounted } = mountRail({
+      menus: [
+        {
+          id: 'meta',
+          title: 'Module Management',
+          children: [{ id: 'meta-board', title: 'Module Board', path: '/meta/modules' }],
+        },
+        {
+          id: 'base',
+          title: 'Master Data',
+          children: [{ id: 'base-company', title: 'Company', path: '/base/companies' }],
+        },
+      ],
+      activeLeafId: 'meta-board',
+      collapsed: false,
+    });
+    await flushPromises();
+    await nextTick();
+    const items = Array.from(
+      mounted.el.querySelectorAll('[data-testid=choy-shell-app-rail-item]'),
+    ) as HTMLButtonElement[];
+    const target = items[1]!;
+    target.focus();
+    expect(document.activeElement).toBe(target);
+    target.click();
+    await flushPromises();
+    await new Promise<void>((resolve) => {
+      queueMicrotask(() => requestAnimationFrame(() => resolve()));
+    });
+    expect(document.activeElement === target).toBe(false);
+    mounted.unmount();
+  });
+
+  test('expanded rail mousedown prevents default so pointer click never focuses', async () => {
+    const { mounted } = mountRail({
+      menus: [
+        {
+          id: 'base',
+          title: 'Master Data',
+          children: [{ id: 'base-company', title: 'Company', path: '/base/companies' }],
+        },
+      ],
+      collapsed: false,
+    });
+    await flushPromises();
+    await nextTick();
+    const item = mounted.el.querySelector(
+      '[data-testid=choy-shell-app-rail-item]',
+    ) as HTMLButtonElement | null;
+    expect(item).toBeTruthy();
+    const evt = Object.assign(new Event('mousedown', { bubbles: true, cancelable: true }), {
+      button: 0,
+    });
+    item!.dispatchEvent(evt);
+    expect(evt.defaultPrevented).toBe(true);
     mounted.unmount();
   });
 
@@ -287,6 +351,89 @@ describe('ChoyAppRail', () => {
     await flushPromises();
     expect(pushes).toContain('/base/companies');
     expect(ss.openFlyoutKey).toBeNull();
+    mounted.unmount();
+  });
+
+  test('collapsed flyout leaf select blurs rail focus ring after focus restore', async () => {
+    const menuPlugin = createMenuPlugin();
+    menuPlugin.manager.addMenu({
+      id: 'base',
+      title: 'Master Data',
+      children: [{ id: 'loose', title: 'Company', path: '/base/companies' }],
+    } as any);
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    pinViewportWidth(900);
+    useLayoutStore().sidebarMode = 'collapsed';
+    const { router } = createFeStubRouter({
+      route: { path: '/', fullPath: '/', meta: {} },
+    });
+    const i18n = createI18n({ legacy: false, locale: 'en', messages: { en: {} } });
+    const mounted = mountApp(ChoyAppRail as any, {
+      plugins: [menuPlugin, pinia, router, i18n],
+    });
+    await flushPromises();
+    await nextTick();
+    // Simulate Reka focus restore onto a rail trigger without relying on DropdownMenu DOM.
+    const host = document.createElement('div');
+    host.setAttribute('data-testid', 'choy-shell-app-rail');
+    const trigger = document.createElement('button');
+    host.appendChild(trigger);
+    document.body.appendChild(host);
+    trigger.focus();
+    expect(document.activeElement).toBe(trigger);
+    const ss = mounted.setupState();
+    ss.onFlyoutLeaf({ id: 'loose', title: 'Company', path: '/base/companies' });
+    await flushPromises();
+    await new Promise<void>((resolve) => {
+      queueMicrotask(() => requestAnimationFrame(() => resolve()));
+    });
+    expect(document.activeElement === trigger).toBe(false);
+    host.remove();
+    mounted.unmount();
+  });
+
+  test('collapsed flyout stays closed after leaf select despite synthetic hover re-enter', async () => {
+    const menuPlugin = createMenuPlugin();
+    const app = {
+      id: 'base',
+      title: 'Master Data',
+      children: [{ id: 'loose', title: 'Company', path: '/base/companies' }],
+    };
+    menuPlugin.manager.addMenu(app as any);
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    pinViewportWidth(900);
+    useLayoutStore().sidebarMode = 'collapsed';
+    const { router } = createFeStubRouter({
+      route: { path: '/', fullPath: '/', meta: {} },
+    });
+    const i18n = createI18n({ legacy: false, locale: 'en', messages: { en: {} } });
+    const mounted = mountApp(ChoyAppRail as any, {
+      plugins: [menuPlugin, pinia, router, i18n],
+    });
+    await flushPromises();
+    await nextTick();
+    const ss = mounted.setupState();
+    ss.setFlyoutOpen(app, true);
+    ss.onFlyoutHoverEnter(app);
+    await nextTick();
+    ss.onFlyoutLeaf({ id: 'loose', title: 'Company', path: '/base/companies' });
+    expect(ss.openFlyoutKey).toBeNull();
+    // Portal unmount under the cursor often delivers the same click to the trigger.
+    ss.setFlyoutOpen(app, true);
+    expect(ss.openFlyoutKey).toBeNull();
+    // Synthetic enter while suppressed must not open.
+    ss.onFlyoutHoverEnter(app);
+    await new Promise((r) => setTimeout(r, HOVER_OPEN_WAIT_MS));
+    expect(ss.openFlyoutKey).toBeNull();
+    // After suppress window, a fresh enter (leave→enter) can open again.
+    ss.onFlyoutHoverLeave(app);
+    await new Promise((r) => setTimeout(r, LEAF_SUPPRESS_WAIT_MS));
+    expect(ss.suppressFlyoutOpen).toBe(false);
+    ss.onFlyoutHoverEnter(app);
+    await new Promise((r) => setTimeout(r, HOVER_OPEN_WAIT_MS));
+    expect(ss.openFlyoutKey).toBe('base');
     mounted.unmount();
   });
 
