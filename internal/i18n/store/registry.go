@@ -120,11 +120,13 @@ func (r *Registry) WarmRuntimeCache() error {
 			ApplicationStr string `gorm:"column:application_str"`
 		}
 		var mods []installedModuleRow
-		if err := session.Table((&meta.Module{}).TableName()).
+		q := session.Table((&meta.Module{}).TableName()).
 			Select("name", "application_str").
-			Where("status = ?", meta.Installed).
-			Order("id ASC").
-			Find(&mods).Error; err != nil {
+			Where("status = ?", meta.Installed)
+		if session.Migrator().HasColumn((&meta.Module{}).TableName(), "deleted_at") {
+			q = q.Where("deleted_at IS NULL")
+		}
+		if err := q.Order("id ASC").Find(&mods).Error; err != nil {
 			return fmt.Errorf("list installed modules for terminology warm: %w", err)
 		}
 		for i := range mods {

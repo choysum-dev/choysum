@@ -122,6 +122,24 @@ func TestTermStoreLookupMissesWithoutWarm(t *testing.T) {
 	if _, ok := ts.Lookup("auth", "zh_CN", "a", "x", ""); ok {
 		t.Fatal("unwarmed lang must miss without sync DB")
 	}
+
+	// DB-backed store with a seeded row must still miss when never warmed
+	// (guards against reintroducing sync warm on Lookup).
+	rs := newTestScope(t)
+	if err := i18nmodels.MigrateTranslationTermTable(rs, "auth"); err != nil {
+		t.Fatalf("ensure: %v", err)
+	}
+	if err := rs.Session().Table("auth_translation_term").Create(&i18nmodels.TranslationTerm{
+		Application: "auth", Module: "auth", Lang: "zh_CN",
+		Scope: "a@b", Src: "Hello", Value: "你好",
+		Kind: i18nmodels.KindLiteral, Source: i18nmodels.SourcePackaged,
+	}).Error; err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	dbTS := store.NewTermStore(rs, "auth")
+	if _, ok := dbTS.Lookup("auth", "zh_CN", "a@b", "Hello", ""); ok {
+		t.Fatal("DB-backed Lookup must miss without WarmLanguage")
+	}
 }
 
 func TestTermStoreLookupConcurrentAfterWarm(t *testing.T) {

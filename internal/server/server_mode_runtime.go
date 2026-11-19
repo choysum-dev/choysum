@@ -93,8 +93,19 @@ func (s *GRPCWebServer) prepareBootstrapModeStartup() (bootstrapModeStartupResul
 func (s *GRPCWebServer) finishApplicationModeStartup(result applicationModeStartupResult) (modeRuntimeStartupSummary, error) {
 	// Warm TermStore before the JS pool starts serving RPCs. Lookup must stay
 	// memory-only on the JS thread; sync DB warm there deadlocks the SQLite pool.
-	if err := i18nstore.RegistryFor(s.runtimeScope).WarmRuntimeCache(); err != nil {
-		s.runtimeScope.Logger().Warn("terminology cache warm incomplete", "error", err)
+	reg := i18nstore.RegistryFor(s.runtimeScope)
+	const warmAttempts = 3
+	var warmErr error
+	for attempt := 1; attempt <= warmAttempts; attempt++ {
+		warmErr = reg.WarmRuntimeCache()
+		if warmErr == nil {
+			break
+		}
+		if attempt < warmAttempts {
+			s.runtimeScope.Logger().Warn("terminology cache warm retry", "attempt", attempt, "error", warmErr)
+			continue
+		}
+		s.runtimeScope.Logger().Warn("terminology cache warm incomplete", "attempts", warmAttempts, "error", warmErr)
 	}
 
 	if !result.Reload {
