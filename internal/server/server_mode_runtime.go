@@ -103,6 +103,8 @@ func (s *GRPCWebServer) finishApplicationModeStartup(result applicationModeStart
 		}
 		if attempt < warmAttempts {
 			s.runtimeScope.Logger().Warn("terminology cache warm retry", "attempt", attempt, "error", warmErr)
+			// Brief backoff so transient SQLite lock / pool contention can clear.
+			time.Sleep(time.Duration(attempt) * 100 * time.Millisecond)
 			continue
 		}
 		s.runtimeScope.Logger().Warn("terminology cache warm incomplete", "attempts", warmAttempts, "error", warmErr)

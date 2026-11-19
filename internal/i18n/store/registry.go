@@ -5,6 +5,7 @@ package store
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 	"sync"
 
@@ -156,7 +157,8 @@ func (r *Registry) WarmRuntimeCache() error {
 	}
 
 	var firstErr error
-	for app := range apps {
+	appNames := sortedMapKeys(apps)
+	for _, app := range appNames {
 		tableName := i18nmodels.TranslationTermTableName(app)
 		if !session.Migrator().HasTable(tableName) {
 			continue
@@ -179,13 +181,23 @@ func (r *Registry) WarmRuntimeCache() error {
 		return firstErr
 	}
 
-	for app := range apps {
+	langCodes := sortedMapKeys(langs)
+	for _, app := range appNames {
 		ts := r.StoreFor(app)
-		for lang := range langs {
+		for _, lang := range langCodes {
 			if err := ts.WarmLanguage(lang); err != nil && firstErr == nil {
 				firstErr = fmt.Errorf("warm %s lang=%s: %w", app, lang, err)
 			}
 		}
 	}
 	return firstErr
+}
+
+func sortedMapKeys(m map[string]struct{}) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
 }

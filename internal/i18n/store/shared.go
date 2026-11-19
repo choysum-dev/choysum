@@ -28,6 +28,8 @@ func RegistryFor(runtimeScope scope.Scope) *Registry {
 		return sharedRegistry
 	}
 	if !scopesShareRuntimeDB(sharedRegistry.runtimeScope, runtimeScope) {
+		// Cold replacement: callers (startup / finishApplicationModeStartup) must
+		// WarmRuntimeCache again. Do not warm under sharedMu (DB I/O while locked).
 		sharedRegistry = NewRegistry(runtimeScope)
 	}
 	return sharedRegistry
