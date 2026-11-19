@@ -4,6 +4,7 @@
 package store
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
@@ -57,16 +58,24 @@ const warmLanguageMaxAttempts = 5
 // Retries when a concurrent mutation bumps warmEpoch so a stale snapshot is not
 // discarded while leaving an incomplete cache.
 func (s *TermStore) WarmLanguage(lang string) error {
+	return s.warmLanguage(context.Background(), lang)
+}
+
+func (s *TermStore) warmLanguage(ctx context.Context, lang string) error {
 	lang = strings.TrimSpace(lang)
 	if lang == "" || s.application == "" {
 		return nil
 	}
-	if s.runtimeScope == nil || s.runtimeScope.Session() == nil {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	session := s.sessionFor(ctx)
+	if session == nil {
 		return nil
 	}
 
 	tableName := i18nmodels.TranslationTermTableName(s.application)
-	if !s.runtimeScope.Session().Migrator().HasTable(tableName) {
+	if !session.Migrator().HasTable(tableName) {
 		s.mu.Lock()
 		s.cache[lang] = make(map[string]map[string]map[string]map[string]string)
 		s.termHash[lang] = emptyTermHash()
@@ -80,7 +89,7 @@ func (s *TermStore) WarmLanguage(lang string) error {
 		s.mu.RUnlock()
 
 		var rows []i18nmodels.TranslationTerm
-		if err := s.runtimeScope.Session().Table(tableName).
+		if err := session.Table(tableName).
 			Where("lang = ?", lang).
 			Find(&rows).Error; err != nil {
 			return fmt.Errorf("warm %s lang=%s: %w", tableName, lang, err)
@@ -121,6 +130,16 @@ func (s *TermStore) WarmLanguage(lang string) error {
 		return nil
 	}
 	return fmt.Errorf("warm language %s failed after %d attempts due to concurrent updates", lang, warmLanguageMaxAttempts)
+}
+
+func (s *TermStore) sessionFor(ctx context.Context) *scope.Session {
+	if s == nil || s.runtimeScope == nil {
+		return nil
+	}
+	if ctx == nil {
+		return s.runtimeScope.Session()
+	}
+	return s.runtimeScope.WithContext(ctx).Session()
 }
 
 // EvictLanguage removes a language from the hot cache.

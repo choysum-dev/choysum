@@ -60,3 +60,25 @@ func TestNewDbAppliesSQLitePoolConfig(t *testing.T) {
 		t.Fatalf("MaxOpenConnections = %d, want 8 (capped)", sqlDB.Stats().MaxOpenConnections)
 	}
 }
+
+func TestNewDbUsesSQLiteDefaultsWhenLoaderDefaultsPresent(t *testing.T) {
+	defaults := config.NewDefaultDbConfig()
+	cfg := &config.Config{
+		Db: &config.DbConfig{
+			Dialect:      "sqlite",
+			DSN:          filepath.Join(t.TempDir(), "pool-defaults.db"),
+			MaxOpenConns: defaults.MaxOpenConns, // loader "omitted" sentinel
+			MaxIdleConns: defaults.MaxIdleConns,
+		},
+	}
+	runtimeScope := NewDefaultScope(context.Background(), scopetest.FactoryInputFromConfig(cfg), testLogger()).(*defaultScope)
+	sqlDB, err := runtimeScope.db.DB()
+	if err != nil {
+		t.Fatalf("db.DB: %v", err)
+	}
+	t.Cleanup(func() { _ = sqlDB.Close() })
+
+	if sqlDB.Stats().MaxOpenConnections != 4 {
+		t.Fatalf("MaxOpenConnections = %d, want documented sqlite default 4", sqlDB.Stats().MaxOpenConnections)
+	}
+}

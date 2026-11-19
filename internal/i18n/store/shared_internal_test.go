@@ -16,6 +16,52 @@ import (
 	"gorm.io/gorm"
 )
 
+func TestDurableRuntimeScopeStripsTransaction(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open(filepath.Join(t.TempDir(), "durable.db")), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	base := &edgeScope{
+		ctx:     context.Background(),
+		logger:  slog.New(slog.NewTextHandler(io.Discard, nil)),
+		session: &scope.Session{DB: db},
+	}
+	if got := durableRuntimeScope(nil); got != nil {
+		t.Fatal("nil scope should stay nil")
+	}
+	if got := durableRuntimeScope(base); got != base {
+		t.Fatal("non-tx scope should be unchanged")
+	}
+
+	tx := &fakeTx{session: &scope.Session{DB: db}}
+	txCtx := scope.ContextWithTransaction(context.Background(), tx)
+	txScope := base.WithContext(txCtx)
+	durable := durableRuntimeScope(txScope)
+	if _, ok := scope.TransactionFromContext(durable.Context()); ok {
+		t.Fatal("durable scope must not carry a transaction marker")
+	}
+
+	ResetSharedRegistryForTests()
+	t.Cleanup(ResetSharedRegistryForTests)
+	reg := RegistryFor(txScope)
+	if _, ok := scope.TransactionFromContext(reg.runtimeScope.Context()); ok {
+		t.Fatal("RegistryFor must store a non-transaction runtime scope")
+	}
+	if RegistryFor(base) != reg {
+		t.Fatal("root scope must reuse registry created via tx wrapper")
+	}
+}
+
+type fakeTx struct {
+	session *scope.Session
+}
+
+func (t *fakeTx) Context() context.Context                 { return context.Background() }
+func (t *fakeTx) Session() *scope.Session                  { return t.session }
+func (t *fakeTx) Savepoint(string) error                   { return nil }
+func (t *fakeTx) RollbackToSavepoint(string) error         { return nil }
+func (t *fakeTx) ReleaseSavepoint(string) error            { return nil }
+
 func TestScopesShareRuntimeDBEdges(t *testing.T) {
 	if !scopesShareRuntimeDB(nil, nil) {
 		t.Fatal("nil,nil should share")

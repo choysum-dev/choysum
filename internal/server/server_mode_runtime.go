@@ -102,7 +102,10 @@ func (s *GRPCWebServer) finishApplicationModeStartup(result applicationModeStart
 	}
 	var warmErr error
 	for attempt := 1; attempt <= warmAttempts; attempt++ {
-		warmErr = reg.WarmRuntimeCache()
+		if err := warmCtx.Err(); err != nil {
+			return result.summary(), err
+		}
+		warmErr = reg.WarmRuntimeCache(warmCtx)
 		if warmErr == nil {
 			break
 		}

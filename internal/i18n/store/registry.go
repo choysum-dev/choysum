@@ -4,6 +4,7 @@
 package store
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"strings"
@@ -115,11 +116,18 @@ func (r *Registry) replaceModuleApplications(next map[string]string) {
 //
 // Languages come from base_language.Code when that table exists, unioned with
 // distinct lang values already stored in each application's term table.
-func (r *Registry) WarmRuntimeCache() error {
+// ctx is applied to DB sessions so startup cancellation can abort warm queries.
+func (r *Registry) WarmRuntimeCache(ctx context.Context) error {
 	if r == nil || r.runtimeScope == nil {
 		return nil
 	}
-	session := r.runtimeScope.Session()
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	session := r.runtimeScope.WithContext(ctx).Session()
 	if session == nil || session.DB == nil {
 		return nil
 	}
@@ -206,9 +214,15 @@ func (r *Registry) WarmRuntimeCache() error {
 
 	langCodes := sortedMapKeys(langs)
 	for _, app := range appsWithTermTable {
+		if err := ctx.Err(); err != nil {
+			if firstErr == nil {
+				firstErr = err
+			}
+			return firstErr
+		}
 		ts := r.StoreFor(app)
 		for _, lang := range langCodes {
-			if err := ts.WarmLanguage(lang); err != nil && firstErr == nil {
+			if err := ts.warmLanguage(ctx, lang); err != nil && firstErr == nil {
 				firstErr = fmt.Errorf("warm %s lang=%s: %w", app, lang, err)
 			}
 		}

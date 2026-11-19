@@ -17,20 +17,24 @@ var (
 // RegistryFor returns the process-shared terminology Registry for this runtime.
 // Install/upgrade/uninstall and the JS $choysum.i18n bridge must share one cache.
 //
-// Identity is the underlying *sql.DB, not the scope pointer: StaticScopeProvider
+// Identity is the underlying SQL ConnPool, not the scope pointer: StaticScopeProvider
 // / WithContext allocate new scope wrappers, and pointer equality would replace a
 // warmed registry with a cold one when the JS bridge installs.
+//
+// The stored runtime scope is always non-transactional. Writer paths may call
+// RegistryFor(txScope); keeping a committed tx session would break later warms.
 func RegistryFor(runtimeScope scope.Scope) *Registry {
 	sharedMu.Lock()
 	defer sharedMu.Unlock()
+	durable := durableRuntimeScope(runtimeScope)
 	if sharedRegistry == nil {
-		sharedRegistry = NewRegistry(runtimeScope)
+		sharedRegistry = NewRegistry(durable)
 		return sharedRegistry
 	}
-	if !scopesShareRuntimeDB(sharedRegistry.runtimeScope, runtimeScope) {
+	if !scopesShareRuntimeDB(sharedRegistry.runtimeScope, durable) {
 		// Cold replacement: callers (startup / finishApplicationModeStartup) must
 		// WarmRuntimeCache again. Do not warm under sharedMu (DB I/O while locked).
-		sharedRegistry = NewRegistry(runtimeScope)
+		sharedRegistry = NewRegistry(durable)
 	}
 	return sharedRegistry
 }
@@ -40,6 +44,22 @@ func ResetSharedRegistryForTests() {
 	sharedMu.Lock()
 	sharedRegistry = nil
 	sharedMu.Unlock()
+}
+
+// durableRuntimeScope strips a transaction marker so TermStore / WarmRuntimeCache
+// keep a live pool session after the caller's tx commits.
+func durableRuntimeScope(runtimeScope scope.Scope) scope.Scope {
+	if runtimeScope == nil {
+		return nil
+	}
+	ctx := runtimeScope.Context()
+	if ctx == nil {
+		return runtimeScope
+	}
+	if _, ok := scope.TransactionFromContext(ctx); !ok {
+		return runtimeScope
+	}
+	return runtimeScope.WithContext(scope.ContextWithoutTransaction(ctx))
 }
 
 // scopesShareRuntimeDB reports whether two scopes use the same SQL pool.

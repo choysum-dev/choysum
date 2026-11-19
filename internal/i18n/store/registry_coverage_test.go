@@ -115,7 +115,7 @@ func TestRegistryWarmRuntimeCache(t *testing.T) {
 
 	reg := NewRegistry(rs)
 	reg.RememberModuleApplication("stale", "stale")
-	if err := reg.WarmRuntimeCache(); err != nil {
+	if err := reg.WarmRuntimeCache(context.Background()); err != nil {
 		t.Fatalf("WarmRuntimeCache: %v", err)
 	}
 	// Drop meta_module so ApplicationForModule cannot fall back to DB.
@@ -150,10 +150,10 @@ func TestRegistryWarmRuntimeCache(t *testing.T) {
 }
 
 func TestWarmRuntimeCacheNilAndErrorPaths(t *testing.T) {
-	if err := (*Registry)(nil).WarmRuntimeCache(); err != nil {
+	if err := (*Registry)(nil).WarmRuntimeCache(context.Background()); err != nil {
 		t.Fatalf("nil registry: %v", err)
 	}
-	if err := NewRegistry(nil).WarmRuntimeCache(); err != nil {
+	if err := NewRegistry(nil).WarmRuntimeCache(context.Background()); err != nil {
 		t.Fatalf("nil scope: %v", err)
 	}
 	emptySess := &registryCoverageScope{
@@ -161,7 +161,7 @@ func TestWarmRuntimeCacheNilAndErrorPaths(t *testing.T) {
 		logger:  slog.New(slog.NewTextHandler(io.Discard, nil)),
 		session: &scope.Session{},
 	}
-	if err := NewRegistry(emptySess).WarmRuntimeCache(); err != nil {
+	if err := NewRegistry(emptySess).WarmRuntimeCache(context.Background()); err != nil {
 		t.Fatalf("nil session.DB: %v", err)
 	}
 
@@ -179,7 +179,7 @@ func TestWarmRuntimeCacheNilAndErrorPaths(t *testing.T) {
 	if err := db.Exec(`CREATE TABLE meta_module (id text primary key, name text, status text)`).Error; err != nil {
 		t.Fatalf("create meta_module: %v", err)
 	}
-	if err := NewRegistry(rs).WarmRuntimeCache(); err == nil {
+	if err := NewRegistry(rs).WarmRuntimeCache(context.Background()); err == nil {
 		t.Fatal("expected list installed modules error")
 	}
 	if err := db.Migrator().DropTable("meta_module"); err != nil {
@@ -190,7 +190,7 @@ func TestWarmRuntimeCacheNilAndErrorPaths(t *testing.T) {
 	if err := db.Exec(`CREATE TABLE base_language (id text primary key)`).Error; err != nil {
 		t.Fatalf("create base_language: %v", err)
 	}
-	if err := NewRegistry(rs).WarmRuntimeCache(); err == nil {
+	if err := NewRegistry(rs).WarmRuntimeCache(context.Background()); err == nil {
 		t.Fatal("expected list language codes error")
 	}
 	if err := db.Migrator().DropTable("base_language"); err != nil {
@@ -211,7 +211,7 @@ func TestWarmRuntimeCacheNilAndErrorPaths(t *testing.T) {
 	if err := db.Exec(`CREATE TABLE auth_translation_term (id text primary key)`).Error; err != nil {
 		t.Fatalf("create broken term table: %v", err)
 	}
-	if err := NewRegistry(rs).WarmRuntimeCache(); err == nil {
+	if err := NewRegistry(rs).WarmRuntimeCache(context.Background()); err == nil {
 		t.Fatal("expected list term langs / empty langs firstErr")
 	}
 	if err := db.Migrator().DropTable("auth_translation_term"); err != nil {
@@ -237,7 +237,7 @@ func TestWarmRuntimeCacheNilAndErrorPaths(t *testing.T) {
 		ts.warmEpoch[lang]++
 		ts.mu.Unlock()
 	}
-	if err := reg.WarmRuntimeCache(); err == nil {
+	if err := reg.WarmRuntimeCache(context.Background()); err == nil {
 		t.Fatal("expected WarmLanguage failure from WarmRuntimeCache")
 	}
 }

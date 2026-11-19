@@ -98,6 +98,16 @@ func newDb(ctx context.Context, dbOpts scope.DatabaseRuntimeOptions, logger *slo
 		// and raises `database is locked` during install/migration bursts.
 		// Nested scope.Run / lease renew still need >1 connection (single-conn
 		// deadlocks). Honor db.maxOpenConns/maxIdleConns with a small clamp.
+		//
+		// Config loader seeds MaxOpen/Idle with NewDefaultDbConfig (4*maxProcs /
+		// 2*maxProcs). Treat those loader defaults as "omitted" so documented
+		// sqlite defaults (open=4, idle=2) apply unless the user set another value.
+		if maxOpenConns == defaults.MaxOpenConns {
+			maxOpenConns = 0
+		}
+		if maxIdleConns == defaults.MaxIdleConns {
+			maxIdleConns = 0
+		}
 		maxOpenConns, maxIdleConns = sqlitePoolLimits(maxOpenConns, maxIdleConns)
 		sqlDB.SetMaxOpenConns(maxOpenConns)
 		sqlDB.SetMaxIdleConns(maxIdleConns)
