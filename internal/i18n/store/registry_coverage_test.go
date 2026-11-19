@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"path/filepath"
 	"testing"
+	"time"
 
 	i18nmodels "github.com/choysum-dev/choysum/internal/i18n/models"
 	"github.com/choysum-dev/choysum/internal/testing/scopetest"
@@ -244,6 +245,75 @@ func TestWarmRuntimeCacheNilAndErrorPaths(t *testing.T) {
 	}
 	if err := reg.WarmRuntimeCache(context.Background()); err == nil {
 		t.Fatal("expected WarmLanguage failure from WarmRuntimeCache")
+	}
+}
+
+// errAfterNCtx returns context.Canceled once Err has been observed n times.
+// WarmRuntimeCache only checks ctx.Err(), so this drives mid-warm cancellation.
+type errAfterNCtx struct {
+	n, calls int
+}
+
+func (c *errAfterNCtx) Deadline() (time.Time, bool) { return time.Time{}, false }
+func (c *errAfterNCtx) Done() <-chan struct{}       { return nil }
+func (c *errAfterNCtx) Value(any) any               { return nil }
+func (c *errAfterNCtx) Err() error {
+	c.calls++
+	if c.calls >= c.n {
+		return context.Canceled
+	}
+	return nil
+}
+
+func TestWarmRuntimeCacheNilCtxAndCancelPaths(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open(filepath.Join(t.TempDir(), "warm-cancel.db")), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	rs := &registryCoverageScope{
+		ctx:     context.Background(),
+		logger:  slog.New(slog.NewTextHandler(io.Discard, nil)),
+		session: &scope.Session{DB: db},
+	}
+	if err := db.Exec(`CREATE TABLE meta_module (
+		id text primary key, name text, application_str text, status text
+	)`).Error; err != nil {
+		t.Fatalf("create meta_module: %v", err)
+	}
+	if err := db.Exec(
+		`INSERT INTO meta_module (id, name, application_str, status) VALUES ('1','auth','auth','installed')`,
+	).Error; err != nil {
+		t.Fatalf("seed module: %v", err)
+	}
+	if err := db.Exec(`CREATE TABLE base_language (id text primary key, code text)`).Error; err != nil {
+		t.Fatalf("create base_language: %v", err)
+	}
+	if err := db.Exec(`INSERT INTO base_language (id, code) VALUES ('1','zh_CN')`).Error; err != nil {
+		t.Fatalf("seed language: %v", err)
+	}
+	if err := i18nmodels.MigrateTranslationTermTable(rs, "auth"); err != nil {
+		t.Fatalf("ensure term table: %v", err)
+	}
+
+	reg := NewRegistry(rs)
+	if err := reg.WarmRuntimeCache(nil); err != nil {
+		t.Fatalf("nil ctx should fall back to Background: %v", err)
+	}
+
+	cancelled, cancel := context.WithCancel(context.Background())
+	cancel()
+	if err := NewRegistry(rs).WarmRuntimeCache(cancelled); err == nil {
+		t.Fatal("expected cancelled ctx error at entry")
+	}
+
+	// Entry check + first discovery app → cancel (covers discovery-loop abort).
+	if err := NewRegistry(rs).WarmRuntimeCache(&errAfterNCtx{n: 2}); err == nil {
+		t.Fatal("expected cancel during term-table discovery")
+	}
+
+	// Entry + discovery over core/auth (2 apps) then first warm-loop check → cancel.
+	if err := NewRegistry(rs).WarmRuntimeCache(&errAfterNCtx{n: 4}); err == nil {
+		t.Fatal("expected cancel during language warm loop")
 	}
 }
 

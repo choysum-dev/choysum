@@ -147,6 +147,34 @@ func TestWarmLanguageErrorsAfterExhaustedRetries(t *testing.T) {
 	}
 }
 
+func TestWarmLanguageNilCtxAndSessionForEdges(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open(filepath.Join(t.TempDir(), "nil-ctx.db")), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	rs := &raceTestScope{
+		ctx:     context.Background(),
+		logger:  slog.New(slog.NewTextHandler(io.Discard, nil)),
+		session: &scope.Session{DB: db},
+	}
+	if err := i18nmodels.MigrateTranslationTermTable(rs, "auth"); err != nil {
+		t.Fatalf("ensure: %v", err)
+	}
+	ts := NewTermStore(rs, "auth")
+	if err := ts.warmLanguage(nil, "zh_CN"); err != nil {
+		t.Fatalf("nil ctx warmLanguage: %v", err)
+	}
+	if (*TermStore)(nil).sessionFor(context.Background()) != nil {
+		t.Fatal("nil TermStore sessionFor must be nil")
+	}
+	if NewTermStore(nil, "auth").sessionFor(context.Background()) != nil {
+		t.Fatal("nil runtimeScope sessionFor must be nil")
+	}
+	if ts.sessionFor(nil) == nil {
+		t.Fatal("sessionFor(nil) must use runtimeScope.Session()")
+	}
+}
+
 func TestWarmLanguageKeepsFailedWarmUncached(t *testing.T) {
 	db, err := gorm.Open(sqlite.Open(filepath.Join(t.TempDir(), "retry.db")), &gorm.Config{})
 	if err != nil {

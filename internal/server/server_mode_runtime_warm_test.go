@@ -98,6 +98,70 @@ func TestFinishApplicationModeStartupAbortsWarmBackoffOnCancel(t *testing.T) {
 	}
 }
 
+func TestFinishApplicationModeStartupNilContextFallsBack(t *testing.T) {
+	store.ResetSharedRegistryForTests()
+	t.Cleanup(store.ResetSharedRegistryForTests)
+
+	db, err := gorm.Open(sqlite.Open(filepath.Join(t.TempDir(), "warm-nil-ctx.db")), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	rs := &nilContextWarmScope{
+		logger:  slog.New(slog.NewTextHandler(io.Discard, nil)),
+		session: &scope.Session{DB: db},
+	}
+	srv := &GRPCWebServer{runtimeScope: rs, jsExecutor: &readyHooksMockExec{}}
+	if _, err := srv.finishApplicationModeStartup(applicationModeStartupResult{Reload: true}); err != nil {
+		t.Fatalf("nil Context should fall back to Background: %v", err)
+	}
+}
+
+func TestFinishApplicationModeStartupCancelsDuringBackoff(t *testing.T) {
+	store.ResetSharedRegistryForTests()
+	t.Cleanup(store.ResetSharedRegistryForTests)
+
+	db, err := gorm.Open(sqlite.Open(filepath.Join(t.TempDir(), "warm-backoff-cancel.db")), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	if err := db.Exec(`CREATE TABLE meta_module (id text primary key, name text, status text)`).Error; err != nil {
+		t.Fatalf("create meta_module: %v", err)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel)
+	rs := &warmFailScope{
+		ctx:     ctx,
+		logger:  slog.New(slog.NewTextHandler(io.Discard, nil)),
+		session: &scope.Session{DB: db},
+	}
+	srv := &GRPCWebServer{runtimeScope: rs, jsExecutor: &readyHooksMockExec{}}
+	// First warm fails instantly; cancel mid 100ms backoff so waitWarmBackoff returns err.
+	go func() {
+		time.Sleep(20 * time.Millisecond)
+		cancel()
+	}()
+	started := time.Now()
+	_, err = srv.finishApplicationModeStartup(applicationModeStartupResult{Reload: true})
+	if err == nil {
+		t.Fatal("expected cancel during warm backoff")
+	}
+	if time.Since(started) > 200*time.Millisecond {
+		t.Fatalf("backoff cancel took too long: %v", time.Since(started))
+	}
+}
+
+func TestWaitWarmBackoffCancel(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if err := waitWarmBackoff(ctx, time.Hour); err == nil {
+		t.Fatal("expected cancelled backoff error")
+	}
+	if err := waitWarmBackoff(context.Background(), time.Millisecond); err != nil {
+		t.Fatalf("uncancelled backoff: %v", err)
+	}
+}
+
 type warmFailScope struct {
 	ctx     context.Context
 	logger  *slog.Logger
@@ -126,4 +190,22 @@ func (s *warmFailScope) Logger() *slog.Logger {
 		return s.logger
 	}
 	return slog.New(slog.NewTextHandler(io.Discard, nil))
+}
+
+// nilContextWarmScope always reports a nil Context so finishApplicationModeStartup
+// exercises the Background fallback.
+type nilContextWarmScope struct {
+	logger  *slog.Logger
+	session *scope.Session
+}
+
+func (s *nilContextWarmScope) Run(fn func(scope.Scope) error) error { return fn(s) }
+func (s *nilContextWarmScope) Transactor() scope.Transactor {
+	return scopetest.NewPassthroughTransactor(s)
+}
+func (s *nilContextWarmScope) Session() *scope.Session           { return s.session }
+func (s *nilContextWarmScope) Context() context.Context          { return nil }
+func (s *nilContextWarmScope) Logger() *slog.Logger              { return s.logger }
+func (s *nilContextWarmScope) WithContext(ctx context.Context) scope.Scope {
+	return &warmFailScope{ctx: ctx, logger: s.logger, session: s.session}
 }

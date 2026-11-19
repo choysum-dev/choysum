@@ -115,14 +115,8 @@ func (s *GRPCWebServer) finishApplicationModeStartup(result applicationModeStart
 		if attempt < warmAttempts {
 			s.runtimeScope.Logger().Warn("terminology cache warm retry", "attempt", attempt, "error", warmErr)
 			// Brief backoff so transient SQLite lock / pool contention can clear.
-			timer := time.NewTimer(time.Duration(attempt) * 100 * time.Millisecond)
-			select {
-			case <-warmCtx.Done():
-				if !timer.Stop() {
-					<-timer.C
-				}
-				return result.summary(), warmCtx.Err()
-			case <-timer.C:
+			if err := waitWarmBackoff(warmCtx, time.Duration(attempt)*100*time.Millisecond); err != nil {
+				return result.summary(), err
 			}
 			continue
 		}
@@ -242,5 +236,18 @@ func (r modeRuntimeStartupSummary) logFields() []any {
 		"startup_mode_runtime_js_prepared", r.JSRuntimePrepared,
 		"startup_mode_runtime_js_activated", r.JSRuntimeActivated,
 		"startup_mode_runtime_js_reload", r.JSRuntimeReload,
+	}
+}
+
+// waitWarmBackoff sleeps for d or returns early when ctx is cancelled.
+// Stop alone is enough: since Go 1.23, Timer.Stop clears an expired unread value.
+func waitWarmBackoff(ctx context.Context, d time.Duration) error {
+	timer := time.NewTimer(d)
+	select {
+	case <-ctx.Done():
+		timer.Stop()
+		return ctx.Err()
+	case <-timer.C:
+		return nil
 	}
 }

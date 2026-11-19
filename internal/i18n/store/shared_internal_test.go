@@ -32,6 +32,10 @@ func TestDurableRuntimeScopeStripsTransaction(t *testing.T) {
 	if got := durableRuntimeScope(base); got != base {
 		t.Fatal("non-tx scope should be unchanged")
 	}
+	nilCtxScope := &nilContextScope{edgeScope: *base}
+	if got := durableRuntimeScope(nilCtxScope); got != nilCtxScope {
+		t.Fatal("nil Context scope should be returned unchanged")
+	}
 
 	tx := &fakeTx{session: &scope.Session{DB: db}}
 	txCtx := scope.ContextWithTransaction(context.Background(), tx)
@@ -113,6 +117,25 @@ func TestScopesShareRuntimeDBEdges(t *testing.T) {
 	if scopesShareRuntimeDB(noPool, s) {
 		t.Fatal("gorm.DB with nil ConnPool (left) must not share")
 	}
+
+	// Distinct scope wrappers over the same ConnPool must still share.
+	samePool := &edgeScope{
+		ctx: s.ctx, logger: s.logger,
+		session: &scope.Session{DB: db},
+	}
+	if !scopesShareRuntimeDB(s, samePool) {
+		t.Fatal("scopes with equal ConnPool must share")
+	}
+}
+
+// nilContextScope reports a nil Context (edgeScope falls back to Background).
+type nilContextScope struct {
+	edgeScope
+}
+
+func (s *nilContextScope) Context() context.Context { return nil }
+func (s *nilContextScope) WithContext(ctx context.Context) scope.Scope {
+	return &nilContextScope{edgeScope: edgeScope{ctx: ctx, logger: s.logger, session: s.session}}
 }
 
 type edgeScope struct {
