@@ -77,10 +77,12 @@ func TestTermStoreWarmLookupInvalidate(t *testing.T) {
 	}
 
 	ts := store.NewTermStore(rs, "auth")
-	// Lookup auto-warms from DB so a fresh `run` after CLI upgrade still translates.
+	if err := ts.WarmLanguage("zh_CN"); err != nil {
+		t.Fatalf("warm: %v", err)
+	}
 	val, ok := ts.Lookup("auth", "zh_CN", "web/pages/Login@title", "Sign in", "")
 	if !ok || val != "登录" {
-		t.Fatalf("Lookup auto-warm = %q ok=%v", val, ok)
+		t.Fatalf("Lookup = %q ok=%v", val, ok)
 	}
 	hash := ts.TermHash("zh_CN")
 	if hash == "" {
@@ -99,31 +101,48 @@ func TestTermStoreWarmLookupInvalidate(t *testing.T) {
 	if ts.TermHash("zh_CN") != "" {
 		t.Fatal("expected empty hash after EvictLanguage")
 	}
-	// Evict drops the lang; next Lookup reloads from DB.
+	// Lookup is memory-only; evicted langs stay cold until WarmLanguage.
+	if _, ok := ts.Lookup("auth", "zh_CN", "web/pages/Login@title", "Sign in", ""); ok {
+		t.Fatal("Lookup must not sync-reload after EvictLanguage")
+	}
+	if err := ts.WarmLanguage("zh_CN"); err != nil {
+		t.Fatalf("rewarm: %v", err)
+	}
 	val, ok = ts.Lookup("auth", "zh_CN", "web/pages/Login@title", "Sign in", "")
 	if !ok || val != "登录" {
-		t.Fatalf("Lookup after Evict auto-warm = %q ok=%v", val, ok)
+		t.Fatalf("Lookup after rewarm = %q ok=%v", val, ok)
 	}
 }
 
-func TestTermStoreLookupAutoWarmEmptyLangAndNilSession(t *testing.T) {
+func TestTermStoreLookupMissesWithoutWarm(t *testing.T) {
 	ts := store.NewTermStore(nil, "auth")
 	if _, ok := ts.Lookup("auth", "", "a", "x", ""); ok {
 		t.Fatal("empty lang must miss")
 	}
-	// Nil session WarmLanguage is a no-op; ensure installs empty once.
 	if _, ok := ts.Lookup("auth", "zh_CN", "a", "x", ""); ok {
-		t.Fatal("expected miss on empty cache")
+		t.Fatal("unwarmed lang must miss without sync DB")
 	}
-	if ts.TermHash("zh_CN") == "" {
-		t.Fatal("expected empty lang to be marked warmed")
+
+	// DB-backed store with a seeded row must still miss when never warmed
+	// (guards against reintroducing sync warm on Lookup).
+	rs := newTestScope(t)
+	if err := i18nmodels.MigrateTranslationTermTable(rs, "auth"); err != nil {
+		t.Fatalf("ensure: %v", err)
 	}
-	if _, ok := ts.Lookup("auth", "zh_CN", "a", "x", ""); ok {
-		t.Fatal("second lookup should still miss without re-warming")
+	if err := rs.Session().Table("auth_translation_term").Create(&i18nmodels.TranslationTerm{
+		Application: "auth", Module: "auth", Lang: "zh_CN",
+		Scope: "a@b", Src: "Hello", Value: "你好",
+		Kind: i18nmodels.KindLiteral, Source: i18nmodels.SourcePackaged,
+	}).Error; err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	dbTS := store.NewTermStore(rs, "auth")
+	if _, ok := dbTS.Lookup("auth", "zh_CN", "a@b", "Hello", ""); ok {
+		t.Fatal("DB-backed Lookup must miss without WarmLanguage")
 	}
 }
 
-func TestTermStoreLookupAutoWarmSingleflight(t *testing.T) {
+func TestTermStoreLookupConcurrentAfterWarm(t *testing.T) {
 	rs := newTestScope(t)
 	if err := i18nmodels.MigrateTranslationTermTable(rs, "auth"); err != nil {
 		t.Fatalf("ensure: %v", err)
@@ -141,6 +160,9 @@ func TestTermStoreLookupAutoWarmSingleflight(t *testing.T) {
 		t.Fatalf("seed: %v", err)
 	}
 	ts := store.NewTermStore(rs, "auth")
+	if err := ts.WarmLanguage("zh_CN"); err != nil {
+		t.Fatalf("warm: %v", err)
+	}
 	done := make(chan string, 8)
 	for i := 0; i < 8; i++ {
 		go func() {
@@ -159,7 +181,7 @@ func TestTermStoreLookupAutoWarmSingleflight(t *testing.T) {
 	}
 }
 
-func TestTermStoreLookupAutoWarmDoesNotReloadAfterInvalidate(t *testing.T) {
+func TestTermStoreLookupDoesNotReloadAfterInvalidate(t *testing.T) {
 	rs := newTestScope(t)
 	if err := i18nmodels.MigrateTranslationTermTable(rs, "auth"); err != nil {
 		t.Fatalf("ensure: %v", err)
@@ -178,8 +200,11 @@ func TestTermStoreLookupAutoWarmDoesNotReloadAfterInvalidate(t *testing.T) {
 	}
 
 	ts := store.NewTermStore(rs, "auth")
+	if err := ts.WarmLanguage("zh_CN"); err != nil {
+		t.Fatalf("warm: %v", err)
+	}
 	if val, ok := ts.Lookup("auth", "zh_CN", "a@b", "Hello", ""); !ok || val != "你好" {
-		t.Fatalf("auto-warm Lookup = %q ok=%v", val, ok)
+		t.Fatalf("Lookup = %q ok=%v", val, ok)
 	}
 	ts.InvalidateModule("auth")
 	if _, ok := ts.Lookup("auth", "zh_CN", "a@b", "Hello", ""); ok {
@@ -330,7 +355,7 @@ func TestWarmCoreStoreAndEmptyLangNoop(t *testing.T) {
 	}
 }
 
-func TestRegistryLoadModuleApplicationFromDB(t *testing.T) {
+func TestRegistryApplicationForModuleMemoryOnly(t *testing.T) {
 	rs := newTestScope(t)
 	if err := rs.Session().AutoMigrate(&meta.Module{}); err != nil {
 		t.Fatal(err)
@@ -340,18 +365,17 @@ func TestRegistryLoadModuleApplicationFromDB(t *testing.T) {
 	}).Error; err != nil {
 		t.Fatal(err)
 	}
-	if err := rs.Session().Create(&meta.Module{
-		Name: "emptyapp", ApplicationStr: "", Status: meta.Installed,
-	}).Error; err != nil {
-		t.Fatal(err)
-	}
 
 	reg := store.NewRegistry(rs)
+	// DB row alone must not populate Lookup's module→app map.
+	if _, ok := reg.ApplicationForModule("auth"); ok {
+		t.Fatal("ApplicationForModule must miss before Remember/Warm")
+	}
+	reg.RememberModuleApplication("auth", "auth")
 	app, ok := reg.ApplicationForModule("auth")
 	if !ok || app != "auth" {
 		t.Fatalf("ApplicationForModule auth = %q ok=%v", app, ok)
 	}
-	// Cached path.
 	app2, ok := reg.ApplicationForModule("auth")
 	if !ok || app2 != "auth" {
 		t.Fatalf("cached = %q ok=%v", app2, ok)
@@ -359,13 +383,10 @@ func TestRegistryLoadModuleApplicationFromDB(t *testing.T) {
 	if _, ok := reg.ApplicationForModule("missing"); ok {
 		t.Fatal("missing module")
 	}
-	if _, ok := reg.ApplicationForModule("emptyapp"); ok {
-		t.Fatal("empty ApplicationStr")
-	}
 
 	nilReg := store.NewRegistry(nil)
 	if _, ok := nilReg.ApplicationForModule("auth"); ok {
-		t.Fatal("nil scope")
+		t.Fatal("nil registry cache should miss")
 	}
 	reg.RememberModuleApplication("", "x")
 	reg.RememberModuleApplication("m", "")

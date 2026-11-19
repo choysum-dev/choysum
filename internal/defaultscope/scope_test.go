@@ -193,8 +193,9 @@ func TestNewDefaultScopeAndNewDB(t *testing.T) {
 		t.Fatalf("db.DB: %v", err)
 	}
 	t.Cleanup(func() { _ = sqlDB.Close() })
-	if sqlDB.Stats().MaxOpenConnections != 2 {
-		t.Fatalf("sqlite MaxOpenConnections = %d, want 2", sqlDB.Stats().MaxOpenConnections)
+	// testConfig sets MaxOpenConns=9; sqlite path caps at 8.
+	if sqlDB.Stats().MaxOpenConnections != 8 {
+		t.Fatalf("sqlite MaxOpenConnections = %d, want 8 (config capped)", sqlDB.Stats().MaxOpenConnections)
 	}
 
 	childCtx := context.WithValue(context.Background(), "trace", "child")

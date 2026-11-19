@@ -4,6 +4,7 @@
 package store
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
@@ -29,8 +30,6 @@ type TermStore struct {
 	// lang → epoch bumped by mutations so a concurrent WarmLanguage cannot
 	// overwrite a newer in-memory update with a stale DB snapshot.
 	warmEpoch map[string]uint64
-	// lang → waiters for an in-flight ensureLanguageCached warm (singleflight).
-	warming map[string]chan struct{}
 }
 
 // NewTermStore creates an empty store for the given application.
@@ -41,7 +40,6 @@ func NewTermStore(runtimeScope scope.Scope, application string) *TermStore {
 		cache:        make(map[string]map[string]map[string]map[string]map[string]string),
 		termHash:     make(map[string]string),
 		warmEpoch:    make(map[string]uint64),
-		warming:      make(map[string]chan struct{}),
 	}
 }
 
@@ -60,16 +58,24 @@ const warmLanguageMaxAttempts = 5
 // Retries when a concurrent mutation bumps warmEpoch so a stale snapshot is not
 // discarded while leaving an incomplete cache.
 func (s *TermStore) WarmLanguage(lang string) error {
+	return s.warmLanguage(context.Background(), lang)
+}
+
+func (s *TermStore) warmLanguage(ctx context.Context, lang string) error {
 	lang = strings.TrimSpace(lang)
 	if lang == "" || s.application == "" {
 		return nil
 	}
-	if s.runtimeScope == nil || s.runtimeScope.Session() == nil {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	session := s.sessionFor(ctx)
+	if session == nil {
 		return nil
 	}
 
 	tableName := i18nmodels.TranslationTermTableName(s.application)
-	if !s.runtimeScope.Session().Migrator().HasTable(tableName) {
+	if !session.Migrator().HasTable(tableName) {
 		s.mu.Lock()
 		s.cache[lang] = make(map[string]map[string]map[string]map[string]string)
 		s.termHash[lang] = emptyTermHash()
@@ -83,7 +89,7 @@ func (s *TermStore) WarmLanguage(lang string) error {
 		s.mu.RUnlock()
 
 		var rows []i18nmodels.TranslationTerm
-		if err := s.runtimeScope.Session().Table(tableName).
+		if err := session.Table(tableName).
 			Where("lang = ?", lang).
 			Find(&rows).Error; err != nil {
 			return fmt.Errorf("warm %s lang=%s: %w", tableName, lang, err)
@@ -126,6 +132,16 @@ func (s *TermStore) WarmLanguage(lang string) error {
 	return fmt.Errorf("warm language %s failed after %d attempts due to concurrent updates", lang, warmLanguageMaxAttempts)
 }
 
+func (s *TermStore) sessionFor(ctx context.Context) *scope.Session {
+	if s == nil || s.runtimeScope == nil {
+		return nil
+	}
+	if ctx == nil {
+		return s.runtimeScope.Session()
+	}
+	return s.runtimeScope.WithContext(ctx).Session()
+}
+
 // EvictLanguage removes a language from the hot cache.
 func (s *TermStore) EvictLanguage(lang string) {
 	lang = strings.TrimSpace(lang)
@@ -136,71 +152,16 @@ func (s *TermStore) EvictLanguage(lang string) {
 	s.mu.Unlock()
 }
 
-// ensureLanguageCached loads lang from DB when it is absent from the hot cache.
-// CLI upgrade warms only the upgrade process; a subsequent `run` starts with an
-// empty TermStore while FE GetTranslations still reads DB — without this, `_t`
-// misses until an in-process PO import.
-//
-// Warm failures leave the lang unwarmed so a later Lookup can retry after DB
-// recovery. Concurrent callers for the same lang share one WarmLanguage.
-// A successful warm that still leaves cache empty (e.g. nil session) installs
-// an empty map once so Lookup does not hammer WarmLanguage every miss.
-func (s *TermStore) ensureLanguageCached(lang string) {
-	if lang == "" {
-		return
-	}
-
-	s.mu.Lock()
-	if _, ok := s.cache[lang]; ok {
-		s.mu.Unlock()
-		return
-	}
-	if wait, ok := s.warming[lang]; ok {
-		s.mu.Unlock()
-		<-wait
-		return
-	}
-	done := make(chan struct{})
-	s.warming[lang] = done
-	s.mu.Unlock()
-
-	defer func() {
-		s.mu.Lock()
-		delete(s.warming, lang)
-		close(done)
-		s.mu.Unlock()
-	}()
-
-	if err := s.WarmLanguage(lang); err != nil {
-		// Keep retryable: do not cache a permanent empty miss on DB errors.
-		return
-	}
-
-	s.mu.RLock()
-	_, ok := s.cache[lang]
-	s.mu.RUnlock()
-	if ok {
-		return
-	}
-
-	s.mu.Lock()
-	if _, ok := s.cache[lang]; !ok {
-		s.cache[lang] = make(map[string]map[string]map[string]map[string]string)
-		s.termHash[lang] = emptyTermHash()
-	}
-	s.mu.Unlock()
-}
-
 // Lookup returns a cached translation. ok=false on miss.
-// Unwarmed languages are loaded from DB once before the cache read.
+// Memory only: callers must WarmLanguage (startup WarmRuntimeCache, PO import,
+// ReloadTerminology) before Lookup. Sync DB from this path deadlocks SQLite —
+// RPC transactions hold the pool while the JS thread waits for another conn.
 func (s *TermStore) Lookup(module, lang, scopeKey, src, kind string) (string, bool) {
 	module = strings.TrimSpace(module)
 	lang = strings.TrimSpace(lang)
 	scopeKey = strings.TrimSpace(scopeKey)
 	src = strings.TrimSpace(src)
 	kind = i18nmodels.NormalizeKind(kind)
-
-	s.ensureLanguageCached(lang)
 
 	s.mu.RLock()
 	defer s.mu.RUnlock()

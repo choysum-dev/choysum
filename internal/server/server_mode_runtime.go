@@ -4,10 +4,12 @@
 package server
 
 import (
+	"context"
 	"sort"
 	"strings"
 	"time"
 
+	i18nstore "github.com/choysum-dev/choysum/internal/i18n/store"
 	"github.com/choysum-dev/choysum/internal/server/runplan"
 	"github.com/choysum-dev/choysum/pkg/jsengine"
 	"github.com/choysum-dev/choysum/pkg/jsexecutor"
@@ -90,6 +92,41 @@ func (s *GRPCWebServer) prepareBootstrapModeStartup() (bootstrapModeStartupResul
 }
 
 func (s *GRPCWebServer) finishApplicationModeStartup(result applicationModeStartupResult) (modeRuntimeStartupSummary, error) {
+	if s.runtimeScope == nil {
+		return result.summary(), xfmt.Errorf("application mode startup requires a runtime scope")
+	}
+	// Warm TermStore before the JS pool starts serving RPCs. Lookup must stay
+	// memory-only on the JS thread; sync DB warm there deadlocks the SQLite pool.
+	reg := i18nstore.RegistryFor(s.runtimeScope)
+	const warmAttempts = 3
+	warmCtx := s.runtimeScope.Context()
+	if warmCtx == nil {
+		warmCtx = context.Background()
+	}
+	var warmErr error
+	for attempt := 1; attempt <= warmAttempts; attempt++ {
+		if err := warmCtx.Err(); err != nil {
+			return result.summary(), err
+		}
+		warmErr = reg.WarmRuntimeCache(warmCtx)
+		// Cancellation during/after an attempt must abort startup before Start/Reload.
+		if err := warmCtx.Err(); err != nil {
+			return result.summary(), err
+		}
+		if warmErr == nil {
+			break
+		}
+		if attempt < warmAttempts {
+			s.runtimeScope.Logger().Warn("terminology cache warm retry", "attempt", attempt, "error", warmErr)
+			// Brief backoff so transient SQLite lock / pool contention can clear.
+			if err := waitWarmBackoff(warmCtx, time.Duration(attempt)*100*time.Millisecond); err != nil {
+				return result.summary(), err
+			}
+			continue
+		}
+		s.runtimeScope.Logger().Error("terminology cache warm incomplete; Lookup will miss until rewarm", "attempts", warmAttempts, "error", warmErr)
+	}
+
 	if !result.Reload {
 		s.runtimeScope.Logger().Debug("js executor starting", "init_script_count", len(result.InitScripts))
 		s.jsExecutor.SetJsScripts(result.InitScripts)
@@ -203,5 +240,18 @@ func (r modeRuntimeStartupSummary) logFields() []any {
 		"startup_mode_runtime_js_prepared", r.JSRuntimePrepared,
 		"startup_mode_runtime_js_activated", r.JSRuntimeActivated,
 		"startup_mode_runtime_js_reload", r.JSRuntimeReload,
+	}
+}
+
+// waitWarmBackoff sleeps for d or returns early when ctx is cancelled.
+// Stop alone is enough: since Go 1.23, Timer.Stop clears an expired unread value.
+func waitWarmBackoff(ctx context.Context, d time.Duration) error {
+	timer := time.NewTimer(d)
+	select {
+	case <-ctx.Done():
+		timer.Stop()
+		return ctx.Err()
+	case <-timer.C:
+		return nil
 	}
 }
