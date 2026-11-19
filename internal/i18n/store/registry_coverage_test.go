@@ -108,6 +108,7 @@ func TestRegistryWarmRuntimeCache(t *testing.T) {
 	}
 
 	reg := NewRegistry(rs)
+	reg.RememberModuleApplication("stale", "stale")
 	if err := reg.WarmRuntimeCache(); err != nil {
 		t.Fatalf("WarmRuntimeCache: %v", err)
 	}
@@ -122,6 +123,9 @@ func TestRegistryWarmRuntimeCache(t *testing.T) {
 	if _, ok := reg.ApplicationForModule("gone"); ok {
 		t.Fatal("soft-deleted installed module must not be prefetched")
 	}
+	if _, ok := reg.ApplicationForModule("stale"); ok {
+		t.Fatal("warm must rebuild moduleToApp and drop stale Remember entries")
+	}
 	val, ok := reg.Lookup("auth", "zh_CN", "a@b", "Hello", "")
 	if !ok || val != "你好" {
 		t.Fatalf("Lookup after WarmRuntimeCache = %q ok=%v", val, ok)
@@ -132,6 +136,10 @@ func TestRegistryWarmRuntimeCache(t *testing.T) {
 	}
 	if _, ok := reg.Lookup("unprefilled", "zh_CN", "a@b", "Hello", ""); ok {
 		t.Fatal("Lookup for module never prefetched must miss without DB")
+	}
+	reg.replaceModuleApplications(nil)
+	if _, ok := reg.ApplicationForModule("auth"); ok {
+		t.Fatal("replaceModuleApplications(nil) must clear the map")
 	}
 }
 

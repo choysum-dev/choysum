@@ -98,6 +98,17 @@ func (r *Registry) RememberModuleApplication(module, application string) {
 	r.mu.Unlock()
 }
 
+// replaceModuleApplications atomically replaces the module→application map.
+// WarmRuntimeCache uses this so uninstalled / soft-deleted modules stop resolving.
+func (r *Registry) replaceModuleApplications(next map[string]string) {
+	if next == nil {
+		next = make(map[string]string)
+	}
+	r.mu.Lock()
+	r.moduleToApp = next
+	r.mu.Unlock()
+}
+
 // WarmRuntimeCache pre-fills module→application maps and loads terminology for
 // installed applications. Call before serving RPCs so Lookup never hits the DB
 // on the JS thread (SQLite pool deadlock with open RPC transactions).
@@ -130,16 +141,18 @@ func (r *Registry) WarmRuntimeCache() error {
 		if err := q.Order("id ASC").Find(&mods).Error; err != nil {
 			return fmt.Errorf("list installed modules for terminology warm: %w", err)
 		}
+		next := make(map[string]string, len(mods))
 		for i := range mods {
 			name := strings.TrimSpace(mods[i].Name)
 			app := strings.TrimSpace(mods[i].ApplicationStr)
 			if name != "" && app != "" {
-				r.RememberModuleApplication(name, app)
+				next[name] = app
 			}
 			if app != "" {
 				apps[app] = struct{}{}
 			}
 		}
+		r.replaceModuleApplications(next)
 	}
 
 	langs := map[string]struct{}{}
