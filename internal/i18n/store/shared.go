@@ -31,10 +31,14 @@ func RegistryFor(runtimeScope scope.Scope) *Registry {
 		sharedRegistry = NewRegistry(durable)
 		return sharedRegistry
 	}
+	// Nil input must not replace a warmed registry with a cold nil-scope one.
+	if durable == nil {
+		return sharedRegistry
+	}
 	if !scopesShareRuntimeDB(sharedRegistry.runtimeScope, durable) {
 		// Cold replacement: callers (startup / finishApplicationModeStartup) must
 		// WarmRuntimeCache again. Do not warm under sharedMu (DB I/O while locked).
-		if durable != nil && durable.Logger() != nil {
+		if durable.Logger() != nil {
 			durable.Logger().Warn("terminology registry replaced with cold cache; WarmRuntimeCache required")
 		}
 		sharedRegistry = NewRegistry(durable)

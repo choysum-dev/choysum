@@ -17,6 +17,30 @@ import (
 	"gorm.io/gorm"
 )
 
+func TestRegistryForNilScopeKeepsExisting(t *testing.T) {
+	store.ResetSharedRegistryForTests()
+	t.Cleanup(store.ResetSharedRegistryForTests)
+
+	db, err := gorm.Open(sqlite.Open(filepath.Join(t.TempDir(), "nil-keep.db")), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	base := &sharedScope{
+		ctx:     context.Background(),
+		logger:  slog.New(slog.NewTextHandler(io.Discard, nil)),
+		session: &scope.Session{DB: db},
+	}
+	reg := store.RegistryFor(base)
+	reg.RememberModuleApplication("auth", "auth")
+	if got := store.RegistryFor(nil); got != reg {
+		t.Fatal("RegistryFor(nil) must keep the existing warmed registry")
+	}
+	app, ok := reg.ApplicationForModule("auth")
+	if !ok || app != "auth" {
+		t.Fatalf("cache after RegistryFor(nil) = %q ok=%v", app, ok)
+	}
+}
+
 func TestRegistryForKeepsCacheAcrossWithContext(t *testing.T) {
 	store.ResetSharedRegistryForTests()
 	t.Cleanup(store.ResetSharedRegistryForTests)
