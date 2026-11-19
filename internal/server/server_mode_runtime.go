@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	i18nstore "github.com/choysum-dev/choysum/internal/i18n/store"
 	"github.com/choysum-dev/choysum/internal/server/runplan"
 	"github.com/choysum-dev/choysum/pkg/jsengine"
 	"github.com/choysum-dev/choysum/pkg/jsexecutor"
@@ -90,6 +91,12 @@ func (s *GRPCWebServer) prepareBootstrapModeStartup() (bootstrapModeStartupResul
 }
 
 func (s *GRPCWebServer) finishApplicationModeStartup(result applicationModeStartupResult) (modeRuntimeStartupSummary, error) {
+	// Warm TermStore before the JS pool starts serving RPCs. Lookup must stay
+	// memory-only on the JS thread; sync DB warm there deadlocks the SQLite pool.
+	if err := i18nstore.RegistryFor(s.runtimeScope).WarmRuntimeCache(); err != nil {
+		s.runtimeScope.Logger().Warn("terminology cache warm incomplete", "error", err)
+	}
+
 	if !result.Reload {
 		s.runtimeScope.Logger().Debug("js executor starting", "init_script_count", len(result.InitScripts))
 		s.jsExecutor.SetJsScripts(result.InitScripts)

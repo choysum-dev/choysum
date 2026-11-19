@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	i18nmodels "github.com/choysum-dev/choysum/internal/i18n/models"
 	"github.com/choysum-dev/choysum/internal/testing/scopetest"
 	"github.com/choysum-dev/choysum/pkg/scope"
 	"gorm.io/driver/sqlite"
@@ -56,6 +57,57 @@ func TestRegistryLoadModuleApplicationWithoutMetaModuleTable(t *testing.T) {
 
 	if app, ok := reg.loadModuleApplication("auth"); ok || app != "" {
 		t.Fatalf("loadModuleApplication() = %q ok=%v, want empty without meta_module table", app, ok)
+	}
+}
+
+func TestRegistryWarmRuntimeCache(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open(filepath.Join(t.TempDir(), "warm-runtime.db")), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	rs := &registryCoverageScope{
+		ctx:     context.Background(),
+		logger:  slog.New(slog.NewTextHandler(io.Discard, nil)),
+		session: &scope.Session{DB: db},
+	}
+	if err := db.Exec(`CREATE TABLE meta_module (
+		id text primary key, name text, application_str text, status text
+	)`).Error; err != nil {
+		t.Fatalf("create meta_module: %v", err)
+	}
+	if err := db.Exec(`CREATE TABLE base_language (id text primary key, code text)`).Error; err != nil {
+		t.Fatalf("create base_language: %v", err)
+	}
+	if err := i18nmodels.MigrateTranslationTermTable(rs, "auth"); err != nil {
+		t.Fatalf("ensure term table: %v", err)
+	}
+	if err := db.Exec(
+		`INSERT INTO meta_module (id, name, application_str, status) VALUES ('1','auth','auth','installed')`,
+	).Error; err != nil {
+		t.Fatalf("seed module: %v", err)
+	}
+	if err := db.Exec(`INSERT INTO base_language (id, code) VALUES ('1','zh_CN')`).Error; err != nil {
+		t.Fatalf("seed language: %v", err)
+	}
+	if err := rs.Session().Table("auth_translation_term").Create(&i18nmodels.TranslationTerm{
+		Application: "auth", Module: "auth", Lang: "zh_CN",
+		Scope: "a@b", Src: "Hello", Value: "你好",
+		Kind: i18nmodels.KindLiteral, Source: i18nmodels.SourcePackaged,
+	}).Error; err != nil {
+		t.Fatalf("seed term: %v", err)
+	}
+
+	reg := NewRegistry(rs)
+	if err := reg.WarmRuntimeCache(); err != nil {
+		t.Fatalf("WarmRuntimeCache: %v", err)
+	}
+	app, ok := reg.ApplicationForModule("auth")
+	if !ok || app != "auth" {
+		t.Fatalf("ApplicationForModule(auth) = %q ok=%v", app, ok)
+	}
+	val, ok := reg.Lookup("auth", "zh_CN", "a@b", "Hello", "")
+	if !ok || val != "你好" {
+		t.Fatalf("Lookup after WarmRuntimeCache = %q ok=%v", val, ok)
 	}
 }
 

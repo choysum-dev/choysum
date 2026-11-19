@@ -4,9 +4,11 @@
 package store
 
 import (
+	"fmt"
 	"strings"
 	"sync"
 
+	i18nmodels "github.com/choysum-dev/choysum/internal/i18n/models"
 	"github.com/choysum-dev/choysum/pkg/meta"
 	"github.com/choysum-dev/choysum/pkg/scope"
 )
@@ -121,4 +123,95 @@ func (r *Registry) loadModuleApplication(module string) (string, bool) {
 		return "", false
 	}
 	return app, true
+}
+
+// WarmRuntimeCache pre-fills module→application maps and loads terminology for
+// installed applications. Call before serving RPCs so Lookup never hits the DB
+// on the JS thread (SQLite pool deadlock with open RPC transactions).
+//
+// Languages come from base_language.Code when that table exists, unioned with
+// distinct lang values already stored in each application's term table.
+func (r *Registry) WarmRuntimeCache() error {
+	if r == nil || r.runtimeScope == nil {
+		return nil
+	}
+	session := r.runtimeScope.Session()
+	if session == nil || session.DB == nil {
+		return nil
+	}
+
+	apps := map[string]struct{}{"core": {}}
+	if session.Migrator().HasTable((&meta.Module{}).TableName()) {
+		// Table scan (not meta.Module Find) so soft-delete columns are optional in tests.
+		type installedModuleRow struct {
+			Name           string
+			ApplicationStr string `gorm:"column:application_str"`
+		}
+		var mods []installedModuleRow
+		if err := session.Table((&meta.Module{}).TableName()).
+			Select("name", "application_str").
+			Where("status = ?", meta.Installed).
+			Order("id ASC").
+			Find(&mods).Error; err != nil {
+			return fmt.Errorf("list installed modules for terminology warm: %w", err)
+		}
+		for i := range mods {
+			name := strings.TrimSpace(mods[i].Name)
+			app := strings.TrimSpace(mods[i].ApplicationStr)
+			if name != "" && app != "" {
+				r.RememberModuleApplication(name, app)
+			}
+			if app != "" {
+				apps[app] = struct{}{}
+			}
+		}
+	}
+
+	langs := map[string]struct{}{}
+	if session.Migrator().HasTable("base_language") {
+		var codes []string
+		if err := session.Table("base_language").Distinct("code").Pluck("code", &codes).Error; err != nil {
+			return fmt.Errorf("list language codes for terminology warm: %w", err)
+		}
+		for _, code := range codes {
+			code = strings.TrimSpace(code)
+			if code != "" {
+				langs[code] = struct{}{}
+			}
+		}
+	}
+
+	var firstErr error
+	for app := range apps {
+		tableName := i18nmodels.TranslationTermTableName(app)
+		if !session.Migrator().HasTable(tableName) {
+			continue
+		}
+		var termLangs []string
+		if err := session.Table(tableName).Distinct("lang").Pluck("lang", &termLangs).Error; err != nil {
+			if firstErr == nil {
+				firstErr = fmt.Errorf("list term langs for %s: %w", app, err)
+			}
+			continue
+		}
+		for _, code := range termLangs {
+			code = strings.TrimSpace(code)
+			if code != "" {
+				langs[code] = struct{}{}
+			}
+		}
+	}
+	if len(langs) == 0 {
+		return firstErr
+	}
+
+	for app := range apps {
+		ts := r.StoreFor(app)
+		for lang := range langs {
+			if err := ts.WarmLanguage(lang); err != nil && firstErr == nil {
+				firstErr = fmt.Errorf("warm %s lang=%s: %w", app, lang, err)
+			}
+		}
+	}
+	return firstErr
 }
