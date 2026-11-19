@@ -116,35 +116,45 @@ func TestFinishApplicationModeStartupNilContextFallsBack(t *testing.T) {
 	}
 }
 
-func TestFinishApplicationModeStartupCancelsAfterFinalWarm(t *testing.T) {
+// errAfterNCtx returns context.Canceled once Err has been observed n times.
+type errAfterNCtx struct {
+	n, calls int
+}
+
+func (c *errAfterNCtx) Deadline() (time.Time, bool) { return time.Time{}, false }
+func (c *errAfterNCtx) Done() <-chan struct{}       { return nil }
+func (c *errAfterNCtx) Value(any) any               { return nil }
+func (c *errAfterNCtx) Err() error {
+	c.calls++
+	if c.calls >= c.n {
+		return context.Canceled
+	}
+	return nil
+}
+
+func TestFinishApplicationModeStartupCancelsAfterWarm(t *testing.T) {
 	store.ResetSharedRegistryForTests()
 	t.Cleanup(store.ResetSharedRegistryForTests)
 
-	db, err := gorm.Open(sqlite.Open(filepath.Join(t.TempDir(), "warm-final-cancel.db")), &gorm.Config{})
+	db, err := gorm.Open(sqlite.Open(filepath.Join(t.TempDir(), "warm-after-cancel.db")), &gorm.Config{})
 	if err != nil {
 		t.Fatalf("open sqlite: %v", err)
 	}
+	// Broken schema → WarmRuntimeCache fails after its own entry Err check.
 	if err := db.Exec(`CREATE TABLE meta_module (id text primary key, name text, status text)`).Error; err != nil {
 		t.Fatalf("create meta_module: %v", err)
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	t.Cleanup(cancel)
+	// pre-check(1) + WarmRuntimeCache entry(2) + post-warm check(3) → cancel.
 	rs := &warmFailScope{
-		ctx:     ctx,
+		ctx:     &errAfterNCtx{n: 3},
 		logger:  slog.New(slog.NewTextHandler(io.Discard, nil)),
 		session: &scope.Session{DB: db},
-	}
-	t.Cleanup(func() { afterWarmAttemptForTests = nil })
-	afterWarmAttemptForTests = func(attempt int) {
-		if attempt == 3 {
-			cancel()
-		}
 	}
 	srv := &GRPCWebServer{runtimeScope: rs, jsExecutor: &readyHooksMockExec{}}
 	_, err = srv.finishApplicationModeStartup(applicationModeStartupResult{Reload: true})
 	if err == nil {
-		t.Fatal("expected cancellation after final warm attempt")
+		t.Fatal("expected cancellation after warm attempt")
 	}
 }
 

@@ -117,6 +117,10 @@ func (r *Registry) replaceModuleApplications(next map[string]string) {
 // Languages come from base_language.Code when that table exists, unioned with
 // distinct lang values already stored in each application's term table.
 // ctx is applied to DB sessions so startup cancellation can abort warm queries.
+//
+// A non-nil error means the cache is incomplete (module map may already be
+// refreshed while some term tables were not loaded). Callers must rewarm
+// before treating Lookup as authoritative; startup aborts on cancellation.
 func (r *Registry) WarmRuntimeCache(ctx context.Context) error {
 	if r == nil || r.runtimeScope == nil {
 		return nil

@@ -16,9 +16,6 @@ import (
 	xfmt "golang.org/x/exp/errors/fmt"
 )
 
-// afterWarmAttemptForTests runs after each WarmRuntimeCache attempt (tests only).
-var afterWarmAttemptForTests func(attempt int)
-
 type modeRuntimeStartupSummary struct {
 	Mode                      runplan.RunMode
 	RegisteredServiceCount    int
@@ -112,10 +109,7 @@ func (s *GRPCWebServer) finishApplicationModeStartup(result applicationModeStart
 			return result.summary(), err
 		}
 		warmErr = reg.WarmRuntimeCache(warmCtx)
-		if afterWarmAttemptForTests != nil {
-			afterWarmAttemptForTests(attempt)
-		}
-		// Cancellation during the final attempt must abort startup before Start/Reload.
+		// Cancellation during/after an attempt must abort startup before Start/Reload.
 		if err := warmCtx.Err(); err != nil {
 			return result.summary(), err
 		}
