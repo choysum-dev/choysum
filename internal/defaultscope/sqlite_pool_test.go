@@ -10,6 +10,9 @@ import (
 
 	"github.com/choysum-dev/choysum/internal/testing/scopetest"
 	"github.com/choysum-dev/choysum/pkg/config"
+	"github.com/choysum-dev/choysum/pkg/scope"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 )
 
 func TestSQLitePoolLimits(t *testing.T) {
@@ -78,5 +81,31 @@ func TestNewDbUsesSQLiteDefaultsWhenPoolUnset(t *testing.T) {
 
 	if sqlDB.Stats().MaxOpenConnections != 4 {
 		t.Fatalf("MaxOpenConnections = %d, want documented sqlite default 4", sqlDB.Stats().MaxOpenConnections)
+	}
+}
+
+func TestNewDbUsesServerPoolDefaultsWhenUnset(t *testing.T) {
+	// Stub postgres dialector with sqlite so we exercise the non-sqlite pool branch.
+	prev := postgresOpen
+	t.Cleanup(func() { postgresOpen = prev })
+	dsn := filepath.Join(t.TempDir(), "pg-pool-defaults.sqlite")
+	postgresOpen = func(string) gorm.Dialector {
+		return sqlite.Open(dsn)
+	}
+
+	wantOpen, _ := config.ServerDbPoolDefaults()
+	db := newDb(context.Background(), scope.DatabaseRuntimeOptions{
+		Dialect: "postgres",
+		DSN:     "unused",
+		// MaxOpen/Idle omitted (0) → ServerDbPoolDefaults, not sqlite 4/2.
+	}, testLogger())
+	sqlDB, err := db.DB()
+	if err != nil {
+		t.Fatalf("db.DB: %v", err)
+	}
+	t.Cleanup(func() { _ = sqlDB.Close() })
+
+	if sqlDB.Stats().MaxOpenConnections != wantOpen {
+		t.Fatalf("MaxOpenConnections = %d, want ServerDbPoolDefaults %d", sqlDB.Stats().MaxOpenConnections, wantOpen)
 	}
 }

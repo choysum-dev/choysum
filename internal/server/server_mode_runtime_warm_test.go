@@ -116,6 +116,38 @@ func TestFinishApplicationModeStartupNilContextFallsBack(t *testing.T) {
 	}
 }
 
+func TestFinishApplicationModeStartupCancelsAfterFinalWarm(t *testing.T) {
+	store.ResetSharedRegistryForTests()
+	t.Cleanup(store.ResetSharedRegistryForTests)
+
+	db, err := gorm.Open(sqlite.Open(filepath.Join(t.TempDir(), "warm-final-cancel.db")), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	if err := db.Exec(`CREATE TABLE meta_module (id text primary key, name text, status text)`).Error; err != nil {
+		t.Fatalf("create meta_module: %v", err)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel)
+	rs := &warmFailScope{
+		ctx:     ctx,
+		logger:  slog.New(slog.NewTextHandler(io.Discard, nil)),
+		session: &scope.Session{DB: db},
+	}
+	t.Cleanup(func() { afterWarmAttemptForTests = nil })
+	afterWarmAttemptForTests = func(attempt int) {
+		if attempt == 3 {
+			cancel()
+		}
+	}
+	srv := &GRPCWebServer{runtimeScope: rs, jsExecutor: &readyHooksMockExec{}}
+	_, err = srv.finishApplicationModeStartup(applicationModeStartupResult{Reload: true})
+	if err == nil {
+		t.Fatal("expected cancellation after final warm attempt")
+	}
+}
+
 func TestFinishApplicationModeStartupCancelsDuringBackoff(t *testing.T) {
 	store.ResetSharedRegistryForTests()
 	t.Cleanup(store.ResetSharedRegistryForTests)

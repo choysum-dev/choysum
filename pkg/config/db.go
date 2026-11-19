@@ -21,14 +21,13 @@ type DbConfig struct {
 }
 
 func NewDefaultDbConfig() *DbConfig {
-	// Default dialect is sqlite; pool sizes match the documented sqlite defaults
-	// (open=4, idle=2). Postgres/MySQL apply GOMAXPROCS-scaled defaults in
-	// defaultscope when these are left at zero or when callers override dialect
-	// without setting pool sizes.
+	// Pool sizes stay 0 ("omitted") so defaultscope can choose by dialect:
+	// sqlite → open=4/idle=2 (clamped), MySQL/Postgres → ServerDbPoolDefaults().
+	// Explicit positive yaml/env values are preserved for every dialect.
 	return &DbConfig{
 		Dialect:         defaultDbDialect,
-		MaxIdleConns:    2,
-		MaxOpenConns:    4,
+		MaxIdleConns:    0,
+		MaxOpenConns:    0,
 		ConnMaxLifetime: 60 * 60 * 1, // 1 hour,
 	}
 }
