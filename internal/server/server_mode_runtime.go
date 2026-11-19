@@ -126,7 +126,7 @@ func (s *GRPCWebServer) finishApplicationModeStartup(result applicationModeStart
 			}
 			continue
 		}
-		s.runtimeScope.Logger().Warn("terminology cache warm incomplete", "attempts", warmAttempts, "error", warmErr)
+		s.runtimeScope.Logger().Error("terminology cache warm incomplete; Lookup will miss until rewarm", "attempts", warmAttempts, "error", warmErr)
 	}
 
 	if !result.Reload {

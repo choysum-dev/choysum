@@ -147,6 +147,8 @@ func (r *Registry) WarmRuntimeCache(ctx context.Context) error {
 			q = q.Where("deleted_at IS NULL")
 		}
 		if err := q.Order("id ASC").Find(&mods).Error; err != nil {
+			// Do not leave a previous warm's module→app map resolvable after a failed refresh.
+			r.replaceModuleApplications(nil)
 			return fmt.Errorf("list installed modules for terminology warm: %w", err)
 		}
 		next := make(map[string]string, len(mods))

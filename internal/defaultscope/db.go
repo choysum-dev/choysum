@@ -102,6 +102,7 @@ func newDb(ctx context.Context, dbOpts scope.DatabaseRuntimeOptions, logger *slo
 		maxOpenConns, maxIdleConns = sqlitePoolLimits(maxOpenConns, maxIdleConns)
 		sqlDB.SetMaxOpenConns(maxOpenConns)
 		sqlDB.SetMaxIdleConns(maxIdleConns)
+		// SQLite ignores conn lifetime recycling; keep connections for the process.
 		sqlDB.SetConnMaxLifetime(0)
 	} else {
 		serverOpen, serverIdle := config.ServerDbPoolDefaults()

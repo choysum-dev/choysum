@@ -179,8 +179,13 @@ func TestWarmRuntimeCacheNilAndErrorPaths(t *testing.T) {
 	if err := db.Exec(`CREATE TABLE meta_module (id text primary key, name text, status text)`).Error; err != nil {
 		t.Fatalf("create meta_module: %v", err)
 	}
-	if err := NewRegistry(rs).WarmRuntimeCache(context.Background()); err == nil {
+	regFail := NewRegistry(rs)
+	regFail.RememberModuleApplication("stale", "stale")
+	if err := regFail.WarmRuntimeCache(context.Background()); err == nil {
 		t.Fatal("expected list installed modules error")
+	}
+	if _, ok := regFail.ApplicationForModule("stale"); ok {
+		t.Fatal("failed module Find must clear stale module→app mappings")
 	}
 	if err := db.Migrator().DropTable("meta_module"); err != nil {
 		t.Fatalf("drop meta_module: %v", err)
