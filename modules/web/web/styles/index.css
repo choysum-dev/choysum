@@ -144,6 +144,111 @@ html {
 }
 
 /*
+ * OTP / Pin slots: kit bakes first:rounded-l / last:rounded-r / border-r.
+ * Reset physical edges and re-apply logical start/end radii + borders so the
+ * strip mirrors under html[dir=rtl] without editing vendor InputOTP/PinInput.
+ */
+:is([data-slot='input-otp-slot'], [data-slot='pin-input-slot']) {
+  border-top-left-radius: 0 !important;
+  border-top-right-radius: 0 !important;
+  border-bottom-left-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
+  border-left-width: 0 !important;
+  border-right-width: 0 !important;
+  border-inline-end-width: 1px !important;
+  border-inline-start-width: 0 !important;
+}
+:is([data-slot='input-otp-slot'], [data-slot='pin-input-slot']):first-child {
+  border-start-start-radius: var(--radius-md) !important;
+  border-end-start-radius: var(--radius-md) !important;
+  border-inline-start-width: 1px !important;
+}
+:is([data-slot='input-otp-slot'], [data-slot='pin-input-slot']):last-child {
+  border-start-end-radius: var(--radius-md) !important;
+  border-end-end-radius: var(--radius-md) !important;
+}
+
+/*
+ * RangeCalendar selection pill: kit uses physical rounded-l/r on cells.
+ * Map selection-start → inline-start corner, selection-end → inline-end.
+ */
+[data-slot='range-calendar-cell']:has([data-selected]),
+[data-slot='range-calendar-cell']:first-child:has([data-selected]),
+[data-slot='range-calendar-cell']:last-child:has([data-selected]),
+[data-slot='range-calendar-cell']:has([data-selected][data-selection-start]),
+[data-slot='range-calendar-cell']:has([data-selected][data-selection-end]) {
+  border-top-left-radius: 0 !important;
+  border-top-right-radius: 0 !important;
+  border-bottom-left-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
+}
+[data-slot='range-calendar-cell']:first-child:has([data-selected]),
+[data-slot='range-calendar-cell']:has([data-selected][data-selection-start]) {
+  border-start-start-radius: var(--radius-md) !important;
+  border-end-start-radius: var(--radius-md) !important;
+}
+[data-slot='range-calendar-cell']:last-child:has([data-selected]),
+[data-slot='range-calendar-cell']:has([data-selected][data-selection-end]) {
+  border-start-end-radius: var(--radius-md) !important;
+  border-end-end-radius: var(--radius-md) !important;
+}
+
+/* RangeCalendar prev/next: kit absolute left-1 / right-1 + physical Chevron. */
+[data-slot='range-calendar-prev-button'] {
+  inset-inline-start: 0.25rem;
+  left: auto;
+  right: auto;
+}
+[data-slot='range-calendar-next-button'] {
+  inset-inline-end: 0.25rem;
+  left: auto;
+  right: auto;
+}
+:where([dir='rtl'], [dir='rtl'] *)
+  :is(
+    [data-slot='range-calendar-prev-button'],
+    [data-slot='range-calendar-next-button']
+  )
+  > svg {
+  rotate: 180deg;
+}
+
+/*
+ * Carousel side buttons: kit -left-12 / -right-12 (horizontal only).
+ * Match via class token so vertical (left-1/2 + rotate-90) stays centered.
+ */
+[data-slot='carousel-previous'][class*='-left-12'] {
+  inset-inline-start: -3rem;
+  left: auto;
+  right: auto;
+}
+[data-slot='carousel-next'][class*='-right-12'] {
+  inset-inline-end: -3rem;
+  left: auto;
+  right: auto;
+}
+:where([dir='rtl'], [dir='rtl'] *)
+  :is([data-slot='carousel-previous'], [data-slot='carousel-next'])
+  > svg {
+  rotate: 180deg;
+}
+
+/*
+ * BubbleReactions align variant maps start→left-3 / end→right-3 in kit cva.
+ * Prefer logical insets via data-align already stamped on the host.
+ */
+[data-slot='bubble-reactions'][data-align='start'] {
+  inset-inline-start: 0.75rem;
+  left: auto;
+  right: auto;
+}
+[data-slot='bubble-reactions'][data-align='end'] {
+  inset-inline-end: 0.75rem;
+  left: auto;
+  right: auto;
+}
+
+/*
  * Confirm host (portaled AlertDialog): physical align + plaintext bidi.
  * text-align:start + plaintext follows the paragraph base (English → left);
  * physical left/right keeps the block on the reading-start edge while plaintext
