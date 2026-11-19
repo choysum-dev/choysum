@@ -61,14 +61,12 @@ func TestNewDbAppliesSQLitePoolConfig(t *testing.T) {
 	}
 }
 
-func TestNewDbUsesSQLiteDefaultsWhenLoaderDefaultsPresent(t *testing.T) {
-	defaults := config.NewDefaultDbConfig()
+func TestNewDbUsesSQLiteDefaultsWhenPoolUnset(t *testing.T) {
 	cfg := &config.Config{
 		Db: &config.DbConfig{
-			Dialect:      "sqlite",
-			DSN:          filepath.Join(t.TempDir(), "pool-defaults.db"),
-			MaxOpenConns: defaults.MaxOpenConns, // loader "omitted" sentinel
-			MaxIdleConns: defaults.MaxIdleConns,
+			Dialect: "sqlite",
+			DSN:     filepath.Join(t.TempDir(), "pool-defaults.db"),
+			// MaxOpen/Idle left at 0 → documented sqlite defaults via sqlitePoolLimits.
 		},
 	}
 	runtimeScope := NewDefaultScope(context.Background(), scopetest.FactoryInputFromConfig(cfg), testLogger()).(*defaultScope)

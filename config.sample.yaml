@@ -72,8 +72,8 @@ default_choysum_path: ./.choysum
 # SQLite scale like Postgres/MySQL. For dialect=sqlite the runtime clamps:
 #   maxOpenConns: default 4, floor 2, ceiling 8
 #   maxIdleConns: default 2, floor 2, and never above maxOpenConns
-# Postgres/MySQL use the values as given (defaults from NewDefaultDbConfig when
-# unset). Prefer a server DB under concurrent write load.
+# Postgres/MySQL use the values as given; when unset they scale with GOMAXPROCS
+# (open=4×, idle=2×). Prefer a server DB under concurrent write load.
 # db:
 #   dialect: sqlite
 #   dsn: ./.choysum/choysum.sqlite

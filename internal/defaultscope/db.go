@@ -97,27 +97,19 @@ func newDb(ctx context.Context, dbOpts scope.DatabaseRuntimeOptions, logger *slo
 		// SQLite writers are serialized; a large pool does not scale like PG/MySQL
 		// and raises `database is locked` during install/migration bursts.
 		// Nested scope.Run / lease renew still need >1 connection (single-conn
-		// deadlocks). Honor db.maxOpenConns/maxIdleConns with a small clamp.
-		//
-		// Config loader seeds MaxOpen/Idle with NewDefaultDbConfig (4*maxProcs /
-		// 2*maxProcs). Treat those loader defaults as "omitted" so documented
-		// sqlite defaults (open=4, idle=2) apply unless the user set another value.
-		if maxOpenConns == defaults.MaxOpenConns {
-			maxOpenConns = 0
-		}
-		if maxIdleConns == defaults.MaxIdleConns {
-			maxIdleConns = 0
-		}
+		// deadlocks). Honor db.maxOpenConns/maxIdleConns with a small clamp;
+		// omitted/non-positive values become documented defaults (open=4, idle=2).
 		maxOpenConns, maxIdleConns = sqlitePoolLimits(maxOpenConns, maxIdleConns)
 		sqlDB.SetMaxOpenConns(maxOpenConns)
 		sqlDB.SetMaxIdleConns(maxIdleConns)
 		sqlDB.SetConnMaxLifetime(0)
 	} else {
+		serverOpen, serverIdle := config.ServerDbPoolDefaults()
 		if maxIdleConns <= 0 {
-			maxIdleConns = defaults.MaxIdleConns
+			maxIdleConns = serverIdle
 		}
 		if maxOpenConns <= 0 {
-			maxOpenConns = defaults.MaxOpenConns
+			maxOpenConns = serverOpen
 		}
 		if connMaxLifetimeSeconds <= 0 {
 			connMaxLifetimeSeconds = defaults.ConnMaxLifetime
