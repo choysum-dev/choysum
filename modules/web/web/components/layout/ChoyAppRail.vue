@@ -118,11 +118,12 @@ function appKey(app: MenuItem): string {
 }
 
 /**
- * Pointer press focuses the button before click/paint, so kit focus-visible:ring-2
- * flashes even when CSS/blur clear it a frame later. preventDefault keeps focus
- * where it was; keyboard Tab/Enter still focuses and activates normally.
+ * Expanded pointer press focuses the button before click/paint and flashes the kit
+ * focus-visible ring. preventDefault keeps focus where it was. Collapsed flyout
+ * triggers are left alone so Reka DropdownMenu pointer handling stays intact.
+ * Keyboard Tab/Enter still focuses and keeps the kit focus-visible ring.
  */
-function onRailMouseDown(e: MouseEvent) {
+function onExpandedMouseDown(e: MouseEvent) {
   if (e.button !== 0) return
   e.preventDefault()
 }
@@ -130,16 +131,14 @@ function onRailMouseDown(e: MouseEvent) {
 function onSelectApp(app: MenuItem) {
   if (useFlyout.value) return
   void menuApi?.navigateTo(app)
-  blurRailFocus()
 }
 
 /**
- * After a leaf click: portal teardown often click-throughs to the rail trigger
- * and synthesizes mouseenter. Suppress opens briefly, then unlock so a later
- * hover on the same app icon can open again (leave-based unlock fails because
- * onFlyoutLeaf already zeros intent).
+ * After a leaf click on one app: portal teardown often click-throughs to that
+ * app's trigger and synthesizes mouseenter. Suppress reopen for that app only,
+ * then unlock so a later hover works again.
  */
-const suppressFlyoutOpen = ref(false)
+const suppressFlyoutKey = ref<string | null>(null)
 let suppressFlyoutTimer: ReturnType<typeof setTimeout> | null = null
 
 function clearSuppressFlyoutTimer() {
@@ -149,40 +148,36 @@ function clearSuppressFlyoutTimer() {
   }
 }
 
-function armFlyoutSuppress() {
-  suppressFlyoutOpen.value = true
+function isFlyoutSuppressed(key: string): boolean {
+  return !!key && suppressFlyoutKey.value === key
+}
+
+function armFlyoutSuppress(key: string) {
+  if (!key) return
+  suppressFlyoutKey.value = key
   clearSuppressFlyoutTimer()
   suppressFlyoutTimer = setTimeout(() => {
     suppressFlyoutTimer = null
-    suppressFlyoutOpen.value = false
-    // Drop intent accrued while suppressed so we do not instant-open under a
-    // still-hovering pointer; the next enter (or leave→enter) can open.
-    for (const k of Object.keys(hoverIntent)) hoverIntent[k] = 0
-    clearAllHoverTimers()
+    if (suppressFlyoutKey.value === key) suppressFlyoutKey.value = null
+    // Drop only this app's intent accrued while suppressed so a still-hovering
+    // pointer does not instant-open; other apps keep their hover timers.
+    hoverIntent[key] = 0
+    clearHoverTimers(key)
   }, APP_RAIL_LEAF_SUPPRESS_MS)
 }
 
-function blurRailFocus() {
-  const drop = () => {
-    const el = document.activeElement
-    if (el instanceof HTMLElement && el.closest('[data-testid="choy-shell-app-rail"]')) {
-      el.blur()
-    }
-  }
-  drop()
-  // Reka may restore focus to the flyout trigger after close — clear again.
-  queueMicrotask(() => {
-    requestAnimationFrame(drop)
-  })
-}
-
-function onFlyoutLeaf(item: MenuItem) {
+function onFlyoutLeaf(app: MenuItem, item: MenuItem) {
   void menuApi?.navigateTo(item)
   openFlyoutKey.value = null
   for (const k of Object.keys(hoverIntent)) hoverIntent[k] = 0
   clearAllHoverTimers()
-  armFlyoutSuppress()
-  blurRailFocus()
+  armFlyoutSuppress(appKey(app))
+}
+
+function onFlyoutCloseAutoFocus(e: Event) {
+  // After a leaf select, skip Reka restore onto the trigger (pointer ring flash).
+  // Escape / outside dismiss still restores focus for keyboard users.
+  if (suppressFlyoutKey.value) e.preventDefault()
 }
 
 const tooltipOpen = reactive<Record<string, boolean>>({})
@@ -232,14 +227,14 @@ function setFlyoutOpen(app: MenuItem, open: boolean) {
   const key = appKey(app)
   if (!key || !useFlyout.value) return
   if (open) {
-    // Leaf-select suppress: ignore trigger re-click / Reka open while pointer never left.
-    if (suppressFlyoutOpen.value) return
+    // Leaf-select suppress: ignore trigger re-click / Reka open for this app only.
+    if (isFlyoutSuppressed(key)) return
     clearHoverTimers(key)
     openFlyoutKey.value = key
     return
   }
   // Always honor close after a leaf select (do not keep open via hoverIntent).
-  if (suppressFlyoutOpen.value) {
+  if (isFlyoutSuppressed(key)) {
     clearHoverTimers(key)
     if (openFlyoutKey.value === key) openFlyoutKey.value = null
     return
@@ -274,22 +269,17 @@ function bumpFlyoutHover(app: MenuItem, delta: number) {
       openFlyoutKey.value = null
     }
     if (openFlyoutKey.value === key) return
-    // After leaf select, wait for a full leave (intent→0) before hover can reopen.
-    if (suppressFlyoutOpen.value) return
+    // After leaf select, wait for the suppress window before this app can reopen.
+    if (isFlyoutSuppressed(key)) return
     hoverOpenTimers.set(
       key,
       setTimeout(() => {
         hoverOpenTimers.delete(key)
-        if (suppressFlyoutOpen.value) return
+        if (isFlyoutSuppressed(key)) return
         if ((hoverIntent[key] || 0) > 0) openFlyoutKey.value = key
       }, APP_RAIL_HOVER_OPEN_MS),
     )
   } else {
-    // Real leave during suppress: unlock early so a quick return can hover-open.
-    if (prev > 0 && suppressFlyoutOpen.value) {
-      clearSuppressFlyoutTimer()
-      suppressFlyoutOpen.value = false
-    }
     hoverCloseTimers.set(
       key,
       setTimeout(() => {
@@ -314,7 +304,7 @@ watch(useFlyout, (enabled) => {
   if (!enabled) {
     openFlyoutKey.value = null
     clearSuppressFlyoutTimer()
-    suppressFlyoutOpen.value = false
+    suppressFlyoutKey.value = null
     for (const k of Object.keys(hoverIntent)) hoverIntent[k] = 0
     clearAllHoverTimers()
   }
@@ -343,10 +333,9 @@ watch(useFlyout, (enabled) => {
                   <SidebarMenuButton
                     size="lg"
                     type="button"
-                    class="group/rail h-9 justify-center p-1 outline-none hover:bg-transparent focus:ring-0 focus-visible:ring-0 data-[active=true]:bg-transparent"
+                    class="group/rail h-9 justify-center p-1 hover:bg-transparent data-[active=true]:bg-transparent"
                     :is-active="isActive(app)"
                     data-testid="choy-shell-app-rail-item"
-                    @mousedown="onRailMouseDown"
                     @mouseenter="onFlyoutHoverEnter(app)"
                     @mouseleave="onFlyoutHoverLeave(app)"
                   >
@@ -375,12 +364,12 @@ watch(useFlyout, (enabled) => {
                   data-testid="choy-shell-app-rail-flyout"
                   @mouseenter="onFlyoutHoverEnter(app)"
                   @mouseleave="onFlyoutHoverLeave(app)"
-                  @close-auto-focus="(e: Event) => e.preventDefault()"
+                  @close-auto-focus="onFlyoutCloseAutoFocus"
                 >
                   <ChoyAppRailFlyout
                     :root="app"
                     :label-of="labelOf"
-                    :leaf-select="onFlyoutLeaf"
+                    :leaf-select="(item: MenuItem) => onFlyoutLeaf(app, item)"
                     :hover-enter="() => onFlyoutHoverEnter(app)"
                     :hover-leave="() => onFlyoutHoverLeave(app)"
                   />
@@ -397,10 +386,10 @@ watch(useFlyout, (enabled) => {
                   <SidebarMenuButton
                     size="lg"
                     type="button"
-                    class="group/rail h-9 justify-center p-1 outline-none hover:bg-transparent focus:ring-0 focus-visible:ring-0 active:bg-transparent data-[active=true]:bg-transparent"
+                    class="group/rail h-9 justify-center p-1 hover:bg-transparent active:bg-transparent data-[active=true]:bg-transparent"
                     :is-active="isActive(app)"
                     data-testid="choy-shell-app-rail-item"
-                    @mousedown="onRailMouseDown"
+                    @mousedown="onExpandedMouseDown"
                     @click="onSelectApp(app)"
                   >
                     <span
@@ -437,20 +426,3 @@ watch(useFlyout, (enabled) => {
     </SidebarContent>
   </div>
 </template>
-
-<style scoped>
-/*
- * Expanded click must not paint a focus ring flash. Kit uses focus-visible:ring-2;
- * pointer mousedown preventDefault avoids focus, and this kills any residual ring.
- */
-.choy-app-rail :deep([data-testid='choy-shell-app-rail-item']),
-.choy-app-rail :deep([data-testid='choy-shell-app-rail-item']:focus),
-.choy-app-rail :deep([data-testid='choy-shell-app-rail-item']:focus-visible),
-.choy-app-rail :deep([data-testid='choy-shell-app-rail-item']:active) {
-  outline: none;
-  -webkit-tap-highlight-color: transparent;
-  --tw-ring-offset-shadow: 0 0 #0000;
-  --tw-ring-shadow: 0 0 #0000;
-  box-shadow: none;
-}
-</style>

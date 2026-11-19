@@ -73,14 +73,10 @@ function onLeaf(item: MenuItem) {
       <DropdownMenuGroup>
         <template v-for="item in group.items" :key="itemKey(item)">
           <DropdownMenuSub v-if="isBranch(item)">
-            <DropdownMenuSubTrigger
-              class="outline-none focus:outline-none focus-visible:outline-none focus-visible:ring-0"
-              data-testid="choy-shell-app-rail-flyout-sub"
-            >
+            <DropdownMenuSubTrigger data-testid="choy-shell-app-rail-flyout-sub">
               {{ labelOf(item) }}
             </DropdownMenuSubTrigger>
             <DropdownMenuSubContent
-              class="outline-none"
               data-testid="choy-shell-app-rail-flyout-sub-content"
               @mouseenter="onSubEnter"
               @mouseleave="onSubLeave"
@@ -98,7 +94,6 @@ function onLeaf(item: MenuItem) {
           <DropdownMenuItem
             v-else
             :disabled="!!item.disabled"
-            class="outline-none focus:outline-none focus-visible:outline-none focus-visible:ring-0"
             data-testid="choy-shell-app-rail-flyout-leaf"
             @select="onLeaf(item)"
           >
@@ -111,14 +106,10 @@ function onLeaf(item: MenuItem) {
   <template v-else>
     <template v-for="item in flatItems" :key="itemKey(item)">
       <DropdownMenuSub v-if="isBranch(item)">
-        <DropdownMenuSubTrigger
-          class="outline-none focus:outline-none focus-visible:outline-none focus-visible:ring-0"
-          data-testid="choy-shell-app-rail-flyout-sub"
-        >
+        <DropdownMenuSubTrigger data-testid="choy-shell-app-rail-flyout-sub">
           {{ labelOf(item) }}
         </DropdownMenuSubTrigger>
         <DropdownMenuSubContent
-          class="outline-none"
           data-testid="choy-shell-app-rail-flyout-sub-content"
           @mouseenter="onSubEnter"
           @mouseleave="onSubLeave"
@@ -136,7 +127,6 @@ function onLeaf(item: MenuItem) {
       <DropdownMenuItem
         v-else
         :disabled="!!item.disabled"
-        class="outline-none focus:outline-none focus-visible:outline-none focus-visible:ring-0"
         data-testid="choy-shell-app-rail-flyout-leaf"
         @select="onLeaf(item)"
       >
