@@ -334,7 +334,6 @@ describe('useI18nStore.revalidateTerminologyIfStale / reloadTerminology', () => 
     expect(ok).toBe(true);
     expect(store.activeLanguage.textDirection).toBe('rtl');
     expect(document.documentElement.getAttribute('dir')).toBe('rtl');
-    expect(document.documentElement.style.getPropertyValue('--choy-direction')).toBe('rtl');
   });
 
   test('setLang: pending switch is not no-opped by a same-as-current request', async () => {

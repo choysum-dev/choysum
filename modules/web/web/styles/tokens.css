@@ -187,11 +187,6 @@ html {
   --choy-field-label-max: 8rem;
   --choy-field-label-control-gap: 0.75rem;
 
-  /* Direction defaults; updateDocumentDirection may override at runtime. */
-  --choy-direction: ltr;
-  --choy-transform-direction: -100%;
-  --choy-direction-flip: 1;
-
   /*
    * Short aliases matching shadcn-vue Theming var(--popover) etc.
    * Prefer --choy-color-* in product CSS; L2 upstream may use short names.
@@ -299,12 +294,6 @@ html[data-density='compact'] {
   --choy-field-label-basis: 25%;
   --choy-field-label-max: 7.5rem;
   --choy-field-label-control-gap: 0.5rem;
-}
-
-html[dir='rtl'] {
-  --choy-direction: rtl;
-  --choy-transform-direction: 100%;
-  --choy-direction-flip: -1;
 }
 
 @media (prefers-reduced-motion: reduce) {
