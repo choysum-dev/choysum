@@ -161,6 +161,10 @@ func (r *Registry) WarmRuntimeCache(ctx context.Context) error {
 			}
 		}
 		r.replaceModuleApplications(next)
+	} else {
+		// No catalog table: drop any Remember/prior-warm mappings so Lookup cannot
+		// resolve modules that are no longer installable in this DB.
+		r.replaceModuleApplications(nil)
 	}
 
 	langs := map[string]struct{}{}

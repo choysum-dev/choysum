@@ -92,13 +92,16 @@ func (s *GRPCWebServer) prepareBootstrapModeStartup() (bootstrapModeStartupResul
 }
 
 func (s *GRPCWebServer) finishApplicationModeStartup(result applicationModeStartupResult) (modeRuntimeStartupSummary, error) {
+	if s.runtimeScope == nil {
+		return result.summary(), xfmt.Errorf("application mode startup requires a runtime scope")
+	}
 	// Warm TermStore before the JS pool starts serving RPCs. Lookup must stay
 	// memory-only on the JS thread; sync DB warm there deadlocks the SQLite pool.
 	reg := i18nstore.RegistryFor(s.runtimeScope)
 	const warmAttempts = 3
-	warmCtx := context.Background()
-	if s.runtimeScope != nil && s.runtimeScope.Context() != nil {
-		warmCtx = s.runtimeScope.Context()
+	warmCtx := s.runtimeScope.Context()
+	if warmCtx == nil {
+		warmCtx = context.Background()
 	}
 	var warmErr error
 	for attempt := 1; attempt <= warmAttempts; attempt++ {

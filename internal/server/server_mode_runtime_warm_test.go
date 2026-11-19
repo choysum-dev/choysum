@@ -20,6 +20,14 @@ import (
 	"gorm.io/gorm"
 )
 
+func TestFinishApplicationModeStartupRequiresRuntimeScope(t *testing.T) {
+	srv := &GRPCWebServer{jsExecutor: &readyHooksMockExec{}}
+	_, err := srv.finishApplicationModeStartup(applicationModeStartupResult{Reload: true})
+	if err == nil {
+		t.Fatal("expected error when runtimeScope is nil")
+	}
+}
+
 func TestFinishApplicationModeStartupWarnsWhenWarmFails(t *testing.T) {
 	store.ResetSharedRegistryForTests()
 	t.Cleanup(store.ResetSharedRegistryForTests)
