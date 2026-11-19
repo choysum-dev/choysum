@@ -88,24 +88,21 @@ func newDb(ctx context.Context, dbOpts scope.DatabaseRuntimeOptions, logger *slo
 	if err != nil {
 		panic(err)
 	}
-	// SQLite is very sensitive to concurrent writers across multiple pooled
-	// connections and can easily end up in `database is locked` during migrations
-	// / module install bursts.
-	//
-	// However, the module manager lease/migration logic may use short-lived
-	// transactions via nested scope.Run calls while a caller is already inside
-	// another scope.Run.
-	// Using a *single* connection can deadlock. Keep the pool small but >1.
+	defaults := config.NewDefaultDbConfig()
+	maxIdleConns := dbOpts.MaxIdleConns
+	maxOpenConns := dbOpts.MaxOpenConns
+	connMaxLifetimeSeconds := dbOpts.ConnMaxLifetimeSeconds
+
 	if dialect == "sqlite" {
-		sqlDB.SetMaxIdleConns(2)
-		sqlDB.SetMaxOpenConns(2)
+		// SQLite writers are serialized; a large pool does not scale like PG/MySQL
+		// and raises `database is locked` during install/migration bursts.
+		// Nested scope.Run / lease renew still need >1 connection (single-conn
+		// deadlocks). Honor db.maxOpenConns/maxIdleConns with a small clamp.
+		maxOpenConns, maxIdleConns = sqlitePoolLimits(maxOpenConns, maxIdleConns)
+		sqlDB.SetMaxOpenConns(maxOpenConns)
+		sqlDB.SetMaxIdleConns(maxIdleConns)
 		sqlDB.SetConnMaxLifetime(0)
 	} else {
-		defaults := config.NewDefaultDbConfig()
-		maxIdleConns := dbOpts.MaxIdleConns
-		maxOpenConns := dbOpts.MaxOpenConns
-		connMaxLifetimeSeconds := dbOpts.ConnMaxLifetimeSeconds
-
 		if maxIdleConns <= 0 {
 			maxIdleConns = defaults.MaxIdleConns
 		}
@@ -194,4 +191,39 @@ func sqliteFilePathFromDSN(dsn string) (string, bool) {
 		return path, true
 	}
 	return trimmed, true
+}
+
+// sqlitePoolLimits clamps SQLite connection pool size for nested leases without
+// pretending SQLite scales like a server DB.
+//
+// Defaults when unset or non-positive: open=4, idle=2.
+// Floor 2 (nested scope.Run / lease renew), ceiling 8 for MaxOpenConns.
+func sqlitePoolLimits(maxOpen, maxIdle int) (open, idle int) {
+	const (
+		sqliteDefaultMaxOpen = 4
+		sqliteDefaultMaxIdle = 2
+		sqliteMinConns       = 2
+		sqliteMaxOpenCap     = 8
+	)
+	open = maxOpen
+	if open <= 0 {
+		open = sqliteDefaultMaxOpen
+	}
+	if open < sqliteMinConns {
+		open = sqliteMinConns
+	}
+	if open > sqliteMaxOpenCap {
+		open = sqliteMaxOpenCap
+	}
+	idle = maxIdle
+	if idle <= 0 {
+		idle = sqliteDefaultMaxIdle
+	}
+	if idle < sqliteMinConns {
+		idle = sqliteMinConns
+	}
+	if idle > open {
+		idle = open
+	}
+	return open, idle
 }

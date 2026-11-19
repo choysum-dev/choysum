@@ -337,7 +337,7 @@ func TestWarmCoreStoreAndEmptyLangNoop(t *testing.T) {
 	}
 }
 
-func TestRegistryLoadModuleApplicationFromDB(t *testing.T) {
+func TestRegistryApplicationForModuleMemoryOnly(t *testing.T) {
 	rs := newTestScope(t)
 	if err := rs.Session().AutoMigrate(&meta.Module{}); err != nil {
 		t.Fatal(err)
@@ -347,18 +347,17 @@ func TestRegistryLoadModuleApplicationFromDB(t *testing.T) {
 	}).Error; err != nil {
 		t.Fatal(err)
 	}
-	if err := rs.Session().Create(&meta.Module{
-		Name: "emptyapp", ApplicationStr: "", Status: meta.Installed,
-	}).Error; err != nil {
-		t.Fatal(err)
-	}
 
 	reg := store.NewRegistry(rs)
+	// DB row alone must not populate Lookup's module→app map.
+	if _, ok := reg.ApplicationForModule("auth"); ok {
+		t.Fatal("ApplicationForModule must miss before Remember/Warm")
+	}
+	reg.RememberModuleApplication("auth", "auth")
 	app, ok := reg.ApplicationForModule("auth")
 	if !ok || app != "auth" {
 		t.Fatalf("ApplicationForModule auth = %q ok=%v", app, ok)
 	}
-	// Cached path.
 	app2, ok := reg.ApplicationForModule("auth")
 	if !ok || app2 != "auth" {
 		t.Fatalf("cached = %q ok=%v", app2, ok)
@@ -366,13 +365,10 @@ func TestRegistryLoadModuleApplicationFromDB(t *testing.T) {
 	if _, ok := reg.ApplicationForModule("missing"); ok {
 		t.Fatal("missing module")
 	}
-	if _, ok := reg.ApplicationForModule("emptyapp"); ok {
-		t.Fatal("empty ApplicationStr")
-	}
 
 	nilReg := store.NewRegistry(nil)
 	if _, ok := nilReg.ApplicationForModule("auth"); ok {
-		t.Fatal("nil scope")
+		t.Fatal("nil registry cache should miss")
 	}
 	reg.RememberModuleApplication("", "x")
 	reg.RememberModuleApplication("m", "")

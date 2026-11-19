@@ -65,3 +65,17 @@ default_choysum_path: ./.choysum
 #   upstream_url: "https://esm.sh"
 #   offline: false
 # The script defaults to $HOME/.choysum/cert; pass a custom output dir if needed.
+
+# ---- Database ----
+# Default local dialect is sqlite (DSN under default_choysum_path). Nested
+# transactions need at least 2 open connections; a large pool does not make
+# SQLite scale like Postgres/MySQL. For dialect=sqlite the runtime clamps:
+#   maxOpenConns: default 4, floor 2, ceiling 8
+#   maxIdleConns: default 2, floor 2, and never above maxOpenConns
+# Postgres/MySQL use the values as given (defaults from NewDefaultDbConfig when
+# unset). Prefer a server DB under concurrent write load.
+# db:
+#   dialect: sqlite
+#   dsn: ./.choysum/choysum.sqlite
+#   maxOpenConns: 4
+#   maxIdleConns: 2

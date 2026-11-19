@@ -69,7 +69,10 @@ func (r *Registry) Lookup(module, lang, scopeKey, src, kind string) (string, boo
 	return r.StoreFor(app).Lookup(module, lang, scopeKey, src, kind)
 }
 
-// ApplicationForModule returns the ApplicationStr for a module name.
+// ApplicationForModule returns the cached ApplicationStr for a module name.
+// Memory-only: callers must populate via WarmRuntimeCache or
+// RememberModuleApplication. Lookup must not sync-query meta_module (SQLite
+// pool deadlock when an RPC already holds a connection on the JS thread).
 func (r *Registry) ApplicationForModule(module string) (string, bool) {
 	module = strings.TrimSpace(module)
 	if module == "" {
@@ -77,21 +80,9 @@ func (r *Registry) ApplicationForModule(module string) (string, bool) {
 	}
 
 	r.mu.RLock()
-	if app, ok := r.moduleToApp[module]; ok {
-		r.mu.RUnlock()
-		return app, true
-	}
-	r.mu.RUnlock()
-
-	app, ok := r.loadModuleApplication(module)
-	if !ok {
-		return "", false
-	}
-
-	r.mu.Lock()
-	r.moduleToApp[module] = app
-	r.mu.Unlock()
-	return app, true
+	defer r.mu.RUnlock()
+	app, ok := r.moduleToApp[module]
+	return app, ok
 }
 
 // RememberModuleApplication caches a module → application mapping (tests / install hooks).
@@ -104,25 +95,6 @@ func (r *Registry) RememberModuleApplication(module, application string) {
 	r.mu.Lock()
 	r.moduleToApp[module] = application
 	r.mu.Unlock()
-}
-
-func (r *Registry) loadModuleApplication(module string) (string, bool) {
-	if r.runtimeScope == nil || r.runtimeScope.Session() == nil {
-		return "", false
-	}
-	session := r.runtimeScope.Session()
-	if !session.Migrator().HasTable((&meta.Module{}).TableName()) {
-		return "", false
-	}
-	var mod meta.Module
-	if err := session.Where("name = ?", module).Take(&mod).Error; err != nil {
-		return "", false
-	}
-	app := strings.TrimSpace(mod.ApplicationStr)
-	if app == "" {
-		return "", false
-	}
-	return app, true
 }
 
 // WarmRuntimeCache pre-fills module→application maps and loads terminology for

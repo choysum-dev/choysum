@@ -69,6 +69,11 @@ Gotchas:
  install when `auth` is already installed).
 - Default DB is embedded SQLite at `.choysum/choysum.sqlite`; no external DB
   needed. Postgres/MySQL and S3 document storage are optional.
+- SQLite connection pool: nested `scope.Run` / lease renew need **at least 2**
+  open connections (a single-conn pool deadlocks). Raising `db.maxOpenConns`
+  does not make SQLite scale like Postgres/MySQL — the runtime clamps open
+  connections to **2–8** (default **4** when unset) and idle to **2…open**
+  (default **2**). Prefer Postgres or MySQL under concurrent write load.
 
 ### Auth / first login
 

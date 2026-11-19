@@ -42,8 +42,8 @@ func (s *registryCoverageScope) Context() context.Context {
 }
 func (s *registryCoverageScope) Logger() *slog.Logger { return s.logger }
 
-func TestRegistryLoadModuleApplicationWithoutMetaModuleTable(t *testing.T) {
-	db, err := gorm.Open(sqlite.Open(filepath.Join(t.TempDir(), "registry-no-meta.db")), &gorm.Config{})
+func TestRegistryApplicationForModuleMissWithoutWarm(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open(filepath.Join(t.TempDir(), "registry-no-warm.db")), &gorm.Config{})
 	if err != nil {
 		t.Fatalf("open sqlite: %v", err)
 	}
@@ -55,8 +55,8 @@ func TestRegistryLoadModuleApplicationWithoutMetaModuleTable(t *testing.T) {
 	}
 	reg := NewRegistry(rs)
 
-	if app, ok := reg.loadModuleApplication("auth"); ok || app != "" {
-		t.Fatalf("loadModuleApplication() = %q ok=%v, want empty without meta_module table", app, ok)
+	if app, ok := reg.ApplicationForModule("auth"); ok || app != "" {
+		t.Fatalf("ApplicationForModule() = %q ok=%v, want miss without Remember/Warm", app, ok)
 	}
 }
 
