@@ -13,7 +13,11 @@ import { useMenuStore } from '../../stores/menuStore'
 import { useLayoutStore } from '../../stores/layoutStore'
 import { useI18nStore } from '../../stores/i18nStore'
 import { firstGrapheme } from './appRailGlyph'
-import { APP_RAIL_HOVER_CLOSE_MS, APP_RAIL_HOVER_OPEN_MS } from './appRailHover'
+import {
+  APP_RAIL_HOVER_CLOSE_MS,
+  APP_RAIL_HOVER_OPEN_MS,
+  APP_RAIL_LEAF_SUPPRESS_MS,
+} from './appRailHover'
 import ChoyAppRailFlyout from './ChoyAppRailFlyout.vue'
 import { Tooltip, TooltipContent, TooltipTrigger } from '../vendor/ui/tooltip'
 import {
@@ -113,16 +117,67 @@ function appKey(app: MenuItem): string {
   return app.id || app.path || app.title || ''
 }
 
+/**
+ * Expanded pointer press focuses the button before click/paint and flashes the kit
+ * focus-visible ring. preventDefault keeps focus where it was. Collapsed flyout
+ * triggers are left alone so Reka DropdownMenu pointer handling stays intact.
+ * Keyboard Tab/Enter still focuses and keeps the kit focus-visible ring.
+ */
+function onExpandedMouseDown(e: MouseEvent) {
+  if (e.button !== 0) return
+  e.preventDefault()
+}
+
 function onSelectApp(app: MenuItem) {
   if (useFlyout.value) return
   void menuApi?.navigateTo(app)
 }
 
-function onFlyoutLeaf(item: MenuItem) {
+/**
+ * After a leaf click on one app: portal teardown often click-throughs to that
+ * app's trigger and synthesizes mouseenter. Suppress reopen for that app only,
+ * then unlock so a later hover works again.
+ */
+const suppressFlyoutKey = ref<string | null>(null)
+let suppressFlyoutTimer: ReturnType<typeof setTimeout> | null = null
+
+function clearSuppressFlyoutTimer() {
+  if (suppressFlyoutTimer) {
+    clearTimeout(suppressFlyoutTimer)
+    suppressFlyoutTimer = null
+  }
+}
+
+function isFlyoutSuppressed(key: string): boolean {
+  return !!key && suppressFlyoutKey.value === key
+}
+
+function armFlyoutSuppress(key: string) {
+  if (!key) return
+  suppressFlyoutKey.value = key
+  clearSuppressFlyoutTimer()
+  suppressFlyoutTimer = setTimeout(() => {
+    suppressFlyoutTimer = null
+    if (suppressFlyoutKey.value === key) suppressFlyoutKey.value = null
+    // Drop only this app's intent accrued while suppressed so a still-hovering
+    // pointer does not instant-open; other apps keep their hover timers.
+    hoverIntent[key] = 0
+    clearHoverTimers(key)
+  }, APP_RAIL_LEAF_SUPPRESS_MS)
+}
+
+function onFlyoutLeaf(app: MenuItem, item: MenuItem) {
   void menuApi?.navigateTo(item)
   openFlyoutKey.value = null
   for (const k of Object.keys(hoverIntent)) hoverIntent[k] = 0
   clearAllHoverTimers()
+  armFlyoutSuppress(appKey(app))
+}
+
+function onFlyoutCloseAutoFocus(e: Event) {
+  // After a leaf select, skip Reka restore onto the trigger (pointer ring flash).
+  // Escape / outside dismiss still restores focus for keyboard users.
+  if (suppressFlyoutKey.value) e.preventDefault()
 }
 
 const tooltipOpen = reactive<Record<string, boolean>>({})
@@ -160,6 +215,7 @@ function clearAllHoverTimers() {
 
 onBeforeUnmount(() => {
   clearAllHoverTimers()
+  clearSuppressFlyoutTimer()
 })
 
 function isFlyoutOpen(app: MenuItem): boolean {
@@ -171,8 +227,16 @@ function setFlyoutOpen(app: MenuItem, open: boolean) {
   const key = appKey(app)
   if (!key || !useFlyout.value) return
   if (open) {
+    // Leaf-select suppress: ignore trigger re-click / Reka open for this app only.
+    if (isFlyoutSuppressed(key)) return
     clearHoverTimers(key)
     openFlyoutKey.value = key
+    return
+  }
+  // Always honor close after a leaf select (do not keep open via hoverIntent).
+  if (isFlyoutSuppressed(key)) {
+    clearHoverTimers(key)
+    if (openFlyoutKey.value === key) openFlyoutKey.value = null
     return
   }
   // Ignore Reka dismiss while the pointer is still on the trigger/content (modal overlay flicker).
@@ -188,7 +252,8 @@ function bumpFlyoutHover(app: MenuItem, delta: number) {
   if (!useFlyout.value) return
   const key = appKey(app)
   if (!key) return
-  const next = Math.max(0, (hoverIntent[key] || 0) + delta)
+  const prev = hoverIntent[key] || 0
+  const next = Math.max(0, prev + delta)
   hoverIntent[key] = next
   clearHoverTimers(key)
   if (next > 0) {
@@ -204,10 +269,13 @@ function bumpFlyoutHover(app: MenuItem, delta: number) {
       openFlyoutKey.value = null
     }
     if (openFlyoutKey.value === key) return
+    // After leaf select, wait for the suppress window before this app can reopen.
+    if (isFlyoutSuppressed(key)) return
     hoverOpenTimers.set(
       key,
       setTimeout(() => {
         hoverOpenTimers.delete(key)
+        if (isFlyoutSuppressed(key)) return
         if ((hoverIntent[key] || 0) > 0) openFlyoutKey.value = key
       }, APP_RAIL_HOVER_OPEN_MS),
     )
@@ -235,6 +303,8 @@ function onFlyoutHoverLeave(app: MenuItem) {
 watch(useFlyout, (enabled) => {
   if (!enabled) {
     openFlyoutKey.value = null
+    clearSuppressFlyoutTimer()
+    suppressFlyoutKey.value = null
     for (const k of Object.keys(hoverIntent)) hoverIntent[k] = 0
     clearAllHoverTimers()
   }
@@ -243,7 +313,7 @@ watch(useFlyout, (enabled) => {
 
 <template>
   <div
-    class="text-sidebar-foreground flex h-full shrink-0 flex-col overflow-hidden"
+    class="choy-app-rail text-sidebar-foreground flex h-full shrink-0 flex-col overflow-hidden"
     data-testid="choy-shell-app-rail"
     :style="{ width: 'var(--sidebar-width-icon)' }"
   >
@@ -290,15 +360,16 @@ watch(useFlyout, (enabled) => {
                   :side="railPopupSide"
                   align="start"
                   :side-offset="4"
-                  class="min-w-[10rem]"
+                  class="choy-app-rail-flyout min-w-[10rem] outline-none"
                   data-testid="choy-shell-app-rail-flyout"
                   @mouseenter="onFlyoutHoverEnter(app)"
                   @mouseleave="onFlyoutHoverLeave(app)"
+                  @close-auto-focus="onFlyoutCloseAutoFocus"
                 >
                   <ChoyAppRailFlyout
                     :root="app"
                     :label-of="labelOf"
-                    :leaf-select="onFlyoutLeaf"
+                    :leaf-select="(item: MenuItem) => onFlyoutLeaf(app, item)"
                     :hover-enter="() => onFlyoutHoverEnter(app)"
                     :hover-leave="() => onFlyoutHoverLeave(app)"
                   />
@@ -315,9 +386,10 @@ watch(useFlyout, (enabled) => {
                   <SidebarMenuButton
                     size="lg"
                     type="button"
-                    class="group/rail h-9 justify-center p-1 hover:bg-transparent data-[active=true]:bg-transparent"
+                    class="group/rail h-9 justify-center p-1 hover:bg-transparent active:bg-transparent data-[active=true]:bg-transparent"
                     :is-active="isActive(app)"
                     data-testid="choy-shell-app-rail-item"
+                    @mousedown="onExpandedMouseDown"
                     @click="onSelectApp(app)"
                   >
                     <span

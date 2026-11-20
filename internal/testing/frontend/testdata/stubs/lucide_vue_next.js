@@ -101,6 +101,7 @@ export const TriangleAlert = icon('TriangleAlert');
 export const Undo2 = icon('Undo2');
 export const Upload = icon('Upload');
 export const User = icon('User');
+export const UserCog = icon('UserCog');
 export const UserRound = icon('UserRound');
 export const Users = icon('Users');
 export const X = icon('X');

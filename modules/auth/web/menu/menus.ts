@@ -4,7 +4,7 @@
 import { type MenuItem } from '@/core/web/menu';
 import { defineMenu } from '@/core/web/resource';
 import { createTranslate } from '@/web/web/i18n';
-import { Shield } from 'lucide-vue-next';
+import { UserCog } from 'lucide-vue-next';
 
 const { _lt } = createTranslate('auth', { scope: 'web/menu/menus' });
 
@@ -51,7 +51,7 @@ export const authMenus: MenuItem[] = [
   defineMenu('auth.menu.root', {
     title: _lt('Access Control'),
     sequence: 100,
-    icon: Shield,
+    icon: UserCog,
     children: [
       defineMenu('auth.menu.user_list', {
         title: _lt('User List'),

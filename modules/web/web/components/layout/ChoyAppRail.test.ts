@@ -11,7 +11,11 @@ import { useMenuStore } from '../../stores/menuStore';
 import { useLayoutStore } from '../../stores/layoutStore';
 import { pinViewportWidth } from '../../stores/layoutStore/pinViewport';
 import ChoyAppRail from './ChoyAppRail.vue';
-import { APP_RAIL_HOVER_CLOSE_MS, APP_RAIL_HOVER_OPEN_MS } from './appRailHover';
+import {
+  APP_RAIL_HOVER_CLOSE_MS,
+  APP_RAIL_HOVER_OPEN_MS,
+  APP_RAIL_LEAF_SUPPRESS_MS,
+} from './appRailHover';
 import { SidebarProvider } from '../vendor/ui/sidebar/index';
 
 const createFeStubRouter = (VueRouter as any).createFeStubRouter;
@@ -19,6 +23,7 @@ const createFeStubRouter = (VueRouter as any).createFeStubRouter;
 /** CI slack over production hover delays. */
 const HOVER_OPEN_WAIT_MS = APP_RAIL_HOVER_OPEN_MS * 3;
 const HOVER_CLOSE_WAIT_MS = APP_RAIL_HOVER_CLOSE_MS * 2;
+const LEAF_SUPPRESS_WAIT_MS = APP_RAIL_LEAF_SUPPRESS_MS + APP_RAIL_HOVER_OPEN_MS * 2;
 
 function mountRail(opts: {
   menus: Array<Record<string, unknown>>;
@@ -108,6 +113,36 @@ describe('ChoyAppRail', () => {
     items[1]!.click();
     await flushPromises();
     expect(pushes).toContain('/base/companies');
+    mounted.unmount();
+  });
+
+  test('expanded rail mousedown prevents default so pointer click never focuses', async () => {
+    const { mounted } = mountRail({
+      menus: [
+        {
+          id: 'base',
+          title: 'Master Data',
+          children: [{ id: 'base-company', title: 'Company', path: '/base/companies' }],
+        },
+      ],
+      collapsed: false,
+    });
+    await flushPromises();
+    await nextTick();
+    const item = mounted.el.querySelector(
+      '[data-testid=choy-shell-app-rail-item]',
+    ) as HTMLButtonElement | null;
+    expect(item).toBeTruthy();
+    const primary = Object.assign(new Event('mousedown', { bubbles: true, cancelable: true }), {
+      button: 0,
+    });
+    item!.dispatchEvent(primary);
+    expect(primary.defaultPrevented).toBe(true);
+    const secondary = Object.assign(new Event('mousedown', { bubbles: true, cancelable: true }), {
+      button: 2,
+    });
+    item!.dispatchEvent(secondary);
+    expect(secondary.defaultPrevented).toBe(false);
     mounted.unmount();
   });
 
@@ -281,12 +316,111 @@ describe('ChoyAppRail', () => {
     await flushPromises();
     await nextTick();
     const ss = mounted.setupState();
-    ss.setFlyoutOpen({ id: 'base', title: 'Master Data' }, true);
+    const app = { id: 'base', title: 'Master Data' };
+    ss.setFlyoutOpen(app, true);
     await nextTick();
-    ss.onFlyoutLeaf({ id: 'loose', title: 'Company', path: '/base/companies' });
+    ss.onFlyoutLeaf(app, { id: 'loose', title: 'Company', path: '/base/companies' });
     await flushPromises();
     expect(pushes).toContain('/base/companies');
     expect(ss.openFlyoutKey).toBeNull();
+    mounted.unmount();
+  });
+
+  test('collapsed flyout close-auto-focus is prevented only while leaf suppress is armed', async () => {
+    const menuPlugin = createMenuPlugin();
+    const app = {
+      id: 'base',
+      title: 'Master Data',
+      children: [{ id: 'loose', title: 'Company', path: '/base/companies' }],
+    };
+    menuPlugin.manager.addMenu(app as any);
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    pinViewportWidth(900);
+    useLayoutStore().sidebarMode = 'collapsed';
+    const { router } = createFeStubRouter({
+      route: { path: '/', fullPath: '/', meta: {} },
+    });
+    const i18n = createI18n({ legacy: false, locale: 'en', messages: { en: {} } });
+    const mounted = mountApp(ChoyAppRail as any, {
+      plugins: [menuPlugin, pinia, router, i18n],
+    });
+    await flushPromises();
+    await nextTick();
+    const ss = mounted.setupState();
+    const idle = new Event('close-auto-focus', { cancelable: true });
+    ss.onFlyoutCloseAutoFocus(idle);
+    expect(idle.defaultPrevented).toBe(false);
+    ss.onFlyoutLeaf(app, { id: 'loose', title: 'Company', path: '/base/companies' });
+    expect(ss.suppressFlyoutKey).toBe('base');
+    const afterLeaf = new Event('close-auto-focus', { cancelable: true });
+    ss.onFlyoutCloseAutoFocus(afterLeaf);
+    expect(afterLeaf.defaultPrevented).toBe(true);
+    mounted.unmount();
+  });
+
+  test('collapsed flyout stays closed after leaf select despite synthetic hover re-enter', async () => {
+    const menuPlugin = createMenuPlugin();
+    const app = {
+      id: 'base',
+      title: 'Master Data',
+      children: [{ id: 'loose', title: 'Company', path: '/base/companies' }],
+    };
+    const other = {
+      id: 'auth',
+      title: 'Auth',
+      children: [{ id: 'users', title: 'Users', path: '/auth/users' }],
+    };
+    menuPlugin.manager.addMenu(app as any);
+    menuPlugin.manager.addMenu(other as any);
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    pinViewportWidth(900);
+    useLayoutStore().sidebarMode = 'collapsed';
+    const { router } = createFeStubRouter({
+      route: { path: '/', fullPath: '/', meta: {} },
+    });
+    const i18n = createI18n({ legacy: false, locale: 'en', messages: { en: {} } });
+    const mounted = mountApp(ChoyAppRail as any, {
+      plugins: [menuPlugin, pinia, router, i18n],
+    });
+    await flushPromises();
+    await nextTick();
+    const ss = mounted.setupState();
+    ss.setFlyoutOpen(app, true);
+    ss.onFlyoutHoverEnter(app);
+    await nextTick();
+    ss.onFlyoutLeaf(app, { id: 'loose', title: 'Company', path: '/base/companies' });
+    expect(ss.openFlyoutKey).toBeNull();
+    expect(ss.suppressFlyoutKey).toBe('base');
+    // Portal unmount under the cursor often delivers the same click to the trigger.
+    ss.setFlyoutOpen(app, true);
+    expect(ss.openFlyoutKey).toBeNull();
+    // Suppress close while the key is still open hits the force-close branch.
+    ss.openFlyoutKey = 'base';
+    ss.setFlyoutOpen(app, false);
+    expect(ss.openFlyoutKey).toBeNull();
+    // Synthetic enter while suppressed must not open this app.
+    ss.onFlyoutHoverEnter(app);
+    await new Promise((r) => setTimeout(r, HOVER_OPEN_WAIT_MS));
+    expect(ss.openFlyoutKey).toBeNull();
+    expect(ss.suppressFlyoutKey).toBe('base');
+    // Other apps are not blocked by this app's suppress window.
+    ss.onFlyoutHoverEnter(other);
+    await new Promise((r) => setTimeout(r, HOVER_OPEN_WAIT_MS));
+    expect(ss.openFlyoutKey).toBe('auth');
+    ss.onFlyoutHoverLeave(other);
+    ss.openFlyoutKey = null;
+    // Re-arm suppress and keep hover intent until the timer expires (no leave unlock).
+    ss.onFlyoutLeaf(app, { id: 'loose', title: 'Company', path: '/base/companies' });
+    ss.onFlyoutHoverEnter(app);
+    expect(ss.suppressFlyoutKey).toBe('base');
+    await new Promise((r) => setTimeout(r, LEAF_SUPPRESS_WAIT_MS));
+    expect(ss.suppressFlyoutKey).toBeNull();
+    expect(ss.hoverIntent.base || 0).toBe(0);
+    ss.onFlyoutHoverEnter(app);
+    await new Promise((r) => setTimeout(r, HOVER_OPEN_WAIT_MS));
+    expect(ss.openFlyoutKey).toBe('base');
     mounted.unmount();
   });
 
