@@ -104,3 +104,48 @@ test('useDelayedVisualBusy clears pending timer on scope dispose', async () => {
   // Timer must not fire after dispose.
   expect(visual.value).toBe(false);
 });
+
+test('useDelayedVisualBusy ignores busy-getter churn when normalized value is unchanged', async () => {
+  const scope = effectScope();
+  const progress = ref(0);
+  const ticks = ref(0);
+  const visual = scope.run(() =>
+    useDelayedVisualBusy(
+      () => {
+        ticks.value;
+        return progress.value < 100;
+      },
+      50,
+    ),
+  )!;
+
+  progress.value = 10;
+  await nextTick();
+  expect(visual.value).toBe(false);
+
+  // Churn the getter while busy stays true — must not restart the delay.
+  ticks.value += 1;
+  await nextTick();
+  ticks.value += 1;
+  await nextTick();
+
+  await sleep(70);
+  expect(visual.value).toBe(true);
+
+  scope.stop();
+});
+
+test('useDelayedVisualBusy restarts when delayMs changes while busy', async () => {
+  const scope = effectScope();
+  const busy = ref(true);
+  const delayMs = ref(80);
+  const visual = scope.run(() => useDelayedVisualBusy(busy, delayMs))!;
+  await nextTick();
+  expect(visual.value).toBe(false);
+
+  delayMs.value = 0;
+  await nextTick();
+  expect(visual.value).toBe(true);
+
+  scope.stop();
+});

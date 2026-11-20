@@ -120,7 +120,21 @@ export function useChoyViewRouteSwitch(
   }
 
   applyGroups();
-  watch(defaultGroups, applyGroups, { deep: true });
+  watch(
+    defaultGroups,
+    (next, prev) => {
+      // Fresh but equal arrays (query-only navigation) must not reset selection.
+      if (
+        prev &&
+        next.length === prev.length &&
+        next.every((g, i) => g === prev[i])
+      ) {
+        return;
+      }
+      applyGroups();
+    },
+    { deep: true },
+  );
   if (getCurrentInstance()) {
     onActivated(applyGroups);
   }

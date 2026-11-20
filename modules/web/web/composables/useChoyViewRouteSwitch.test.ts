@@ -1,6 +1,9 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
+import { defineComponent, h, nextTick } from 'vue';
+import * as VueRouter from 'vue-router';
+import { flushPromises, mountApp } from '@/web/web/__tests__/mountApp';
 import {
   applyChoyViewRouteGroups,
   normalizeChoyViewRoutePath,
@@ -8,7 +11,10 @@ import {
   resolveChoyViewRouteKind,
   resolveChoyViewRoutePath,
   routeShouldKeepAlive,
+  useChoyViewRouteSwitch,
 } from './useChoyViewRouteSwitch';
+
+const createFeStubRouter = (VueRouter as any).createFeStubRouter;
 
 test('resolveChoyViewRouteKind reads meta.viewKind with list fallback', () => {
   expect(resolveChoyViewRouteKind({ viewKind: 'kanban' })).toBe('kanban');
@@ -90,4 +96,42 @@ test('routeShouldKeepAlive honors explicit flag and viewPaths siblings', () => {
   expect(normalizeChoyViewRoutePath('/x/')).toBe('/x');
   expect(normalizeChoyViewRoutePath('/x///')).toBe('/x');
   expect(normalizeChoyViewRoutePath('/')).toBe('/');
+});
+
+test('useChoyViewRouteSwitch: equal defaultGroups arrays do not reset selection', async () => {
+  const store = {
+    state: { queryState: { appliedGroups: [] as string[] } },
+  };
+  const { router, route } = createFeStubRouter({
+    route: {
+      path: '/sandbox/records',
+      fullPath: '/sandbox/records',
+      meta: { viewKind: 'list', defaultGroups: [] as string[] },
+    },
+  });
+
+  const Host = defineComponent({
+    name: 'ViewSwitchHost',
+    setup() {
+      useChoyViewRouteSwitch({ store });
+      return () => h('div', 'ok');
+    },
+  });
+  const mounted = mountApp(Host as any, { plugins: [router] });
+  await flushPromises();
+  expect(store.state.queryState.appliedGroups).toEqual([]);
+
+  store.state.queryState.appliedGroups = ['State'];
+  // Fresh equal array (query-only navigation) must not wipe the selection.
+  route.meta = { viewKind: 'list', defaultGroups: [] };
+  await nextTick();
+  await flushPromises();
+  expect(store.state.queryState.appliedGroups).toEqual(['State']);
+
+  route.meta = { viewKind: 'kanban', defaultGroups: ['Revoked'] };
+  await nextTick();
+  await flushPromises();
+  expect(store.state.queryState.appliedGroups).toEqual(['Revoked']);
+
+  mounted.unmount();
 });

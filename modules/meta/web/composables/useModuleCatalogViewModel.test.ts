@@ -518,19 +518,21 @@ test('useModuleCatalogViewModel: lastSyncAtLabel accepts Date and numeric timest
   expect(String(api.lastSyncAtLabel.value).length).toBeGreaterThan(0);
 });
 
-test('useModuleCatalogViewModel: KeepAlive deactivate closes drawer and activation resumes progress', async () => {
-  const store = makeStore([{ Id: '1', ModuleName: 'core' }]);
-  const route = makeRoute({ name: 'MetaModuleCatalog' });
+function mountCatalogKeepAlive(opts: {
+  route: ReturnType<typeof makeRoute>;
+  operationStore?: any;
+  hostName: string;
+}) {
   let api: ReturnType<typeof useModuleCatalogViewModel> | undefined;
   const CatalogHost = defineComponent({
-    name: 'CatalogHost',
+    name: opts.hostName,
     setup() {
       api = useModuleCatalogViewModel({
-        store,
-        operationStore: {
+        store: makeStore([{ Id: '1', ModuleName: 'core' }]),
+        operationStore: opts.operationStore ?? {
           Browse: () => new Promise(() => {}),
-        } as any,
-        route,
+        },
+        route: opts.route,
         router: { push: async () => undefined, replace: async () => undefined } as any,
         msgs,
       });
@@ -539,7 +541,7 @@ test('useModuleCatalogViewModel: KeepAlive deactivate closes drawer and activati
   });
   const show = ref(true);
   const Root = defineComponent({
-    name: 'CatalogKeepAliveRoot',
+    name: `${opts.hostName}Root`,
     setup() {
       return () =>
         h(KeepAlive, null, {
@@ -547,8 +549,16 @@ test('useModuleCatalogViewModel: KeepAlive deactivate closes drawer and activati
         });
     },
   });
-
   const mounted = mountApp(Root as any);
+  return { get api() { return api; }, show, mounted };
+}
+
+test('useModuleCatalogViewModel: KeepAlive deactivate closes drawer and activation resumes progress', async () => {
+  const route = makeRoute({ name: 'MetaModuleCatalog' });
+  const { api, show, mounted } = mountCatalogKeepAlive({
+    route,
+    hostName: 'CatalogHost',
+  });
   await flushPromises();
   expect(api).toBeTruthy();
 
@@ -573,37 +583,31 @@ test('useModuleCatalogViewModel: KeepAlive deactivate closes drawer and activati
   mounted.unmount();
 });
 
-test('useModuleCatalogViewModel: inactive onOpApplied records resume without starting watch', async () => {
-  const store = makeStore([{ Id: '1', ModuleName: 'core' }]);
+test('useModuleCatalogViewModel: KeepAlive deactivate closes open confirm without Apply', async () => {
   const route = makeRoute({ name: 'MetaModuleCatalog' });
-  let api: ReturnType<typeof useModuleCatalogViewModel> | undefined;
-  const CatalogHost = defineComponent({
-    name: 'CatalogHostInactiveApply',
-    setup() {
-      api = useModuleCatalogViewModel({
-        store,
-        operationStore: {
-          Browse: () => new Promise(() => {}),
-        } as any,
-        route,
-        router: { push: async () => undefined, replace: async () => undefined } as any,
-        msgs,
-      });
-      return () => h('div', 'ok');
-    },
+  const { api, show, mounted } = mountCatalogKeepAlive({
+    route,
+    hostName: 'CatalogHostDrawerOnly',
   });
-  const show = ref(true);
-  const Root = defineComponent({
-    name: 'CatalogKeepAliveInactiveRoot',
-    setup() {
-      return () =>
-        h(KeepAlive, null, {
-          default: () => (show.value ? h(CatalogHost) : null),
-        });
-    },
-  });
+  await flushPromises();
 
-  const mounted = mountApp(Root as any);
+  api!.openDrawer({ moduleName: 'core', action: 'install' });
+  expect(api!.drawerOpen.value).toBe(true);
+
+  show.value = false;
+  await nextTick();
+  await flushPromises();
+  expect(api!.drawerOpen.value).toBe(false);
+
+  mounted.unmount();
+});
+
+test('useModuleCatalogViewModel: inactive onOpApplied records resume without starting watch', async () => {
+  const route = makeRoute({ name: 'MetaModuleCatalog' });
+  const { api, show, mounted } = mountCatalogKeepAlive({
+    route,
+    hostName: 'CatalogHostInactiveApply',
+  });
   await flushPromises();
 
   show.value = false;
@@ -621,5 +625,62 @@ test('useModuleCatalogViewModel: inactive onOpApplied records resume without sta
   expect(api!.progressBusy.value).toBe(true);
 
   api!.stopOpProgress();
+  mounted.unmount();
+});
+
+test('useModuleCatalogViewModel: activation on operation deep-link resyncs from route', async () => {
+  const route = makeRoute({
+    name: 'MetaModuleOperationDeepLink',
+    params: { id: 'op-deep-1' },
+  });
+  const { api, show, mounted } = mountCatalogKeepAlive({
+    route,
+    hostName: 'CatalogHostDeepLink',
+  });
+  await flushPromises();
+  expect(api!.progressBusy.value).toBe(true);
+
+  show.value = false;
+  await nextTick();
+  await flushPromises();
+  expect(api!.progressBusy.value).toBe(false);
+
+  show.value = true;
+  await nextTick();
+  await flushPromises();
+  expect(api!.progressBusy.value).toBe(true);
+
+  api!.stopOpProgress();
+  mounted.unmount();
+});
+
+test('useModuleCatalogViewModel: settled op is not resumed after KeepAlive reactivation', async () => {
+  const route = makeRoute({ name: 'MetaModuleCatalog' });
+  const { api, show, mounted } = mountCatalogKeepAlive({
+    route,
+    hostName: 'CatalogHostSettled',
+    operationStore: {
+      Browse: async () => ({
+        Status: 'succeeded',
+        Phase: 'done',
+        ReloadTriggered: false,
+        ReloadFailed: false,
+      }),
+    },
+  });
+  await flushPromises();
+
+  api!.onOpApplied('op-settled-1');
+  await flushPromises();
+  expect(api!.progressBusy.value).toBe(false);
+
+  show.value = false;
+  await nextTick();
+  await flushPromises();
+  show.value = true;
+  await nextTick();
+  await flushPromises();
+  expect(api!.progressBusy.value).toBe(false);
+
   mounted.unmount();
 });

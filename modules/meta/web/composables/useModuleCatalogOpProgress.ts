@@ -44,6 +44,8 @@ export function useModuleCatalogOpProgress(
     refreshCatalog?: () => void | Promise<void>;
     /** Inject timers/tip for FE unit tests only. */
     progressDeps?: ModuleOpProgressDeps;
+    /** Fired after a watch reaches a terminal status (not after stop/cancel). */
+    onTerminalSettled?: (operationId: string, status: ModuleOpStatusSnapshot) => void;
   },
 ): {
   progressBusy: Ref<boolean>;
@@ -176,7 +178,11 @@ export function useModuleCatalogOpProgress(
     try {
       await progress.watch(id);
       if (generation !== watchGeneration) return;
-      if (lastTerminal) await settleOp(lastTerminal);
+      if (lastTerminal) {
+        const terminal = lastTerminal;
+        await settleOp(terminal);
+        opts?.onTerminalSettled?.(id, terminal);
+      }
     } catch {
       // Hard errors normally go through notify hooks; still absorb rejections for void callers.
       if (generation === watchGeneration) {

@@ -1,7 +1,16 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { computed, inject, onActivated, onDeactivated, ref, watch, type Ref } from 'vue';
+import {
+  computed,
+  getCurrentInstance,
+  inject,
+  onActivated,
+  onDeactivated,
+  ref,
+  watch,
+  type Ref,
+} from 'vue';
 import type { Router, RouteLocationNormalizedLoaded } from 'vue-router';
 import type { ModelStore } from '@/web/web/stores/modelStore';
 import { unwrapListRecord } from '@/web/web/composables/listRowEdit';
@@ -128,6 +137,10 @@ export function useModuleCatalogViewModel(opts: {
     { refreshCatalog },
   );
 
+  type ResumeOp = { id: string; moduleName: string; action: string };
+  /** Last accepted op — retained across KeepAlive deactivate so activation can resume. */
+  const resumeOp = ref<ResumeOp | null>(null);
+
   const {
     progressBusy,
     progressTitle,
@@ -148,7 +161,13 @@ export function useModuleCatalogViewModel(opts: {
     finishing: opts.msgs.opFinishing,
     inProgress: opts.msgs.opInProgress,
     titleFor: opts.msgs.opProgressTitle,
-  }, { refreshCatalog });
+  }, {
+    refreshCatalog,
+    onTerminalSettled: (operationId) => {
+      // Settled ops must not restart when a cached catalog view reactivates.
+      if (resumeOp.value?.id === operationId) resumeOp.value = null;
+    },
+  });
 
   function rowRecord(row: unknown): Record<string, unknown> {
     const rec = unwrapListRecord(row);
@@ -331,9 +350,6 @@ export function useModuleCatalogViewModel(opts: {
     return String(opts.route.params.id || '').trim();
   }
 
-  type ResumeOp = { id: string; moduleName: string; action: string };
-  /** Last accepted op — retained across KeepAlive deactivate so activation can resume. */
-  const resumeOp = ref<ResumeOp | null>(null);
   const viewActive = ref(true);
 
   function rememberResumeOp(id: string, meta?: { moduleName?: string; action?: string }): void {
@@ -391,28 +407,30 @@ export function useModuleCatalogViewModel(opts: {
 
   // KeepAlive sibling catalog pages stay mounted while deactivated; ignore route
   // updates and stop progress so deep-links do not double-poll from a cached view.
-  onDeactivated(() => {
-    viewActive.value = false;
-    stopOpProgress();
-    // Teleported confirm must not linger over the destination page.
-    closeDrawer();
-  });
-  onActivated(() => {
-    viewActive.value = true;
-    if (isOperationDeepLinkRoute(opts.route.name)) {
+  if (getCurrentInstance()) {
+    onDeactivated(() => {
+      viewActive.value = false;
+      stopOpProgress();
+      // Teleported confirm must not linger over the destination page.
+      closeDrawer();
+    });
+    onActivated(() => {
+      viewActive.value = true;
+      if (isOperationDeepLinkRoute(opts.route.name)) {
+        syncDrawerFromRoute();
+        return;
+      }
+      const pending = resumeOp.value;
+      if (pending?.id) {
+        void startOpProgress(pending.id, {
+          moduleName: pending.moduleName || undefined,
+          action: pending.action || undefined,
+        });
+        return;
+      }
       syncDrawerFromRoute();
-      return;
-    }
-    const pending = resumeOp.value;
-    if (pending?.id) {
-      void startOpProgress(pending.id, {
-        moduleName: pending.moduleName || undefined,
-        action: pending.action || undefined,
-      });
-      return;
-    }
-    syncDrawerFromRoute();
-  });
+    });
+  }
 
   watch(
     () => [String(opts.route.name || ''), String(opts.route.params.id || '')] as const,

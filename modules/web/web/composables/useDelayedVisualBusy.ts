@@ -30,8 +30,10 @@ export function useDelayedVisualBusy(
     timer = null;
   }
 
+  // Separate sources so a busy getter that reallocates does not reset the timer
+  // when the normalized busy/delay values are unchanged.
   watch(
-    () => [!!toValue(busy), Math.max(0, Number(toValue(delayMs)) || 0)] as const,
+    [() => !!toValue(busy), () => Math.max(0, Number(toValue(delayMs)) || 0)],
     ([on, delay]) => {
       clearTimer();
       if (!on) {
