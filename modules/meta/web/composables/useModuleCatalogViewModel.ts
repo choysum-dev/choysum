@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { computed, inject, ref, watch, type Ref } from 'vue';
+import { computed, inject, onActivated, onDeactivated, ref, watch, type Ref } from 'vue';
 import type { Router, RouteLocationNormalizedLoaded } from 'vue-router';
 import type { ModelStore } from '@/web/web/stores/modelStore';
 import { unwrapListRecord } from '@/web/web/composables/listRowEdit';
@@ -360,9 +360,22 @@ export function useModuleCatalogViewModel(opts: {
     }
   }
 
+  // KeepAlive sibling catalog pages stay mounted while deactivated; ignore route
+  // updates and stop progress so deep-links do not double-poll from a cached view.
+  const viewActive = ref(true);
+  onDeactivated(() => {
+    viewActive.value = false;
+    stopOpProgress();
+  });
+  onActivated(() => {
+    viewActive.value = true;
+    syncDrawerFromRoute();
+  });
+
   watch(
     () => [String(opts.route.name || ''), String(opts.route.params.id || '')] as const,
     () => {
+      if (!viewActive.value) return;
       syncDrawerFromRoute();
     },
   );

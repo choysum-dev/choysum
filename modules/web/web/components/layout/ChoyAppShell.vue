@@ -94,14 +94,14 @@ SPDX-License-Identifier: Apache-2.0
                   <KeepAlive>
                     <component
                       :is="Component"
-                      v-if="Component && routeShouldKeepAlive(viewRoute.meta)"
+                      v-if="Component && routeShouldKeepAlive(viewRoute.meta, viewRoute.path)"
                       class="min-h-0 flex-1"
                       :key="viewRoute.path"
                     />
                   </KeepAlive>
                   <component
                     :is="Component"
-                    v-if="Component && !routeShouldKeepAlive(viewRoute.meta)"
+                    v-if="Component && !routeShouldKeepAlive(viewRoute.meta, viewRoute.path)"
                     class="min-h-0 flex-1"
                     :key="viewRoute.fullPath"
                   />

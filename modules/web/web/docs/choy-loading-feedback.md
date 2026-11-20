@@ -45,7 +45,9 @@ Page and view busy overlays are **feedback**, not page transitions. Product rule
 2. **Soft stale** — host uses CSS `transition-opacity` (motion tokens); no hard opacity step.
 3. **Overlay fade** — `<Transition name="busy-overlay">` (fast duration).
 4. **No default full-page route fade** — App shell does not wrap `router-view` in enter/leave
-   transitions. Sibling list/kanban/chart routes with `viewPaths` use KeepAlive (`routeShouldKeepAlive`).
+   transitions. Sibling list/kanban/chart routes use KeepAlive when the current path is one of
+   `meta.viewPaths` (`routeShouldKeepAlive(meta, path)`); deep-links that only copy `viewPaths`
+   stay uncached. Cached views reapply `defaultGroups` on `onActivated`.
 
 ## Navigation chrome settle (`meta.navLoading`)
 

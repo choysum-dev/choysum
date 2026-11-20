@@ -3,6 +3,7 @@
 
 import {
   onBeforeUnmount,
+  onScopeDispose,
   ref,
   toValue,
   watch,
@@ -50,7 +51,9 @@ export function useDelayedVisualBusy(
     { immediate: true },
   );
 
+  // Component instances + detached effectScope (tests / rare hosts).
   onBeforeUnmount(clearTimer);
+  onScopeDispose(clearTimer);
 
   return visualBusy;
 }

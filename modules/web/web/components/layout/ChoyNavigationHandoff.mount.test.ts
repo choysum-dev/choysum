@@ -38,7 +38,8 @@ test('ChoyNavigationHandoff shows during nav ticket and clears on surface or set
 
   beginNavigationLoading();
   await flushPromises();
-  // Visual show is delayed — no flash before the threshold.
+  // Interaction shield is immediate; spinner/mask paint is delayed.
+  expect(document.querySelector('[data-testid="choy-navigation-handoff-shield"]')).toBeTruthy();
   expect(document.querySelector('[data-testid="choy-navigation-handoff"]')).toBeNull();
   await waitForHandoffVisible();
   expect(document.querySelector('[data-testid="choy-navigation-handoff"]')).toBeTruthy();
@@ -46,6 +47,7 @@ test('ChoyNavigationHandoff shows during nav ticket and clears on surface or set
 
   await runWithLoading({ layer: 'surface', target: 'handoff-land', mode: 'block' }, async () => {
     await waitForHandoffGone();
+    expect(document.querySelector('[data-testid="choy-navigation-handoff-shield"]')).toBeNull();
     expect(document.querySelector('[data-testid="choy-navigation-handoff"]')).toBeNull();
   });
 
@@ -54,6 +56,7 @@ test('ChoyNavigationHandoff shows during nav ticket and clears on surface or set
   expect(document.querySelector('[data-testid="choy-navigation-handoff"]')).toBeTruthy();
   settleNavigationIfActive();
   await waitForHandoffGone();
+  expect(document.querySelector('[data-testid="choy-navigation-handoff-shield"]')).toBeNull();
   expect(document.querySelector('[data-testid="choy-navigation-handoff"]')).toBeNull();
 
   wrapper.unmount();
@@ -67,10 +70,12 @@ test('ChoyNavigationHandoff skips the overlay when the ticket settles before del
 
   beginNavigationLoading();
   await flushPromises();
+  expect(document.querySelector('[data-testid="choy-navigation-handoff-shield"]')).toBeTruthy();
   settleNavigationIfActive();
   await flushPromises();
   await sleep(loadingTiming.SURFACE_BUSY_DELAY_MS + 30);
   await flushPromises();
+  expect(document.querySelector('[data-testid="choy-navigation-handoff-shield"]')).toBeNull();
   expect(document.querySelector('[data-testid="choy-navigation-handoff"]')).toBeNull();
 
   wrapper.unmount();

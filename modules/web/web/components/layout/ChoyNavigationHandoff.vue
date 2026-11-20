@@ -7,15 +7,24 @@ SPDX-License-Identifier: Apache-2.0
   <!--
     Blocks the viewport while a navigation ticket is open and no surface has
     taken over — covers Guest→App shell swap so the destination does not look idle.
-    Visual show is delayed so fast handoffs do not flash a second mask.
+    Interaction shield is immediate; spinner/mask paint is delayed so fast handoffs
+    do not flash a second mask.
   -->
   <Teleport to="body">
+    <!-- Immediate click/focus shield (App shell also sets inert on the body). -->
+    <div
+      v-if="busy"
+      data-testid="choy-navigation-handoff-shield"
+      data-anchor="choy.loading.navigation-handoff-shield"
+      class="fixed inset-0 z-[90]"
+      aria-hidden="true"
+    />
     <Transition name="busy-overlay">
       <div
         v-if="showHandoff"
         data-testid="choy-navigation-handoff"
         data-anchor="choy.loading.navigation-handoff"
-        class="choy-navigation-handoff fixed inset-0 z-[90] flex items-center justify-center bg-background/80"
+        class="choy-navigation-handoff fixed inset-0 z-[91] flex items-center justify-center bg-background/80"
         aria-hidden="true"
       >
         <ChoySpinner class="size-6 text-primary" />

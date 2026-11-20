@@ -14,9 +14,10 @@ declare module 'vue-router' {
 
     /**
      * Whether the component instance should be cached with keep-alive.
-     * Explicit true/false wins. When omitted, App/Guest shell also KeepAlive
-     * routes that declare non-empty `viewPaths` (list/kanban/chart siblings).
-     * @default false (unless viewPaths is set)
+     * Explicit true/false wins. When omitted, App/Guest shell KeepAlive only
+     * when the current path is one of the declared `viewPaths` siblings
+     * (list/kanban/chart) — not parameterized deep-links that reuse viewPaths.
+     * @default false (unless path ∈ viewPaths)
      */
     keepAlive?: boolean;
 

@@ -10,7 +10,6 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-
 function makeStore() {
   return {
     storeId: 'web.chart.chrome.test',

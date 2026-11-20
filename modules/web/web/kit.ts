@@ -193,6 +193,7 @@ export { useChoyKanbanStoreEngine } from './composables/useChoyKanbanStoreEngine
 export type { ChoyKanbanStoreEngineOptions } from './composables/useChoyKanbanStoreEngine';
 export {
   applyChoyViewRouteGroups,
+  normalizeChoyViewRoutePath,
   resolveChoyViewRouteDefaultGroups,
   resolveChoyViewRouteKind,
   resolveChoyViewRoutePath,
