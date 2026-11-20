@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { defineComponent, h, reactive, ref } from 'vue';
+import { KeepAlive, defineComponent, h, nextTick, reactive, ref } from 'vue';
 import { flushPromises, mountApp } from '@/web/web/__tests__/mountApp';
 import { providePageContext } from '@/web/web/composables/usePageContext';
 import { useModuleCatalogViewModel } from './useModuleCatalogViewModel';
@@ -516,4 +516,110 @@ test('useModuleCatalogViewModel: lastSyncAtLabel accepts Date and numeric timest
     msgs,
   });
   expect(String(api.lastSyncAtLabel.value).length).toBeGreaterThan(0);
+});
+
+test('useModuleCatalogViewModel: KeepAlive deactivate closes drawer and activation resumes progress', async () => {
+  const store = makeStore([{ Id: '1', ModuleName: 'core' }]);
+  const route = makeRoute({ name: 'MetaModuleCatalog' });
+  let api: ReturnType<typeof useModuleCatalogViewModel> | undefined;
+  const CatalogHost = defineComponent({
+    name: 'CatalogHost',
+    setup() {
+      api = useModuleCatalogViewModel({
+        store,
+        operationStore: {
+          Browse: () => new Promise(() => {}),
+        } as any,
+        route,
+        router: { push: async () => undefined, replace: async () => undefined } as any,
+        msgs,
+      });
+      return () => h('div', { 'data-testid': 'catalog-host' }, 'ok');
+    },
+  });
+  const show = ref(true);
+  const Root = defineComponent({
+    name: 'CatalogKeepAliveRoot',
+    setup() {
+      return () =>
+        h(KeepAlive, null, {
+          default: () => (show.value ? h(CatalogHost) : null),
+        });
+    },
+  });
+
+  const mounted = mountApp(Root as any);
+  await flushPromises();
+  expect(api).toBeTruthy();
+
+  api!.openDrawer({ moduleName: 'core', action: 'install' });
+  expect(api!.drawerOpen.value).toBe(true);
+  api!.onOpApplied('op-keepalive-1');
+  await flushPromises();
+  expect(api!.progressBusy.value).toBe(true);
+
+  show.value = false;
+  await nextTick();
+  await flushPromises();
+  expect(api!.drawerOpen.value).toBe(false);
+  expect(api!.progressBusy.value).toBe(false);
+
+  show.value = true;
+  await nextTick();
+  await flushPromises();
+  expect(api!.progressBusy.value).toBe(true);
+
+  api!.stopOpProgress();
+  mounted.unmount();
+});
+
+test('useModuleCatalogViewModel: inactive onOpApplied records resume without starting watch', async () => {
+  const store = makeStore([{ Id: '1', ModuleName: 'core' }]);
+  const route = makeRoute({ name: 'MetaModuleCatalog' });
+  let api: ReturnType<typeof useModuleCatalogViewModel> | undefined;
+  const CatalogHost = defineComponent({
+    name: 'CatalogHostInactiveApply',
+    setup() {
+      api = useModuleCatalogViewModel({
+        store,
+        operationStore: {
+          Browse: () => new Promise(() => {}),
+        } as any,
+        route,
+        router: { push: async () => undefined, replace: async () => undefined } as any,
+        msgs,
+      });
+      return () => h('div', 'ok');
+    },
+  });
+  const show = ref(true);
+  const Root = defineComponent({
+    name: 'CatalogKeepAliveInactiveRoot',
+    setup() {
+      return () =>
+        h(KeepAlive, null, {
+          default: () => (show.value ? h(CatalogHost) : null),
+        });
+    },
+  });
+
+  const mounted = mountApp(Root as any);
+  await flushPromises();
+
+  show.value = false;
+  await nextTick();
+  await flushPromises();
+  expect(api!.progressBusy.value).toBe(false);
+
+  api!.onOpApplied('op-late-apply');
+  await flushPromises();
+  expect(api!.progressBusy.value).toBe(false);
+
+  show.value = true;
+  await nextTick();
+  await flushPromises();
+  expect(api!.progressBusy.value).toBe(true);
+
+  api!.stopOpProgress();
+  mounted.unmount();
 });

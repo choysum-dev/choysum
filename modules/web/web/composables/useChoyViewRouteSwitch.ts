@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { computed, onActivated, watch, type ComputedRef } from 'vue';
+import { computed, getCurrentInstance, onActivated, watch, type ComputedRef } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 /**
@@ -33,7 +33,12 @@ export function normalizeChoyViewRoutePath(path: string): string {
   const trimmed = String(path || '').trim();
   if (!trimmed) return '';
   if (trimmed === '/') return '/';
-  return trimmed.replace(/\/+$/, '');
+  // Avoid /\/+$/ on attacker-controlled paths (CodeQL js/polynomial-redos).
+  let end = trimmed.length;
+  while (end > 1 && trimmed.charCodeAt(end - 1) === 47 /* '/' */) {
+    end -= 1;
+  }
+  return end === trimmed.length ? trimmed : trimmed.slice(0, end);
 }
 
 /** Read viewKind from route meta; blank / missing falls back to list. */
@@ -75,14 +80,13 @@ export function routeShouldKeepAlive(meta: unknown, path?: string): boolean {
   if (m.keepAlive === false) return false;
   const paths = m.viewPaths;
   if (!paths || typeof paths !== 'object') return false;
-  const siblings = Object.values(paths)
-    .filter((v): v is string => typeof v === 'string' && v.trim() !== '')
-    .map((v) => normalizeChoyViewRoutePath(v));
-  if (siblings.length === 0) return false;
-  // Without a path (meta-only probes), treat non-empty viewPaths as eligible.
-  if (path == null || path === '') return true;
+  // Fail closed when path is omitted — callers (shells) must pass viewRoute.path.
+  if (path == null || path === '') return false;
   const current = normalizeChoyViewRoutePath(path);
-  return siblings.includes(current);
+  if (!current) return false;
+  return Object.values(paths).some(
+    (v) => typeof v === 'string' && v.trim() !== '' && normalizeChoyViewRoutePath(v) === current,
+  );
 }
 
 /**
@@ -117,7 +121,9 @@ export function useChoyViewRouteSwitch(
 
   applyGroups();
   watch(defaultGroups, applyGroups, { deep: true });
-  onActivated(applyGroups);
+  if (getCurrentInstance()) {
+    onActivated(applyGroups);
+  }
 
   function selectView(kind: string): void {
     const path = resolveChoyViewRoutePath(route.meta, kind);

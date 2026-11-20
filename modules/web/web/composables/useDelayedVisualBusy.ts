@@ -31,14 +31,13 @@ export function useDelayedVisualBusy(
   }
 
   watch(
-    () => !!toValue(busy),
-    (on) => {
+    () => [!!toValue(busy), Math.max(0, Number(toValue(delayMs)) || 0)] as const,
+    ([on, delay]) => {
       clearTimer();
       if (!on) {
         visualBusy.value = false;
         return;
       }
-      const delay = Math.max(0, Number(toValue(delayMs)) || 0);
       if (delay === 0) {
         visualBusy.value = true;
         return;

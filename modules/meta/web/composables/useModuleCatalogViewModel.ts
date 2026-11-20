@@ -232,7 +232,7 @@ export function useModuleCatalogViewModel(opts: {
     const action = resolveModuleCatalogPrimaryAction(rec);
     if (!action) return;
     if (action === 'progress') {
-      void startOpProgress(String(rec.ActiveOperationId || '').trim(), {
+      startCatalogOpProgress(String(rec.ActiveOperationId || '').trim(), {
         moduleName: String(rec.ModuleName || ''),
         action: 'progress',
       });
@@ -308,7 +308,7 @@ export function useModuleCatalogViewModel(opts: {
     drawerOpen.value = false;
     // progress deep-link is not a lifecycle action; keep sync so titleFor can label it.
     const action = drawerAction.value === 'progress' ? '' : drawerAction.value;
-    void startOpProgress(id, {
+    startCatalogOpProgress(id, {
       moduleName: drawerModuleName.value,
       action,
     });
@@ -331,12 +331,40 @@ export function useModuleCatalogViewModel(opts: {
     return String(opts.route.params.id || '').trim();
   }
 
+  type ResumeOp = { id: string; moduleName: string; action: string };
+  /** Last accepted op — retained across KeepAlive deactivate so activation can resume. */
+  const resumeOp = ref<ResumeOp | null>(null);
+  const viewActive = ref(true);
+
+  function rememberResumeOp(id: string, meta?: { moduleName?: string; action?: string }): void {
+    const trimmed = String(id || '').trim();
+    if (!trimmed) return;
+    resumeOp.value = {
+      id: trimmed,
+      moduleName: String(meta?.moduleName || '').trim(),
+      action: String(meta?.action || '').trim(),
+    };
+  }
+
+  /** Start progress when active; otherwise only record for resume on activation. */
+  function startCatalogOpProgress(
+    operationId: string,
+    meta?: { moduleName?: string; action?: string },
+  ): void {
+    const id = String(operationId || '').trim();
+    if (!id) return;
+    rememberResumeOp(id, meta);
+    if (!viewActive.value) return;
+    void startOpProgress(id, meta);
+  }
+
   function syncDrawerFromRoute() {
     if (!isOperationDeepLinkRoute(opts.route.name)) {
       // Leaving an operation deep-link: drop route-bound progress/confirm chrome.
       if (drawerBoundToRoute.value) {
         stopOpProgress();
         closeDrawer();
+        resumeOp.value = null;
       }
       return;
     }
@@ -344,11 +372,12 @@ export function useModuleCatalogViewModel(opts: {
     if (opId) {
       drawerBoundToRoute.value = true;
       drawerOpen.value = false;
-      void startOpProgress(opId, { action: 'progress' });
+      startCatalogOpProgress(opId, { action: 'progress' });
       return;
     }
     stopOpProgress();
     closeDrawer();
+    resumeOp.value = null;
   }
 
   function bootFromRoute() {
@@ -356,19 +385,32 @@ export function useModuleCatalogViewModel(opts: {
     if (opId) {
       drawerBoundToRoute.value = true;
       drawerOpen.value = false;
-      void startOpProgress(opId, { action: 'progress' });
+      startCatalogOpProgress(opId, { action: 'progress' });
     }
   }
 
   // KeepAlive sibling catalog pages stay mounted while deactivated; ignore route
   // updates and stop progress so deep-links do not double-poll from a cached view.
-  const viewActive = ref(true);
   onDeactivated(() => {
     viewActive.value = false;
     stopOpProgress();
+    // Teleported confirm must not linger over the destination page.
+    closeDrawer();
   });
   onActivated(() => {
     viewActive.value = true;
+    if (isOperationDeepLinkRoute(opts.route.name)) {
+      syncDrawerFromRoute();
+      return;
+    }
+    const pending = resumeOp.value;
+    if (pending?.id) {
+      void startOpProgress(pending.id, {
+        moduleName: pending.moduleName || undefined,
+        action: pending.action || undefined,
+      });
+      return;
+    }
     syncDrawerFromRoute();
   });
 

@@ -71,8 +71,10 @@ test('applyChoyViewRouteGroups ignores nullish or non-object store', () => {
 
 test('routeShouldKeepAlive honors explicit flag and viewPaths siblings', () => {
   expect(routeShouldKeepAlive({ keepAlive: true })).toBe(true);
-  expect(routeShouldKeepAlive({ keepAlive: false, viewPaths: { list: '/a' } })).toBe(false);
-  expect(routeShouldKeepAlive({ viewPaths: { list: '/a', kanban: '/b' } })).toBe(true);
+  expect(routeShouldKeepAlive({ keepAlive: true }, '')).toBe(true);
+  expect(routeShouldKeepAlive({ keepAlive: false, viewPaths: { list: '/a' } }, '/a')).toBe(false);
+  // Path required for auto KeepAlive (fail closed when omitted).
+  expect(routeShouldKeepAlive({ viewPaths: { list: '/a', kanban: '/b' } })).toBe(false);
   expect(routeShouldKeepAlive({ viewPaths: { list: '/a', kanban: '/b' } }, '/a')).toBe(true);
   expect(routeShouldKeepAlive({ viewPaths: { list: '/a', kanban: '/b' } }, '/b/')).toBe(true);
   // Deep-links that only copy viewPaths must not cache (e.g. operations/:id).
@@ -82,9 +84,10 @@ test('routeShouldKeepAlive honors explicit flag and viewPaths siblings', () => {
       '/meta/modules/operations/op-1',
     ),
   ).toBe(false);
-  expect(routeShouldKeepAlive({ viewPaths: {} })).toBe(false);
-  expect(routeShouldKeepAlive({})).toBe(false);
+  expect(routeShouldKeepAlive({ viewPaths: {} }, '/a')).toBe(false);
+  expect(routeShouldKeepAlive({}, '/a')).toBe(false);
   expect(routeShouldKeepAlive(null)).toBe(false);
   expect(normalizeChoyViewRoutePath('/x/')).toBe('/x');
+  expect(normalizeChoyViewRoutePath('/x///')).toBe('/x');
   expect(normalizeChoyViewRoutePath('/')).toBe('/');
 });
