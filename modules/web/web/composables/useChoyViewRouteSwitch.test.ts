@@ -6,6 +6,7 @@ import {
   resolveChoyViewRouteDefaultGroups,
   resolveChoyViewRouteKind,
   resolveChoyViewRoutePath,
+  routeShouldKeepAlive,
 } from './useChoyViewRouteSwitch';
 
 test('resolveChoyViewRouteKind reads meta.viewKind with list fallback', () => {
@@ -65,4 +66,13 @@ test('applyChoyViewRouteGroups ignores nullish or non-object store', () => {
   applyChoyViewRouteGroups(null, ['State']);
   applyChoyViewRouteGroups(undefined, ['State']);
   applyChoyViewRouteGroups('nope', ['State']);
+});
+
+test('routeShouldKeepAlive honors explicit flag and viewPaths siblings', () => {
+  expect(routeShouldKeepAlive({ keepAlive: true })).toBe(true);
+  expect(routeShouldKeepAlive({ keepAlive: false, viewPaths: { list: '/a' } })).toBe(false);
+  expect(routeShouldKeepAlive({ viewPaths: { list: '/a', kanban: '/b' } })).toBe(true);
+  expect(routeShouldKeepAlive({ viewPaths: {} })).toBe(false);
+  expect(routeShouldKeepAlive({})).toBe(false);
+  expect(routeShouldKeepAlive(null)).toBe(false);
 });

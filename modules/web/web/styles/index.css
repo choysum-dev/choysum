@@ -747,7 +747,7 @@ svg,
   translate: 0 0.125rem;
 }
 
-/* Vue <Transition name="fade"> (auth pages). */
+/* Vue <Transition name="fade"> (slow-hint corner). */
 .fade-enter-active,
 .fade-leave-active {
   transition: opacity var(--choy-motion-duration-normal, 200ms) var(--choy-motion-ease-in-out, ease-in-out);
@@ -756,6 +756,26 @@ svg,
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
+}
+
+/*
+ * Page / view / handoff busy overlays — short opacity ramp (continuity).
+ * Prefer --choy-motion-duration-fast so masks feel like feedback, not page morph.
+ */
+.busy-overlay-enter-active,
+.busy-overlay-leave-active {
+  transition: opacity var(--choy-motion-duration-fast, 120ms) var(--choy-motion-ease-in-out, ease-in-out);
+}
+
+.busy-overlay-enter-from,
+.busy-overlay-leave-to {
+  opacity: 0;
+}
+
+/* Soft stale: host opacity steps with the same motion tokens (no hard flash). */
+.choy-view-busy-host,
+[data-slot='view-body-host'] {
+  transition: opacity var(--choy-motion-duration-fast, 120ms) var(--choy-motion-ease-in-out, ease-in-out);
 }
 
 /* NProgress: override library default #29d so the top bar follows product primary. */

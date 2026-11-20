@@ -39,14 +39,14 @@ SPDX-License-Identifier: Apache-2.0
               <KeepAlive>
                 <component
                   :is="Component"
-                  v-if="Component && viewRoute.meta?.keepAlive"
+                  v-if="Component && routeShouldKeepAlive(viewRoute.meta)"
                   class="min-h-0 flex-1"
                   :key="viewRoute.path"
                 />
               </KeepAlive>
               <component
                 :is="Component"
-                v-if="Component && !viewRoute.meta?.keepAlive"
+                v-if="Component && !routeShouldKeepAlive(viewRoute.meta)"
                 class="min-h-0 flex-1"
                 :key="viewRoute.fullPath"
               />
@@ -70,6 +70,7 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts">
 import { KeepAlive, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { routeShouldKeepAlive } from '../../composables/useChoyViewRouteSwitch'
 import ChoyAppFooter from './ChoyAppFooter.vue'
 import ChoyGuestHeader from './ChoyGuestHeader.vue'
 import { createGuestHomeNavigate } from './guestHomeNavigate'

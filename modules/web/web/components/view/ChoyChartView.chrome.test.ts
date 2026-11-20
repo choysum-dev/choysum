@@ -2,8 +2,14 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { flushPromises, mountApp } from '@/web/web/__tests__/mountApp';
+import { loadingTiming } from '@/core/web/client/loadingRegistry';
 import { h, nextTick } from 'vue';
 import ChoyChartView from './ChoyChartView.vue';
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 
 function makeStore() {
   return {
@@ -95,7 +101,11 @@ describe('ChoyChartView chrome', () => {
     ctrlVm.hasAppliedOnce = false;
     ctrlVm.loading = true;
     await nextTick();
-    // Empty chart first frame → block Loader2 (not skeleton bars).
+    // Empty chart first frame → block Loader2 (overlay delayed; host locks immediately).
+    expect(mounted.q('[data-slot=view-body-host]')?.getAttribute('aria-busy')).toBe('true');
+    expect(mounted.q('[data-slot=view-busy-overlay]')).toBeNull();
+    await sleep(loadingTiming.SURFACE_BUSY_DELAY_MS + 30);
+    await flushPromises();
     expect(mounted.q('[data-slot=view-busy-overlay]')?.getAttribute('data-mode')).toBe('block');
     expect(mounted.q('[data-testid=choy-empty]')).toBeNull();
 

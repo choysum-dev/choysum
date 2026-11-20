@@ -153,14 +153,16 @@ SPDX-License-Identifier: Apache-2.0
       </div>
     </div>
 
-    <div
-      v-if="loading"
-      data-slot="page-loading"
-      class="choy-page__loading-mask absolute inset-0 z-10 flex items-center justify-center bg-background/60"
-      aria-hidden="true"
-    >
-      <ChoySpinner class="size-6 text-primary" />
-    </div>
+    <Transition name="busy-overlay">
+      <div
+        v-if="showLoadingMask"
+        data-slot="page-loading"
+        class="choy-page__loading-mask absolute inset-0 z-10 flex items-center justify-center bg-background/60"
+        aria-hidden="true"
+      >
+        <ChoySpinner class="size-6 text-primary" />
+      </div>
+    </Transition>
     <div role="status" class="sr-only">
       {{ loading ? loadingLabel : '' }}
     </div>
@@ -183,6 +185,7 @@ import ChoySpinner from './ChoySpinner.vue';
 import type { PageIoMenuListRef } from './ChoyPageIoMenu.vue';
 import { createTranslate, getGlobalComposer } from '../../i18n';
 import { resolveRoutePageTitle } from '../../router/documentTitle';
+import { useDelayedVisualBusy } from '../../composables/useDelayedVisualBusy';
 
 const { _t } = createTranslate('web', { scope: 'web/components/layout/Page' });
 
@@ -255,6 +258,8 @@ const props = withDefaults(
 
 const slots = useSlots();
 const loadingLabel = computed(() => _t('Loading...'));
+/** Mask is delayed; aria-busy / inert stay on props.loading. */
+const showLoadingMask = useDelayedVisualBusy(() => !!props.loading);
 
 const pageTitleId = useId();
 const hasIoMenu = computed(() => props.actionImport || props.actionExport);

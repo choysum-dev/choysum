@@ -196,6 +196,7 @@ export {
   resolveChoyViewRouteDefaultGroups,
   resolveChoyViewRouteKind,
   resolveChoyViewRoutePath,
+  routeShouldKeepAlive,
   useChoyViewRouteSwitch,
 } from './composables/useChoyViewRouteSwitch';
 export type {

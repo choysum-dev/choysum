@@ -55,6 +55,21 @@ export function resolveChoyViewRoutePath(meta: unknown, kind: string): string {
 }
 
 /**
+ * Whether App/Guest shell should KeepAlive this route.
+ * Explicit meta.keepAlive wins; otherwise sibling list/kanban/chart pages
+ * (non-empty viewPaths) are cached by path so view-switcher navigation remounts less harshly.
+ */
+export function routeShouldKeepAlive(meta: unknown): boolean {
+  if (!meta || typeof meta !== 'object') return false;
+  const m = meta as ChoyViewRouteMeta & { keepAlive?: boolean };
+  if (m.keepAlive === true) return true;
+  if (m.keepAlive === false) return false;
+  const paths = m.viewPaths;
+  if (!paths || typeof paths !== 'object') return false;
+  return Object.keys(paths).length > 0;
+}
+
+/**
  * Write appliedGroups onto a model store queryState.
  * Creates state / queryState when missing; ignores non-object stores.
  */
