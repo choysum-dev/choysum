@@ -193,6 +193,7 @@ export const sandboxRoutes: RouteRecordRaw[] = [
     component: () => import('../pages/SandboxSettings.vue'),
     defaultRoles: ['sys.admin'],
     meta: {
+      keepAlive: true,
       requiresAuth: true,
       viewKind: 'settings',
       viewPaths: {

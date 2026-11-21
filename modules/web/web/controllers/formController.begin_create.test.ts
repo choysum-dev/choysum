@@ -1,6 +1,11 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
+import {
+  beginNavigationLoading,
+  getLoadingRegistryDebugState,
+  resetLoadingRegistryForTests,
+} from '@/core/web/client/loadingRegistry';
 import { createFormController } from './formController';
 import { asyncFnRecorder } from '@/web/web/__tests__/mountApp';
 
@@ -169,6 +174,20 @@ describe('formController beginCreate DefaultGet prefetch', () => {
       Name: 'second',
       Code: 'server-code',
     });
+  });
+
+  test('beginCreate surface frame settles an open navigation ticket', async () => {
+    resetLoadingRegistryForTests();
+    beginNavigationLoading();
+    expect(getLoadingRegistryDebugState().navTicketActive).toBe(true);
+
+    const DefaultGet = asyncFnRecorder(async () => ({ Code: 'from-server' }));
+    const controller = createFormController(newStore(DefaultGet));
+    await controller.beginCreate({ Name: 'seed' });
+
+    expect(DefaultGet.calls.length).toBe(1);
+    expect(getLoadingRegistryDebugState().navTicketActive).toBe(false);
+    resetLoadingRegistryForTests();
   });
 
   test('beginCreate clears loading when it supersedes beginDisplay', async () => {

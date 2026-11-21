@@ -41,6 +41,7 @@ export const metaRoutes: RouteRecordRaw[] = [
     // Browse/list catalog; Plan/Apply/RequestSync stay gated by action requires.
     requires: [{ model: 'meta.MetaModuleCatalog' }],
     meta: {
+      keepAlive: true,
       requiresAuth: true,
       viewKind: 'kanban',
       defaultGroups: [],

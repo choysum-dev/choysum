@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { defineComponent, h, onActivated, ref } from 'vue';
+import { defineComponent, h, ref } from 'vue';
 import { flushPromises, mountApp } from '@/web/web/__tests__/mountApp';
 import ChoyGuestShell from './ChoyGuestShell.vue';
 
@@ -102,38 +102,28 @@ describe('ChoyGuestShell', () => {
     mounted.unmount();
   });
 
-  test('honors route.meta.keepAlive when rendering the matched view', async () => {
+  test('renders the matched view when Component is present', async () => {
     const Page = defineComponent({
       name: 'DemoPage',
       setup: () => () => h('div', { 'data-test': 'page' }, 'ok'),
     });
-
-    function mountWithMeta(keepAlive: boolean) {
-      return mountApp(ChoyGuestShell as any, {
-        props: { showHeader: false },
-        stubs: {
-          'router-view': {
-            setup: (_props: any, { slots }: any) => {
-              return () =>
-                slots.default?.({
-                  Component: Page,
-                  route: { meta: { keepAlive }, name: 'Demo', path: '/demo', fullPath: '/demo' },
-                });
-            },
+    const mounted = mountApp(ChoyGuestShell as any, {
+      props: { showHeader: false },
+      stubs: {
+        'router-view': {
+          setup: (_props: any, { slots }: any) => {
+            return () =>
+              slots.default?.({
+                Component: Page,
+                route: { meta: {}, name: 'Demo', path: '/demo', fullPath: '/demo' },
+              });
           },
         },
-      });
-    }
-
-    const cached = mountWithMeta(true);
+      },
+    });
     await flushPromises();
-    expect(cached.q('[data-test=page]')?.textContent).toBe('ok');
-    cached.unmount();
-
-    const plain = mountWithMeta(false);
-    await flushPromises();
-    expect(plain.q('[data-test=page]')?.textContent).toBe('ok');
-    plain.unmount();
+    expect(mounted.q('[data-test=page]')?.textContent).toBe('ok');
+    mounted.unmount();
   });
 
   test('skips rendering when router-view has no matched Component', async () => {
@@ -145,7 +135,7 @@ describe('ChoyGuestShell', () => {
             return () =>
               slots.default?.({
                 Component: undefined,
-                route: { meta: { keepAlive: false }, name: 'GuestLayout', path: '/', fullPath: '/' },
+                route: { meta: {}, name: 'GuestLayout', path: '/', fullPath: '/' },
               });
           },
         },
@@ -157,47 +147,23 @@ describe('ChoyGuestShell', () => {
     mounted.unmount();
   });
 
-  test('treats missing route.meta as a non-keepAlive view', async () => {
-    const Page = defineComponent({
-      name: 'NoMetaPage',
-      setup: () => () => h('div', { 'data-test': 'page' }, 'ok'),
-    });
-    const mounted = mountApp(ChoyGuestShell as any, {
-      props: { showHeader: false },
-      stubs: {
-        'router-view': {
-          setup: (_props: any, { slots }: any) => {
-            return () =>
-              slots.default?.({
-                Component: Page,
-                route: { name: 'Bare', path: '/bare', fullPath: '/bare' },
-              });
-          },
-        },
-      },
-    });
-    await flushPromises();
-    expect(mounted.q('[data-test=page]')?.textContent).toBe('ok');
-    mounted.unmount();
-  });
-
-  test('remounts keepAlive views when path params change under the same name', async () => {
+  test('remounts the view when fullPath changes', async () => {
     let mountCount = 0;
-    const CachedPage = defineComponent({
-      name: 'ParamCachedPage',
+    const Page = defineComponent({
+      name: 'GuestPage',
       setup() {
         mountCount += 1;
-        return () => h('div', { 'data-test': 'cached' }, `m${mountCount}`);
+        return () => h('div', { 'data-test': 'page' }, `m${mountCount}`);
       },
     });
 
     const current = ref({
-      Component: CachedPage as any,
+      Component: Page as any,
       route: {
-        meta: { keepAlive: true },
-        name: 'Record',
-        path: '/records/1',
-        fullPath: '/records/1',
+        meta: {},
+        name: 'Login',
+        path: '/login',
+        fullPath: '/login',
       },
     });
 
@@ -212,43 +178,46 @@ describe('ChoyGuestShell', () => {
       },
     });
     await flushPromises();
-    expect(mounted.q('[data-test=cached]')?.textContent).toBe('m1');
+    expect(mounted.q('[data-test=page]')?.textContent).toBe('m1');
 
     current.value = {
-      Component: CachedPage as any,
+      Component: Page as any,
       route: {
-        meta: { keepAlive: true },
-        name: 'Record',
-        path: '/records/2',
-        fullPath: '/records/2',
+        meta: {},
+        name: 'Login',
+        path: '/login',
+        fullPath: '/login?next=/web',
       },
     };
     await flushPromises();
-    expect(mounted.q('[data-test=cached]')?.textContent).toBe('m2');
+    expect(mounted.q('[data-test=page]')?.textContent).toBe('m2');
     expect(mountCount).toBe(2);
     mounted.unmount();
   });
 
-  test('reuses keepAlive cache when only the query string changes', async () => {
+  test('ignores meta.keepAlive and remounts across guest navigations', async () => {
     let mountCount = 0;
-    const CachedPage = defineComponent({
-      name: 'QueryCachedPage',
+    const Page = defineComponent({
+      name: 'KeepAliveFlagPage',
       setup() {
         mountCount += 1;
-        return () => h('div', { 'data-test': 'cached' }, `m${mountCount}`);
+        return () => h('div', { 'data-test': 'page' }, `m${mountCount}`);
       },
+    });
+    const Other = defineComponent({
+      name: 'OtherGuestPage',
+      setup: () => () => h('div', { 'data-test': 'other' }, 'other'),
     });
 
     const current = ref({
-      Component: CachedPage as any,
+      Component: Page as any,
       route: {
         meta: { keepAlive: true },
-        name: 'Modules',
-        path: '/meta/modules',
-        fullPath: '/meta/modules?tab=a',
+        name: 'Login',
+        path: '/login',
+        fullPath: '/login',
       },
     });
-
     const mounted = mountApp(ChoyGuestShell as any, {
       props: { showHeader: false },
       stubs: {
@@ -260,78 +229,35 @@ describe('ChoyGuestShell', () => {
       },
     });
     await flushPromises();
-    expect(mounted.q('[data-test=cached]')?.textContent).toBe('m1');
+    expect(mounted.q('[data-test=page]')?.textContent).toBe('m1');
 
     current.value = {
-      Component: CachedPage as any,
+      Component: Other as any,
+      route: {
+        meta: { keepAlive: false },
+        name: 'Register',
+        path: '/register',
+        fullPath: '/register',
+      },
+    };
+    await flushPromises();
+    expect(mounted.q('[data-test=other]')?.textContent).toBe('other');
+
+    current.value = {
+      Component: Page as any,
       route: {
         meta: { keepAlive: true },
-        name: 'Modules',
-        path: '/meta/modules',
-        fullPath: '/meta/modules?tab=b',
+        name: 'Login',
+        path: '/login',
+        fullPath: '/login',
       },
     };
     await flushPromises();
-    expect(mounted.q('[data-test=cached]')?.textContent).toBe('m1');
-    expect(mountCount).toBe(1);
+    expect(mounted.q('[data-test=page]')?.textContent).toBe('m2');
+    expect(mountCount).toBe(2);
     mounted.unmount();
   });
 
-  test('keeps cached views alive across a non-keepAlive navigation', async () => {
-    let mountCount = 0;
-    let activateCount = 0;
-    const CachedPage = defineComponent({
-      name: 'CachedPage',
-      setup() {
-        mountCount += 1;
-        onActivated(() => {
-          activateCount += 1;
-        });
-        return () => h('div', { 'data-test': 'cached' }, `m${mountCount}`);
-      },
-    });
-    const PlainPage = defineComponent({
-      name: 'PlainPage',
-      setup: () => () => h('div', { 'data-test': 'plain' }, 'plain'),
-    });
-
-    const current = ref({
-      Component: CachedPage as any,
-      route: { meta: { keepAlive: true }, name: 'Cached', path: '/cached', fullPath: '/cached' },
-    });
-
-    const mounted = mountApp(ChoyGuestShell as any, {
-      props: { showHeader: false },
-      stubs: {
-        'router-view': {
-          setup: (_props: any, { slots }: any) => {
-            return () => slots.default?.(current.value);
-          },
-        },
-      },
-    });
-    await flushPromises();
-    expect(mounted.q('[data-test=cached]')?.textContent).toBe('m1');
-    expect(mountCount).toBe(1);
-    const activatesAfterFirst = activateCount;
-
-    current.value = {
-      Component: PlainPage as any,
-      route: { meta: { keepAlive: false }, name: 'Plain', path: '/plain', fullPath: '/plain' },
-    };
-    await flushPromises();
-    expect(mounted.q('[data-test=plain]')?.textContent).toBe('plain');
-
-    current.value = {
-      Component: CachedPage as any,
-      route: { meta: { keepAlive: true }, name: 'Cached', path: '/cached', fullPath: '/cached' },
-    };
-    await flushPromises();
-    expect(mounted.q('[data-test=cached]')?.textContent).toBe('m1');
-    expect(mountCount).toBe(1);
-    expect(activateCount).toBeGreaterThan(activatesAfterFirst);
-    mounted.unmount();
-  });
 
   test('Home nav link navigates to / when a router is installed', async () => {
     const createFeStubRouter = (await import('vue-router') as any).createFeStubRouter;

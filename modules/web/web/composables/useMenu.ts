@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { computed, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { isNavigationFailure, NavigationFailureType, useRouter } from 'vue-router'
 import { useMenuStore } from '../stores/menuStore'
 import type { MenuItem } from '@/core/web/menu'
 
@@ -42,16 +42,28 @@ export function useMenu() {
       return false
     }
 
-    menuStore.setActiveMenu(targetMenuItem)
-    pruneOpenedToAncestry(targetMenuItem)
-
     try {
       if (targetMenuItem.externalLink) {
+        // Do not setActiveMenu: KeepAlive scope keys off the leaf id; changing it
+        // here would remount the current in-app view for an external open.
         const target = getExternalTarget(targetMenuItem.openMode)
         window.open(targetMenuItem.path, target)
-      } else {
-        await router.push(targetMenuItem.path)
+        return true
       }
+      // Vue Router resolves aborted/cancelled/duplicated with NavigationFailure
+      // (does not reject). Abort/cancel must not touch activeMenuId; duplicated
+      // means the target is already active — still sync the leaf selection.
+      const failure = await router.push(targetMenuItem.path)
+      if (
+        isNavigationFailure(failure) &&
+        !isNavigationFailure(failure, NavigationFailureType.duplicated)
+      ) {
+        return false
+      }
+      // Set selection only after the route lands (or is already there) so a
+      // cancelled/failed push does not remount via keepAliveScopeKey.
+      menuStore.setActiveMenu(targetMenuItem)
+      pruneOpenedToAncestry(targetMenuItem)
       return true
     } catch (error) {
       console.error('Menu navigation failed:', error)

@@ -29,6 +29,8 @@ test('resource declaration helpers: defineRoute maps title to pageTitle and inje
   expect((route as any).meta?.resourceId).toBe('auth.route.user_list');
   expect((route as any).meta?.routeSequence).toBe(30);
   expect((route as any).meta?.pageTitle).toBe('User List');
+  // Collection route ids (*_list) default KeepAlive.
+  expect((route as any).meta?.keepAlive).toBe(true);
   expect(getResourceDeclarationFromMeta((route as any).meta)).toEqual({
     id: 'auth.route.user_list',
     kind: 'route',
@@ -56,6 +58,37 @@ test('resource declaration helpers: defineRoute preserves explicit pageTitle ove
   } as any);
 
   expect((route as any).meta?.pageTitle).toBe('User Details - Dynamic Override');
+  // Detail routes do not default KeepAlive.
+  expect((route as any).meta?.keepAlive).toBeUndefined();
+});
+
+test('resource declaration helpers: defineRoute KeepAlive default and explicit override', () => {
+  clearResourceDeclarations();
+  const list = defineRoute('base.route.company_list', {
+    path: 'base/companies',
+    title: 'Company List',
+  } as any);
+  expect((list as any).meta?.keepAlive).toBe(true);
+
+  const kanban = defineRoute('auth.route.token_kanban', {
+    path: 'auth/tokens/kanban',
+    title: 'Token Board',
+  } as any);
+  expect((kanban as any).meta?.keepAlive).toBe(true);
+
+  // Browse ids without *_list/_kanban/_chart must set keepAlive explicitly.
+  const catalog = defineRoute('meta.route.module_catalog', {
+    path: 'meta/modules',
+    title: 'Catalog',
+  } as any);
+  expect((catalog as any).meta?.keepAlive).toBeUndefined();
+
+  const optedOut = defineRoute('base.route.address_list', {
+    path: 'base/addresses',
+    title: 'Address List',
+    meta: { keepAlive: false },
+  } as any);
+  expect((optedOut as any).meta?.keepAlive).toBe(false);
 });
 
 test('resource declaration helpers: normalizes term reference titles to English fallbacks plus metadata', () => {

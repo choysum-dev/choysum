@@ -116,11 +116,38 @@ describe('useMenu logic', () => {
     expect(api.isExpanded('group')).toBe(true);
     expect(api.isExpanded('missing-group')).toBe(false);
 
+    store.setActiveMenu(leaf!);
+    expect(store.activeMenuId).toBe('leaf');
     const push = router.push.bind(router);
     router.push = (async () => {
       throw new Error('push failed');
     }) as typeof router.push;
     expect(await api.navigateTo('child')).toBe(false);
+    // Failed push must not change the leaf (KeepAlive scope key).
+    expect(store.activeMenuId).toBe('leaf');
+    router.push = push;
+
+    // Vue Router aborted/cancelled navigations resolve with a NavigationFailure (no throw).
+    router.push = (async () =>
+      Object.assign(new Error('Navigation aborted'), {
+        type: 4,
+        from: { path: '/leaf' },
+        to: { path: '/child' },
+      })) as typeof router.push;
+    expect(await api.navigateTo('child')).toBe(false);
+    expect(store.activeMenuId).toBe('leaf');
+    router.push = push;
+
+    // Duplicated navigation still syncs the leaf (already on target route).
+    store.setActiveMenu(null);
+    router.push = (async () =>
+      Object.assign(new Error('Navigation duplicated'), {
+        type: 16,
+        from: { path: '/leaf' },
+        to: { path: '/leaf' },
+      })) as typeof router.push;
+    expect(await api.navigateTo('leaf')).toBe(true);
+    expect(store.activeMenuId).toBe('leaf');
     router.push = push;
 
     expect(await api.navigateTo(leaf!)).toBe(true);

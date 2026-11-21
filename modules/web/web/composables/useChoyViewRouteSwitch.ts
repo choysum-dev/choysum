@@ -68,25 +68,22 @@ export function resolveChoyViewRoutePath(meta: unknown, kind: string): string {
 }
 
 /**
- * Whether App/Guest shell should KeepAlive this route.
- * Explicit meta.keepAlive wins. Otherwise only the declared sibling viewPaths
- * destinations (list/kanban/chart) are cached — parameterized deep-links that
- * merely copy viewPaths (e.g. operations/:id) stay uncached.
+ * Whether App shell should KeepAlive this route (Guest never KeepAlive).
+ * Explicit meta.keepAlive wins (defineRoute already defaults true for
+ * collection route ids). When omitted at runtime, pageKind === 'collection'
+ * is cached. viewPaths is ViewSwitcher-only and does not imply KeepAlive.
+ * Instance lifetime is further scoped by the shell keepAliveScopeKey
+ * (company + sticky activeMenuId).
  */
-export function routeShouldKeepAlive(meta: unknown, path?: string): boolean {
+export function routeShouldKeepAlive(meta: unknown): boolean {
   if (!meta || typeof meta !== 'object') return false;
-  const m = meta as ChoyViewRouteMeta & { keepAlive?: boolean };
+  const m = meta as ChoyViewRouteMeta & {
+    keepAlive?: boolean;
+    pageKind?: string;
+  };
   if (m.keepAlive === true) return true;
   if (m.keepAlive === false) return false;
-  const paths = m.viewPaths;
-  if (!paths || typeof paths !== 'object') return false;
-  // Fail closed when path is omitted — callers (shells) must pass viewRoute.path.
-  if (path == null || path === '') return false;
-  const current = normalizeChoyViewRoutePath(path);
-  if (!current) return false;
-  return Object.values(paths).some(
-    (v) => typeof v === 'string' && v.trim() !== '' && normalizeChoyViewRoutePath(v) === current,
-  );
+  return typeof m.pageKind === 'string' && m.pageKind.trim() === 'collection';
 }
 
 /**

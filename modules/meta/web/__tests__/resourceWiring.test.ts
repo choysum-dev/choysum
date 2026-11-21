@@ -30,6 +30,9 @@ test('meta resource wiring: catalog/show/operation routes declare §6.3 actions'
 
   expect((byName.MetaModuleCatalog?.meta as any)?.viewKind).toBe('kanban');
   expect((byName.MetaModuleCatalogList?.meta as any)?.viewKind).toBe('list');
+  expect((byName.MetaModuleCatalog?.meta as any)?.keepAlive).toBe(true);
+  expect((byName.MetaModuleCatalogList?.meta as any)?.keepAlive).toBe(true);
+  expect((byName.MetaModuleOperationDeepLink?.meta as any)?.keepAlive).toBeUndefined();
   expect((byName.MetaModuleCatalog?.meta as any)?.viewPaths).toEqual({
     kanban: '/meta/modules',
     list: '/meta/modules/list',

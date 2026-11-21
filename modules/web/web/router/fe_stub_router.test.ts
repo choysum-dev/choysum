@@ -8,6 +8,7 @@ const createFeStubRouter = (VueRouter as any).createFeStubRouter as (overrides?:
     push: (to: unknown) => Promise<unknown>;
     beforeEach: (fn: unknown) => () => void;
     afterEach: (fn: unknown) => () => void;
+    currentRoute: { value: { path: string } };
   };
 };
 
@@ -44,4 +45,18 @@ test('createFeStubRouter beforeEach/afterEach hooks register, run, and unsubscri
   await router.push('/b');
   expect(beforeCalls).toHaveLength(1);
   expect(afterCalls).toHaveLength(1);
+});
+
+test('createFeStubRouter push resolves NavigationFailure when a guard aborts', async () => {
+  const { router } = createFeStubRouter({ route: { path: '/', fullPath: '/' } });
+  const { isNavigationFailure } = VueRouter as any;
+  expect(typeof isNavigationFailure).toBe('function');
+
+  router.beforeEach(() => false);
+  const failure = await router.push('/blocked');
+  expect(isNavigationFailure(failure)).toBe(true);
+  expect(router.currentRoute.value.path).toBe('/');
+
+  const ok = await createFeStubRouter({ route: { path: '/', fullPath: '/' } }).router.push('/ok');
+  expect(ok).toBeUndefined();
 });
