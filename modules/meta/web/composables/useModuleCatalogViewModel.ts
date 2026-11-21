@@ -422,7 +422,7 @@ export function useModuleCatalogViewModel(opts: {
       }
       const pending = resumeOp.value;
       if (pending?.id) {
-        void startOpProgress(pending.id, {
+        startCatalogOpProgress(pending.id, {
           moduleName: pending.moduleName || undefined,
           action: pending.action || undefined,
         });
