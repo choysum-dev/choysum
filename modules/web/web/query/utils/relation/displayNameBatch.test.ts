@@ -104,6 +104,23 @@ test('batchLoadRefRecordsByModel records empty map when createModelStore throws'
   expect(lookups.get('base.Company')?.size).toBe(0);
 });
 
+test('batchLoadRefRecordsByModel outer catch records empty map on unexpected errors', async () => {
+  // Throw after store creation (outside per-chunk try) so the outer catch runs.
+  const badIds = {
+    size: 1,
+    [Symbol.iterator]() {
+      throw new Error('iterate boom');
+    },
+  } as unknown as Set<string>;
+
+  const lookups = await batchLoadRefRecordsByModel(
+    new Map([['base.Company', badIds]]),
+    () => ({ Search: async () => [] }) as any
+  );
+  expect(lookups.get('base.Company')?.size).toBe(0);
+});
+
 test('baseFieldFromGroupAlias', () => {
   expect(baseFieldFromGroupAlias('LanguageId__day')).toBe('LanguageId');
+  expect(baseFieldFromGroupAlias('')).toBe('');
 });
