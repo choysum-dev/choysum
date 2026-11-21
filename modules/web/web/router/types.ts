@@ -14,12 +14,21 @@ declare module 'vue-router' {
 
     /**
      * Whether the component instance should be cached with keep-alive.
-     * Explicit true/false wins. When omitted, App/Guest shell KeepAlive only
-     * when the current path is one of the declared `viewPaths` siblings
-     * (list/kanban/chart) — not parameterized deep-links that reuse viewPaths.
-     * @default false (unless path ∈ viewPaths)
+     * Explicit true/false wins. When omitted: defineRoute defaults true for
+     * collection route ids (*_list / *_kanban / *_chart and known browse
+     * surfaces); otherwise pageKind === 'collection' also caches. viewPaths
+     * does not imply KeepAlive. Cached instances live only within the current
+     * leaf menu + company scope (App shell keepAliveScopeKey). Guest shell
+     * ignores this flag.
+     * @default false (unless defineRoute collection default or pageKind)
      */
     keepAlive?: boolean;
+
+    /**
+     * Page role for shell policies. collection → KeepAlive when keepAlive omitted.
+     * record / create / other → not cached unless keepAlive is true.
+     */
+    pageKind?: 'collection' | 'record' | 'create' | string;
 
     /**
      * Browser title override.

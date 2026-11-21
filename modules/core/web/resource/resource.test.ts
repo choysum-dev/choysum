@@ -29,6 +29,8 @@ test('resource declaration helpers: defineRoute maps title to pageTitle and inje
   expect((route as any).meta?.resourceId).toBe('auth.route.user_list');
   expect((route as any).meta?.routeSequence).toBe(30);
   expect((route as any).meta?.pageTitle).toBe('User List');
+  // Collection route ids (*_list) default KeepAlive.
+  expect((route as any).meta?.keepAlive).toBe(true);
   expect(getResourceDeclarationFromMeta((route as any).meta)).toEqual({
     id: 'auth.route.user_list',
     kind: 'route',
@@ -56,6 +58,30 @@ test('resource declaration helpers: defineRoute preserves explicit pageTitle ove
   } as any);
 
   expect((route as any).meta?.pageTitle).toBe('User Details - Dynamic Override');
+  // Detail routes do not default KeepAlive.
+  expect((route as any).meta?.keepAlive).toBeUndefined();
+});
+
+test('resource declaration helpers: defineRoute KeepAlive default and explicit override', () => {
+  clearResourceDeclarations();
+  const catalog = defineRoute('meta.route.module_catalog', {
+    path: 'meta/modules',
+    title: 'Catalog',
+  } as any);
+  expect((catalog as any).meta?.keepAlive).toBe(true);
+
+  const optedOut = defineRoute('base.route.company_list', {
+    path: 'base/companies',
+    title: 'Company List',
+    meta: { keepAlive: false },
+  } as any);
+  expect((optedOut as any).meta?.keepAlive).toBe(false);
+
+  const settings = defineRoute('sandbox.route.settings', {
+    path: 'sandbox/settings',
+    title: 'Settings',
+  } as any);
+  expect((settings as any).meta?.keepAlive).toBe(true);
 });
 
 test('resource declaration helpers: normalizes term reference titles to English fallbacks plus metadata', () => {

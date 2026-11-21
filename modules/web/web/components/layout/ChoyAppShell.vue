@@ -89,19 +89,19 @@ SPDX-License-Identifier: Apache-2.0
           >
             <slot>
               <router-view v-slot="{ Component, route: viewRoute }">
-                <!-- Remount KeepAlive cache when company scope changes (A→B→A must not restore stale A). -->
-                <div :key="companyScopeKey" class="flex min-h-0 min-w-0 w-full flex-1 flex-col">
-                  <KeepAlive>
+                <!-- Remount KeepAlive when company or leaf menu changes. -->
+                <div :key="keepAliveScopeKey" class="flex min-h-0 min-w-0 w-full flex-1 flex-col">
+                  <KeepAlive :max="5">
                     <component
                       :is="Component"
-                      v-if="Component && routeShouldKeepAlive(viewRoute.meta, viewRoute.path)"
+                      v-if="Component && routeShouldKeepAlive(viewRoute.meta)"
                       class="min-h-0 flex-1"
                       :key="viewRoute.path"
                     />
                   </KeepAlive>
                   <component
                     :is="Component"
-                    v-if="Component && !routeShouldKeepAlive(viewRoute.meta, viewRoute.path)"
+                    v-if="Component && !routeShouldKeepAlive(viewRoute.meta)"
                     class="min-h-0 flex-1"
                     :key="viewRoute.fullPath"
                   />
@@ -131,6 +131,7 @@ import { KeepAlive, computed } from 'vue'
 import { useNavigationHandoffBusy } from '@/core/web/client/loadingRegistry'
 import { useI18n } from 'vue-i18n'
 import { routeShouldKeepAlive } from '../../composables/useChoyViewRouteSwitch'
+import { useKeepAliveScopeKey } from '../../composables/useKeepAliveScopeKey'
 import ChoyAppFooter from './ChoyAppFooter.vue'
 import ChoyAppHeader from './ChoyAppHeader.vue'
 import ChoyAppRail from './ChoyAppRail.vue'
@@ -146,7 +147,6 @@ import {
   SidebarRail,
 } from '../vendor/ui/sidebar/index'
 import { useLayoutStore } from '../../stores/layoutStore'
-import { useCompanyScopeViewKey } from '../../stores/companyScopeView'
 import { useI18nStore } from '../../stores/i18nStore'
 import { shellMenuTriggerLabel } from './choyWebShellChrome'
 
@@ -187,8 +187,8 @@ try {
 
 const effectiveShowHeader = computed(() => props.showHeader)
 
-/** Remount open views when auth publishes a new active/enabled company scope. */
-const companyScopeKey = useCompanyScopeViewKey()
+/** Remount KeepAlive when company scope or leaf menu (activeMenu) changes. */
+const keepAliveScopeKey = useKeepAliveScopeKey()
 
 const menuTriggerLabel = computed(() =>
   shellMenuTriggerLabel({

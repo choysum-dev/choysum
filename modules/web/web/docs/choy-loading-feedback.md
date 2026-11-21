@@ -45,9 +45,14 @@ Page and view busy overlays are **feedback**, not page transitions. Product rule
 2. **Soft stale** — host uses CSS `transition-opacity` (motion tokens); no hard opacity step.
 3. **Overlay fade** — `<Transition name="busy-overlay">` (fast duration).
 4. **No default full-page route fade** — App shell does not wrap `router-view` in enter/leave
-   transitions. Sibling list/kanban/chart routes use KeepAlive when the current path is one of
-   `meta.viewPaths` (`routeShouldKeepAlive(meta, path)`); deep-links that only copy `viewPaths`
-   stay uncached. Cached views reapply `defaultGroups` on `onActivated`.
+   transitions. Collection routes KeepAlive via `routeShouldKeepAlive(meta)`:
+   `meta.keepAlive` (explicit), else `defineRoute` defaults `keepAlive: true` for collection
+   route ids (`*_list` / `*_kanban` / `*_chart`, plus known browse ids), else
+   `pageKind: 'collection'`. Opt out with `keepAlive: false`. `viewPaths` is ViewSwitcher-only
+   and does not imply KeepAlive. Cached instances live only within the current leaf menu
+   (`activeMenuId`, sticky across brief null) plus company scope (`keepAliveScopeKey` on
+   App shell). Leaving a leaf or switching company remounts the KeepAlive table. Guest shell
+   does not use KeepAlive. Cached views reapply `defaultGroups` on `onActivated`.
 
 ## Navigation chrome settle (`meta.navLoading`)
 
@@ -67,6 +72,15 @@ Timing constants live on `loadingTiming` in the registry — not on RouteMeta
 (no per-route millisecond knobs). `NAV_ROUTE_SETTLE_MS` (0) documents the route
 policy intent; the router does not schedule a zero-delay idle re-arm.
 `SURFACE_BUSY_DELAY_MS` gates page/view/handoff overlay paint (same value as `BAR_DELAY_MS`).
+
+## App create + KeepAlive
+
+- Form **create** (`beginCreate`) runs `DefaultGet` under `layer: 'surface'` so navigation
+  chrome hands off instead of sitting for `NAV_IDLE_SETTLE_MS` (create never called `beginDisplay`).
+- KeepAlive reactivation can paint without a new surface. `ChoyPage` calls
+  `useSettleNavChromeOnActivate` to settle leftover nav chrome on activate when idle.
+- Instance cache ≠ data freshness: ModelStore soft-refresh / TTL (when added) stays separate
+  from KeepAlive lifetime.
 
 ## Registry pointers
 

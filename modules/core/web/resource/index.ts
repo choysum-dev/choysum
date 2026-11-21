@@ -205,6 +205,25 @@ function withResourceMeta(meta: ObjectRecord | undefined, declaration: ResourceD
   } as ResourceMeta;
 }
 
+/**
+ * Collection browse route ids default KeepAlive in defineRoute.
+ * Convention: *_list / *_kanban / *_chart, plus known browse surfaces
+ * without that suffix. Explicit meta.keepAlive always wins.
+ */
+function routeResourceIdImpliesCollectionKeepAlive(id: ResourceId): boolean {
+  const trimmed = String(id ?? '').trim();
+  if (!trimmed) return false;
+  if (/_(list|kanban|chart)$/.test(trimmed)) return true;
+  return trimmed === 'meta.route.module_catalog' || trimmed === 'sandbox.route.settings';
+}
+
+function applyDefineRouteMetaDefaults(meta: ResourceMeta, id: ResourceId): void {
+  if (meta.keepAlive !== undefined) return;
+  if (routeResourceIdImpliesCollectionKeepAlive(id)) {
+    meta.keepAlive = true;
+  }
+}
+
 export function getResourceDeclaration(id: ResourceId): ResourceDeclaration | undefined {
   const hit = resourceDeclarations.get(id);
   return hit ? cloneDeclaration(hit) : undefined;
@@ -256,6 +275,7 @@ export function defineRoute<T extends RouteRecordRaw>(id: ResourceId, config: De
   if (sequence !== undefined) {
     meta.routeSequence = sequence;
   }
+  applyDefineRouteMetaDefaults(meta, id);
 
   return {
     ...(routeConfig as T),

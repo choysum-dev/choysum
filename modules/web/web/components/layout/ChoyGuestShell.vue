@@ -35,18 +35,11 @@ SPDX-License-Identifier: Apache-2.0
           data-testid="choy-shell-content"
         >
           <slot>
+            <!-- Guest never KeepAlive (login/setup/register must not revive instance state). -->
             <router-view v-slot="{ Component, route: viewRoute }">
-              <KeepAlive>
-                <component
-                  :is="Component"
-                  v-if="Component && routeShouldKeepAlive(viewRoute.meta, viewRoute.path)"
-                  class="min-h-0 flex-1"
-                  :key="viewRoute.path"
-                />
-              </KeepAlive>
               <component
                 :is="Component"
-                v-if="Component && !routeShouldKeepAlive(viewRoute.meta, viewRoute.path)"
+                v-if="Component"
                 class="min-h-0 flex-1"
                 :key="viewRoute.fullPath"
               />
@@ -68,9 +61,8 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { KeepAlive, computed } from 'vue'
+import { computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { routeShouldKeepAlive } from '../../composables/useChoyViewRouteSwitch'
 import ChoyAppFooter from './ChoyAppFooter.vue'
 import ChoyGuestHeader from './ChoyGuestHeader.vue'
 import { createGuestHomeNavigate } from './guestHomeNavigate'
