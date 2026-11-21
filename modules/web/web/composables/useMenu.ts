@@ -42,16 +42,19 @@ export function useMenu() {
       return false
     }
 
-    menuStore.setActiveMenu(targetMenuItem)
-    pruneOpenedToAncestry(targetMenuItem)
-
     try {
       if (targetMenuItem.externalLink) {
+        // Do not setActiveMenu: KeepAlive scope keys off the leaf id; changing it
+        // here would remount the current in-app view for an external open.
         const target = getExternalTarget(targetMenuItem.openMode)
         window.open(targetMenuItem.path, target)
-      } else {
-        await router.push(targetMenuItem.path)
+        return true
       }
+      await router.push(targetMenuItem.path)
+      // Set selection only after the route lands so a cancelled/failed push does
+      // not remount the current view via keepAliveScopeKey.
+      menuStore.setActiveMenu(targetMenuItem)
+      pruneOpenedToAncestry(targetMenuItem)
       return true
     } catch (error) {
       console.error('Menu navigation failed:', error)

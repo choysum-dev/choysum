@@ -47,8 +47,9 @@ Page and view busy overlays are **feedback**, not page transitions. Product rule
 4. **No default full-page route fade** — App shell does not wrap `router-view` in enter/leave
    transitions. Collection routes KeepAlive via `routeShouldKeepAlive(meta)`:
    `meta.keepAlive` (explicit), else `defineRoute` defaults `keepAlive: true` for collection
-   route ids (`*_list` / `*_kanban` / `*_chart`, plus known browse ids), else
-   `pageKind: 'collection'`. Opt out with `keepAlive: false`. `viewPaths` is ViewSwitcher-only
+   route ids (`*_list` / `*_kanban` / `*_chart`; other browse surfaces set keepAlive
+   explicitly), else `pageKind: 'collection'`. Opt out with `keepAlive: false`.
+   `viewPaths` is ViewSwitcher-only
    and does not imply KeepAlive. Cached instances live only within the current leaf menu
    (`activeMenuId`, sticky across brief null) plus company scope (`keepAliveScopeKey` on
    App shell). Leaving a leaf or switching company remounts the KeepAlive table. Guest shell

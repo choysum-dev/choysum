@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
+import { getActivePinia } from 'pinia';
 import { computed, ref, watch } from 'vue';
 import {
   keepAliveScopeKey,
@@ -17,7 +18,8 @@ export function useKeepAliveScopeKey() {
   const companyKey = useCompanyScopeViewKey();
   const stickyMenuId = ref('');
 
-  try {
+  // No active Pinia (Guest / early mount) → company key only; do not swallow store bugs.
+  if (getActivePinia()) {
     const menuStore = useMenuStore();
     watch(
       () => menuStore.activeMenuId,
@@ -26,8 +28,6 @@ export function useKeepAliveScopeKey() {
       },
       { immediate: true },
     );
-  } catch {
-    // Guest / no Pinia menu store — company key only (empty menu fragment).
   }
 
   return computed(() => keepAliveScopeKey(companyKey.value, stickyMenuId.value));

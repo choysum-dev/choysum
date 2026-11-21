@@ -116,11 +116,15 @@ describe('useMenu logic', () => {
     expect(api.isExpanded('group')).toBe(true);
     expect(api.isExpanded('missing-group')).toBe(false);
 
+    store.setActiveMenu(leaf!);
+    expect(store.activeMenuId).toBe('leaf');
     const push = router.push.bind(router);
     router.push = (async () => {
       throw new Error('push failed');
     }) as typeof router.push;
     expect(await api.navigateTo('child')).toBe(false);
+    // Failed push must not change the leaf (KeepAlive scope key).
+    expect(store.activeMenuId).toBe('leaf');
     router.push = push;
 
     expect(await api.navigateTo(leaf!)).toBe(true);

@@ -195,6 +195,70 @@ describe('ChoyGuestShell', () => {
     mounted.unmount();
   });
 
+  test('ignores meta.keepAlive and remounts across guest navigations', async () => {
+    let mountCount = 0;
+    const Page = defineComponent({
+      name: 'KeepAliveFlagPage',
+      setup() {
+        mountCount += 1;
+        return () => h('div', { 'data-test': 'page' }, `m${mountCount}`);
+      },
+    });
+    const Other = defineComponent({
+      name: 'OtherGuestPage',
+      setup: () => () => h('div', { 'data-test': 'other' }, 'other'),
+    });
+
+    const current = ref({
+      Component: Page as any,
+      route: {
+        meta: { keepAlive: true },
+        name: 'Login',
+        path: '/login',
+        fullPath: '/login',
+      },
+    });
+    const mounted = mountApp(ChoyGuestShell as any, {
+      props: { showHeader: false },
+      stubs: {
+        'router-view': {
+          setup: (_props: any, { slots }: any) => {
+            return () => slots.default?.(current.value);
+          },
+        },
+      },
+    });
+    await flushPromises();
+    expect(mounted.q('[data-test=page]')?.textContent).toBe('m1');
+
+    current.value = {
+      Component: Other as any,
+      route: {
+        meta: { keepAlive: false },
+        name: 'Register',
+        path: '/register',
+        fullPath: '/register',
+      },
+    };
+    await flushPromises();
+    expect(mounted.q('[data-test=other]')?.textContent).toBe('other');
+
+    current.value = {
+      Component: Page as any,
+      route: {
+        meta: { keepAlive: true },
+        name: 'Login',
+        path: '/login',
+        fullPath: '/login',
+      },
+    };
+    await flushPromises();
+    expect(mounted.q('[data-test=page]')?.textContent).toBe('m2');
+    expect(mountCount).toBe(2);
+    mounted.unmount();
+  });
+
+
   test('Home nav link navigates to / when a router is installed', async () => {
     const createFeStubRouter = (await import('vue-router') as any).createFeStubRouter;
     const { router } = createFeStubRouter({
