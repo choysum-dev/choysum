@@ -138,6 +138,18 @@ describe('useMenu logic', () => {
     expect(store.activeMenuId).toBe('leaf');
     router.push = push;
 
+    // Duplicated navigation still syncs the leaf (already on target route).
+    store.setActiveMenu(null);
+    router.push = (async () =>
+      Object.assign(new Error('Navigation duplicated'), {
+        type: 16,
+        from: { path: '/leaf' },
+        to: { path: '/leaf' },
+      })) as typeof router.push;
+    expect(await api.navigateTo('leaf')).toBe(true);
+    expect(store.activeMenuId).toBe('leaf');
+    router.push = push;
+
     expect(await api.navigateTo(leaf!)).toBe(true);
     expect(api.hasMenu('leaf')).toBe(true);
     expect(api.getMenu('leaf')?.id).toBe('leaf');

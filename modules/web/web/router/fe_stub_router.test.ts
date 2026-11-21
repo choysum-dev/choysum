@@ -8,6 +8,7 @@ const createFeStubRouter = (VueRouter as any).createFeStubRouter as (overrides?:
     push: (to: unknown) => Promise<unknown>;
     beforeEach: (fn: unknown) => () => void;
     afterEach: (fn: unknown) => () => void;
+    currentRoute: { value: { path: string } };
   };
 };
 
