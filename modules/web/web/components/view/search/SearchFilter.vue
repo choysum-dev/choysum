@@ -55,7 +55,10 @@ import SearchFilterGroup from './SearchFilterGroup.vue';
 import { valueToPreview } from '@/web/web/query/utils/condition/like';
 import { getOperatorLabel } from '@/web/web/query/utils/filter/operators';
 import { FilterEditorBindingsKey, useFilterEditorBindings } from '@/web/web/composables/search/useFilterEditorBindings';
+import { useFilterRelationLabelCache } from '@/web/web/composables/search/useFilterRelationLabelCache';
 import { countFilterLeaves, isConditionComplete, isGroup } from '@/web/web/query/utils/filter/structures';
+import { formatRelationPreviewValue } from '@/web/web/query/utils/relation/filterRelationLabels';
+import { createModelStore as defaultCreateModelStore } from '@/web/web/stores/registry';
 import { createTranslate } from '@/web/web/i18n';
 
 const { _t } = createTranslate('web', { scope: 'web/components/view/search/SearchFilter' });
@@ -76,6 +79,8 @@ const props = defineProps<{
   store: ModelStore<any>;
   draft: DraftFilterCompat;
   fields: FieldOption[];
+  /** Test / host override for relation DisplayName batch loads. */
+  createModelStore?: typeof defaultCreateModelStore;
 }>();
 
 const emit = defineEmits<{
@@ -90,10 +95,20 @@ const emit = defineEmits<{
   (e: 'confirm'): void;
 }>();
 
+const storeDeps = {
+  createModelStore: props.createModelStore ?? defaultCreateModelStore,
+};
+
 // One bindings instance for the whole editor tree (relation-store cache shared by nested groups).
-const bindings = useFilterEditorBindings(props.store as any);
+const bindings = useFilterEditorBindings(props.store as any, storeDeps);
 provide(FilterEditorBindingsKey, bindings);
-const { metaTypeOf } = bindings;
+const { metaTypeOf, relationModelOf } = bindings;
+
+const { labels: relationLabels, labelOf: relationLabelOf } = useFilterRelationLabelCache(
+  props.store as any,
+  () => props.draft.root,
+  storeDeps
+);
 
 function onSetLogic(logic: 'And' | 'Or', groupId?: string) {
   emit('logic-change', logic, groupId);
@@ -124,12 +139,12 @@ function onConfirmClick() {
 
 // Recursive preview and leaf counting using SQL-style formatting.
 const { preview, leafCount } = (() => {
-  // Convert many-to-one objects to ids for preview output.
+  // manytoone / manytooneref: prefer cached DisplayName; fall back to bare id.
   function toPreviewValue(field: string, raw: any): any {
     const t = metaTypeOf(field);
-    if (t === 'manytoone') {
-      const toId = (x: any) => (x && typeof x === 'object' ? (x.Id ?? null) : x);
-      return Array.isArray(raw) ? raw.map(toId) : toId(raw);
+    if (t === 'manytoone' || t === 'manytooneref') {
+      const model = relationModelOf(field);
+      return formatRelationPreviewValue(raw, id => (model ? relationLabelOf(model, id) : id));
     }
     return raw;
   }
@@ -169,7 +184,11 @@ const { preview, leafCount } = (() => {
     return n;
   }
   return {
-    preview: computed(() => expGroup(props.draft.root)),
+    // Read relationLabels so DisplayName batch updates re-render the preview.
+    preview: computed(() => {
+      void relationLabels.value;
+      return expGroup(props.draft.root);
+    }),
     leafCount: computed(() => countLeaf(props.draft.root)),
   };
 })();
