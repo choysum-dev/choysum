@@ -75,3 +75,23 @@ test('useSettleNavChromeOnActivate settles leftover nav chrome on KeepAlive reac
   resetLoadingRegistryForTests();
   mounted.unmount();
 });
+
+test('useSettleNavChromeOnActivate skips settle after unmount', async () => {
+  resetLoadingRegistryForTests();
+  beginNavigationLoading();
+
+  const Page = defineComponent({
+    name: 'SettleDisposePage',
+    setup() {
+      useSettleNavChromeOnActivate();
+      return () => h('div', { 'data-test': 'dispose' }, 'ok');
+    },
+  });
+  const mounted = mountApp(Page as any);
+  // Unmount before the deferred nextTick runs so settle is skipped.
+  mounted.unmount();
+  await nextTick();
+  await nextTick();
+  expect(getLoadingRegistryDebugState().navTicketActive).toBe(true);
+  resetLoadingRegistryForTests();
+});

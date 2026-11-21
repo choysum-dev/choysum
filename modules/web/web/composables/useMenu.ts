@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { computed, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { isNavigationFailure, useRouter } from 'vue-router'
 import { useMenuStore } from '../stores/menuStore'
 import type { MenuItem } from '@/core/web/menu'
 
@@ -50,7 +50,10 @@ export function useMenu() {
         window.open(targetMenuItem.path, target)
         return true
       }
-      await router.push(targetMenuItem.path)
+      // Vue Router resolves aborted/cancelled navigations with a NavigationFailure
+      // (does not reject). Treat that as failure before touching activeMenuId.
+      const failure = await router.push(targetMenuItem.path)
+      if (isNavigationFailure(failure)) return false
       // Set selection only after the route lands so a cancelled/failed push does
       // not remount the current view via keepAliveScopeKey.
       menuStore.setActiveMenu(targetMenuItem)

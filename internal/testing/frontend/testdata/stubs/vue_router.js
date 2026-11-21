@@ -86,7 +86,12 @@ export function createFeStubRouter(overrides) {
             return Promise.resolve(fn(route, fromSnapshot)).then(function (result) {
               if (result === false) {
                 aborted = true;
-                failure = { type: 'aborted' };
+                // Shape matches vue-router NavigationFailure enough for isNavigationFailure.
+                failure = Object.assign(new Error('Navigation aborted'), {
+                  type: 4,
+                  from: fromSnapshot,
+                  to: null,
+                });
                 // Keep the intended destination (incl. guard-mutated meta) for afterEach,
                 // matching vue-router's failure semantics.
                 failedTo = {
@@ -98,6 +103,7 @@ export function createFeStubRouter(overrides) {
                   meta: Object.assign({}, route.meta),
                   matched: route.matched,
                 };
+                failure.to = failedTo;
                 applyRoute(route, fromSnapshot);
                 router.currentRoute.value = route;
               }
@@ -109,8 +115,9 @@ export function createFeStubRouter(overrides) {
             return fn(failure ? failedTo : route, fromSnapshot, failure);
           });
         });
+        // Real vue-router resolves undefined on success, NavigationFailure on abort.
         return chain.then(function () {
-          return to;
+          return failure;
         });
       },
       replace: function (to) {
@@ -316,7 +323,7 @@ export function createRouter(options) {
       push: function (to) {
         var next = lookup(to);
         applyRoute(this.currentRoute.value, next);
-        return Promise.resolve(to);
+        return Promise.resolve(undefined);
       },
       replace: function (to) {
         return this.push(to);
@@ -346,6 +353,22 @@ export function createMemoryHistory() {
   return {};
 }
 
+/**
+ * FE-stub stand-in for vue-router isNavigationFailure.
+ * True for Error failures (incl. stub aborted pushes) with a numeric type.
+ */
+export function isNavigationFailure(error, type) {
+  if (!(error instanceof Error) || typeof error.type !== 'number') return false;
+  if (type == null) return true;
+  return !!(error.type & type);
+}
+
+export var NavigationFailureType = {
+  aborted: 4,
+  cancelled: 8,
+  duplicated: 16,
+};
+
 export default {
   useRouter: useRouter,
   useRoute: useRoute,
@@ -355,4 +378,6 @@ export default {
   createMemoryHistory: createMemoryHistory,
   createWebHistory: createWebHistory,
   createFeStubRouter: createFeStubRouter,
+  isNavigationFailure: isNavigationFailure,
+  NavigationFailureType: NavigationFailureType,
 };

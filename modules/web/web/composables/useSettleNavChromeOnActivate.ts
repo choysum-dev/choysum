@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { nextTick, onActivated } from 'vue';
+import { nextTick, onActivated, onUnmounted } from 'vue';
 import {
   hasActiveSurfaceBusy,
   settleNavigationIfActive,
@@ -21,7 +21,14 @@ export function settleNavChromeIfNoSurface(): void {
  * bar / handoff do not sit for NAV_IDLE_SETTLE_MS.
  */
 export function useSettleNavChromeOnActivate(): void {
+  let disposed = false;
+  onUnmounted(() => {
+    disposed = true;
+  });
   onActivated(() => {
-    void nextTick(() => settleNavChromeIfNoSurface());
+    void nextTick(() => {
+      if (disposed) return;
+      settleNavChromeIfNoSurface();
+    });
   });
 }

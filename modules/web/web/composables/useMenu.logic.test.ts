@@ -127,6 +127,17 @@ describe('useMenu logic', () => {
     expect(store.activeMenuId).toBe('leaf');
     router.push = push;
 
+    // Vue Router aborted/cancelled navigations resolve with a NavigationFailure (no throw).
+    router.push = (async () =>
+      Object.assign(new Error('Navigation aborted'), {
+        type: 4,
+        from: { path: '/leaf' },
+        to: { path: '/child' },
+      })) as typeof router.push;
+    expect(await api.navigateTo('child')).toBe(false);
+    expect(store.activeMenuId).toBe('leaf');
+    router.push = push;
+
     expect(await api.navigateTo(leaf!)).toBe(true);
     expect(api.hasMenu('leaf')).toBe(true);
     expect(api.getMenu('leaf')?.id).toBe('leaf');
