@@ -24,12 +24,22 @@ export async function batchLoadRefRecordsByModel(
   await Promise.all(
     Array.from(idsByModel.entries()).map(async ([model, ids]) => {
       if (ids.size === 0) return;
+      const map = new Map<string, any>();
       try {
-        const targetStore = createModelStore(model) as {
-          Search?: (condition?: any, options?: any) => Promise<any>;
-        };
-        if (typeof targetStore.Search !== 'function') return;
-        const map = new Map<string, any>();
+        let targetStore: { Search?: (condition?: any, options?: any) => Promise<any> };
+        try {
+          targetStore = createModelStore(model) as {
+            Search?: (condition?: any, options?: any) => Promise<any>;
+          };
+        } catch (e) {
+          console.warn(`${logPrefix} Failed to create store for target '${model}'`, e);
+          lookups.set(model, map);
+          return;
+        }
+        if (typeof targetStore.Search !== 'function') {
+          lookups.set(model, map);
+          return;
+        }
         const idList = Array.from(ids);
         for (let i = 0; i < idList.length; i += REF_DISPLAY_NAME_IN_CHUNK) {
           const chunk = idList.slice(i, i + REF_DISPLAY_NAME_IN_CHUNK);
@@ -50,6 +60,7 @@ export async function batchLoadRefRecordsByModel(
         lookups.set(model, map);
       } catch (e) {
         console.warn(`${logPrefix} Failed to hydrate ManyToOneRef for target '${model}'`, e);
+        lookups.set(model, map);
       }
     })
   );

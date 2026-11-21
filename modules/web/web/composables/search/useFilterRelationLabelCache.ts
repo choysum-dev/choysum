@@ -31,8 +31,6 @@ export function useFilterRelationLabelCache(
   const createModelStore = deps.createModelStore ?? defaultCreateModelStore;
   const labels = shallowRef(new Map<string, string>());
   let generation = 0;
-  // Stash the batch computed in the watch source so the callback need not recollect.
-  let pendingBatch = new Map<string, Set<string>>();
 
   async function refresh(batch: Map<string, Set<string>>, gen: number) {
     if (batch.size === 0) {
@@ -60,12 +58,14 @@ export function useFilterRelationLabelCache(
   watch(
     () => {
       const meta = (store as any)?.fieldsMetadata || {};
-      pendingBatch = collectRelationIdsFromGroup(getRoot(), meta);
-      return relationIdBatchSignature(pendingBatch);
+      return relationIdBatchSignature(collectRelationIdsFromGroup(getRoot(), meta));
     },
     async signature => {
       const gen = ++generation;
-      const batch = pendingBatch;
+      // Recollect in the callback so batch always matches the signature that fired
+      // (avoids a shared pendingBatch that can be overwritten before the async body runs).
+      const meta = (store as any)?.fieldsMetadata || {};
+      const batch = collectRelationIdsFromGroup(getRoot(), meta);
       try {
         if (!signature) {
           await refresh(new Map(), gen);

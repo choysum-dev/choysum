@@ -91,7 +91,17 @@ test('batchLoadRefRecordsByModel skips stores without Search', async () => {
     new Map([['base.Company', new Set(['c1'])]]),
     () => ({}) as any
   );
-  expect(lookups.size).toBe(0);
+  expect(lookups.get('base.Company')?.size).toBe(0);
+});
+
+test('batchLoadRefRecordsByModel records empty map when createModelStore throws', async () => {
+  const lookups = await batchLoadRefRecordsByModel(
+    new Map([['base.Company', new Set(['c1'])]]),
+    () => {
+      throw new Error('no store');
+    }
+  );
+  expect(lookups.get('base.Company')?.size).toBe(0);
 });
 
 test('baseFieldFromGroupAlias', () => {
