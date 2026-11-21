@@ -8,6 +8,10 @@ import type { AttachmentFieldDescriptor } from './types';
 import { DataSetSnapshot, RecordRow, GroupRow } from './types';
 import { exportFieldSelection, pathsToFieldSelection, ensureRootId } from './utils/registry/field';
 import { exportMetrics } from './utils/registry/metric';
+import {
+  baseFieldFromGroupAlias,
+  batchLoadRefRecordsByModel,
+} from './utils/relation/displayNameBatch';
 import { createModelStore } from '../stores/registry';
 import { getTokenProvider } from '@/core/web/rpc/providers';
 import { normalizeOptionalString } from '@/core/service/utils/normalization';
@@ -18,6 +22,13 @@ type ExecutorStoreDeps = {
   createModelStore: CreateModelStore;
 };
 
+function manyToOneRefFields(store: ModelStore<any>): Array<[string, { type?: string; relationModel?: string }]> {
+  const meta = store.fieldsMetadata || {};
+  return Object.entries(meta).filter(([, f]) => f.type === 'ManyToOneRef' && f.relationModel) as Array<
+    [string, { type?: string; relationModel?: string }]
+  >;
+}
+
 /**
  * Hydrates ManyToOneRef fields in bulk.
  * Replaces string ids in the result set with { Id, DisplayName } objects.
@@ -27,15 +38,10 @@ async function hydrateManyToOneRefs(store: ModelStore<any>, items: any[], deps: 
   if (!items || items.length === 0) return;
 
   try {
-    const meta = store.fieldsMetadata || {};
-    // Keep field names so records can be updated in place.
-    const refFields = Object.entries(meta).filter(([, f]) => f.type === 'ManyToOneRef' && f.relationModel);
-
+    const refFields = manyToOneRefFields(store);
     if (refFields.length === 0) return;
 
-    // 1. Collect ids into Map<TargetModel, Set<Id>>.
     const batch = new Map<string, Set<string>>();
-
     for (const item of items) {
       if (!item) continue;
       for (const [fieldName, f] of refFields) {
@@ -49,38 +55,14 @@ async function hydrateManyToOneRefs(store: ModelStore<any>, items: any[], deps: 
       }
     }
 
-    // 2. Query target services in bulk.
-    const lookups = new Map<string, Map<string, any>>(); // TargetModel -> (Id -> Object)
+    const lookups = await batchLoadRefRecordsByModel(batch, deps.createModelStore);
 
-    await Promise.all(
-      Array.from(batch.entries()).map(async ([model, ids]) => {
-        if (ids.size === 0) return;
-        try {
-          const targetStore = deps.createModelStore(model);
-          const cond: any = ['Id', 'in', Array.from(ids)];
-          const results = await targetStore.Search(cond, { fields: ['Id', 'DisplayName'] });
-
-          const map = new Map<string, any>();
-          for (const r of results as Array<{ Id?: unknown }>) {
-            const key = String(r.Id ?? '');
-            if (!key || key === 'undefined') continue;
-            map.set(key, r);
-          }
-          lookups.set(model, map);
-        } catch (e) {
-          console.warn(`[Executor] Failed to hydrate ManyToOneRef for target '${model}'`, e);
-        }
-      })
-    );
-
-    // 3. Fill hydrated objects back into each record.
     for (const item of items) {
       if (!item) continue;
       for (const [fieldName, f] of refFields) {
         const val = item[fieldName];
         if (val && typeof val === 'string') {
-          const target = f.relationModel!;
-          const map = lookups.get(target);
+          const map = lookups.get(f.relationModel!);
           if (map && map.has(val)) {
             item[fieldName] = map.get(val);
           }
@@ -89,6 +71,78 @@ async function hydrateManyToOneRefs(store: ModelStore<any>, items: any[], deps: 
     }
   } catch (e) {
     console.error('[Executor] Error hydrating ManyToOneRef fields', e);
+  }
+}
+
+/**
+ * Rewrites GroupRow labels for ManyToOneRef group keys using bulk DisplayName lookup.
+ * Keeps keys as raw ids; syncs raw.labels for consumers that read the backend payload.
+ */
+async function hydrateGroupRefLabels(store: ModelStore<any>, rows: GroupRow[], deps: ExecutorStoreDeps) {
+  if (!rows || rows.length === 0) return;
+
+  try {
+    const refFields = new Map(manyToOneRefFields(store));
+    if (refFields.size === 0) return;
+
+    const batch = new Map<string, Set<string>>();
+    const collect = (nodes: GroupRow[]) => {
+      for (const node of nodes) {
+        const keys = node.keys || {};
+        for (const alias of Object.keys(keys)) {
+          const field = refFields.get(baseFieldFromGroupAlias(alias));
+          if (!field?.relationModel) continue;
+          const val = keys[alias];
+          if (!(val && typeof val === 'string')) continue;
+          if (!batch.has(field.relationModel)) batch.set(field.relationModel, new Set());
+          batch.get(field.relationModel)!.add(val);
+        }
+        if (node.children?.length) collect(node.children);
+      }
+    };
+    collect(rows);
+    if (batch.size === 0) return;
+
+    const lookups = await batchLoadRefRecordsByModel(batch, deps.createModelStore);
+
+    const apply = (nodes: GroupRow[]) => {
+      for (const node of nodes) {
+        const keys = node.keys || {};
+        const labels: Record<string, string> = { ...(node.labels || {}) };
+        let changed = false;
+        for (const alias of Object.keys(keys)) {
+          const field = refFields.get(baseFieldFromGroupAlias(alias));
+          if (!field?.relationModel) continue;
+          const val = keys[alias];
+          if (!(val && typeof val === 'string')) continue;
+          const rec = lookups.get(field.relationModel)?.get(val);
+          if (!rec) continue;
+          const display = String(rec.DisplayName ?? rec.Id ?? val);
+          if (labels[alias] !== display) {
+            labels[alias] = display;
+            changed = true;
+          }
+        }
+        if (changed) {
+          node.labels = labels;
+          if (node.raw && typeof node.raw === 'object') {
+            (node.raw as { labels?: Record<string, string> }).labels = {
+              ...((node.raw as { labels?: Record<string, string> }).labels || {}),
+              ...labels,
+            };
+          }
+          const aliases = Object.keys(keys).sort();
+          const firstAlias = aliases[0];
+          if (firstAlias && labels[firstAlias] != null && labels[firstAlias] !== '') {
+            node.label = String(labels[firstAlias]);
+          }
+        }
+        if (node.children?.length) apply(node.children);
+      }
+    };
+    apply(rows);
+  } catch (e) {
+    console.error('[Executor] Error hydrating ManyToOneRef group labels', e);
   }
 }
 
@@ -632,6 +686,8 @@ export async function execute(
     const groups = Array.isArray(mainRes) ? mainRes : (mainRes?.groups ?? []);
     const total = typeof auxRes[0] === 'number' ? auxRes[0] : (mainRes?.total ?? undefined);
     const rows = toGroupRows(groups);
+    // *Ref display names are frontend-only: rewrite group labels without changing keys.
+    await hydrateGroupRefLabels(store, rows, storeDeps);
     return { kind: 'group', rows, total, planHash: main.hash, ts: Date.now(), uiView };
   }
   // search
@@ -653,3 +709,4 @@ export async function execute(
 
 export const __decodeBinaryImageFieldsForTest = decodeBinaryImageFields;
 export const __enrichBinaryImageDescriptorsForTest = enrichBinaryImageDescriptors;
+export const __hydrateGroupRefLabelsForTest = hydrateGroupRefLabels;
