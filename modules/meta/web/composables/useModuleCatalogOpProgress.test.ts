@@ -64,6 +64,38 @@ test('useModuleCatalogOpProgress: stop cancels busy strip', async () => {
   expect(api.progressBusy.value).toBe(false);
 });
 
+test('useModuleCatalogOpProgress: onTerminalSettled skipped after stop during settle', async () => {
+  let resolveRefresh: (() => void) | undefined;
+  const settled: string[] = [];
+  const store = {
+    Browse: async () => ({
+      Status: 'succeeded',
+      Phase: 'done',
+      ReloadTriggered: false,
+      ReloadFailed: false,
+    }),
+  } as any;
+  const api = useModuleCatalogOpProgress(store, msgs, {
+    refreshCatalog: () =>
+      new Promise<void>(resolve => {
+        resolveRefresh = resolve;
+      }),
+    onTerminalSettled: id => {
+      settled.push(id);
+    },
+  });
+  const pending = api.startOpProgress('op-settle-race', { moduleName: 'core', action: 'install' });
+  // Let watch reach settleOp, which awaits refreshCatalog.
+  for (let i = 0; i < 20 && !resolveRefresh; i += 1) {
+    await Promise.resolve();
+  }
+  expect(resolveRefresh).toBeTruthy();
+  api.stop();
+  resolveRefresh?.();
+  await pending;
+  expect(settled).toEqual([]);
+});
+
 test('useModuleCatalogOpProgress: failed terminal still refreshes', async () => {
   let refreshed = 0;
   const store = {

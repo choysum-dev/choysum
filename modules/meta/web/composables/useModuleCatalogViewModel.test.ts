@@ -656,16 +656,20 @@ test('useModuleCatalogViewModel: activation on operation deep-link resyncs from 
 
 test('useModuleCatalogViewModel: settled op is not resumed after KeepAlive reactivation', async () => {
   const route = makeRoute({ name: 'MetaModuleCatalog' });
+  let browseCalls = 0;
   const { api, show, mounted } = mountCatalogKeepAlive({
     route,
     hostName: 'CatalogHostSettled',
     operationStore: {
-      Browse: async () => ({
-        Status: 'succeeded',
-        Phase: 'done',
-        ReloadTriggered: false,
-        ReloadFailed: false,
-      }),
+      Browse: async () => {
+        browseCalls += 1;
+        return {
+          Status: 'succeeded',
+          Phase: 'done',
+          ReloadTriggered: false,
+          ReloadFailed: false,
+        };
+      },
     },
   });
   await flushPromises();
@@ -673,6 +677,8 @@ test('useModuleCatalogViewModel: settled op is not resumed after KeepAlive react
   api!.onOpApplied('op-settled-1');
   await flushPromises();
   expect(api!.progressBusy.value).toBe(false);
+  const browseAfterSettle = browseCalls;
+  expect(browseAfterSettle).toBeGreaterThan(0);
 
   show.value = false;
   await nextTick();
@@ -681,6 +687,43 @@ test('useModuleCatalogViewModel: settled op is not resumed after KeepAlive react
   await nextTick();
   await flushPromises();
   expect(api!.progressBusy.value).toBe(false);
+  expect(browseCalls).toBe(browseAfterSettle);
+
+  mounted.unmount();
+});
+
+test('useModuleCatalogViewModel: obsolete deep-link resume is dropped on ordinary catalog activate', async () => {
+  const route = makeRoute({
+    name: 'MetaModuleOperationDeepLink',
+    params: { id: 'op-stale-deep' },
+  });
+  let browseCalls = 0;
+  const { api, show, mounted } = mountCatalogKeepAlive({
+    route,
+    hostName: 'CatalogHostStaleDeep',
+    operationStore: {
+      Browse: () => {
+        browseCalls += 1;
+        return new Promise(() => {});
+      },
+    },
+  });
+  await flushPromises();
+  expect(api!.progressBusy.value).toBe(true);
+  const browseWhileDeep = browseCalls;
+
+  show.value = false;
+  await nextTick();
+  await flushPromises();
+  // Leave the deep-link while the cached view is inactive.
+  route.name = 'MetaModuleCatalog';
+  route.params = {};
+
+  show.value = true;
+  await nextTick();
+  await flushPromises();
+  expect(api!.progressBusy.value).toBe(false);
+  expect(browseCalls).toBe(browseWhileDeep);
 
   mounted.unmount();
 });

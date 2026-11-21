@@ -181,6 +181,8 @@ export function useModuleCatalogOpProgress(
       if (lastTerminal) {
         const terminal = lastTerminal;
         await settleOp(terminal);
+        // stop()/replace may have run while settleOp awaited refreshCatalog.
+        if (generation !== watchGeneration) return;
         opts?.onTerminalSettled?.(id, terminal);
       }
     } catch {

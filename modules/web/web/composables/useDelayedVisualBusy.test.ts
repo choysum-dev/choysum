@@ -123,13 +123,12 @@ test('useDelayedVisualBusy ignores busy-getter churn when normalized value is un
   await nextTick();
   expect(visual.value).toBe(false);
 
-  // Churn the getter while busy stays true — must not restart the delay.
+  // Mid-delay churn: if the timer restarted, visual would still be false at the
+  // original 50ms deadline (restart would need another full 50ms).
+  await sleep(30);
   ticks.value += 1;
   await nextTick();
-  ticks.value += 1;
-  await nextTick();
-
-  await sleep(70);
+  await sleep(25);
   expect(visual.value).toBe(true);
 
   scope.stop();

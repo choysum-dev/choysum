@@ -137,7 +137,13 @@ export function useModuleCatalogViewModel(opts: {
     { refreshCatalog },
   );
 
-  type ResumeOp = { id: string; moduleName: string; action: string };
+  type ResumeOp = {
+    id: string;
+    moduleName: string;
+    action: string;
+    /** True when the op came from an operation deep-link / route-bound boot. */
+    routeBound: boolean;
+  };
   /** Last accepted op — retained across KeepAlive deactivate so activation can resume. */
   const resumeOp = ref<ResumeOp | null>(null);
 
@@ -359,6 +365,8 @@ export function useModuleCatalogViewModel(opts: {
       id: trimmed,
       moduleName: String(meta?.moduleName || '').trim(),
       action: String(meta?.action || '').trim(),
+      // Captured at remember time — closeDrawer clears drawerBoundToRoute on deactivate.
+      routeBound: drawerBoundToRoute.value,
     };
   }
 
@@ -374,13 +382,18 @@ export function useModuleCatalogViewModel(opts: {
     void startOpProgress(id, meta);
   }
 
+  function clearRouteBoundResume(): void {
+    stopOpProgress();
+    closeDrawer();
+    resumeOp.value = null;
+  }
+
   function syncDrawerFromRoute() {
     if (!isOperationDeepLinkRoute(opts.route.name)) {
       // Leaving an operation deep-link: drop route-bound progress/confirm chrome.
-      if (drawerBoundToRoute.value) {
-        stopOpProgress();
-        closeDrawer();
-        resumeOp.value = null;
+      // resumeOp.routeBound survives closeDrawer on deactivate — clear it here too.
+      if (drawerBoundToRoute.value || resumeOp.value?.routeBound) {
+        clearRouteBoundResume();
       }
       return;
     }
@@ -391,9 +404,7 @@ export function useModuleCatalogViewModel(opts: {
       startCatalogOpProgress(opId, { action: 'progress' });
       return;
     }
-    stopOpProgress();
-    closeDrawer();
-    resumeOp.value = null;
+    clearRouteBoundResume();
   }
 
   function bootFromRoute() {
@@ -407,6 +418,7 @@ export function useModuleCatalogViewModel(opts: {
 
   // KeepAlive sibling catalog pages stay mounted while deactivated; ignore route
   // updates and stop progress so deep-links do not double-poll from a cached view.
+  // Hosts (List/Kanban) still call bootFromRoute() on setup for the initial mount.
   if (getCurrentInstance()) {
     onDeactivated(() => {
       viewActive.value = false;
@@ -421,7 +433,10 @@ export function useModuleCatalogViewModel(opts: {
         return;
       }
       const pending = resumeOp.value;
-      if (pending?.id) {
+      if (pending?.routeBound) {
+        // Obsolete deep-link progress must not restart on an ordinary catalog route.
+        resumeOp.value = null;
+      } else if (pending?.id) {
         startCatalogOpProgress(pending.id, {
           moduleName: pending.moduleName || undefined,
           action: pending.action || undefined,
