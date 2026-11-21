@@ -3,7 +3,7 @@
 
 import { h, nextTick } from 'vue';
 
-import { flushPromises, fnRecorder, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
+import { asyncFnRecorder, flushPromises, fnRecorder, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
 import SearchFilterGroup from './SearchFilterGroup.vue';
 import SearchFilter from './SearchFilter.vue';
@@ -144,6 +144,107 @@ describe('SearchFilter preview labels', () => {
     props.draft = { root: { id: 'empty', logic: 'And', children: [] } };
     await nextTick();
     expect(q('.expr')?.textContent || '').toContain('(empty)');
+    unmount();
+  });
+
+  test('hydrates manytoone and manytooneref preview DisplayName via createModelStore', async () => {
+    installChoyButtonStub();
+    stubSfc(SearchFilterGroup, {
+      name: 'SearchFilterGroup',
+      setup() {
+        return () => h('div', { 'data-stub': 'SearchFilterGroup' });
+      },
+    });
+
+    const partnerSearch = asyncFnRecorder(async () => [{ Id: 'p1', DisplayName: 'Alice Partner' }]);
+    const companySearch = asyncFnRecorder(async () => [{ Id: 'c1', DisplayName: 'Main Company' }]);
+    const createModelStore = (modelName: string) => {
+      if (modelName === 'base.Partner') return { Search: partnerSearch } as any;
+      if (modelName === 'base.Company') return { Search: companySearch } as any;
+      throw new Error(`unexpected model: ${modelName}`);
+    };
+
+    const store = {
+      fieldsMetadata: {
+        PartnerId: { type: 'manytoone', relationModel: 'base.Partner' },
+        CompanyId: { type: 'ManyToOneRef', relationModel: 'base.Company' },
+      },
+    } as any;
+    const draft = {
+      root: {
+        id: 'g1',
+        logic: 'And',
+        children: [
+          { id: 'c1', field: 'PartnerId', operator: '=', value: { Id: 'p1' } },
+          { id: 'c2', field: 'CompanyId', operator: '=', value: 'c1' },
+        ],
+      },
+    };
+
+    const { unmount, q } = mountApp(SearchFilter as any, {
+      props: {
+        store,
+        draft,
+        fields: [
+          { prop: 'PartnerId', label: '合作伙伴' },
+          { prop: 'CompanyId', label: '公司' },
+        ],
+        createModelStore,
+      },
+    });
+
+    await flushPromises();
+    let expr = q('.expr')?.textContent || '';
+    // First paint may still show ids; after batch, DisplayName appears.
+    expect(partnerSearch.calls.length).toBe(1);
+    expect(companySearch.calls.length).toBe(1);
+    await flushPromises();
+    expr = q('.expr')?.textContent || '';
+    expect(expr).toContain('Alice Partner');
+    expect(expr).toContain('Main Company');
+    expect(expr).not.toContain('p1');
+    expect(expr).not.toContain('c1');
+    unmount();
+  });
+
+  test('keeps bare id in preview when relation Search returns no row', async () => {
+    installChoyButtonStub();
+    stubSfc(SearchFilterGroup, {
+      name: 'SearchFilterGroup',
+      setup() {
+        return () => h('div', { 'data-stub': 'SearchFilterGroup' });
+      },
+    });
+
+    const languageSearch = asyncFnRecorder(async () => []);
+    const createModelStore = (modelName: string) => {
+      if (modelName === 'base.Language') return { Search: languageSearch } as any;
+      throw new Error(`unexpected model: ${modelName}`);
+    };
+
+    const missingId = 'lang-missing';
+    const { unmount, q } = mountApp(SearchFilter as any, {
+      props: {
+        store: {
+          fieldsMetadata: {
+            LanguageId: { type: 'manytooneref', relationModel: 'base.Language' },
+          },
+        } as any,
+        draft: {
+          root: {
+            id: 'g1',
+            logic: 'And',
+            children: [{ id: 'c1', field: 'LanguageId', operator: '=', value: missingId }],
+          },
+        },
+        fields: [{ prop: 'LanguageId', label: '语言' }],
+        createModelStore,
+      },
+    });
+
+    await flushPromises();
+    await flushPromises();
+    expect(q('.expr')?.textContent || '').toContain(missingId);
     unmount();
   });
 
