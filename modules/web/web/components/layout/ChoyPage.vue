@@ -186,8 +186,12 @@ import type { PageIoMenuListRef } from './ChoyPageIoMenu.vue';
 import { createTranslate, getGlobalComposer } from '../../i18n';
 import { resolveRoutePageTitle } from '../../router/documentTitle';
 import { useDelayedVisualBusy } from '../../composables/useDelayedVisualBusy';
+import { useSettleNavChromeOnActivate } from '../../composables/useSettleNavChromeOnActivate';
 
 const { _t } = createTranslate('web', { scope: 'web/components/layout/Page' });
+
+// KeepAlive reactivation can paint without a new surface; drop leftover nav chrome.
+useSettleNavChromeOnActivate();
 
 type PageRouteLike = { meta?: Record<string, unknown>; path?: string };
 

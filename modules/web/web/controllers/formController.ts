@@ -868,8 +868,10 @@ export function createFormController(store: ModelStore<any>, deps: FormControlle
   }
 
   /**
-   * Enter create mode and prefetch server DefaultGet into the draft (PR-FD-4 / D11).
+   * Enter create mode and prefetch server DefaultGet into the draft.
    * Opens immediately with seed; merges server defaults with seed priority; failures keep seed.
+   * DefaultGet runs under a surface frame so navigation chrome hands off instead of
+   * waiting for the 2s content idle settle when create pages never called beginDisplay.
    */
   async function beginCreate(initial?: any): Promise<void> {
     const seq = ++loadSeq;
@@ -882,6 +884,13 @@ export function createFormController(store: ModelStore<any>, deps: FormControlle
     // Bumping loadSeq supersedes beginDisplay, which then skips its finally reset.
     vm.loading = false;
 
+    return await runWithLoading(
+      { layer: 'surface', target: formLoadingTarget(), mode: 'stale' },
+      () => beginCreatePrefetch(seq, seed),
+    );
+  }
+
+  async function beginCreatePrefetch(seq: number, seed: Record<string, unknown>): Promise<void> {
     try {
       if (typeof (store as any).DefaultGet !== 'function') return;
       const defaults = await (store as any).DefaultGet(seed);
@@ -891,7 +900,7 @@ export function createFormController(store: ModelStore<any>, deps: FormControlle
         defaults && typeof defaults === 'object' && !Array.isArray(defaults)
           ? ({ ...(defaults as object) } as Record<string, unknown>)
           : {};
-      // Seed wins (D2). `clone` drops undefined keys, so explicit null / values are preserved.
+      // Seed wins. `clone` drops undefined keys, so explicit null / values are preserved.
       vm.draft = { ...server, ...(seed as Record<string, unknown>) };
     } catch (e) {
       if (seq !== loadSeq) return;
