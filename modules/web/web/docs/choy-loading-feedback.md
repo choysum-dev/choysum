@@ -34,6 +34,21 @@ Do **not** introduce a third spinner (e.g. thick CSS border discs) in the SPA. C
 - `stale` — keep content, light fade (refresh with prior rows)
 - `skeleton` — reserved; prefer `block` for first paint so local feedback stays Loader2-only
 
+## Motion / continuity
+
+Page and view busy overlays are **feedback**, not page transitions. Product rules live in
+`.dev/docs/web/choy-motion-continuity.md`. Short contract:
+
+1. **Delayed visual busy** — `block` / `skeleton` / page mask / navigation handoff show after
+   `loadingTiming.SURFACE_BUSY_DELAY_MS` (= `BAR_DELAY_MS`). Faster work never flashes a mask.
+   `aria-busy` / `inert` stay immediate.
+2. **Soft stale** — host uses CSS `transition-opacity` (motion tokens); no hard opacity step.
+3. **Overlay fade** — `<Transition name="busy-overlay">` (fast duration).
+4. **No default full-page route fade** — App shell does not wrap `router-view` in enter/leave
+   transitions. Sibling list/kanban/chart routes use KeepAlive when the current path is one of
+   `meta.viewPaths` (`routeShouldKeepAlive(meta, path)`); deep-links that only copy `viewPaths`
+   stay uncached. Cached views reapply `defaultGroups` on `onActivated`.
+
 ## Navigation chrome settle (`meta.navLoading`)
 
 Route destinations declare how long the top bar nav ticket stays after navigation.
@@ -51,6 +66,7 @@ Router hooks in `modules/web/web/router/index.ts`: `content` uses
 Timing constants live on `loadingTiming` in the registry — not on RouteMeta
 (no per-route millisecond knobs). `NAV_ROUTE_SETTLE_MS` (0) documents the route
 policy intent; the router does not schedule a zero-delay idle re-arm.
+`SURFACE_BUSY_DELAY_MS` gates page/view/handoff overlay paint (same value as `BAR_DELAY_MS`).
 
 ## Registry pointers
 

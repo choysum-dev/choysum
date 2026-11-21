@@ -38,6 +38,11 @@ type TargetSurface = { count: number; mode: SurfaceMode };
 type TargetControl = { count: number; pendingLabel?: string };
 
 const BAR_DELAY_MS = 200;
+/**
+ * Delay before page / view block|skeleton overlays become visible.
+ * Aligns with BAR_DELAY_MS so fast surface work does not flash a mask.
+ */
+const SURFACE_BUSY_DELAY_MS = BAR_DELAY_MS;
 /** Delay before first showing the shell slow hint. */
 const SLOW_HINT_MS = 3000;
 /** Once shown, keep the hint at least this long so it does not flash off with the request. */
@@ -587,6 +592,7 @@ export function resetLoadingRegistryForTests(): void {
 
 export const loadingTiming = {
   BAR_DELAY_MS,
+  SURFACE_BUSY_DELAY_MS,
   SLOW_HINT_MS,
   SLOW_HINT_MIN_SHOW_MS,
   NAV_TIMEOUT_MS,

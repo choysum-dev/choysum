@@ -214,6 +214,8 @@ test('navigation handoff busy clears when surface takes over', async () => {
 test('loadingTiming exposes content idle and route settle delays', () => {
   expect(loadingTiming.NAV_IDLE_SETTLE_MS).toBeGreaterThanOrEqual(2000);
   expect(loadingTiming.NAV_ROUTE_SETTLE_MS).toBe(0);
+  expect(loadingTiming.SURFACE_BUSY_DELAY_MS).toBe(loadingTiming.BAR_DELAY_MS);
+  expect(loadingTiming.SURFACE_BUSY_DELAY_MS).toBeGreaterThanOrEqual(100);
 });
 
 test('scheduleNavigationSettleIfIdle keeps nav ticket when surface starts within grace', async () => {

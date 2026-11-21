@@ -1,7 +1,16 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { computed, inject, ref, watch, type Ref } from 'vue';
+import {
+  computed,
+  getCurrentInstance,
+  inject,
+  onActivated,
+  onDeactivated,
+  ref,
+  watch,
+  type Ref,
+} from 'vue';
 import type { Router, RouteLocationNormalizedLoaded } from 'vue-router';
 import type { ModelStore } from '@/web/web/stores/modelStore';
 import { unwrapListRecord } from '@/web/web/composables/listRowEdit';
@@ -128,6 +137,16 @@ export function useModuleCatalogViewModel(opts: {
     { refreshCatalog },
   );
 
+  type ResumeOp = {
+    id: string;
+    moduleName: string;
+    action: string;
+    /** True when the op came from an operation deep-link / route-bound boot. */
+    routeBound: boolean;
+  };
+  /** Last accepted op — retained across KeepAlive deactivate so activation can resume. */
+  const resumeOp = ref<ResumeOp | null>(null);
+
   const {
     progressBusy,
     progressTitle,
@@ -148,7 +167,13 @@ export function useModuleCatalogViewModel(opts: {
     finishing: opts.msgs.opFinishing,
     inProgress: opts.msgs.opInProgress,
     titleFor: opts.msgs.opProgressTitle,
-  }, { refreshCatalog });
+  }, {
+    refreshCatalog,
+    onTerminalSettled: (operationId) => {
+      // Settled ops must not restart when a cached catalog view reactivates.
+      if (resumeOp.value?.id === operationId) resumeOp.value = null;
+    },
+  });
 
   function rowRecord(row: unknown): Record<string, unknown> {
     const rec = unwrapListRecord(row);
@@ -232,7 +257,7 @@ export function useModuleCatalogViewModel(opts: {
     const action = resolveModuleCatalogPrimaryAction(rec);
     if (!action) return;
     if (action === 'progress') {
-      void startOpProgress(String(rec.ActiveOperationId || '').trim(), {
+      startCatalogOpProgress(String(rec.ActiveOperationId || '').trim(), {
         moduleName: String(rec.ModuleName || ''),
         action: 'progress',
       });
@@ -308,7 +333,7 @@ export function useModuleCatalogViewModel(opts: {
     drawerOpen.value = false;
     // progress deep-link is not a lifecycle action; keep sync so titleFor can label it.
     const action = drawerAction.value === 'progress' ? '' : drawerAction.value;
-    void startOpProgress(id, {
+    startCatalogOpProgress(id, {
       moduleName: drawerModuleName.value,
       action,
     });
@@ -331,12 +356,44 @@ export function useModuleCatalogViewModel(opts: {
     return String(opts.route.params.id || '').trim();
   }
 
+  const viewActive = ref(true);
+
+  function rememberResumeOp(id: string, meta?: { moduleName?: string; action?: string }): void {
+    const trimmed = String(id || '').trim();
+    if (!trimmed) return;
+    resumeOp.value = {
+      id: trimmed,
+      moduleName: String(meta?.moduleName || '').trim(),
+      action: String(meta?.action || '').trim(),
+      // Captured at remember time — closeDrawer clears drawerBoundToRoute on deactivate.
+      routeBound: drawerBoundToRoute.value,
+    };
+  }
+
+  /** Start progress when active; otherwise only record for resume on activation. */
+  function startCatalogOpProgress(
+    operationId: string,
+    meta?: { moduleName?: string; action?: string },
+  ): void {
+    const id = String(operationId || '').trim();
+    if (!id) return;
+    rememberResumeOp(id, meta);
+    if (!viewActive.value) return;
+    void startOpProgress(id, meta);
+  }
+
+  function clearRouteBoundResume(): void {
+    stopOpProgress();
+    closeDrawer();
+    resumeOp.value = null;
+  }
+
   function syncDrawerFromRoute() {
     if (!isOperationDeepLinkRoute(opts.route.name)) {
       // Leaving an operation deep-link: drop route-bound progress/confirm chrome.
-      if (drawerBoundToRoute.value) {
-        stopOpProgress();
-        closeDrawer();
+      // resumeOp.routeBound survives closeDrawer on deactivate — clear it here too.
+      if (drawerBoundToRoute.value || resumeOp.value?.routeBound) {
+        clearRouteBoundResume();
       }
       return;
     }
@@ -344,11 +401,10 @@ export function useModuleCatalogViewModel(opts: {
     if (opId) {
       drawerBoundToRoute.value = true;
       drawerOpen.value = false;
-      void startOpProgress(opId, { action: 'progress' });
+      startCatalogOpProgress(opId, { action: 'progress' });
       return;
     }
-    stopOpProgress();
-    closeDrawer();
+    clearRouteBoundResume();
   }
 
   function bootFromRoute() {
@@ -356,13 +412,45 @@ export function useModuleCatalogViewModel(opts: {
     if (opId) {
       drawerBoundToRoute.value = true;
       drawerOpen.value = false;
-      void startOpProgress(opId, { action: 'progress' });
+      startCatalogOpProgress(opId, { action: 'progress' });
     }
+  }
+
+  // KeepAlive sibling catalog pages stay mounted while deactivated; ignore route
+  // updates and stop progress so deep-links do not double-poll from a cached view.
+  // Hosts (List/Kanban) still call bootFromRoute() on setup for the initial mount.
+  if (getCurrentInstance()) {
+    onDeactivated(() => {
+      viewActive.value = false;
+      stopOpProgress();
+      // Teleported confirm must not linger over the destination page.
+      closeDrawer();
+    });
+    onActivated(() => {
+      viewActive.value = true;
+      if (isOperationDeepLinkRoute(opts.route.name)) {
+        syncDrawerFromRoute();
+        return;
+      }
+      const pending = resumeOp.value;
+      if (pending?.routeBound) {
+        // Obsolete deep-link progress must not restart on an ordinary catalog route.
+        resumeOp.value = null;
+      } else if (pending?.id) {
+        startCatalogOpProgress(pending.id, {
+          moduleName: pending.moduleName || undefined,
+          action: pending.action || undefined,
+        });
+        return;
+      }
+      syncDrawerFromRoute();
+    });
   }
 
   watch(
     () => [String(opts.route.name || ''), String(opts.route.params.id || '')] as const,
     () => {
+      if (!viewActive.value) return;
       syncDrawerFromRoute();
     },
   );

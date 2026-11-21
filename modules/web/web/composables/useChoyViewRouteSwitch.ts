@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { computed, type ComputedRef } from 'vue';
+import { computed, getCurrentInstance, onActivated, watch, type ComputedRef } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 /**
@@ -27,6 +27,19 @@ export type UseChoyViewRouteSwitchResult = {
   defaultGroups: ComputedRef<string[]>;
   selectView: (kind: string) => void;
 };
+
+/** Normalize route paths for equality (trim trailing slash except root). */
+export function normalizeChoyViewRoutePath(path: string): string {
+  const trimmed = String(path || '').trim();
+  if (!trimmed) return '';
+  if (trimmed === '/') return '/';
+  // Avoid /\/+$/ on attacker-controlled paths (CodeQL js/polynomial-redos).
+  let end = trimmed.length;
+  while (end > 1 && trimmed.charCodeAt(end - 1) === 47 /* '/' */) {
+    end -= 1;
+  }
+  return end === trimmed.length ? trimmed : trimmed.slice(0, end);
+}
 
 /** Read viewKind from route meta; blank / missing falls back to list. */
 export function resolveChoyViewRouteKind(meta: unknown, fallback = 'list'): string {
@@ -55,6 +68,28 @@ export function resolveChoyViewRoutePath(meta: unknown, kind: string): string {
 }
 
 /**
+ * Whether App/Guest shell should KeepAlive this route.
+ * Explicit meta.keepAlive wins. Otherwise only the declared sibling viewPaths
+ * destinations (list/kanban/chart) are cached — parameterized deep-links that
+ * merely copy viewPaths (e.g. operations/:id) stay uncached.
+ */
+export function routeShouldKeepAlive(meta: unknown, path?: string): boolean {
+  if (!meta || typeof meta !== 'object') return false;
+  const m = meta as ChoyViewRouteMeta & { keepAlive?: boolean };
+  if (m.keepAlive === true) return true;
+  if (m.keepAlive === false) return false;
+  const paths = m.viewPaths;
+  if (!paths || typeof paths !== 'object') return false;
+  // Fail closed when path is omitted — callers (shells) must pass viewRoute.path.
+  if (path == null || path === '') return false;
+  const current = normalizeChoyViewRoutePath(path);
+  if (!current) return false;
+  return Object.values(paths).some(
+    (v) => typeof v === 'string' && v.trim() !== '' && normalizeChoyViewRoutePath(v) === current,
+  );
+}
+
+/**
  * Write appliedGroups onto a model store queryState.
  * Creates state / queryState when missing; ignores non-object stores.
  */
@@ -68,7 +103,8 @@ export function applyChoyViewRouteGroups(store: unknown, groups: readonly string
 
 /**
  * Bind ViewSwitcher navigation and default groupby to the current route meta.
- * Applies defaultGroups to store once during setup (sibling navigations remount views).
+ * Applies defaultGroups on setup and again when a KeepAlive view is reactivated
+ * so sibling views sharing a store do not keep another view's grouping.
  */
 export function useChoyViewRouteSwitch(
   options: UseChoyViewRouteSwitchOptions = {},
@@ -79,7 +115,29 @@ export function useChoyViewRouteSwitch(
   const active = computed(() => resolveChoyViewRouteKind(route.meta));
   const defaultGroups = computed(() => resolveChoyViewRouteDefaultGroups(route.meta));
 
-  applyChoyViewRouteGroups(options.store, defaultGroups.value);
+  function applyGroups(): void {
+    applyChoyViewRouteGroups(options.store, defaultGroups.value);
+  }
+
+  applyGroups();
+  watch(
+    defaultGroups,
+    (next, prev) => {
+      // Fresh but equal arrays (query-only navigation) must not reset selection.
+      if (
+        prev &&
+        next.length === prev.length &&
+        next.every((g, i) => g === prev[i])
+      ) {
+        return;
+      }
+      applyGroups();
+    },
+    { deep: true },
+  );
+  if (getCurrentInstance()) {
+    onActivated(applyGroups);
+  }
 
   function selectView(kind: string): void {
     const path = resolveChoyViewRoutePath(route.meta, kind);

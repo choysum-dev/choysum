@@ -3,7 +3,18 @@
 
 import { h } from 'vue';
 import { flushPromises, mountApp } from '@/web/web/__tests__/mountApp';
+import { loadingTiming } from '@/core/web/client/loadingRegistry';
 import ChoyViewBusyHost from './ChoyViewBusyHost.vue';
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function waitForOverlayDelay(): Promise<void> {
+  await flushPromises();
+  await sleep(loadingTiming.SURFACE_BUSY_DELAY_MS + 30);
+  await flushPromises();
+}
 
 describe('ChoyViewBusyHost', () => {
   test('idle host renders slot content without overlay or live region', async () => {
@@ -23,7 +34,7 @@ describe('ChoyViewBusyHost', () => {
     mounted.unmount();
   });
 
-  test('busy host overlays spinner, sets inert, and teleports a live status', async () => {
+  test('busy host overlays spinner after delay, sets inert immediately, and teleports a live status', async () => {
     // Clear teleports left by earlier view mounts in the same FE bundle run.
     for (const node of Array.from(
       document.body.querySelectorAll('[data-slot=view-busy-status]'),
@@ -40,9 +51,19 @@ describe('ChoyViewBusyHost', () => {
     const host = mounted.q('[data-slot=view-body-host]') as HTMLElement | null;
     expect(host?.getAttribute('aria-busy')).toBe('true');
     expect(host?.hasAttribute('inert')).toBe(true);
+    expect(host?.getAttribute('data-busy-mode')).toBe('block');
     expect(host?.className || '').toContain('pointer-events-none');
     expect(host?.className || '').toContain('min-h-40');
+    expect(host?.className || '').toContain('choy-view-busy-host');
+    // Overlay is delayed; inert / live region are immediate.
+    expect(mounted.q('[data-slot=view-busy-overlay]')).toBeNull();
 
+    const statusesEarly = Array.from(
+      document.body.querySelectorAll('[data-slot=view-busy-status]'),
+    );
+    expect(statusesEarly.length).toBe(1);
+
+    await waitForOverlayDelay();
     const overlay = mounted.q('[data-slot=view-busy-overlay]') as HTMLElement | null;
     expect(overlay).not.toBeNull();
     expect(overlay?.getAttribute('data-mode')).toBe('block');
@@ -63,6 +84,27 @@ describe('ChoyViewBusyHost', () => {
     ).toBe(0);
   });
 
+  test('busy host never shows overlay when cleared before delay', async () => {
+    const mounted = mountApp(ChoyViewBusyHost as any, {
+      reactiveProps: true,
+      props: { busy: true },
+      slots: {
+        default: () => h('div', { 'data-testid': 'body' }, 'ok'),
+      },
+    });
+    await flushPromises();
+    expect(mounted.q('[data-slot=view-body-host]')?.getAttribute('aria-busy')).toBe('true');
+    expect(mounted.q('[data-slot=view-busy-overlay]')).toBeNull();
+
+    mounted.props.busy = false;
+    await flushPromises();
+    await sleep(loadingTiming.SURFACE_BUSY_DELAY_MS + 30);
+    await flushPromises();
+    expect(mounted.q('[data-slot=view-busy-overlay]')).toBeNull();
+    expect(mounted.q('[data-slot=view-body-host]')?.getAttribute('aria-busy')).toBeNull();
+    mounted.unmount();
+  });
+
   test('stale mode fades host without inert or blocking overlay', async () => {
     const mounted = mountApp(ChoyViewBusyHost as any, {
       props: { busy: true, mode: 'stale' },
@@ -73,9 +115,13 @@ describe('ChoyViewBusyHost', () => {
     await flushPromises();
     const host = mounted.q('[data-slot=view-body-host]') as HTMLElement | null;
     expect(host?.getAttribute('aria-busy')).toBe('true');
+    expect(host?.getAttribute('data-busy-mode')).toBe('stale');
     expect(host?.hasAttribute('inert')).toBe(false);
     expect(host?.className || '').toContain('opacity-70');
+    expect(host?.className || '').toContain('choy-view-busy-host');
     expect(host?.className || '').not.toContain('pointer-events-none');
+    expect(mounted.q('[data-slot=view-busy-overlay]')).toBeNull();
+    await waitForOverlayDelay();
     expect(mounted.q('[data-slot=view-busy-overlay]')).toBeNull();
     mounted.unmount();
   });

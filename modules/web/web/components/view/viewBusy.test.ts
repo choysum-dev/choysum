@@ -6,16 +6,28 @@ import { viewBusyHostAttrs, viewBusyHostClass } from './viewBusy';
 describe('viewBusy helpers', () => {
   test('viewBusyHostAttrs is empty when idle; block marks aria-busy+inert', () => {
     expect(viewBusyHostAttrs(false)).toEqual({});
-    expect(viewBusyHostAttrs(true)).toEqual({ 'aria-busy': 'true', inert: true });
-    expect(viewBusyHostAttrs(true, 'block')).toEqual({ 'aria-busy': 'true', inert: true });
+    expect(viewBusyHostAttrs(true)).toEqual({
+      'aria-busy': 'true',
+      inert: true,
+      'data-busy-mode': 'block',
+    });
+    expect(viewBusyHostAttrs(true, 'block')).toEqual({
+      'aria-busy': 'true',
+      inert: true,
+      'data-busy-mode': 'block',
+    });
   });
 
   test('stale mode sets aria-busy without inert', () => {
-    expect(viewBusyHostAttrs(true, 'stale')).toEqual({ 'aria-busy': 'true' });
+    expect(viewBusyHostAttrs(true, 'stale')).toEqual({
+      'aria-busy': 'true',
+      'data-busy-mode': 'stale',
+    });
   });
 
   test('viewBusyHostClass: block disables pointer events; stale uses opacity', () => {
     expect(viewBusyHostClass(false)).toContain('relative');
+    expect(viewBusyHostClass(false)).toContain('choy-view-busy-host');
     expect(viewBusyHostClass(false)).not.toContain('pointer-events-none');
     expect(viewBusyHostClass(true, 'block')).toContain('pointer-events-none');
     expect(viewBusyHostClass(true, 'stale')).toContain('opacity-70');
@@ -23,3 +35,4 @@ describe('viewBusy helpers', () => {
     expect(viewBusyHostClass(true, 'block', 'extra')).toContain('extra');
   });
 });
+
