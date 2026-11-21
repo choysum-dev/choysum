@@ -78,5 +78,46 @@ test('useFilterRelationLabelCache hydrates DisplayName and ignores stale generat
   expect(api.labelOf('base.Company', 'c2')).toBe('Second');
   expect(api.labelOf('base.Company', 'c1')).toBe('c1');
   expect(companySearch.calls.length).toBe(2);
+
+  // Evict when the draft no longer references any relation ids.
+  rootRef.value = { id: 'g', logic: 'And', children: [] };
+  await nextTick();
+  await flushPromises();
+  expect(api.labels.value.size).toBe(0);
+  expect(api.labelOf('base.Company', 'c2')).toBe('c2');
+  unmount();
+});
+
+test('useFilterRelationLabelCache replaces prior ids instead of merging forever', async () => {
+  const companySearch = asyncFnRecorder(async (cond: any) => {
+    const ids = Array.isArray(cond?.[2]) ? cond[2].map(String) : [];
+    return ids.map((Id: string) => ({ Id, DisplayName: `Name-${Id}` }));
+  });
+
+  const { api, rootRef, unmount } = runCacheHarness({
+    fieldsMetadata: {
+      CompanyId: { type: 'ManyToOneRef', relationModel: 'base.Company' },
+    },
+    root: {
+      id: 'g',
+      logic: 'And',
+      children: [{ id: 'c1', field: 'CompanyId', operator: '=', value: 'old' }],
+    },
+    createModelStore: () => ({ Search: companySearch }),
+  });
+
+  await flushPromises();
+  expect(api.labelOf('base.Company', 'old')).toBe('Name-old');
+
+  rootRef.value = {
+    id: 'g',
+    logic: 'And',
+    children: [{ id: 'c1', field: 'CompanyId', operator: '=', value: 'new' }],
+  };
+  await nextTick();
+  await flushPromises();
+
+  expect(api.labelOf('base.Company', 'new')).toBe('Name-new');
+  expect(api.labels.value.has('base.Company::old')).toBe(false);
   unmount();
 });

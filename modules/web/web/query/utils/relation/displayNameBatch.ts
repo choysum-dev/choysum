@@ -11,6 +11,9 @@
  * Failed targets are skipped (warned); callers keep raw ids as fallback.
  * `createModelStore` is intentionally loose so overload-heavy registry factories typecheck.
  */
+/** Max ids per Search `in` clause to avoid oversized query payloads. */
+export const REF_DISPLAY_NAME_IN_CHUNK = 200;
+
 export async function batchLoadRefRecordsByModel(
   idsByModel: Map<string, Set<string>>,
   createModelStore: (modelName: string, ...args: any[]) => any,
@@ -26,14 +29,18 @@ export async function batchLoadRefRecordsByModel(
           Search?: (condition?: any, options?: any) => Promise<any>;
         };
         if (typeof targetStore.Search !== 'function') return;
-        const results = await targetStore.Search(['Id', 'in', Array.from(ids)], {
-          fields: ['Id', 'DisplayName'],
-        });
         const map = new Map<string, any>();
-        for (const r of (results as Array<{ Id?: unknown }>) || []) {
-          const key = String(r.Id ?? '');
-          if (!key || key === 'undefined') continue;
-          map.set(key, r);
+        const idList = Array.from(ids);
+        for (let i = 0; i < idList.length; i += REF_DISPLAY_NAME_IN_CHUNK) {
+          const chunk = idList.slice(i, i + REF_DISPLAY_NAME_IN_CHUNK);
+          const results = await targetStore.Search(['Id', 'in', chunk], {
+            fields: ['Id', 'DisplayName'],
+          });
+          for (const r of (results as Array<{ Id?: unknown }>) || []) {
+            const key = String(r.Id ?? '');
+            if (!key || key === 'undefined') continue;
+            map.set(key, r);
+          }
         }
         lookups.set(model, map);
       } catch (e) {

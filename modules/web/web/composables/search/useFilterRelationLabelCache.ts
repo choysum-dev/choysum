@@ -42,20 +42,17 @@ export function useFilterRelationLabelCache(
     const lookups = await batchLoadRefRecordsByModel(batch, createModelStore, '[SearchFilter]');
     if (gen !== generation) return;
 
-    const next = new Map(labels.value);
-    let changed = false;
+    // Replace (do not merge forever): drop ids no longer in the current draft batch.
+    const next = new Map<string, string>();
     for (const [model, ids] of batch) {
       const map = lookups.get(model);
       for (const id of ids) {
         const key = relationLabelCacheKey(model, id);
         const display = String(map?.get(id)?.DisplayName ?? map?.get(id)?.Id ?? id);
-        if (next.get(key) !== display) {
-          next.set(key, display);
-          changed = true;
-        }
+        next.set(key, display);
       }
     }
-    if (changed) labels.value = next;
+    labels.value = next;
   }
 
   watch(

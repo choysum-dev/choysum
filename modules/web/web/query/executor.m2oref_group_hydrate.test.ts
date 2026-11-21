@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { execute } from './executor';
+import { execute, __hydrateGroupRefLabelsForTest } from './executor';
 import { asyncFnRecorder } from '@/web/web/__tests__/mountApp';
 import { baseFieldFromGroupAlias } from './utils/relation/displayNameBatch';
 
@@ -203,4 +203,72 @@ test('execute readGroup leaves ManyToOne labels untouched', async () => {
   const row = snapshot.rows[0] as any;
   expect(row?.label).toBe('Alice');
   expect(row?.labels?.OwnerId).toBe('Alice');
+});
+
+test('hydrateGroupRefLabels no-ops on empty rows and swallows apply errors', async () => {
+  await __hydrateGroupRefLabelsForTest({ fieldsMetadata: {} } as any, [], {
+    createModelStore: () => {
+      throw new Error('should not create');
+    },
+  });
+
+  // Throw while collecting nested children so the outer try/catch is exercised.
+  const boomRow = {
+    keys: { CompanyId: 'c1' },
+    labels: { CompanyId: 'c1' },
+    get children() {
+      throw new Error('children boom');
+    },
+  };
+  await __hydrateGroupRefLabelsForTest(
+    {
+      fieldsMetadata: {
+        CompanyId: { type: 'ManyToOneRef', relationModel: 'base.Company' },
+      },
+    } as any,
+    [boomRow as any],
+    {
+      createModelStore: (() => ({
+        Search: async () => [{ Id: 'c1', DisplayName: 'Acme' }],
+      })) as any,
+    }
+  );
+});
+
+test('hydrateGroupRefLabels only rewrites Ref aliases when mixed with ManyToOne', async () => {
+  const companySearch = asyncFnRecorder(async () => [{ Id: 'c1', DisplayName: 'Acme' }]);
+  const rows = [
+    {
+      kind: 'group' as const,
+      key: 'c1|u1',
+      depth: 0,
+      label: 'Alice',
+      keys: { CompanyId: 'c1', OwnerId: 'u1' },
+      labels: { CompanyId: 'c1', OwnerId: 'Alice' },
+      raw: { labels: { CompanyId: 'c1', OwnerId: 'Alice' } },
+    },
+  ];
+
+  await __hydrateGroupRefLabelsForTest(
+    {
+      fieldsMetadata: {
+        CompanyId: { type: 'ManyToOneRef', relationModel: 'base.Company' },
+        OwnerId: { type: 'ManyToOne', relationModel: 'demo.User' },
+      },
+    } as any,
+    rows as any,
+    {
+      createModelStore: ((model: string) => {
+        if (model !== 'base.Company') throw new Error(model);
+        return { Search: companySearch };
+      }) as any,
+    }
+  );
+
+  // Sorted first alias is CompanyId → primary label becomes Acme.
+  expect(rows[0]?.labels?.CompanyId).toBe('Acme');
+  expect(rows[0]?.labels?.OwnerId).toBe('Alice');
+  expect(rows[0]?.raw?.labels?.CompanyId).toBe('Acme');
+  expect(rows[0]?.raw?.labels?.OwnerId).toBe('Alice');
+  expect(rows[0]?.label).toBe('Acme');
 });

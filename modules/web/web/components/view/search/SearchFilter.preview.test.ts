@@ -194,12 +194,11 @@ describe('SearchFilter preview labels', () => {
     });
 
     await flushPromises();
-    let expr = q('.expr')?.textContent || '';
     // First paint may still show ids; after batch, DisplayName appears.
     expect(partnerSearch.calls.length).toBe(1);
     expect(companySearch.calls.length).toBe(1);
     await flushPromises();
-    expr = q('.expr')?.textContent || '';
+    const expr = q('.expr')?.textContent || '';
     expect(expr).toContain('Alice Partner');
     expect(expr).toContain('Main Company');
     expect(expr).not.toContain('p1');

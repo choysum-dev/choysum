@@ -2,11 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import type { Condition, ConditionGroup } from '@/web/web/query/types';
+import { isNullOperator } from '@/web/web/query/utils/filter/operators';
 import { isGroup } from '@/web/web/query/utils/filter/structures';
 import { getFieldMetadataView } from '@/web/web/stores/modelStore';
 
 const RELATION_PREVIEW_TYPES = new Set(['manytoone', 'manytooneref']);
-const NULL_OPS = new Set(['is', 'is not']);
 
 export function relationLabelCacheKey(relationModel: string, id: string): string {
   return `${relationModel}::${id}`;
@@ -61,8 +61,7 @@ export function collectRelationIdsFromGroup(
   };
 
   const walkCond = (c: Condition) => {
-    const op = String(c.operator || '').toLowerCase();
-    if (NULL_OPS.has(op)) return;
+    if (isNullOperator(c.operator)) return;
     const fieldMeta = meta[c.field];
     if (!isRelationPreviewMeta(fieldMeta)) return;
     const model = relationModelOf(fieldMeta)!;

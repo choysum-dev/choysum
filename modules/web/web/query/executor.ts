@@ -125,15 +125,26 @@ async function hydrateGroupRefLabels(store: ModelStore<any>, rows: GroupRow[], d
         }
         if (changed) {
           node.labels = labels;
+          // Only patch Ref aliases on raw.labels so non-Ref (e.g. ManyToOne) labels stay as BE sent them.
           if (node.raw && typeof node.raw === 'object') {
-            (node.raw as { labels?: Record<string, string> }).labels = {
+            const rawLabels = {
               ...((node.raw as { labels?: Record<string, string> }).labels || {}),
-              ...labels,
             };
+            for (const alias of Object.keys(keys)) {
+              const field = refFields.get(baseFieldFromGroupAlias(alias));
+              if (!field?.relationModel) continue;
+              if (labels[alias] != null) rawLabels[alias] = labels[alias];
+            }
+            (node.raw as { labels?: Record<string, string> }).labels = rawLabels;
           }
-          const aliases = Object.keys(keys).sort();
-          const firstAlias = aliases[0];
-          if (firstAlias && labels[firstAlias] != null && labels[firstAlias] !== '') {
+          // Match toGroupRows: primary label is Object.keys(keys).sort()[0].
+          const firstAlias = Object.keys(keys).sort()[0];
+          if (
+            firstAlias &&
+            refFields.has(baseFieldFromGroupAlias(firstAlias)) &&
+            labels[firstAlias] != null &&
+            labels[firstAlias] !== ''
+          ) {
             node.label = String(labels[firstAlias]);
           }
         }

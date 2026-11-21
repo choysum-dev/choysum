@@ -77,5 +77,8 @@ test('formatRelationPreviewValue maps ids through resolveLabel', () => {
   expect(formatRelationPreviewValue({ Id: 'c1' }, resolve)).toBe('Acme');
   expect(formatRelationPreviewValue(['c1', { Id: 'c2' }], resolve)).toEqual(['Acme', 'c2']);
   expect(formatRelationPreviewValue({ Id: '' }, resolve)).toBe(null);
+  expect(formatRelationPreviewValue(42, resolve)).toBe(42);
+  expect(formatRelationPreviewValue(undefined, resolve)).toBe(undefined);
+  expect(collectRelationIdsFromGroup(null, {})).toEqual(new Map());
   expect(relationLabelCacheKey('base.Company', 'c1')).toBe('base.Company::c1');
 });
