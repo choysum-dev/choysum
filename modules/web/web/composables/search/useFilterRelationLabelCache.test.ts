@@ -121,3 +121,52 @@ test('useFilterRelationLabelCache replaces prior ids instead of merging forever'
   expect(api.labels.value.has('base.Company::old')).toBe(false);
   unmount();
 });
+
+test('useFilterRelationLabelCache swallows refresh failures in the watch callback', async () => {
+  const companySearch = asyncFnRecorder(async () => [{ Id: 'c1', DisplayName: 'Acme' }]);
+  const { api, rootRef, unmount } = runCacheHarness({
+    fieldsMetadata: {
+      CompanyId: { type: 'ManyToOneRef', relationModel: 'base.Company' },
+    },
+    root: {
+      id: 'g',
+      logic: 'And',
+      children: [{ id: 'c1', field: 'CompanyId', operator: '=', value: 'c1' }],
+    },
+    createModelStore: () => ({ Search: companySearch }),
+  });
+
+  await flushPromises();
+  expect(api.labelOf('base.Company', 'c1')).toBe('Acme');
+
+  // Force labels.value assignment during refresh to throw so the watch catch runs.
+  let current = api.labels.value;
+  Object.defineProperty(api.labels, 'value', {
+    configurable: true,
+    enumerable: true,
+    get: () => current,
+    set: (next: Map<string, string>) => {
+      if (current.size > 0 && next instanceof Map && next.size > 0) {
+        throw new Error('assign boom');
+      }
+      current = next;
+    },
+  });
+
+  rootRef.value = {
+    id: 'g',
+    logic: 'And',
+    children: [{ id: 'c1', field: 'CompanyId', operator: '=', value: 'c2' }],
+  };
+  await nextTick();
+  await flushPromises();
+
+  // Harness stayed alive; restore a writable value so unmount can clear.
+  Object.defineProperty(api.labels, 'value', {
+    configurable: true,
+    enumerable: true,
+    writable: true,
+    value: new Map(),
+  });
+  unmount();
+});
