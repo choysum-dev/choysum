@@ -33,13 +33,18 @@ export async function batchLoadRefRecordsByModel(
         const idList = Array.from(ids);
         for (let i = 0; i < idList.length; i += REF_DISPLAY_NAME_IN_CHUNK) {
           const chunk = idList.slice(i, i + REF_DISPLAY_NAME_IN_CHUNK);
-          const results = await targetStore.Search(['Id', 'in', chunk], {
-            fields: ['Id', 'DisplayName'],
-          });
-          for (const r of (results as Array<{ Id?: unknown }>) || []) {
-            const key = String(r.Id ?? '');
-            if (!key || key === 'undefined') continue;
-            map.set(key, r);
+          try {
+            const results = await targetStore.Search(['Id', 'in', chunk], {
+              fields: ['Id', 'DisplayName'],
+            });
+            for (const r of (results as Array<{ Id?: unknown }>) || []) {
+              const key = String(r.Id ?? '');
+              if (!key || key === 'undefined') continue;
+              map.set(key, r);
+            }
+          } catch (e) {
+            // Keep earlier chunks; only this chunk falls back to raw ids at call sites.
+            console.warn(`${logPrefix} Failed to hydrate chunk for target '${model}'`, e);
           }
         }
         lookups.set(model, map);

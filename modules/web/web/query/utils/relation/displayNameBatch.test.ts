@@ -39,7 +39,8 @@ test('batchLoadRefRecordsByModel tolerates target Search failures', async () => 
 
   const batch = new Map<string, Set<string>>([['base.Company', new Set(['c1'])]]);
   const lookups = await batchLoadRefRecordsByModel(batch, createModelStore);
-  expect(lookups.size).toBe(0);
+  // Per-chunk catch keeps the target entry with an empty map (callers fall back to raw ids).
+  expect(lookups.get('base.Company')?.size).toBe(0);
 });
 
 test('batchLoadRefRecordsByModel chunks large id sets', async () => {
@@ -60,6 +61,29 @@ test('batchLoadRefRecordsByModel chunks large id sets', async () => {
   expect(searches[0]?.length).toBe(200);
   expect(searches[1]?.length).toBe(1);
   expect(lookups.get('base.Company')?.size).toBe(201);
+});
+
+test('batchLoadRefRecordsByModel keeps earlier chunk results when a later chunk fails', async () => {
+  let calls = 0;
+  const createModelStore = () =>
+    ({
+      Search: async (cond: any) => {
+        calls += 1;
+        const ids = Array.isArray(cond?.[2]) ? cond[2].map(String) : [];
+        if (calls === 2) throw new Error('chunk boom');
+        return ids.map((Id: string) => ({ Id, DisplayName: `N-${Id}` }));
+      },
+    }) as any;
+
+  const ids = Array.from({ length: 201 }, (_, i) => `id-${i}`);
+  const lookups = await batchLoadRefRecordsByModel(
+    new Map([['base.Company', new Set(ids)]]),
+    createModelStore
+  );
+  const map = lookups.get('base.Company');
+  expect(map?.size).toBe(200);
+  expect(map?.get('id-0')?.DisplayName).toBe('N-id-0');
+  expect(map?.has('id-200')).toBe(false);
 });
 
 test('batchLoadRefRecordsByModel skips stores without Search', async () => {

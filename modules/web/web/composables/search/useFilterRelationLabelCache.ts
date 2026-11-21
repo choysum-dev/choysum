@@ -31,6 +31,8 @@ export function useFilterRelationLabelCache(
   const createModelStore = deps.createModelStore ?? defaultCreateModelStore;
   const labels = shallowRef(new Map<string, string>());
   let generation = 0;
+  // Stash the batch computed in the watch source so the callback need not recollect.
+  let pendingBatch = new Map<string, Set<string>>();
 
   async function refresh(batch: Map<string, Set<string>>, gen: number) {
     if (batch.size === 0) {
@@ -58,18 +60,21 @@ export function useFilterRelationLabelCache(
   watch(
     () => {
       const meta = (store as any)?.fieldsMetadata || {};
-      const batch = collectRelationIdsFromGroup(getRoot(), meta);
-      return relationIdBatchSignature(batch);
+      pendingBatch = collectRelationIdsFromGroup(getRoot(), meta);
+      return relationIdBatchSignature(pendingBatch);
     },
     async signature => {
       const gen = ++generation;
-      const meta = (store as any)?.fieldsMetadata || {};
-      const batch = collectRelationIdsFromGroup(getRoot(), meta);
-      if (!signature) {
-        await refresh(new Map(), gen);
-        return;
+      const batch = pendingBatch;
+      try {
+        if (!signature) {
+          await refresh(new Map(), gen);
+          return;
+        }
+        await refresh(batch, gen);
+      } catch (e) {
+        console.warn('[SearchFilter] Failed to hydrate relation labels', e);
       }
-      await refresh(batch, gen);
     },
     { immediate: true }
   );
