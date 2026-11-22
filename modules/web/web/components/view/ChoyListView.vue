@@ -352,10 +352,7 @@ import {
   type DetailPathProp,
 } from '@/web/web/navigation/detailPath';
 import { openRecordFromCollection } from '@/web/web/navigation/openRecordFromCollection';
-import {
-  collectRecordIdsFromRows,
-  snapshotFromListStore,
-} from '@/web/web/navigation/snapshotFromListStore';
+import { snapshotFromListStore } from '@/web/web/navigation/snapshotFromListStore';
 import { useRecordSetStore } from '@/web/web/stores/recordSetStore';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
 import ChoyPageTitleActions from '@/web/web/components/layout/ChoyPageTitleActions.vue';
@@ -471,8 +468,16 @@ const props = withDefaults(
 );
 
 const store = resolvePageStore(props.store, 'ListView');
-const router = useRouter();
-const route = useRoute();
+// Chrome / standalone unit mounts may omit vue-router; keep setup resilient.
+let router: ReturnType<typeof useRouter> | null = null;
+let route: ReturnType<typeof useRoute> | null = null;
+try {
+  router = useRouter();
+  route = useRoute();
+} catch {
+  router = null;
+  route = null;
+}
 // Only collection pages that open Form clear the pager session on return —
 // embedded / Search-more lists must not wipe an open Form's record set.
 function clearRecordSetSessionIfDetailHost() {
@@ -1109,6 +1114,10 @@ async function onRowClick(p: RowEventHandlerParams) {
 
 function openDetailOrEmitRowClick(payload: RowEventPayload<T>) {
   if (props.detailPath != null) {
+    if (!router) {
+      emit('row-click', payload);
+      return;
+    }
     const row = (payload.row || {}) as Record<string, unknown>;
     if (!canOpenDetailRow(props.canOpenDetail as any, row)) {
       emit('row-click', payload);
@@ -1125,24 +1134,28 @@ function openDetailOrEmitRowClick(payload: RowEventPayload<T>) {
       emit('row-click', payload);
       return;
     }
+    // Grouped visible windows are not Search offsets — open without a pager session.
+    if (isGroupMode.value) {
+      try {
+        useRecordSetStore().clear();
+      } catch {
+        // Pinia may be unavailable in unit mounts without an app shell.
+      }
+      void router.push(to as any);
+      return;
+    }
     let entry = null as ReturnType<typeof snapshotFromListStore>;
     try {
-      // Grouped List: result.rows are group headers; visibleNodes hold expanded records.
-      // Flat List keeps store pagination offset — do not override pageIds there.
-      const pageIds = isGroupMode.value
-        ? collectRecordIdsFromRows(controller.vm.visibleNodes as unknown[])
-        : undefined;
       entry = snapshotFromListStore(store as any, {
         model: model || 'unknown',
         key: `${model || 'unknown'}|${String(route?.path || 'list')}`,
         rowIndex: payload.rowIndex,
         recordId: id,
-        pageIds: pageIds && pageIds.length > 0 ? pageIds : undefined,
       });
     } catch {
       entry = null;
     }
-    // Seed only when the opened id is in the known window (skip grouped/empty).
+    // Seed only when the opened id is in the known Search window.
     if (entry && entry.ids.length > 0 && entry.ids.includes(id)) {
       openRecordFromCollection({ router, to, entry });
     } else {

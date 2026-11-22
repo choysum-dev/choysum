@@ -15,7 +15,7 @@ type ListController = ReturnType<typeof createListController>;
 export type UseListViewActionsOpts<T extends BaseModel> = {
   store: ModelStore<T>;
   controller: ListController;
-  router: Router;
+  router: Router | null;
   resolvedCreateAction: ComputedRef<RouteLocationRaw | string | undefined>;
   selectedItems: Ref<any[]>;
   items: ComputedRef<any[]>;
@@ -50,7 +50,7 @@ export function useListViewActions<T extends BaseModel>(opts: UseListViewActions
   }
 
   async function handleCreate() {
-    if (!opts.resolvedCreateAction.value) return;
+    if (!opts.resolvedCreateAction.value || !opts.router) return;
     try {
       closeRelationPicker?.();
       await nextTick();

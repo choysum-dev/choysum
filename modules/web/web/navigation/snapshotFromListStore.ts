@@ -88,9 +88,11 @@ export function snapshotFromListStore(
   if (!model) return null;
 
   const qs = store.state.queryState;
-  const overrideIds = Array.isArray(opts.pageIds)
+  const cleanedPageIds = Array.isArray(opts.pageIds)
     ? opts.pageIds.map(id => String(id ?? '').trim()).filter(Boolean)
     : null;
+  // Empty pageIds must not wipe Search offset / rows — treat as no override.
+  const overrideIds = cleanedPageIds && cleanedPageIds.length > 0 ? cleanedPageIds : null;
   // Visible/lane windows are not Search page offsets — start at 0.
   const offset = overrideIds
     ? 0

@@ -111,7 +111,7 @@ test('detailPath row click seeds recordSet and pushes detail path', async () => 
   restoreSfc(ListInlineEditScope);
 });
 
-test('detailPath grouped visibleNodes seed via pageIds when result.rows are groups', async () => {
+test('detailPath grouped List opens without pager seed (visible window ≠ Search offset)', async () => {
   const pinia = createPinia();
   setActivePinia(pinia);
   const { router } = createFeStubRouter({
@@ -180,10 +180,7 @@ test('detailPath grouped visibleNodes seed via pageIds when result.rows are grou
   await flushPromises();
 
   expect(pushes).toEqual(['/base/countries/b']);
-  const entry = useRecordSetStore().getActiveForModel('base.Country');
-  expect(entry?.ids).toEqual(['a', 'b']);
-  expect(entry?.index).toBe(1);
-  expect(entry?.windowStart).toBe(0);
+  expect(useRecordSetStore().active).toBeNull();
 
   mounted.unmount();
   restoreSfc(ChoyTableHost);

@@ -621,28 +621,26 @@ function onCardClick(card: ChoyKanbanCard): void {
       emit('card-click', card);
       return;
     }
-    // Grouped boards: result.rows are lane/group headers; use loaded lane cards as the window.
-    // Flat boards keep Search pagination offset — do not override pageIds there.
+    // Grouped lane cards are not Search offsets — open without a pager session.
+    // Flat boards keep Search pagination offset via snapshotFromListStore.
     const isGrouped =
       (boundStore as { state?: { result?: { kind?: string } } }).state?.result?.kind === 'group';
-    const laneIds = isGrouped
-      ? displayLanes.value
-          .flatMap(lane =>
-            (lane.cards || []).map(c =>
-              String((c.payload as any)?.Id ?? (c.payload as any)?.id ?? c.id ?? '').trim()
-            )
-          )
-          .filter(Boolean)
-      : [];
-    const pageIds = laneIds.length > 0 ? laneIds : undefined;
+    if (isGrouped) {
+      try {
+        useRecordSetStore().clear();
+      } catch {
+        // Pinia may be unavailable in unit mounts without an app shell.
+      }
+      void router.push(to as any);
+      return;
+    }
     const entry = snapshotFromListStore(boundStore as any, {
       model: model || 'unknown',
       key: `${model || 'unknown'}|${String(route?.path || 'kanban')}`,
       rowIndex: 0,
       recordId: id,
-      pageIds,
     });
-    // Seed only when the opened id is in the known window (skip empty/unknown).
+    // Seed only when the opened id is in the known Search window.
     if (entry && entry.ids.length > 0 && entry.ids.includes(id)) {
       openRecordFromCollection({ router, to, entry });
     } else {

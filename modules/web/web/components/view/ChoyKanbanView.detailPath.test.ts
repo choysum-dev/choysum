@@ -126,7 +126,7 @@ test('detailPath card click clears session and pushes when id not in window', as
   mounted.unmount();
 });
 
-test('detailPath seeds from lane cards when result.rows are groups only', async () => {
+test('detailPath grouped Kanban opens without pager seed (lane order ≠ Search offset)', async () => {
   const pinia = createPinia();
   setActivePinia(pinia);
   const { router } = createFeStubRouter({
@@ -141,6 +141,15 @@ test('detailPath seeds from lane cards when result.rows are groups only', async 
 
   const grouped = makeStore([{ kind: 'group', key: 'todo' }]);
   grouped.state.result.kind = 'group';
+  useRecordSetStore().seed({
+    key: 'stale',
+    model: 'sandbox.Record',
+    condition: {},
+    total: 1,
+    index: 0,
+    ids: ['old'],
+    windowStart: 0,
+  });
   const mounted = mountApp(ChoyKanbanView as any, {
     props: {
       store: grouped,
@@ -174,10 +183,7 @@ test('detailPath seeds from lane cards when result.rows are groups only', async 
   await flushPromises();
 
   expect(pushes).toEqual(['/sandbox/records/b']);
-  const entry = useRecordSetStore().getActiveForModel('sandbox.Record');
-  expect(entry?.ids).toEqual(['a', 'b']);
-  expect(entry?.index).toBe(1);
-  expect(entry?.windowStart).toBe(0);
+  expect(useRecordSetStore().active).toBeNull();
   mounted.unmount();
 });
 

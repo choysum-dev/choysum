@@ -161,6 +161,47 @@ test('goNext restores recordSet when router.push fails', async () => {
   expect(recordSet.active?.ids).toEqual(['a', 'b']);
 });
 
+test('goNext restore skips when a newer seed replaced the session', async () => {
+  setActivePinia(createPinia());
+  const recordSet = useRecordSetStore();
+  recordSet.seed({
+    key: 'k',
+    model: 'base.Country',
+    condition: {},
+    total: 2,
+    index: 0,
+    ids: ['a', 'b'],
+    windowStart: 0,
+  });
+  const pager = useFormRecordPager({
+    model: computed(() => 'base.Country'),
+    recordId: computed(() => 'a'),
+    isCreate: computed(() => false),
+    router: {
+      currentRoute: {
+        value: { path: '/base/countries/a', name: 'CountryDetail', params: { id: 'a' }, query: {} },
+      },
+      push: async () => {
+        // Newer open for the same key while this navigation is in flight.
+        recordSet.seed({
+          key: 'k',
+          model: 'base.Country',
+          condition: {},
+          total: 1,
+          index: 0,
+          ids: ['newer'],
+          windowStart: 0,
+        });
+        throw new Error('aborted');
+      },
+    },
+    store: {},
+    confirmDiscardIfDirty: async () => true,
+  });
+  await pager.goNext();
+  expect(recordSet.active?.ids).toEqual(['newer']);
+});
+
 test('goNext restores recordSet on fulfilled NavigationFailure', async () => {
   setActivePinia(createPinia());
   const recordSet = useRecordSetStore();

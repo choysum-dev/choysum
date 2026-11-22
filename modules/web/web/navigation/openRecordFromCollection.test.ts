@@ -268,6 +268,31 @@ test('snapshotFromListStore pageIds override ignores group-only result.rows', ()
   expect(entry?.windowStart).toBe(0);
   expect(entry?.index).toBe(1);
   expect(entry?.total).toBe(40);
+
+  // Empty pageIds must fall back to store rows / Search offset.
+  const emptyOverride = snapshotFromListStore(
+    {
+      modelName: 'base.Country',
+      state: {
+        queryState: { pagination: { offset: 20 } },
+        result: {
+          total: 40,
+          rows: [{ Id: 'a' }, { Id: 'b' }],
+        },
+      },
+      metadata: { fields: {} },
+    },
+    {
+      model: 'base.Country',
+      key: 'k',
+      rowIndex: 1,
+      recordId: 'b',
+      pageIds: [],
+    }
+  );
+  expect(emptyOverride?.ids).toEqual(['a', 'b']);
+  expect(emptyOverride?.windowStart).toBe(20);
+  expect(emptyOverride?.index).toBe(21);
 });
 
 test('snapshotFromListStore empty total and unmatched recordId', () => {
