@@ -131,7 +131,7 @@ export function buildUnifiedQuery(
   const ui = Array.isArray(qs.appliedFilters) ? qs.appliedFilters : [];
   const kw = qs.keyword as string | undefined;
   const kwFields = qs.keywordFields as string[] | undefined;
-  const uiCondition = filtersToQuery(ui, kw, kwFields, (store as any)?.fieldsMetadata);
+  const uiCondition = filtersToQuery(ui, kw, kwFields, (store as any)?.metadata?.fields);
 
   // Merge forced conditions with any supplied parent condition.
   const mergedFilters = combinePresentConditions(combinePresentConditions(uiCondition, qs.forcedCondition), options.parentCondition);

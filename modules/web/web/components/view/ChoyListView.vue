@@ -203,6 +203,7 @@ SPDX-License-Identifier: Apache-2.0
           :selection-api="selection"
           :base-index="baseIndex"
           :store="store"
+          :order-by="tableOrderBy"
           @selection-change="onSelectionChange"
           @row-click="onRowClick"
           @sort-change="onTableSortChange"
@@ -312,6 +313,12 @@ import ListInlineEditScope from '@/web/web/components/view/ListInlineEditScope.v
 // Controller: unified loading with grouping-first handling
 import { createListController } from '@/web/web/controllers/listController';
 import type { OrderByState, PaginationState } from '@/web/web/query/state';
+import {
+  isHandleReorderSortAllowed,
+  resolveTableOrderBy,
+  syncControlledOrderByToQueryState,
+  writeQueryStateOrderBy,
+} from '@/web/web/query/orderBy';
 import { useCancelableEmit } from '@/web/web/composables/useCancelableEmit';
 import { useAdaptiveHeight } from '@/web/web/composables/useAdaptiveHeight';
 import ChoyViewContainer from '@/web/web/components/view/ChoyViewContainer.vue';
@@ -584,16 +591,13 @@ const showHandleColumn = computed(
 );
 
 const isReordering = ref(false);
+const tableOrderBy = computed(() =>
+  resolveTableOrderBy((store.state as any)?.queryState as Record<string, unknown> | undefined, props.orderBy)
+);
+
 const handleEnabled = computed(() => {
   if (!showHandleColumn.value || inlineEdit.isEditing.value || isReordering.value) return false;
-  // Reorder only when unsorted, or sorted by handleField ascending (matches renumber semantics).
-  const raw = (store.state as any)?.queryState?.orderBy ?? (store.state as any)?.orderBy;
-  const list = Array.isArray(raw) ? raw : raw ? [raw] : [];
-  if (!list.length) return true;
-  const primary = list[0] as { field?: string; direction?: string } | undefined;
-  const field = primary?.field;
-  const dir = String(primary?.direction || '').toLowerCase();
-  return field === props.handleField && dir === 'asc';
+  return isHandleReorderSortAllowed(tableOrderBy.value, props.handleField);
 });
 
 const handleReorder = useListHandleReorder({
@@ -842,10 +846,8 @@ function afterLayoutRecompute() {
 onMounted(async () => {
   await nextTick();
 
-  // Sync external sorting from controlled props
-  if (props.orderBy !== undefined) {
-    (store.state as any).orderBy = props.orderBy as any;
-  }
+  // Sync controlled props.orderBy into queryState (Search/RPC + header chevrons).
+  syncControlledOrderByToQueryState((store.state as any), props.orderBy);
 
   // Initial height sync
   recomputeTableHeight();
@@ -897,12 +899,20 @@ async function loadData() {
   }
 }
 
-// Sync props.orderBy to state.orderBy
+// Sync props.orderBy into queryState when the host changes controlled sorting.
 watch(
   () => props.orderBy,
   v => {
-    (store.state as any).orderBy = v as any;
-  }
+    writeQueryStateOrderBy((store.state as any), v);
+    if (!firstApplied.value) return;
+    controller
+      .apply({ forcedCondition: props.forcedCondition as any })
+      .then(afterLayoutRecompute)
+      .catch((e: unknown) => {
+        emit('action-error', { action: 'sort', error: e instanceof Error ? e : new Error(String(e)) });
+      });
+  },
+  { deep: true }
 );
 
 // Unified note: resetToFirstPageOrLoad was removed because it was unused; all refresh logic now goes through controller.apply()

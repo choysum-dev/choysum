@@ -58,10 +58,10 @@ describe('query executor browse attachment descriptor regression', () => {
     const store = {
       storeId: 'auth.User',
       fullModelName: 'auth.User',
-      fieldsMetadata: {
+      metadata: { fields: {
         Avatar: { type: 'image' },
         CompanyId: { type: 'ManyToOneRef', relationModel: 'base.Company' },
-      },
+      } },
       Browse: async () => ({
         Id: 'USR-1',
         Avatar: 'bind-avatar',
@@ -127,9 +127,9 @@ describe('query executor browse attachment descriptor regression', () => {
     const store = {
       storeId: 'auth.User',
       fullModelName: 'auth.User',
-      fieldsMetadata: {
+      metadata: { fields: {
         IdentityDoc: { type: 'binary' },
-      },
+      } },
       Browse: async () => ({
         Id: 'USR-9',
         IdentityDoc: 'bind-doc',
@@ -168,9 +168,9 @@ describe('query executor browse attachment descriptor regression', () => {
     const store = {
       storeId: 'auth.User',
       fullModelName: 'auth.User',
-      fieldsMetadata: {
+      metadata: { fields: {
         Username: { type: 'varchar' },
-      },
+      } },
       Browse: async () => ({
         Id: 'USR-2',
         Username: 'alice',

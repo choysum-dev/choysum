@@ -7,7 +7,7 @@
  * and assert expose/action-target / handle visibility contracts.
  */
 
-import { defineComponent, h } from 'vue';
+import { defineComponent, h, reactive } from 'vue';
 import { buildPageMountGlobal } from '@choysum/page-mount';
 
 import { flushPromises, fnRecorder, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
@@ -22,7 +22,7 @@ function makeStore(extra?: Record<string, unknown>) {
   return {
     fullModelName: 'partner.Partner',
     storeId: 'list-main-' + Math.random().toString(36).slice(2),
-    fieldsMetadata: { Name: { type: 'varchar' }, Sequence: { type: 'integer' } },
+    metadata: { fields: { Name: { type: 'varchar' }, Sequence: { type: 'integer' } } },
     state: {
       queryState: {
         keyword: '',
@@ -120,6 +120,87 @@ describe('ListView', () => {
     expect(typeof root.load).toBe('function');
     expect(Array.isArray(root.selectedItems)).toBe(true);
     unmount();
+  });
+
+  test('seeds queryState.orderBy from controlled props and syncs prop updates', async () => {
+    const store = makeStore({
+      metadata: {
+        orderBy: [{ field: 'Sequence', order: 'asc' }],
+        fields: { Name: { type: 'varchar' }, Sequence: { type: 'integer' } },
+      },
+    });
+    const { plugins } = buildPageMountGlobal();
+    const mounted = mountApp(ChoyListView as any, {
+      props: {
+        store,
+        orderBy: [{ field: 'Name', direction: 'desc' }],
+        showPaginate: false,
+        refreshAction: false,
+        deleteAction: false,
+        showHeader: false,
+      },
+      plugins,
+      reactiveProps: true,
+    });
+    await flushPromises();
+    expect(store.state.queryState.orderBy).toEqual([{ field: 'Name', direction: 'desc' }]);
+
+    mounted.props.orderBy = [{ field: 'Sequence', direction: 'desc' }];
+    await flushPromises();
+    expect(store.state.queryState.orderBy).toEqual([{ field: 'Sequence', direction: 'desc' }]);
+
+    // Removing the controlled prop re-applies; listController reseeds metadata.orderBy (asc).
+    mounted.props.orderBy = undefined;
+    await flushPromises();
+    expect(store.state.queryState.orderBy).toEqual([{ field: 'Sequence', direction: 'asc' }]);
+    mounted.unmount();
+  });
+
+  test('handleEnabled follows sole Sequence asc and rejects multi-column sorts', async () => {
+    const store = makeStore({
+      metadata: {
+        fields: {
+          Name: { type: 'varchar' },
+          Sequence: { type: 'integer' },
+        },
+      },
+    });
+    store.state = reactive({
+      ...store.state,
+      queryState: {
+        ...store.state.queryState,
+        orderBy: [{ field: 'Sequence', direction: 'asc' }],
+      },
+    });
+    const { plugins } = buildPageMountGlobal();
+    const mounted = mountApp(ChoyListView as any, {
+      props: {
+        store,
+        editable: true,
+        showHandle: true,
+        handleField: 'Sequence',
+        showPaginate: false,
+        refreshAction: false,
+        deleteAction: false,
+        showHeader: false,
+      },
+      plugins,
+    });
+    await flushPromises();
+    expect(mounted.setupState().showHandleColumn).toBe(true);
+    expect(mounted.setupState().handleEnabled).toBe(true);
+
+    store.state.queryState.orderBy = [
+      { field: 'Sequence', direction: 'asc' },
+      { field: 'Name', direction: 'asc' },
+    ];
+    await flushPromises();
+    expect(mounted.setupState().handleEnabled).toBe(false);
+
+    store.state.queryState.orderBy = [{ field: 'Sequence', direction: 'desc' }];
+    await flushPromises();
+    expect(mounted.setupState().handleEnabled).toBe(false);
+    mounted.unmount();
   });
 
 

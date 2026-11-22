@@ -44,10 +44,10 @@ test('refreshLaneAggregates combines lane conditions for the batch query', async
   const store = {
     storeId: 'demo.Task',
     fullModelName: 'demo.Task',
-    fieldsMetadata: {
+    metadata: { fields: {
       Stage: { type: 'varchar' },
       Amount: { type: 'float' },
-    },
+    } },
     state: {
       result: null,
       queryState: {

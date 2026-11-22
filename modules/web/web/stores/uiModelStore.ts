@@ -5,7 +5,7 @@
  * Frontend-only ModelStore stand-in for pages with no ORM model (login/register,
  * settings sheets, PropertyDefinition dialogs, and similar pure-scalar UIs).
  * Satisfies the ModelStore slice that useField / ChoyFieldBase / ChoyFormView
- * read (storeId, fieldsMetadata, getFieldMeta). Values are in-memory; does not
+ * read (storeId, metadata.fields, getFieldMeta). Values are in-memory; does not
  * call gRPC.
  *
  * Pure scalars only. Relation / monetary / binary / properties / statusbar and
@@ -181,13 +181,14 @@ export type UiModelStore = ModelStore<any> & {
  * Builds a frontend-only ModelStore. Not registered with createModelStore.
  */
 export function createUiModelStore(options: CreateUiModelStoreOptions): UiModelStore {
-  const fieldsMetadata = reactive(buildFieldsMetadata(options.fields || []));
-  const fieldNames = Object.freeze(Object.keys(fieldsMetadata));
+  const fields = reactive(buildFieldsMetadata(options.fields || []));
+  const metadata = reactive({ fields });
+  const fieldNames = Object.freeze(Object.keys(fields));
   const allowed = new Set(fieldNames);
 
   const values = reactive(emptyDict<unknown>());
   for (const name of fieldNames) {
-    const type = fieldsMetadata[name]!.type as UiModelFieldType;
+    const type = fields[name]!.type as UiModelFieldType;
     const initialValues = options.initialValues;
     const candidate =
       initialValues && Object.prototype.hasOwnProperty.call(initialValues, name)
@@ -202,21 +203,21 @@ export function createUiModelStore(options: CreateUiModelStoreOptions): UiModelS
 
   const getFieldMeta = (name: string): WebFieldMetadata | undefined => {
     const fieldName = String(name || '').trim();
-    return fieldName ? fieldsMetadata[fieldName] : undefined;
+    return fieldName ? fields[fieldName] : undefined;
   };
 
-  const ensureFieldsGet = async (fields?: string[]): Promise<Record<string, WebFieldMetadata>> => {
-    if (!fields?.length) {
+  const ensureFieldsGet = async (requested?: string[]): Promise<Record<string, WebFieldMetadata>> => {
+    if (!requested?.length) {
       const all = emptyDict<WebFieldMetadata>();
       for (const name of fieldNames) {
-        all[name] = fieldsMetadata[name]!;
+        all[name] = fields[name]!;
       }
       return all;
     }
     const slice = emptyDict<WebFieldMetadata>();
-    for (const raw of fields) {
+    for (const raw of requested) {
       const fieldName = String(raw || '').trim();
-      const meta = fieldsMetadata[fieldName];
+      const meta = fields[fieldName];
       if (meta) slice[fieldName] = meta;
     }
     return slice;
@@ -224,7 +225,7 @@ export function createUiModelStore(options: CreateUiModelStoreOptions): UiModelS
 
   const store = {
     storeId,
-    fieldsMetadata,
+    metadata,
     fieldNames,
     state: {
       queryState: createEmptyQueryState(),
@@ -267,7 +268,7 @@ export function createUiModelStore(options: CreateUiModelStoreOptions): UiModelS
       return out;
     },
     setFieldSelection(name: string, items: readonly SelectionItem[]): void {
-      const meta = fieldsMetadata[String(name || '').trim()];
+      const meta = fields[String(name || '').trim()];
       if (!meta || meta.type !== 'selection') {
         throw new Error(`createUiModelStore field "${String(name)}" is not a selection field`);
       }

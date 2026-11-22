@@ -83,9 +83,9 @@ describe('attachment end-to-end chain regression', () => {
 
     const store = {
       fullModelName: 'auth.User',
-      fieldsMetadata: {
+      metadata: { fields: {
         Avatar: { type: 'image' },
-      },
+      } },
       getContext: () => ({}),
     } as any;
     const normalizeDeps = { createModelStore };
@@ -132,9 +132,9 @@ describe('attachment end-to-end chain regression', () => {
     const readStore = {
       storeId: 'auth.User',
       fullModelName: 'auth.User',
-      fieldsMetadata: {
+      metadata: { fields: {
         Avatar: { type: 'image' },
-      },
+      } },
       Search: async () => [
         {
           Id: 'USR-1',

@@ -11,6 +11,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"text/template"
@@ -30,6 +31,51 @@ var webApiStoreTplStr string
 
 //go:embed webapistore.index.ts.tpl
 var webApiStoreIndexTplStr string
+
+// ModelOrderBySpec is one @Model({ orderBy }) entry for web store metadata.
+type ModelOrderBySpec struct {
+	Field string
+	Order string
+}
+
+// modelOrderByFieldPattern restricts orderBy.field to identifiers so the
+// webapistore template can emit field: 'Name' without escaping.
+var modelOrderByFieldPattern = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
+
+// parseModelOrderByJSON decodes meta.Model.OrderBy JSON into template specs.
+// Invalid entries (empty/non-identifier field, order not asc|desc) are dropped.
+func parseModelOrderByJSON(raw string) []ModelOrderBySpec {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return nil
+	}
+	var rows []struct {
+		Field string `json:"field"`
+		Order string `json:"order"`
+	}
+	if err := json.Unmarshal([]byte(raw), &rows); err != nil {
+		return nil
+	}
+	out := make([]ModelOrderBySpec, 0, len(rows))
+	for _, row := range rows {
+		field := strings.TrimSpace(row.Field)
+		if field == "" || !modelOrderByFieldPattern.MatchString(field) {
+			continue
+		}
+		order := strings.ToLower(strings.TrimSpace(row.Order))
+		if order == "" {
+			order = "asc"
+		}
+		if order != "asc" && order != "desc" {
+			continue
+		}
+		out = append(out, ModelOrderBySpec{Field: field, Order: order})
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
+}
 
 // FieldMetadata contains client-facing field metadata.
 type FieldMetadata struct {
@@ -490,12 +536,14 @@ func (g *webApiStoreGenerator) generate(ctx context.Context, app *meta.Applicati
 			data := struct {
 				App            string
 				Model          *meta.Model
+				OrderBy        []ModelOrderBySpec
 				FieldsMetadata []FieldMetadata
 				RelationFields []RelationFieldInfo
 				ImportModels   []string
 			}{
 				App:            app.Name,
 				Model:          model,
+				OrderBy:        parseModelOrderByJSON(model.OrderBy),
 				FieldsMetadata: fieldsMetadata,
 				RelationFields: relationFields,
 				ImportModels:   importModels,

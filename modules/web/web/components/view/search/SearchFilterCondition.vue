@@ -136,6 +136,7 @@ import ComboboxInput from '@/web/web/components/vendor/ui/combobox/ComboboxInput
 import ComboboxItem from '@/web/web/components/vendor/ui/combobox/ComboboxItem.vue';
 import { Trash2 } from 'lucide-vue-next';
 import { isConditionComplete } from '@/web/web/query/utils/filter/structures';
+import { buildFilterConditionFieldMeta } from '@/web/web/composables/search/storeFieldMeta';
 
 import ChoyVarcharField from '@/web/web/components/field/ChoyVarcharField.vue';
 import ChoyTextField from '@/web/web/components/field/ChoyTextField.vue';
@@ -319,16 +320,8 @@ const valueRef = computed({
   set: v => props.onUpdateCondition(conditionId.value, { value: v }),
 });
 
-const fieldMeta = computed(() => {
-  const fieldName = props.condition.field || '';
-  const t = metaTypeOf(fieldName);
-  const staticMeta = ((props.store as any)?.fieldsMetadata?.[fieldName] || {}) as Partial<WebFieldMetadata>;
-  return {
-    ...staticMeta,
-    type: (staticMeta.type || t) as any,
-    isReadonly: false,
-  } as Partial<WebFieldMetadata>;
-});
+// Populated by the field watch (immediate) before the row is interactive.
+const fieldMeta = ref({} as Partial<WebFieldMetadata>);
 
 const binding = useStandaloneField({
   value: valueRef,
@@ -339,14 +332,14 @@ const binding = useStandaloneField({
 }) as any;
 
 binding.store = {
-  get fieldsMetadata() {
-    return (props.store as any)?.fieldsMetadata;
+  get metadata() {
+    return { fields: (props.store as any)?.metadata?.fields || {} };
   },
   getFieldMeta(name: string) {
     const raw =
       typeof (props.store as any)?.getFieldMeta === 'function'
         ? (props.store as any).getFieldMeta(name)
-        : (props.store as any)?.fieldsMetadata?.[name];
+        : this.metadata.fields?.[name];
     return raw ? { ...raw, isReadonly: false } : raw;
   },
   ensureFieldsGet: (...args: any[]) => (props.store as any)?.ensureFieldsGet?.(...args),
@@ -354,8 +347,14 @@ binding.store = {
 };
 
 watch(
-  () => [props.condition.field, fieldMeta.value] as const,
-  ([fieldName, meta]) => {
+  () => props.condition.field,
+  fieldName => {
+    const meta = buildFilterConditionFieldMeta(
+      props.store as any,
+      fieldName || '',
+      metaTypeOf(fieldName || '')
+    ) as Partial<WebFieldMetadata>;
+    fieldMeta.value = meta;
     binding.meta = meta;
     binding.prop = fieldName || 'value';
     binding.relationStore =

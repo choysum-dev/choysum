@@ -108,7 +108,7 @@ describe('useField createModelStore for relations', () => {
     const restore = replaceStoreFactory(model, () => ({
       storeId: 'rel-leaf',
       fullModelName: model,
-      fieldsMetadata: { Name: { type: 'varchar' } },
+      metadata: { fields: { Name: { type: 'varchar' } } },
     }));
     try {
       let field: ReturnType<typeof useField> | undefined;
@@ -117,9 +117,9 @@ describe('useField createModelStore for relations', () => {
           field = useField({
             store: {
               storeId: 'main',
-              fieldsMetadata: {
+              metadata: { fields: {
                 PartnerId: { type: 'manytoone', relationModel: model },
-              },
+              } },
             } as any,
             prop: 'PartnerId',
           });
@@ -155,9 +155,9 @@ describe('useField createModelStore for relations', () => {
         field = useField({
           store: {
             storeId: 'main',
-            fieldsMetadata: {
+            metadata: { fields: {
               PartnerId: { type: 'manytoone', relationModel: mid },
-            },
+            } },
           } as any,
           prop: 'PartnerId.CountryId',
         });
@@ -207,7 +207,7 @@ describe('useField registration path prefix strip (suppressFieldRegistration)', 
         const Probe = defineComponent({
           setup() {
             useField({
-              store: { storeId: 'main', fieldsMetadata: { Lines: { type: 'one2many' }, Name: { type: 'varchar' } } } as any,
+              store: { storeId: 'main', metadata: { fields: { Lines: { type: 'one2many' }, Name: { type: 'varchar' } } } } as any,
               prop: 'Lines.Name',
             });
             return () => h('span');
@@ -237,7 +237,7 @@ describe('useField registration path prefix strip (suppressFieldRegistration)', 
         const Probe = defineComponent({
           setup() {
             useField({
-              store: { storeId: 'main', fieldsMetadata: { Lines: { type: 'one2many' } } } as any,
+              store: { storeId: 'main', metadata: { fields: { Lines: { type: 'one2many' } } } } as any,
               prop: 'Lines',
             });
             return () => h('span');

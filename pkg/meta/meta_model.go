@@ -29,6 +29,9 @@ type Model struct {
 	Extends    string `gorm:"type:varchar(255);" json:"extends"`
 
 	CompanyField *string `gorm:"type:varchar(255);" json:"company_field"`
+	// OrderBy is JSON for explicit @Model({ orderBy }) specs: [{"field":"Name","order":"asc"}].
+	// Empty means undeclared (do not invent Id-desc fallback here).
+	OrderBy string `gorm:"type:text;" json:"order_by"`
 
 	Decorators []*Decorator `gorm:"foreignKey:ModelId;constraint:OnDelete:CASCADE;" json:"decorators"`
 	Services   []*Service   `gorm:"foreignKey:ModelId;constraint:OnDelete:CASCADE;" json:"services"`

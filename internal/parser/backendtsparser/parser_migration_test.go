@@ -221,6 +221,69 @@ export default class Department extends BaseModel {
 	}
 }
 
+func TestTsParser_ParseModelOrderByObjectAndArray(t *testing.T) {
+	runtimeScope := newBackendParserTestScope()
+	module := &meta.Module{Path: "/virtual/modules/test", ApplicationStr: "test"}
+	p := NewTsParser(runtimeScope, module)
+
+	path := "/virtual/modules/test/service/ordered.ts"
+	content := `import { Model, Field } from '../../core/service';
+import BaseModel from './base';
+
+@Model('Ordered', { orderBy: { field: 'Name', order: 'ASC' } })
+export default class Ordered extends BaseModel {
+  @Field({ type: 'varchar' })
+  public Name: string
+}
+`
+	r, err := p.Parse(map[string]string{}, path, content)
+	if err != nil {
+		t.Fatalf("parse failed: %v", err)
+	}
+	if r.Model == nil {
+		t.Fatal("expected parsed model")
+	}
+	if r.Model.OrderBy != `[{"field":"Name","order":"asc"}]` {
+		t.Fatalf("unexpected orderBy JSON: %q", r.Model.OrderBy)
+	}
+
+	path2 := "/virtual/modules/test/service/ordered_multi.ts"
+	content2 := `import { Model, Field } from '../../core/service';
+import BaseModel from './base';
+
+@Model('OrderedMulti', { orderBy: [{ field: 'Seq', order: 'desc' }, { field: 'Name', order: 'asc' }] })
+export default class OrderedMulti extends BaseModel {
+  @Field({ type: 'varchar' })
+  public Name: string
+}
+`
+	r2, err := p.Parse(map[string]string{}, path2, content2)
+	if err != nil {
+		t.Fatalf("parse multi failed: %v", err)
+	}
+	if r2.Model.OrderBy != `[{"field":"Seq","order":"desc"},{"field":"Name","order":"asc"}]` {
+		t.Fatalf("unexpected multi orderBy JSON: %q", r2.Model.OrderBy)
+	}
+
+	path3 := "/virtual/modules/test/service/plain.ts"
+	content3 := `import { Model, Field } from '../../core/service';
+import BaseModel from './base';
+
+@Model('Plain')
+export default class Plain extends BaseModel {
+  @Field({ type: 'varchar' })
+  public Name: string
+}
+`
+	r3, err := p.Parse(map[string]string{}, path3, content3)
+	if err != nil {
+		t.Fatalf("parse plain failed: %v", err)
+	}
+	if r3.Model.OrderBy != "" {
+		t.Fatalf("expected empty orderBy when undeclared, got %q", r3.Model.OrderBy)
+	}
+}
+
 func TestTsParser_ParseSkipsCompatibilityPath(t *testing.T) {
 	runtimeScope := newBackendParserTestScope()
 	module := &meta.Module{Path: "/virtual/modules/core", ApplicationStr: "core"}

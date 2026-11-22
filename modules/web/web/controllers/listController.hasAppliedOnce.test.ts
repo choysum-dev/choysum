@@ -7,7 +7,7 @@ function makeStore(overrides: Record<string, unknown> = {}) {
   return {
     fullModelName: 'base.Company',
     storeId: 'list-applied-once',
-    fieldsMetadata: { Name: { type: 'varchar' } },
+    metadata: { fields: { Name: { type: 'varchar' } } },
     state: {
       queryState: {
         keyword: '',

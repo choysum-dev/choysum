@@ -86,7 +86,7 @@ export function useSearch(opts: UseSearchOptions = {}) {
 
   function buildQuery(node: ConditionGroup): any {
     try {
-      const fieldsMeta = (opts.attachStore as any)?.fieldsMetadata;
+      const fieldsMeta = (opts.attachStore as any)?.metadata?.fields;
       return filtersToQuery([node], undefined, undefined, fieldsMeta);
     } catch {
       return undefined;

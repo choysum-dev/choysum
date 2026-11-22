@@ -70,15 +70,15 @@ describe('listRowEdit helpers', () => {
 
   test('hasHandleField requires store, field, writable numeric meta', () => {
     expect(hasHandleField(undefined)).toBe(false);
-    expect(hasHandleField({ fieldsMetadata: {} } as any, '')).toBe(false);
-    expect(hasHandleField({ fieldsMetadata: null } as any, 'Sequence')).toBe(false);
+    expect(hasHandleField({ metadata: { fields: {} } } as any, '')).toBe(false);
+    expect(hasHandleField({ metadata: { fields: null  }} as any, 'Sequence')).toBe(false);
     expect(hasHandleField({} as any, 'Sequence')).toBe(false);
     const store = {
-      fieldsMetadata: {
+      metadata: { fields: {
         Sequence: { id: '1', type: 'int', typeAnnotation: '', isReadonly: false },
         Locked: { id: '2', type: 'int', typeAnnotation: '', isReadonly: true },
         Name: { id: '3', type: 'string', typeAnnotation: '' },
-      },
+      } },
     } as unknown as ModelStore<any>;
     expect(hasHandleField(store, 'Sequence')).toBe(true);
     expect(hasHandleField(store, 'Locked')).toBe(false);

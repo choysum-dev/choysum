@@ -99,7 +99,7 @@ describe('SelectionField FieldsGet wiring', () => {
     });
     const helpers = createFieldsGetHelpers(
       {
-        fieldsMetadata: { Status: staticMeta },
+        metadata: { fields: { Status: staticMeta } },
         FieldsGet: async (...args: any[]) => {
           await gate;
           return FieldsGet(...(args as []));
@@ -113,7 +113,7 @@ describe('SelectionField FieldsGet wiring', () => {
       return helpers.ensureFieldsGet(...(args as [string[], string[]?]));
     };
     const store = {
-      fieldsMetadata: { Status: staticMeta },
+      metadata: { fields: { Status: staticMeta } },
       FieldsGet,
       ensureFieldsGet,
       getFieldMeta: helpers.getFieldMeta,
@@ -152,10 +152,10 @@ describe('SelectionField FieldsGet wiring', () => {
       },
     }));
     const helpers = createFieldsGetHelpers(
-      { fieldsMetadata: { Status: staticMeta }, FieldsGet },
+      { metadata: { fields: { Status: staticMeta } }, FieldsGet },
       { getLang: () => 'zh_CN' }
     );
-    const store = { fieldsMetadata: { Status: staticMeta }, FieldsGet, ...helpers };
+    const store = { metadata: { fields: { Status: staticMeta } }, FieldsGet, ...helpers };
 
     const mountOne = (isEditMode: boolean) =>
       mountApp(SelectionField as any, {
@@ -188,10 +188,10 @@ describe('SelectionField FieldsGet wiring', () => {
       },
     }));
     const helpers = createFieldsGetHelpers(
-      { fieldsMetadata: { Status: staticMeta }, FieldsGet },
+      { metadata: { fields: { Status: staticMeta } }, FieldsGet },
       { getLang: () => 'zh_CN' }
     );
-    const store = { fieldsMetadata: { Status: staticMeta }, FieldsGet, ...helpers };
+    const store = { metadata: { fields: { Status: staticMeta } }, FieldsGet, ...helpers };
 
     const m = mountApp(SelectionField as any, {
       props: {
@@ -230,10 +230,10 @@ describe('SelectionField FieldsGet wiring', () => {
       },
     }));
     const helpers = createFieldsGetHelpers(
-      { fieldsMetadata: { Status: dynamicMeta }, FieldsGet },
+      { metadata: { fields: { Status: dynamicMeta } }, FieldsGet },
       { getLang: () => 'zh_CN' }
     );
-    const store = { fieldsMetadata: { Status: dynamicMeta }, FieldsGet, ...helpers };
+    const store = { metadata: { fields: { Status: dynamicMeta } }, FieldsGet, ...helpers };
 
     const m = mountApp(SelectionField as any, {
       props: {
@@ -265,10 +265,10 @@ describe('SelectionField FieldsGet wiring', () => {
       },
     }));
     const helpers = createFieldsGetHelpers(
-      { fieldsMetadata: { Status: staticMeta }, FieldsGet },
+      { metadata: { fields: { Status: staticMeta } }, FieldsGet },
       { getLang: () => 'zh_CN' }
     );
-    const store = { fieldsMetadata: { Status: staticMeta }, FieldsGet, ...helpers };
+    const store = { metadata: { fields: { Status: staticMeta } }, FieldsGet, ...helpers };
     const lastOnchangeResult = ref({
       selection: [{ field: 'Status', selection: ['archived', 'draft'], disabled: ['draft'] }],
     });
@@ -307,7 +307,7 @@ describe('SelectionField FieldsGet wiring', () => {
       fieldRefOf: () => value as any,
       recordRef: () => computed(() => ({ Id: '1', Status: 'active' })) as any,
       registerFields: () => {},
-      store: { fieldsMetadata: { Status: staticMeta } },
+      store: { metadata: { fields: { Status: staticMeta } } },
       asView: () => ({ fieldValue: () => value }) as any,
     };
     const m = mountApp(SelectionField as any, {
@@ -330,7 +330,7 @@ describe('SelectionField FieldsGet wiring', () => {
       fieldRefOf: () => value as any,
       recordRef: () => computed(() => ({ Id: '1', Status: 'active' })) as any,
       registerFields: () => {},
-      store: { fieldsMetadata: { Status: staticMeta } },
+      store: { metadata: { fields: { Status: staticMeta } } },
       asView: () => ({ fieldValue: () => value }) as any,
     };
     const m = mountApp(SelectionField as any, {
@@ -359,7 +359,7 @@ describe('SelectionField FieldsGet wiring', () => {
       fieldRefOf: () => value as any,
       recordRef: () => computed(() => ({ Id: '1', Status: 'active' })) as any,
       registerFields: () => {},
-      store: { fieldsMetadata: { Status: staticMeta } },
+      store: { metadata: { fields: { Status: staticMeta } } },
       asView: () => ({ fieldValue: () => value }) as any,
     };
   }

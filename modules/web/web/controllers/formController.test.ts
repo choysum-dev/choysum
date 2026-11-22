@@ -209,7 +209,7 @@ describe('formController attachment protocol', () => {
       fullModelName: 'demo.Asset',
       storeId: 'demo.Asset',
       getContext: () => ({}),
-      fieldsMetadata: { Avatar: { type: 'image' } },
+      metadata: { fields: { Avatar: { type: 'image' } } },
     } as any;
     const deps = { createModelStore: createStoreForNormalize(service) as any };
 
@@ -338,7 +338,7 @@ describe('formController attachment protocol', () => {
       fullModelName: 'demo.Asset',
       storeId: 'demo.Asset',
       getContext: () => ({}),
-      fieldsMetadata: { Avatar: { type: 'image' } },
+      metadata: { fields: { Avatar: { type: 'image' } } },
     } as any;
     const deps = { createModelStore: createStoreForNormalize(service) as any };
 
@@ -413,7 +413,7 @@ describe('formController attachment protocol', () => {
 
     const store = {
       fullModelName: 'demo.Asset',
-      fieldsMetadata: { Avatar: { type: 'image' } },
+      metadata: { fields: { Avatar: { type: 'image' } } },
     } as any;
     const out = await __normalizeAttachmentFieldsInPayloadForTest(
       store,
@@ -432,7 +432,7 @@ describe('formController attachment protocol', () => {
   test('normalize without document fails clearly when upload is required', async () => {
     const store = {
       fullModelName: 'demo.Asset',
-      fieldsMetadata: { Avatar: { type: 'image' } },
+      metadata: { fields: { Avatar: { type: 'image' } } },
     } as any;
     let caught: unknown;
     try {
@@ -472,7 +472,7 @@ describe('formController attachment protocol', () => {
   test('preNormalizeDraftForDiff keeps noop envelopes so update diff does not clear', async () => {
     const store = {
       fullModelName: 'demo.Asset',
-      fieldsMetadata: { Avatar: { type: 'image' } },
+      metadata: { fields: { Avatar: { type: 'image' } } },
     } as any;
     const out = await __preNormalizeDraftForDiffForTest(
       store,

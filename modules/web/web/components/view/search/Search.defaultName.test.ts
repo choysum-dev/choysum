@@ -156,7 +156,7 @@ function mountSearch() {
         storeId: 'demo.Widget',
         application: 'demo',
         modelName: 'Widget',
-        fieldsMetadata: {},
+        metadata: { fields: {} },
         state: { queryState: {} },
       },
       placeholder: 'Find…',

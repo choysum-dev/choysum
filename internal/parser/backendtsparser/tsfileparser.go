@@ -26,6 +26,68 @@ type tsFileParser struct {
 	translateBindings map[string]parser.TranslateBinding
 }
 
+// modelOrderByFieldPattern restricts orderBy.field to identifiers so generated
+// webapistore TS can emit field: 'Name' without escaping or quote breakage.
+var modelOrderByFieldPattern = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
+
+// encodeModelOrderByOption normalizes @Model orderBy (object or array) to JSON
+// [{"field":"Name","order":"asc"}]. Empty string means undeclared / invalid.
+// Invalid entries (non-object, empty/non-identifier field, order not asc|desc) are dropped.
+func encodeModelOrderByOption(raw any) string {
+	if raw == nil {
+		return ""
+	}
+	var items []any
+	switch v := raw.(type) {
+	case map[string]any:
+		items = []any{v}
+	case []any:
+		items = v
+	default:
+		return ""
+	}
+	type orderSpec struct {
+		Field string `json:"field"`
+		Order string `json:"order"`
+	}
+	out := make([]orderSpec, 0, len(items))
+	for _, item := range items {
+		m, ok := item.(map[string]any)
+		if !ok {
+			continue
+		}
+		field := strings.TrimSpace(fmtString(m["field"]))
+		if field == "" || !modelOrderByFieldPattern.MatchString(field) {
+			continue
+		}
+		order := strings.ToLower(strings.TrimSpace(fmtString(m["order"])))
+		if order == "" {
+			order = "asc"
+		}
+		if order != "asc" && order != "desc" {
+			continue
+		}
+		out = append(out, orderSpec{Field: field, Order: order})
+	}
+	if len(out) == 0 {
+		return ""
+	}
+	// orderSpec is always JSON-safe (string field/order); ignore the unused error.
+	b, _ := json.Marshal(out)
+	return string(b)
+}
+
+func fmtString(v any) string {
+	if v == nil {
+		return ""
+	}
+	s, ok := v.(string)
+	if !ok {
+		return ""
+	}
+	return s
+}
+
 var (
 	referenceScopePattern    = regexp.MustCompile(`\bscope\s*:\s*("(?:\\.|[^"])*"|'(?:\\.|[^'])*'|` + "`[^`]*`" + `)`)
 	referencePathPattern     = regexp.MustCompile(`\bpath\s*:\s*("(?:\\.|[^"])*"|'(?:\\.|[^'])*'|` + "`[^`]*`" + `)`)
@@ -306,6 +368,7 @@ func (p *tsFileParser) parseModel() (*meta.Model, *parser.Class, *parser.Propert
 	// Parse-stage support for @Model('Name', { ...options }) object-literal arguments.
 	parentFieldName := ""
 	var companyFieldOpt *string
+	orderByJSON := ""
 	for _, d := range class.Decorators {
 		if d.Name != "Model" || len(d.Arguments) == 0 {
 			continue
@@ -332,13 +395,21 @@ func (p *tsFileParser) parseModel() (*meta.Model, *parser.Class, *parser.Propert
 				parentFieldName = pf
 				// don't break here; continue scanning to also capture companyField if present
 			}
+			if orderByJSON == "" {
+				if encoded := encodeModelOrderByOption(opts["orderBy"]); encoded != "" {
+					orderByJSON = encoded
+				}
+			}
 		}
-		if parentFieldName != "" && companyFieldOpt != nil {
+		if parentFieldName != "" && companyFieldOpt != nil && orderByJSON != "" {
 			break
 		}
 	}
 	if companyFieldOpt != nil {
 		model.CompanyField = companyFieldOpt
+	}
+	if orderByJSON != "" {
+		model.OrderBy = orderByJSON
 	}
 
 	// Synthesize ParentPath when parentField is declared and ParentPath is absent.

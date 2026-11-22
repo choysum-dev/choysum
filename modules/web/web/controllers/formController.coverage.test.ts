@@ -17,7 +17,7 @@ test('formController > beginDisplay awaits field selection when export is empty'
   const store = {
     fullModelName: 'demo.Widget',
     storeId: 'demo.Widget',
-    fieldsMetadata: { Name: { type: 'varchar' } },
+    metadata: { fields: { Name: { type: 'varchar' } } },
     state: {},
     getContext: () => ({}),
   } as any;
@@ -46,7 +46,7 @@ test('formController > create submit uses default handoff cache', async () => {
   const store = {
     fullModelName: 'demo.Widget',
     storeId: 'demo.Widget',
-    fieldsMetadata: { Name: { type: 'varchar' } },
+    metadata: { fields: { Name: { type: 'varchar' } } },
     state: {},
     getContext: () => ({}),
     Create,
@@ -71,7 +71,7 @@ test('formController > remove runs under control loading and clears the record',
   const store = {
     fullModelName: 'demo.Widget',
     storeId: 'demo.Widget',
-    fieldsMetadata: { Name: { type: 'varchar' } },
+    metadata: { fields: { Name: { type: 'varchar' } } },
     state: {},
     getContext: () => ({}),
     DeleteById,

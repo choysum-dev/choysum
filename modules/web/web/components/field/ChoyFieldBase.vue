@@ -229,6 +229,7 @@ SPDX-License-Identifier: Apache-2.0
     v-else-if="effectiveRenderMode === 'table' && columnVisible"
     :prop="String(binding.prop)"
     :label="resolvedLabel"
+    :sortable="resolvedVColumnProps.sortable === true"
     :vColumnProps="resolvedVColumnProps"
     v-slot="{ row, $index }"
   >
@@ -476,6 +477,7 @@ import { FIELD_PRESENTATION_FIELDS_GET_ATTRS } from '@/web/web/stores/fieldsGet'
 import FieldTranslationsDialog from './ChoyFieldTranslationsDialog.vue';
 import FieldCompanyValuesDialog from './ChoyFieldCompanyValuesDialog.vue';
 import { defaultListColumnAlignForFieldType } from './numericFieldHelpers';
+import { defaultListColumnSortable } from './listColumnSortable';
 import { dataTableColumnJustifyClass } from '@/web/web/components/internal/dataTableHelpers';
 
 export type { ChoyInlineErrorSpace };
@@ -569,17 +571,6 @@ const props = withDefaults(
 
 const binding = props.binding;
 
-/** List columns: Number / Monetary family default to logical end unless caller sets align. */
-const resolvedVColumnProps = computed(() => {
-  const incoming = { ...(props.vColumnProps || {}) } as Record<string, unknown>;
-  if (incoming.align != null && String(incoming.align).trim() !== '') return incoming;
-  const align = defaultListColumnAlignForFieldType((binding.meta as { type?: unknown } | undefined)?.type);
-  if (!align) return incoming;
-  return { ...incoming, align };
-});
-
-const cellJustifyClass = computed(() => dataTableColumnJustifyClass(resolvedVColumnProps.value.align));
-
 const leafFieldName = computed(() => {
   const prop = String(binding.prop || '');
   return prop.split('.').filter(Boolean).pop() || prop;
@@ -601,6 +592,42 @@ const effectiveFieldMeta = computed(() => {
   const leaf = leafFieldName.value;
   return modelStore.value?.getFieldMeta?.(leaf) ?? binding.meta;
 });
+
+/** List columns: default align + sortable by field type/storage; explicit vColumnProps win. */
+const resolvedVColumnProps = computed(() => {
+  const incoming = { ...(props.vColumnProps || {}) } as Record<string, unknown>;
+  // Dotted related paths must use binding.meta (the leaf field), never a same-named
+  // root-store field from effectiveFieldMeta.
+  const propPath = String(binding.prop || '');
+  const isDotted = propPath.includes('.');
+  const typeMeta = (
+    isDotted
+      ? ((binding.meta as { type?: unknown } | undefined) ??
+        (effectiveFieldMeta.value as { type?: unknown } | undefined))
+      : ((effectiveFieldMeta.value as { type?: unknown } | undefined) ??
+        (binding.meta as { type?: unknown } | undefined))
+  ) as
+    | {
+        type?: unknown;
+        shouldCreateColumn?: boolean;
+        storageKind?: string;
+        computedKind?: string;
+      }
+    | undefined;
+  const fieldType = typeMeta?.type;
+
+  let next = incoming;
+  if (incoming.align == null || String(incoming.align).trim() === '') {
+    const align = defaultListColumnAlignForFieldType(fieldType);
+    if (align) next = { ...next, align };
+  }
+  if (incoming.sortable == null) {
+    next = { ...next, sortable: defaultListColumnSortable(fieldType, typeMeta) };
+  }
+  return next;
+});
+
+const cellJustifyClass = computed(() => dataTableColumnJustifyClass(resolvedVColumnProps.value.align));
 
 const resolvedLabel = computed(() => {
   if (props.hideLabel) return '';

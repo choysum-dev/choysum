@@ -275,7 +275,7 @@ export function useUserFilters(params: {
 
     const conditionGroups = Array.isArray(filtersRef.value) ? filtersRef.value : [];
     const keyword = keywordRef?.value?.trim() || undefined;
-    const fieldsMeta = (store as any)?.fieldsMetadata as Record<string, any> | undefined;
+    const fieldsMeta = (store as any)?.metadata?.fields as Record<string, any> | undefined;
     const keywordFields = ((store as any)?.state?.queryState?.keywordFields || undefined) as string[] | undefined;
     // filtersToQuery returns [] when there are no conditions; persist {} so jsonobject
     // stays object-shaped and apply can treat empty favorites as groupby-only.

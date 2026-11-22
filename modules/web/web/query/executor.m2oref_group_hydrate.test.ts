@@ -25,10 +25,10 @@ test('execute readGroup hydrates ManyToOneRef group labels via createModelStore'
   const store = {
     storeId: 'auth.User',
     fullModelName: 'auth.User',
-    fieldsMetadata: {
+    metadata: { fields: {
       CompanyId: { type: 'ManyToOneRef', relationModel: 'base.Company' },
       LanguageId: { type: 'ManyToOneRef', relationModel: 'base.Language' },
-    },
+    } },
     ReadGroup: asyncFnRecorder(async () => [
       {
         depth: 0,
@@ -76,9 +76,9 @@ test('execute readGroup keeps raw id when ManyToOneRef target row is missing', a
   const store = {
     storeId: 'auth.User',
     fullModelName: 'auth.User',
-    fieldsMetadata: {
+    metadata: { fields: {
       LanguageId: { type: 'ManyToOneRef', relationModel: 'base.Language' },
-    },
+    } },
     ReadGroup: asyncFnRecorder(async () => [
       {
         depth: 0,
@@ -122,9 +122,9 @@ test('execute readGroup hydrates nested ManyToOneRef child group labels', async 
   const store = {
     storeId: 'auth.User',
     fullModelName: 'auth.User',
-    fieldsMetadata: {
+    metadata: { fields: {
       CompanyId: { type: 'ManyToOneRef', relationModel: 'base.Company' },
-    },
+    } },
     ReadGroup: asyncFnRecorder(async () => [
       {
         depth: 0,
@@ -175,9 +175,9 @@ test('execute readGroup leaves ManyToOne labels untouched', async () => {
   const store = {
     storeId: 'demo.Order',
     fullModelName: 'demo.Order',
-    fieldsMetadata: {
+    metadata: { fields: {
       OwnerId: { type: 'ManyToOne', relationModel: 'demo.User' },
-    },
+    } },
     ReadGroup: asyncFnRecorder(async () => [
       {
         depth: 0,
@@ -206,7 +206,7 @@ test('execute readGroup leaves ManyToOne labels untouched', async () => {
 });
 
 test('hydrateGroupRefLabels no-ops on empty rows and swallows apply errors', async () => {
-  await __hydrateGroupRefLabelsForTest({ fieldsMetadata: {} } as any, [], {
+  await __hydrateGroupRefLabelsForTest({ metadata: { fields: {} } } as any, [], {
     createModelStore: () => {
       throw new Error('should not create');
     },
@@ -222,9 +222,9 @@ test('hydrateGroupRefLabels no-ops on empty rows and swallows apply errors', asy
   };
   await __hydrateGroupRefLabelsForTest(
     {
-      fieldsMetadata: {
+      metadata: { fields: {
         CompanyId: { type: 'ManyToOneRef', relationModel: 'base.Company' },
-      },
+      } },
     } as any,
     [boomRow as any],
     {
@@ -251,10 +251,10 @@ test('hydrateGroupRefLabels only rewrites Ref aliases when mixed with ManyToOne'
 
   await __hydrateGroupRefLabelsForTest(
     {
-      fieldsMetadata: {
+      metadata: { fields: {
         CompanyId: { type: 'ManyToOneRef', relationModel: 'base.Company' },
         OwnerId: { type: 'ManyToOne', relationModel: 'demo.User' },
-      },
+      } },
     } as any,
     rows as any,
     {

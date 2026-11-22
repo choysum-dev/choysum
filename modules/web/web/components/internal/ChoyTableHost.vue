@@ -45,6 +45,7 @@ SPDX-License-Identifier: Apache-2.0
         :enable-row-selection="false"
         :row-selection="selectedRowIds"
         :enable-sorting="true"
+        :sorting="headerSorting"
         :show-empty="!sizeToContent"
         sorting-mode="server"
         @row-click="onDataTableRowClick"
@@ -98,6 +99,8 @@ import {
   type DataTableRowId,
   type EmbeddedTableVirtualizeMode,
 } from './dataTableHelpers';
+import { orderByToSortingState } from '@/web/web/query/orderBy';
+import type { OrderByState } from '@/web/web/query/state';
 import type { RowEventHandlerParams } from '@/web/web/components/view/listViewTypes';
 
 const { _t } = createTranslate('web', { scope: 'web/components/internal/ChoyTableHost' });
@@ -126,6 +129,8 @@ const props = withDefaults(
     selectionApi?: ReturnType<typeof useTableSelection>;
     baseIndex?: number | Ref<number>;
     store?: any;
+    /** Sync header chevrons with List queryState.orderBy (direction or order). */
+    orderBy?: OrderByState[] | Array<{ field: string; order?: 'asc' | 'desc'; direction?: 'asc' | 'desc' }>;
   }>(),
   {
     rowKey: 'Id',
@@ -199,6 +204,8 @@ const columnsToUse = computed<Column[]>(() => {
 });
 
 const columnDefs = computed(() => columnsToColumnDefs(columnsToUse.value));
+
+const headerSorting = computed(() => orderByToSortingState(props.orderBy));
 
 /** Fixed scrollport layout (List, or capped embedded `auto`). */
 const wantsVirtualLayout = computed(() =>

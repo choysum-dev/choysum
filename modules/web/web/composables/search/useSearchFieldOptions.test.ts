@@ -33,22 +33,22 @@ describe('useSearchFieldOptions', () => {
     });
     const statusText = createTermReference('demo', 'Status', { scope: 'demo.model.Widget.fields' });
     const store = {
-      fieldsMetadata: {
+      metadata: { fields: {
         Status: { id: '1', type: 'selection', string: 'Status', stringText: statusText },
         Lines: { id: '2', type: 'onetomany' },
         PartnerId: { id: '3', type: 'manytoone', relationModel: 'base.Partner' },
         DeletedAt: { id: '9', type: 'datetime' },
-      },
+      } },
       getFieldsGetTranslatedString: () => undefined,
     } as any;
 
-    expect(isFilterableSearchField('Lines', store.fieldsMetadata.Lines)).toBe(false);
-    expect(isFilterableSearchField('PartnerId', store.fieldsMetadata.PartnerId)).toBe(true);
+    expect(isFilterableSearchField('Lines', store.metadata.fields.Lines)).toBe(false);
+    expect(isFilterableSearchField('PartnerId', store.metadata.fields.PartnerId)).toBe(true);
     expect(isFilterableSearchField('Id', undefined)).toBe(true);
-    expect(isFilterableSearchField('DeletedAt', store.fieldsMetadata.DeletedAt)).toBe(false);
-    expect(isGroupableSearchField('Lines', store.fieldsMetadata.Lines)).toBe(false);
-    expect(isGroupableSearchField('Status', store.fieldsMetadata.Status)).toBe(true);
-    expect(isGroupableSearchField('DeletedAt', store.fieldsMetadata.DeletedAt)).toBe(false);
+    expect(isFilterableSearchField('DeletedAt', store.metadata.fields.DeletedAt)).toBe(false);
+    expect(isGroupableSearchField('Lines', store.metadata.fields.Lines)).toBe(false);
+    expect(isGroupableSearchField('Status', store.metadata.fields.Status)).toBe(true);
+    expect(isGroupableSearchField('DeletedAt', store.metadata.fields.DeletedAt)).toBe(false);
 
     const filterable = listSearchFieldOptions(store, isFilterableSearchField);
     expect(filterable.map(f => f.prop)).toEqual(['Status', 'PartnerId']);
@@ -73,17 +73,17 @@ describe('useSearchFieldOptions', () => {
     expect(byIdOf.map(i => i.prop)).toEqual(['A', 'Z']);
 
     const store = {
-      fieldsMetadata: {
+      metadata: { fields: {
         Name: { id: '1', type: 'varchar', string: 'Name' },
         Ref: { id: '2', type: 'manytooneref', relationModel: 'base.X' },
         Tags: { id: '3', type: 'manytomany' },
         Blob: { id: '4', type: 'jsonobject' },
-      },
+      } },
       getFieldsGetTranslatedString: (p: string) => (p === 'Name' ? '名称' : undefined),
     } as any;
-    expect(isFilterableSearchField('Ref', store.fieldsMetadata.Ref)).toBe(true);
-    expect(isGroupableSearchField('Tags', store.fieldsMetadata.Tags)).toBe(false);
-    expect(isGroupableSearchField('Blob', store.fieldsMetadata.Blob)).toBe(false);
+    expect(isFilterableSearchField('Ref', store.metadata.fields.Ref)).toBe(true);
+    expect(isGroupableSearchField('Tags', store.metadata.fields.Tags)).toBe(false);
+    expect(isGroupableSearchField('Blob', store.metadata.fields.Blob)).toBe(false);
 
     const fields = useFilterableSearchFields(store);
     expect(fields.value.find(f => f.prop === 'Name')?.label).toBe('名称');
@@ -104,10 +104,10 @@ describe('useSearchFieldOptions', () => {
     expect(isGroupableSearchField('Ok', { type: 'varchar' } as any)).toBe(true);
 
     const store = {
-      fieldsMetadata: {
+      metadata: { fields: {
         Bare: {},
         Typed: { type: 'int', string: 'Typed' },
-      },
+      } },
     } as any;
     const opts = listSearchFieldOptions(store, () => true);
     expect(opts.find(o => o.prop === 'Bare')?.type).toBeUndefined();

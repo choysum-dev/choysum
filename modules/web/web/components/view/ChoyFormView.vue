@@ -646,7 +646,7 @@ const lifecycleDeps = {
   emitCancelable,
   emit: emit as (event: string, payload?: unknown) => void,
   _t,
-  fieldsMetadata: () => (store as { fieldsMetadata?: Record<string, { isReadonly?: boolean }> }).fieldsMetadata,
+  fieldsMetadata: () => (store as { metadata?: { fields?: Record<string, { isReadonly?: boolean }> } }).metadata?.fields,
 };
 
 const {

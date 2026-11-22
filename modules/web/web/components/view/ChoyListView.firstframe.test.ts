@@ -17,7 +17,7 @@ function makeStore(search?: ReturnType<typeof fnRecorder>) {
   return {
     fullModelName: 'partner.Partner',
     storeId: 'list-ff-' + Math.random().toString(36).slice(2),
-    fieldsMetadata: { Name: { type: 'varchar' } },
+    metadata: { fields: { Name: { type: 'varchar' } } },
     state: {
       queryState: {
         keyword: '',

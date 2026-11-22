@@ -18,7 +18,7 @@ function makeStore() {
   return {
     fullModelName: 'partner.Partner',
     storeId: 'list-height-' + Math.random().toString(36).slice(2),
-    fieldsMetadata: { Name: { type: 'varchar' } },
+    metadata: { fields: { Name: { type: 'varchar' } } },
     state: {
       queryState: {
         keyword: '',

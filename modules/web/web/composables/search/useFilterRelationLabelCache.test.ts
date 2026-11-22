@@ -18,7 +18,7 @@ function runCacheHarness(opts: {
     defineComponent({
       setup() {
         api = useFilterRelationLabelCache(
-          { fieldsMetadata: opts.fieldsMetadata } as any,
+          { metadata: { fields: opts.fieldsMetadata } } as any,
           () => rootRef.value,
           { createModelStore: opts.createModelStore as any }
         );

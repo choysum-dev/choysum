@@ -139,16 +139,16 @@ describe('SearchFilterCondition', () => {
     const onUpdateCondition = fnRecorder();
     const onRemoveCondition = fnRecorder();
     const store = {
-      fieldsMetadata: {
+      metadata: { fields: {
         Name: { type: 'varchar', string: 'Name' },
         Status: { type: 'selection', string: 'Status' },
         PartnerId: { type: 'manytoone', relationModel: 'base.Partner', string: 'Partner' },
         Amount: { type: 'monetary', currencyField: 'CurrencyId', string: 'Amount' },
         CreatedAt: { type: 'datetime', string: 'Created At', isReadonly: true },
         DisplayName: { type: 'varchar', string: 'Display Name', isReadonly: true },
-      },
+      } },
       getFieldMeta(name: string) {
-        return this.fieldsMetadata[name];
+        return this.metadata.fields[name];
       },
       ensureFieldsGet: fnRecorder(async () => ({})),
       getFieldsGetTranslatedString: () => undefined,
@@ -304,14 +304,14 @@ describe('SearchFilterCondition', () => {
       ['Html', 'html', 'f-varchar'],
       ['Unk', 'weird', 'f-varchar'],
     ];
-    const fieldsMetadata: Record<string, any> = Object.fromEntries(
+    const fields: Record<string, any> = Object.fromEntries(
       types.map(([prop, type]) => [prop, { type, string: prop, relationModel: type.includes('many') ? 'base.X' : undefined }])
     );
     for (const [prop, , cls] of types) {
       const condition = reactive<any>({ id: 'c1', field: prop, operator: '=', value: null });
       const { unmount, q, setupState } = mountRow(condition, {
         store: {
-          fieldsMetadata,
+          metadata: { fields },
           getFieldMeta: undefined,
         },
       });
@@ -328,10 +328,10 @@ describe('SearchFilterCondition', () => {
     const condition = reactive<any>({ id: 'c1', field: 'Bool', operator: 'is', value: null });
     const { unmount, setupState, onUpdateCondition } = mountRow(condition, {
       store: {
-        fieldsMetadata: {
+        metadata: { fields: {
           Bool: { type: 'boolean', string: 'Bool' },
           Name: { type: 'varchar', string: 'Name' },
-        },
+        } },
       },
     });
     await setupState().onOperatorSelect('=');
@@ -385,6 +385,49 @@ describe('SearchFilterCondition', () => {
     condition.value = 'ok';
     await nextTick();
     expect(q('[data-slot="search-filter-row"]')?.getAttribute('data-incomplete')).toBe('false');
+    unmount();
+  });
+
+  test('fieldMeta tracks static metadata.fields when getFieldMeta is absent', async () => {
+    const condition = reactive<any>({ id: 'c1', field: 'Amount', operator: '=', value: null });
+    const { unmount, setupState } = mountRow(condition, {
+      store: {
+        getFieldMeta: undefined,
+        metadata: {
+          fields: {
+            Amount: { type: 'monetary', currencyField: 'CurrencyId', string: 'Amount', stringText: '金额' },
+            Name: { type: 'varchar', string: 'Name' },
+          },
+        },
+      },
+    });
+    await nextTick();
+    const meta = unref(setupState().fieldMeta);
+    expect(meta?.type).toBe('monetary');
+    expect(meta?.stringText || meta?.string).toBeTruthy();
+    expect(setupState().binding.meta?.type).toBe('monetary');
+    // Exercises binding.store.metadata getter (metadata.fields hard-cut path).
+    expect(setupState().binding.store.metadata.fields.Amount?.type).toBe('monetary');
+    expect(setupState().binding.store.getFieldMeta('Amount')?.type).toBe('monetary');
+    expect(setupState().binding.store.getFieldMeta('Missing')).toBeUndefined();
+
+    condition.field = 'Name';
+    await nextTick();
+    expect(unref(setupState().fieldMeta)?.type).toBe('varchar');
+    unmount();
+  });
+
+  test('binding.store.metadata falls back to empty fields map', async () => {
+    const condition = reactive<any>({ id: 'c1', field: 'Name', operator: '=', value: null });
+    const { unmount, setupState } = mountRow(condition, {
+      store: {
+        getFieldMeta: undefined,
+        metadata: undefined,
+      },
+    });
+    await nextTick();
+    expect(setupState().binding.store.metadata.fields).toEqual({});
+    expect(setupState().binding.store.getFieldMeta('Name')).toBeUndefined();
     unmount();
   });
 });

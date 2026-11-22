@@ -48,7 +48,7 @@ export type FieldsGetRpcLike = (
 ) => Promise<Record<string, WebFieldMetadata>> | Record<string, WebFieldMetadata>;
 
 export type FieldsGetHost = {
-  fieldsMetadata: Record<string, WebFieldMetadata>;
+  metadata: { fields: Record<string, WebFieldMetadata> };
   FieldsGet: FieldsGetRpc;
 };
 
@@ -373,7 +373,7 @@ export function createFieldsGetHelpers(
     void overlayVersion.value;
     const fieldName = String(name || '').trim();
     if (!fieldName) return undefined;
-    const staticMeta = host.fieldsMetadata?.[fieldName];
+    const staticMeta = host.metadata?.fields?.[fieldName];
     const lang = resolveLang(options?.getLang);
     const overlay = overlayByLang.get(lang)?.[fieldName];
     if (!staticMeta && !overlay) return undefined;

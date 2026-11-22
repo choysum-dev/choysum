@@ -32,7 +32,7 @@ function fakeStore(browseImpl?: (id: string) => Promise<any>) {
   return {
     fullModelName: 'demo.Widget',
     storeId: 'demo.Widget-' + Math.random().toString(36).slice(2),
-    fieldsMetadata: { Name: { type: 'varchar' } },
+    metadata: { fields: { Name: { type: 'varchar' } } },
     state: { queryState: {}, result: undefined, selection: [], planCache: new Map() },
     setContext: () => {},
     getContext: () => ({}),

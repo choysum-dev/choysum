@@ -18,7 +18,7 @@ export function useGroupingOptions(store: ModelStore<any>) {
   ] as const);
 
   function isTemporalField(prop?: string) {
-    const t = String((store as any)?.fieldsMetadata?.[prop!]?.type || '').toLowerCase();
+    const t = String((store as any)?.metadata?.fields?.[prop!]?.type || '').toLowerCase();
     return t === 'date' || t === 'datetime' || t === 'time';
   }
 

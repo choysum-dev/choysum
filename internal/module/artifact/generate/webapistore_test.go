@@ -118,6 +118,9 @@ func TestWebApiStoreGenerate(t *testing.T) {
 		t.Fatal("expected web api store generator constructor to return non-nil")
 	}
 	app := testApp()
+	if len(app.Models) > 1 {
+		app.Models[1].OrderBy = `[{"field":"Name","order":"asc"}]`
+	}
 	if len(app.Models) > 1 && len(app.Models[1].Fields) > 0 {
 		app.Models[1].Fields[0].Selection = selectionJSON
 		app.Models[1].Fields[0].FieldString = "Amount"
@@ -146,8 +149,14 @@ func TestWebApiStoreGenerate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read partner.ts: %v", err)
 	}
-	if !strings.Contains(string(storeContent), "PartnerFieldsMetadata") || !strings.Contains(string(storeContent), "CompanyId") || !strings.Contains(string(storeContent), "relationModel: 'Company'") {
+	if !strings.Contains(string(storeContent), "PartnerMetadata") || !strings.Contains(string(storeContent), "CompanyId") || !strings.Contains(string(storeContent), "relationModel: 'Company'") {
 		t.Fatalf("unexpected store content: %s", string(storeContent))
+	}
+	if !strings.Contains(string(storeContent), "orderBy:") || !strings.Contains(string(storeContent), "field: 'Name'") || !strings.Contains(string(storeContent), "order: 'asc' as const") {
+		t.Fatalf("expected metadata.orderBy in store content: %s", string(storeContent))
+	}
+	if !strings.Contains(string(storeContent), "fields:") || !strings.Contains(string(storeContent), "metadata: PartnerMetadata") {
+		t.Fatalf("expected unified PartnerMetadata.fields wiring: %s", string(storeContent))
 	}
 	if strings.Contains(string(storeContent), "relation: '") {
 		t.Fatalf("unexpected legacy relation key in store content: %s", string(storeContent))

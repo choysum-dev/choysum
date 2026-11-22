@@ -28,7 +28,7 @@ function makeBinding(opts: { items?: any[]; isEditMode?: boolean; isForm?: boole
     fieldRefOf: () => fieldValue as any,
     recordRef: () => computed(() => ({ Id: 'parent' })) as any,
     registerFields,
-    relationStore: { fieldsMetadata: {} } as any,
+    relationStore: { metadata: { fields: {} } } as any,
     asMutableArray: () => ({
       getItems: () => items.value,
       insertItem: fnRecorder(),
@@ -189,7 +189,7 @@ describe('ChoyOneToManyKanbanField mount coverage', () => {
     installStubs('edit');
     const { binding } = makeBinding({ items: [{ Id: '1', Name: 'Alpha', Sequence: 10 }] });
     binding.relationStore = {
-      fieldsMetadata: { Sequence: { type: 'int' } },
+      metadata: { fields: { Sequence: { type: 'int' } } },
     } as any;
     const m = mountApp(ChoyOneToManyKanbanField as any, {
       props: { binding, confirmOnRemove: false },
@@ -266,7 +266,7 @@ describe('ChoyOneToManyKanbanField mount coverage', () => {
       ],
     });
     binding.relationStore = {
-      fieldsMetadata: { Sequence: { type: 'int' } },
+      metadata: { fields: { Sequence: { type: 'int' } } },
     } as any;
     const m = mountApp(ChoyOneToManyKanbanField as any, {
       props: { binding, cardTitleField: 'Name', cardSubtitleField: '' },
@@ -333,7 +333,7 @@ describe('ChoyOneToManyKanbanField mount coverage', () => {
       ],
     });
     hidden.binding.relationStore = {
-      fieldsMetadata: { Sequence: { type: 'int' } },
+      metadata: { fields: { Sequence: { type: 'int' } } },
     } as any;
     const hm = mountApp(ChoyOneToManyKanbanField as any, {
       props: { binding: hidden.binding, showHandle: false },

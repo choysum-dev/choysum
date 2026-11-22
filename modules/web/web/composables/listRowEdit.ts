@@ -55,7 +55,7 @@ export function isNumericHandleField(meta: WebFieldMetadata | undefined): boolea
 /** Whether the store metadata contains a writable numeric handle field. */
 export function hasHandleField(store: ModelStore<any> | undefined, handleField = 'Sequence'): boolean {
   if (!store || !handleField) return false;
-  const meta = (store.fieldsMetadata || {})[handleField] as WebFieldMetadata | undefined;
+  const meta = (store.metadata?.fields || {})[handleField] as WebFieldMetadata | undefined;
   if (!meta) return false;
   if (meta.isReadonly === true) return false;
   return isNumericHandleField(meta);

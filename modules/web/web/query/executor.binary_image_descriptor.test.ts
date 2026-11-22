@@ -23,11 +23,11 @@ afterEach(() => {
 test('query executor binary/image descriptor decode > decodes binding-id strings into attachment descriptors', () => {
   const store = {
     fullModelName: 'demo.Asset',
-    fieldsMetadata: {
+    metadata: { fields: {
       Avatar: { type: 'binary' },
       Cover: { type: 'image' },
       Name: { type: 'varchar' },
-    },
+    } },
   } as any;
 
   const rows = [
@@ -63,9 +63,9 @@ test('query executor binary/image descriptor decode > decodes binding-id strings
 test('query executor binary/image descriptor decode > normalizes object payload into descriptor while preserving metadata fields', () => {
   const store = {
     fullModelName: 'demo.Asset',
-    fieldsMetadata: {
+    metadata: { fields: {
       Avatar: { type: 'binary' },
-    },
+    } },
   } as any;
 
   const rows = [
@@ -98,10 +98,10 @@ test('query executor binary/image descriptor decode > normalizes object payload 
 test('query executor binary/image descriptor decode > enriches descriptors by calling document.AttachmentBinding.BatchDescribe', async () => {
   const store = {
     fullModelName: 'demo.Asset',
-    fieldsMetadata: {
+    metadata: { fields: {
       Avatar: { type: 'binary' },
       Cover: { type: 'image' },
-    },
+    } },
   } as any;
 
   const rows = [
@@ -173,9 +173,9 @@ test('query executor binary/image descriptor decode > appends query token for in
 
   const store = {
     fullModelName: 'demo.Asset',
-    fieldsMetadata: {
+    metadata: { fields: {
       Cover: { type: 'image' },
-    },
+    } },
   } as any;
 
   const rows = [
@@ -220,9 +220,9 @@ test('query executor binary/image descriptor decode > appends query token for in
 test('query executor binary/image descriptor decode > skips enrichment when AttachmentBinding store is unavailable', async () => {
   const store = {
     fullModelName: 'demo.Asset',
-    fieldsMetadata: {
+    metadata: { fields: {
       Avatar: { type: 'image' },
-    },
+    } },
   } as any;
 
   const rows = [{ Id: 'RID-soft', Avatar: 'bind-avatar' }];

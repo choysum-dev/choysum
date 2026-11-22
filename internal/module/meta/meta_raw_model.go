@@ -27,6 +27,8 @@ type rawModel struct {
 	Extends    string `gorm:"type:varchar(255);" json:"extends"`
 
 	CompanyField *string `gorm:"type:varchar(255);" json:"company_field"`
+	// OrderBy mirrors pkg/meta.Model.OrderBy (JSON array of {field,order}).
+	OrderBy string `gorm:"type:text;" json:"order_by"`
 
 	Decorators []*rawDecorator `gorm:"foreignKey:ModelId;constraint:OnDelete:CASCADE;" json:"decorators"`
 	Services   []*rawService   `gorm:"foreignKey:ModelId;constraint:OnDelete:CASCADE;" json:"services"`

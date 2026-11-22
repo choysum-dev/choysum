@@ -8,7 +8,7 @@ import { useChoyKanbanStoreEngine } from './useChoyKanbanStoreEngine';
 function store() {
   return {
     storeId: 'demo.Task',
-    fieldsMetadata: {},
+    metadata: { fields: {} },
     state: {
       queryState: { pagination: { limit: 20, offset: 0 }, appliedGroups: ['Stage'] },
       planCache: new Map(),
@@ -213,7 +213,7 @@ test('deferFirstFrame bootstrap skips empty apply; refresh re-applies after latc
     searchCalls += 1;
     return [];
   };
-  s.fieldsMetadata = { Title: { type: 'varchar' } };
+  s.metadata = { fields: { Title: { type: 'varchar' } } };
 
   const Harness = defineComponent({
     name: 'KanbanEngineDeferHarness',
@@ -260,7 +260,7 @@ test('deferFirstFrame bootstrap skips empty apply; refresh re-applies after latc
 
 test('refresh reapplies store queryState when not deferring and no search landed', async () => {
   const s = store();
-  s.fieldsMetadata = { Title: { type: 'varchar' } };
+  s.metadata = { fields: { Title: { type: 'varchar' } } };
   s.state.queryState = { keyword: 'from-store', appliedFilters: [], appliedGroups: [] };
 
   const Harness = defineComponent({
@@ -305,7 +305,7 @@ test('refresh reapplies store queryState when not deferring and no search landed
 
 test('refresh re-runs search that landed during first bootstrap', async () => {
   const s = store();
-  s.fieldsMetadata = { Title: { type: 'varchar' } };
+  s.metadata = { fields: { Title: { type: 'varchar' } } };
   let engine: ReturnType<typeof useChoyKanbanStoreEngine> | null = null;
   let applies = 0;
   const keywords: string[] = [];
@@ -352,7 +352,7 @@ test('refresh re-runs search that landed during first bootstrap', async () => {
 
 test('refreshFromQueryState rethrows apply failures', async () => {
   const s = store();
-  s.fieldsMetadata = { Title: { type: 'varchar' } };
+  s.metadata = { fields: { Title: { type: 'varchar' } } };
   const errors: unknown[] = [];
 
   const Harness = defineComponent({
@@ -399,7 +399,7 @@ test('refreshFromQueryState rethrows apply failures', async () => {
 
 test('refreshFromQueryState reports lane-sync failures via onSearchError', async () => {
   const s = store();
-  s.fieldsMetadata = { Title: { type: 'varchar' } };
+  s.metadata = { fields: { Title: { type: 'varchar' } } };
   s.state.queryState = { pagination: { limit: 20, offset: 0 }, appliedGroups: [] };
   const errors: unknown[] = [];
   let explode = false;
@@ -442,7 +442,7 @@ test('refreshFromQueryState reports lane-sync failures via onSearchError', async
 
 test('refreshFromQueryState recovers when a newer refresh finishes first', async () => {
   const s = store();
-  s.fieldsMetadata = { Title: { type: 'varchar' } };
+  s.metadata = { fields: { Title: { type: 'varchar' } } };
 
   const Harness = defineComponent({
     name: 'KanbanEngineQueryStateRecoverHarness',
@@ -490,7 +490,7 @@ test('refreshFromQueryState recovers when a newer refresh finishes first', async
 
 test('refreshFromQueryState recover path rethrows failures', async () => {
   const s = store();
-  s.fieldsMetadata = { Title: { type: 'varchar' } };
+  s.metadata = { fields: { Title: { type: 'varchar' } } };
   const errors: unknown[] = [];
 
   const Harness = defineComponent({
@@ -553,7 +553,7 @@ test('refreshFromQueryState recover path rethrows failures', async () => {
 
 test('refreshFromQueryState skips sync when superseded while still in flight', async () => {
   const s = store();
-  s.fieldsMetadata = { Title: { type: 'varchar' } };
+  s.metadata = { fields: { Title: { type: 'varchar' } } };
 
   const Harness = defineComponent({
     name: 'KanbanEngineQueryStateStaleHarness',
@@ -600,7 +600,7 @@ test('refreshFromQueryState skips sync when superseded while still in flight', a
 
 test('applySearch reports apply failures without rejecting (emit-safe)', async () => {
   const s = store();
-  s.fieldsMetadata = { Title: { type: 'varchar' } };
+  s.metadata = { fields: { Title: { type: 'varchar' } } };
   const errors: unknown[] = [];
 
   const Harness = defineComponent({
@@ -635,7 +635,7 @@ test('applySearch reports apply failures without rejecting (emit-safe)', async (
 
 test('refresh rethrows apply failures after onSearchError', async () => {
   const s = store();
-  s.fieldsMetadata = { Title: { type: 'varchar' } };
+  s.metadata = { fields: { Title: { type: 'varchar' } } };
   const errors: unknown[] = [];
 
   const Harness = defineComponent({
@@ -683,7 +683,7 @@ test('refresh rethrows apply failures after onSearchError', async () => {
 
 test('stale applySearch recover reports failures without rejecting', async () => {
   const s = store();
-  s.fieldsMetadata = { Title: { type: 'varchar' } };
+  s.metadata = { fields: { Title: { type: 'varchar' } } };
   const errors: unknown[] = [];
 
   const Harness = defineComponent({
@@ -728,7 +728,7 @@ test('stale applySearch recover reports failures without rejecting', async () =>
 
 test('refresh recover path rethrows when the recovered apply fails', async () => {
   const s = store();
-  s.fieldsMetadata = { Title: { type: 'varchar' } };
+  s.metadata = { fields: { Title: { type: 'varchar' } } };
   const errors: unknown[] = [];
 
   const Harness = defineComponent({

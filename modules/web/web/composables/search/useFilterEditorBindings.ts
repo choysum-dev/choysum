@@ -30,18 +30,18 @@ export function useFilterEditorBindings(store: ModelStore<any>, deps: FilterEdit
 
   function metaTypeOf(field?: string): string {
     if (!field) return '';
-    const md = (store as any)?.fieldsMetadata || {};
+    const md = (store as any)?.metadata?.fields || {};
     return String(md[field]?.type || '').toLowerCase();
   }
 
   function isTreeModel(): boolean {
-    const md = (store as any)?.fieldsMetadata || {};
+    const md = (store as any)?.metadata?.fields || {};
     return !!md['ParentPath'];
   }
 
   function relationModelOf(field?: string): string | undefined {
     if (!field) return undefined;
-    const md = (store as ModelStore<any>).fieldsMetadata || {};
+    const md = (store as ModelStore<any>).metadata?.fields || {};
     return getFieldMetadataView(md[field] as any).relationModel;
   }
 
@@ -60,7 +60,7 @@ export function useFilterEditorBindings(store: ModelStore<any>, deps: FilterEdit
   function relationStoreOf(field?: string): any {
     if (!field) return undefined;
     const s: any = store as any;
-    const md = (s?.fieldsMetadata || {}) as Record<string, any>;
+    const md = (s?.metadata?.fields || {}) as Record<string, any>;
     const meta = md[field];
     const view = getFieldMetadataView(meta as any);
     const modelName = relationModelOf(field) || 'Relation';
@@ -99,7 +99,7 @@ export function useFilterEditorBindings(store: ModelStore<any>, deps: FilterEdit
 
   function isTreeManyToOne(field?: string): boolean {
     if (!field) return false;
-    const md = (store as any)?.fieldsMetadata || {};
+    const md = (store as any)?.metadata?.fields || {};
     const meta = md[field] || {};
     const view = getFieldMetadataView(meta as any);
     return view.isRelation && String(meta?.type || '').toLowerCase() === 'manytoone' && !!meta?.relationModelParentField;

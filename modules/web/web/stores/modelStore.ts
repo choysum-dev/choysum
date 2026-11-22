@@ -222,6 +222,13 @@ export type PlanCacheEntry = {
   createdAt: number;
 };
 
+/** Static model metadata shipped on generated ModelStore (codegen). */
+export type WebModelMetadata = {
+  /** Explicit @Model({ orderBy }); omitted when undeclared (never Id-desc fallback). */
+  orderBy?: ReadonlyArray<{ field: string; order: 'asc' | 'desc' }>;
+  fields: Record<string, WebFieldMetadata>;
+};
+
 export interface ModelStore<TModel extends BaseModel> extends ScopedStore {
   readonly storeId: string;
   // Fully qualified model name, for example auth.Role.
@@ -230,7 +237,7 @@ export interface ModelStore<TModel extends BaseModel> extends ScopedStore {
   readonly application?: string;
   // Model name, for example Role.
   readonly modelName?: string;
-  readonly fieldsMetadata: Record<string, WebFieldMetadata>;
+  readonly metadata: WebModelMetadata;
 
   state: {
     // Unified query state.
@@ -282,7 +289,7 @@ export interface ModelStore<TModel extends BaseModel> extends ScopedStore {
    * Fetch (or reuse cached) FieldsGet presentation overlay for the active terminology lang.
    */
   ensureFieldsGet: (fields?: string[], attributes?: string[]) => Promise<Record<string, WebFieldMetadata>>;
-  /** Merge static fieldsMetadata with FieldsGet overlay for one field. */
+  /** Merge static metadata.fields with FieldsGet overlay for one field. */
   getFieldMeta: (name: string) => WebFieldMetadata | undefined;
   /** FieldsGet-translated title when overlay is present for the active lang. */
   getFieldsGetTranslatedString: (name: string) => string | undefined;

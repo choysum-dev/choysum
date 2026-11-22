@@ -27,7 +27,7 @@ import type { ModelStore, WebFieldMetadata } from '@/web/web/stores/modelStore';
 
 function stubStore(overrides?: Partial<Record<string, WebFieldMetadata>>): ModelStore<any> {
   return {
-    fieldsMetadata: overrides ?? {},
+    metadata: { fields: overrides ?? {} },
   } as unknown as ModelStore<any>;
 }
 

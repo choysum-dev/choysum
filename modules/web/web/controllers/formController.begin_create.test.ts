@@ -13,10 +13,10 @@ function newStore(defaultGet: (...args: unknown[]) => unknown) {
   return {
     fullModelName: 'demo.Widget',
     storeId: 'demo.Widget',
-    fieldsMetadata: {
+    metadata: { fields: {
       Name: { type: 'varchar' },
       Code: { type: 'varchar' },
-    },
+    } },
     state: {},
     getContext: () => ({}),
     DefaultGet: defaultGet,

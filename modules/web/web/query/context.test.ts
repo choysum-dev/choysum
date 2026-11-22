@@ -6,7 +6,7 @@ import { buildUnifiedQuery } from './context';
 function makeStore(queryState: Record<string, unknown> = {}) {
   return {
     storeId: 'demo.Task',
-    fieldsMetadata: {},
+    metadata: { fields: {} },
     state: {
       queryState: {
         appliedFilters: [],

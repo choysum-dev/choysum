@@ -7,12 +7,12 @@ import { fnRecorder } from '@/web/web/__tests__/mountApp';
 
 function makeStore() {
   return {
-    fieldsMetadata: {
+    metadata: { fields: {
       Status: { id: '1', type: 'selection', string: 'Status' },
       CreatedAt: { id: '2', type: 'datetime', string: 'Created At' },
       Lines: { id: '3', type: 'onetomany', string: 'Lines' },
       DeletedAt: { id: '9', type: 'datetime', string: 'Deleted At' },
-    },
+    } },
     getFieldsGetTranslatedString: () => undefined,
   } as any;
 }

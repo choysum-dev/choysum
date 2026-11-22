@@ -19,9 +19,9 @@ test('execute hydrates ManyToManyRef id lists via createModelStore', async () =>
   const store = {
     storeId: 'demo.Item',
     fullModelName: 'demo.Item',
-    fieldsMetadata: {
+    metadata: { fields: {
       Tags: { type: 'ManyToManyRef', relationModel: 'demo.Tag' },
-    },
+    } },
     Search: asyncFnRecorder(async () => [{ Id: 'i1', Tags: ['t1', 't2'] }]),
   } as any;
 
