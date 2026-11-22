@@ -406,10 +406,28 @@ describe('SearchFilterCondition', () => {
     expect(meta?.type).toBe('monetary');
     expect(meta?.stringText || meta?.string).toBeTruthy();
     expect(setupState().binding.meta?.type).toBe('monetary');
+    // Exercises binding.store.metadata getter (metadata.fields hard-cut path).
+    expect(setupState().binding.store.metadata.fields.Amount?.type).toBe('monetary');
+    expect(setupState().binding.store.getFieldMeta('Amount')?.type).toBe('monetary');
+    expect(setupState().binding.store.getFieldMeta('Missing')).toBeUndefined();
 
     condition.field = 'Name';
     await nextTick();
     expect(unref(setupState().fieldMeta)?.type).toBe('varchar');
+    unmount();
+  });
+
+  test('binding.store.metadata falls back to empty fields map', async () => {
+    const condition = reactive<any>({ id: 'c1', field: 'Name', operator: '=', value: null });
+    const { unmount, setupState } = mountRow(condition, {
+      store: {
+        getFieldMeta: undefined,
+        metadata: undefined,
+      },
+    });
+    await nextTick();
+    expect(setupState().binding.store.metadata.fields).toEqual({});
+    expect(setupState().binding.store.getFieldMeta('Name')).toBeUndefined();
     unmount();
   });
 });

@@ -136,7 +136,7 @@ import ComboboxInput from '@/web/web/components/vendor/ui/combobox/ComboboxInput
 import ComboboxItem from '@/web/web/components/vendor/ui/combobox/ComboboxItem.vue';
 import { Trash2 } from 'lucide-vue-next';
 import { isConditionComplete } from '@/web/web/query/utils/filter/structures';
-import { buildFilterConditionFieldMeta, readStoreFieldMeta } from '@/web/web/composables/search/storeFieldMeta';
+import { buildFilterConditionFieldMeta } from '@/web/web/composables/search/storeFieldMeta';
 
 import ChoyVarcharField from '@/web/web/components/field/ChoyVarcharField.vue';
 import ChoyTextField from '@/web/web/components/field/ChoyTextField.vue';
@@ -320,13 +320,8 @@ const valueRef = computed({
   set: v => props.onUpdateCondition(conditionId.value, { value: v }),
 });
 
-const fieldMeta = ref(
-  buildFilterConditionFieldMeta(
-    props.store as any,
-    props.condition.field || '',
-    metaTypeOf(props.condition.field || '')
-  ) as Partial<WebFieldMetadata>
-);
+// Populated by the field watch (immediate) before the row is interactive.
+const fieldMeta = ref({} as Partial<WebFieldMetadata>);
 
 const binding = useStandaloneField({
   value: valueRef,
@@ -344,8 +339,8 @@ binding.store = {
     const raw =
       typeof (props.store as any)?.getFieldMeta === 'function'
         ? (props.store as any).getFieldMeta(name)
-        : readStoreFieldMeta(props.store as any, name);
-    return raw && Object.keys(raw).length ? { ...raw, isReadonly: false } : undefined;
+        : this.metadata.fields?.[name];
+    return raw ? { ...raw, isReadonly: false } : raw;
   },
   ensureFieldsGet: (...args: any[]) => (props.store as any)?.ensureFieldsGet?.(...args),
   getFieldsGetTranslatedString: (name: string) => (props.store as any)?.getFieldsGetTranslatedString?.(name),
