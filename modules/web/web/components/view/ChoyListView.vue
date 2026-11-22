@@ -596,9 +596,10 @@ const tableOrderBy = computed(() => {
 
 const handleEnabled = computed(() => {
   if (!showHandleColumn.value || inlineEdit.isEditing.value || isReordering.value) return false;
-  // Reorder only when unsorted, or sorted by handleField ascending (matches renumber semantics).
+  // Reorder only when unsorted, or sorted solely by handleField ascending (matches renumber semantics).
   const list = tableOrderBy.value || [];
   if (!list.length) return true;
+  if (list.length > 1) return false;
   const primary = list[0] as { field?: string; direction?: string; order?: string } | undefined;
   const field = primary?.field;
   const dir = String(primary?.direction || primary?.order || '').toLowerCase();

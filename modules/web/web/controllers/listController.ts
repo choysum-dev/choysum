@@ -278,9 +278,13 @@ export function createListController(store: ModelStore<any>): IListController {
       const hasOrderByOverride = Object.prototype.hasOwnProperty.call(effectiveOverrides ?? {}, 'orderBy');
       const existingOrderBy = (store.state as any)?.queryState?.orderBy as OrderByState[] | undefined;
       const modelDefaultOrderBy = metadataOrderByToState((store as any)?.metadata?.orderBy);
+      // Stored groups only classify as grouped when shape is still unresolved.
+      // Explicit collection mode (kind:'search') must keep its requested orderBy.
       const groupKeysForOrder =
         gbStrings ??
-        (Array.isArray(existingGroups) ? normalizeGroupbyToStrings(existingGroups as any) : undefined);
+        (shape == null && Array.isArray(existingGroups)
+          ? normalizeGroupbyToStrings(existingGroups as any)
+          : undefined);
       const isGroupedRequest =
         shape === 'groups' || (Array.isArray(groupKeysForOrder) && groupKeysForOrder.length > 0);
       let resolvedOrderBy: OrderByState[] | undefined;
@@ -301,7 +305,8 @@ export function createListController(store: ModelStore<any>): IListController {
         const filtered = resolvedOrderBy.filter(row => keySet.has(String(row?.field || '')));
         resolvedOrderBy = filtered.length ? filtered : undefined;
       }
-      if (resolvedOrderBy !== undefined || hasOrderByOverride) {
+      // Grouped requests always persist (including undefined) so header chevrons match the query.
+      if (resolvedOrderBy !== undefined || hasOrderByOverride || isGroupedRequest) {
         (store.state as any).queryState = {
           ...(store.state as any).queryState,
           orderBy: resolvedOrderBy,

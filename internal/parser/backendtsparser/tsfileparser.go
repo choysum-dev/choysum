@@ -72,10 +72,8 @@ func encodeModelOrderByOption(raw any) string {
 	if len(out) == 0 {
 		return ""
 	}
-	b, err := json.Marshal(out)
-	if err != nil {
-		return ""
-	}
+	// orderSpec is always JSON-safe (string field/order); ignore the unused error.
+	b, _ := json.Marshal(out)
 	return string(b)
 }
 

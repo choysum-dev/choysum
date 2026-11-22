@@ -102,3 +102,22 @@ test('listController clears grouped sort when clear yields only non-group defaul
   });
   expect(store.state.queryState.orderBy).toBeUndefined();
 });
+
+test('listController keeps explicit collection orderBy even when stored groups remain', async () => {
+  const store = makeStore();
+  store.state.queryState.appliedGroups = ['Name'];
+  const ctrl = createListController(store);
+  await ctrl.apply({
+    kind: 'search',
+    orderBy: [{ field: 'CreatedAt', direction: 'desc' }],
+  });
+  expect(store.state.queryState.orderBy).toEqual([{ field: 'CreatedAt', direction: 'desc' }]);
+});
+
+test('listController persists undefined orderBy when grouped filter drops every field', async () => {
+  const store = makeStore();
+  store.state.queryState.orderBy = [{ field: 'CreatedAt', direction: 'asc' }];
+  const ctrl = createListController(store);
+  await ctrl.apply({ appliedGroups: ['Name'] as any });
+  expect(store.state.queryState.orderBy).toBeUndefined();
+});

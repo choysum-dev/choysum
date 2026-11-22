@@ -10,6 +10,9 @@ test('toRpcOrderBy maps FE direction onto RPC order', () => {
   expect(toRpcOrderBy([{ field: 'Code', direction: 'ASC' }])).toEqual([
     { field: 'Code', order: 'asc' },
   ]);
+  expect(toRpcOrderBy([{ field: 'Name', direction: ' DESC ' }])).toEqual([
+    { field: 'Name', order: 'desc' },
+  ]);
 });
 
 test('toRpcOrderBy keeps order when already present and prefers order over direction', () => {

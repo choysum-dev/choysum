@@ -21,7 +21,7 @@ function asOrderByLike(value: unknown): OrderByLike | undefined {
 }
 
 function normalizeSortDir(raw: unknown): 'asc' | 'desc' {
-  return String(raw ?? 'asc').toLowerCase() === 'desc' ? 'desc' : 'asc';
+  return String(raw ?? 'asc').trim().toLowerCase() === 'desc' ? 'desc' : 'asc';
 }
 
 /**

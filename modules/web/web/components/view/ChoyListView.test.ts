@@ -145,11 +145,11 @@ describe('ListView', () => {
     await flushPromises();
     expect(store.state.queryState.orderBy).toEqual([{ field: 'Name', direction: 'desc' }]);
 
-    mounted.props.orderBy = [{ field: 'Sequence', direction: 'asc' }];
+    mounted.props.orderBy = [{ field: 'Sequence', direction: 'desc' }];
     await flushPromises();
-    expect(store.state.queryState.orderBy).toEqual([{ field: 'Sequence', direction: 'asc' }]);
+    expect(store.state.queryState.orderBy).toEqual([{ field: 'Sequence', direction: 'desc' }]);
 
-    // Removing the controlled prop re-applies; listController reseeds metadata.orderBy.
+    // Removing the controlled prop re-applies; listController reseeds metadata.orderBy (asc).
     mounted.props.orderBy = undefined;
     await flushPromises();
     expect(store.state.queryState.orderBy).toEqual([{ field: 'Sequence', direction: 'asc' }]);
