@@ -320,13 +320,13 @@ const valueRef = computed({
   set: v => props.onUpdateCondition(conditionId.value, { value: v }),
 });
 
-const fieldMeta = computed(() =>
-  buildFilterConditionFieldMeta(props.store as any, props.condition.field || '', metaTypeOf(props.condition.field || ''))
-);
+function resolveConditionFieldMeta(fieldName: string) {
+  return buildFilterConditionFieldMeta(props.store as any, fieldName || '', metaTypeOf(fieldName || ''));
+}
 
 const binding = useStandaloneField({
   value: valueRef,
-  meta: fieldMeta.value,
+  meta: resolveConditionFieldMeta(props.condition.field || ''),
   prop: props.condition.field || 'value',
   env: { isForm: true, isEditMode: true, viewMode: 'edit' },
   record: {},
@@ -347,9 +347,13 @@ binding.store = {
   getFieldsGetTranslatedString: (name: string) => (props.store as any)?.getFieldsGetTranslatedString?.(name),
 };
 
+/** Mirror of binding.meta for tests / consumers that read setupState().fieldMeta. */
+const fieldMeta = computed(() => (binding.meta || resolveConditionFieldMeta(props.condition.field || '')) as Partial<WebFieldMetadata>);
+
 watch(
-  () => [props.condition.field, fieldMeta.value] as const,
-  ([fieldName, meta]) => {
+  () => props.condition.field,
+  fieldName => {
+    const meta = resolveConditionFieldMeta(fieldName || '');
     binding.meta = meta;
     binding.prop = fieldName || 'value';
     binding.relationStore =
