@@ -32,12 +32,11 @@ export const useRecordSetStore = defineStore('recordSet', () => {
 
   const hasActive = computed(() => active.value != null && active.value.total > 0);
 
-  function seed(entry: RecordSetEntry): void {
+  function assignActive(entry: RecordSetEntry): void {
     const ids = (entry.ids || []).map(id => String(id ?? '').trim()).filter(Boolean);
     const total = Math.max(0, Math.trunc(Number(entry.total) || 0));
     const index = Math.max(0, Math.min(Math.trunc(Number(entry.index) || 0), Math.max(0, total - 1)));
     const windowStart = Math.max(0, Math.trunc(Number(entry.windowStart) || 0));
-    seedGeneration.value += 1;
     active.value = {
       key: String(entry.key || ''),
       model: String(entry.model || ''),
@@ -50,6 +49,11 @@ export const useRecordSetStore = defineStore('recordSet', () => {
     };
   }
 
+  function seed(entry: RecordSetEntry): void {
+    seedGeneration.value += 1;
+    assignActive(entry);
+  }
+
   function clear(): void {
     active.value = null;
   }
@@ -60,8 +64,9 @@ export const useRecordSetStore = defineStore('recordSet', () => {
     return active.value.model === m ? active.value : null;
   }
 
+  /** Update the active entry in place without bumping seedGeneration. */
   function replaceActive(entry: RecordSetEntry): void {
-    seed(entry);
+    assignActive(entry);
   }
 
   async function move(

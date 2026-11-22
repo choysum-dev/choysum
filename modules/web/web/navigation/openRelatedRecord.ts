@@ -22,5 +22,7 @@ export function openRelatedRecord(args: OpenRelatedRecordArgs): void {
   } catch {
     // Pinia may be unavailable in unit mounts without an app shell.
   }
-  void args.router.push(args.to as string | Record<string, unknown>);
+  Promise.resolve(args.router.push(args.to as string | Record<string, unknown>)).catch(() => {
+    // Navigation aborted/failed; related opens do not restore a pager session.
+  });
 }

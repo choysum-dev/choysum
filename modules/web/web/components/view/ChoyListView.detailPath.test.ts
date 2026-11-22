@@ -481,3 +481,40 @@ test('detailPath clear catches missing Pinia on mount', async () => {
   restoreSfc(ChoyPagination);
   restoreSfc(ListInlineEditScope);
 });
+
+test('detailPath without router emits row-click (chrome-style mount)', async () => {
+  const pinia = createPinia();
+  setActivePinia(pinia);
+  stubSfc(ChoyTableHost, { name: 'ChoyTableHost', setup: () => () => h('div') });
+  stubSfc(ChoyTableColumn, { name: 'ChoyTableColumn', setup: () => () => null });
+  stubSfc(ChoyPagination, { name: 'ChoyPagination', setup: () => () => h('div') });
+  stubSfc(ListInlineEditScope, {
+    name: 'ListInlineEditScope',
+    setup: (_p: any, { slots }: any) => () => h('div', slots.default?.()),
+  });
+  const clicks: unknown[] = [];
+  // No vue-router plugin → useRouter throws and detailPath falls back to emit.
+  const mounted = mountApp(ChoyListView as any, {
+    props: {
+      store: makeStore(),
+      detailPath: '/base/countries/:id',
+      showHeader: false,
+      showPaginate: false,
+    },
+    on: { onRowClick: (p: unknown) => clicks.push(p) },
+    plugins: [pinia],
+  });
+  await flushPromises();
+  await (mounted.setupState() as any).onRowClick({
+    rowData: { kind: 'record', key: 'a', payload: { Id: 'a' } },
+    rowIndex: 0,
+    rowKey: 'a',
+  });
+  await flushPromises();
+  expect(clicks.length).toBe(1);
+  mounted.unmount();
+  restoreSfc(ChoyTableHost);
+  restoreSfc(ChoyTableColumn);
+  restoreSfc(ChoyPagination);
+  restoreSfc(ListInlineEditScope);
+});

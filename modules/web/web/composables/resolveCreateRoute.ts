@@ -53,8 +53,16 @@ export function useResolvedCreateAction(
   propCreateAction: MaybeRefOrGetter<string | RouteLocationRaw | null | undefined>,
   options?: { enabled?: MaybeRefOrGetter<boolean> }
 ): ComputedRef<string | RouteLocationRaw | undefined> {
-  const router = useRouter();
-  const route = useRoute();
+  // Chrome / standalone mounts may omit vue-router; keep setup resilient.
+  let router: Router | null = null;
+  let route: ReturnType<typeof useRoute> | null = null;
+  try {
+    router = useRouter();
+    route = useRoute();
+  } catch {
+    router = null;
+    route = null;
+  }
   return computed(() => {
     const fromProp = toValue(propCreateAction);
     if (fromProp === '') {
@@ -64,7 +72,7 @@ export function useResolvedCreateAction(
       return fromProp;
     }
     const enabled = options?.enabled === undefined ? true : toValue(options.enabled);
-    if (!enabled) {
+    if (!enabled || !router || !route) {
       return undefined;
     }
     return resolveCreateRouteLocation(router, route.name);

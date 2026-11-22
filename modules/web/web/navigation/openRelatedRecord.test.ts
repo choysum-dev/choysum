@@ -48,3 +48,14 @@ test('openRelatedRecord still pushes when Pinia is unavailable', () => {
   });
   expect(pushed).toEqual(['/auth/roles/r2']);
 });
+
+test('openRelatedRecord swallows rejected navigation promises', async () => {
+  setActivePinia(createPinia());
+  openRelatedRecord({
+    router: { push: () => Promise.reject(new Error('aborted')) },
+    to: '/auth/roles/r3',
+  });
+  await Promise.resolve();
+  await Promise.resolve();
+  expect(true).toBe(true);
+});

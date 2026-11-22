@@ -33,7 +33,11 @@ function read<T>(src: ComputedRef<T> | Ref<T> | (() => T)): T {
   return typeof src === 'function' ? (src as () => T)() : (src as Ref<T>).value;
 }
 
-function siblingLocation(router: RouterLike, nextId: string): string | Record<string, unknown> {
+function siblingLocation(
+  router: RouterLike,
+  nextId: string,
+  currentId: string
+): string | Record<string, unknown> {
   const route = router.currentRoute.value;
   const params = route.params || {};
   if (route.name && (Object.prototype.hasOwnProperty.call(params, 'id') || Object.prototype.hasOwnProperty.call(params, 'recordId'))) {
@@ -45,7 +49,19 @@ function siblingLocation(router: RouterLike, nextId: string): string | Record<st
   const parts = String(route.path || '')
     .replace(/\/+$/, '')
     .split('/');
-  if (parts.length) parts[parts.length - 1] = encodeURIComponent(nextId);
+  const last = parts[parts.length - 1] || '';
+  let decodedLast = last;
+  try {
+    decodedLast = decodeURIComponent(last);
+  } catch {
+    decodedLast = last;
+  }
+  // Only replace the last segment when it is the current record id; otherwise append.
+  if (parts.length && currentId && decodedLast === currentId) {
+    parts[parts.length - 1] = encodeURIComponent(nextId);
+  } else {
+    parts.push(encodeURIComponent(nextId));
+  }
   const targetPath = parts.join('/') || `/${encodeURIComponent(nextId)}`;
   const query = route.query;
   if (query && typeof query === 'object' && Object.keys(query as object).length > 0) {
@@ -133,7 +149,9 @@ export function useFormRecordPager(opts: UseFormRecordPagerOpts) {
     // Sibling id under the same menu leaf: replace the current page crumb, do not deepen.
     breadcrumb.setPendingPageMode('replace');
     try {
-      const result = await opts.router.push(siblingLocation(opts.router, moved.id) as any);
+      const result = await opts.router.push(
+        siblingLocation(opts.router, moved.id, String(read(opts.recordId) || '').trim()) as any
+      );
       // Guard aborts resolve as NavigationFailure (fulfilled), not as a rejection.
       if (isNavigationFailure(result)) restoreAfterNavFailure(previous, generation);
     } catch {

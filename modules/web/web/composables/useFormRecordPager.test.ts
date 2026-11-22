@@ -296,6 +296,42 @@ test('path siblingLocation preserves query and syncs index from recordId', async
   expect(recordSet.active?.index).toBe(0);
 });
 
+test('path siblingLocation appends id when last segment is not the current record', async () => {
+  setActivePinia(createPinia());
+  const recordSet = useRecordSetStore();
+  recordSet.seed({
+    key: 'k',
+    model: 'base.Country',
+    condition: {},
+    total: 2,
+    index: 0,
+    ids: ['a', 'b'],
+    windowStart: 0,
+  });
+  const pushed: unknown[] = [];
+  const pager = useFormRecordPager({
+    model: computed(() => 'base.Country'),
+    recordId: computed(() => 'a'),
+    isCreate: computed(() => false),
+    router: {
+      currentRoute: {
+        value: {
+          path: '/base/countries',
+          query: {},
+        },
+      },
+      push: (to: unknown) => {
+        pushed.push(to);
+        return Promise.resolve();
+      },
+    },
+    store: {},
+    confirmDiscardIfDirty: async () => true,
+  });
+  await pager.goNext();
+  expect(pushed).toEqual(['/base/countries/b']);
+});
+
 test('create mode clears the active record set; discard cancel skips move', async () => {
   setActivePinia(createPinia());
   const recordSet = useRecordSetStore();

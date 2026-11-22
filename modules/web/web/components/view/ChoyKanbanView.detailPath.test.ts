@@ -97,12 +97,10 @@ test('detailPath card click clears session and pushes when id not in window', as
     return Promise.resolve(to);
   };
 
-  const emptyGrouped = makeStore([{ kind: 'group', key: 'g1' }]);
-  emptyGrouped.state.result.kind = 'group';
+  // Flat board whose Search window does not contain the clicked id.
   const mounted = mountApp(ChoyKanbanView as any, {
     props: {
-      // Group rows only — snapshot ids empty.
-      store: emptyGrouped,
+      store: makeStore([{ kind: 'record', payload: { Id: 'a' } }]),
       autoBootstrap: false,
       detailPath: '/sandbox/records/:id',
     },

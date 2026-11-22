@@ -130,6 +130,18 @@ test('useRecordSetStore seed / getActiveForModel / move / clear', async () => {
   expect(store.hasActive).toBe(false);
 });
 
+test('useRecordSetStore replaceActive keeps seedGeneration', () => {
+  setActivePinia(createPinia());
+  const store = useRecordSetStore();
+  store.seed(sampleEntry());
+  const gen = store.seedGeneration;
+  store.replaceActive(sampleEntry({ index: 2, ids: ['a', 'b', 'c'] }));
+  expect(store.seedGeneration).toBe(gen);
+  expect(store.active?.index).toBe(2);
+  store.seed(sampleEntry({ key: 'other' }));
+  expect(store.seedGeneration).toBe(gen + 1);
+});
+
 test('useRecordSetStore installMenuClearWatch is idempotent and clears on menu change', async () => {
   setActivePinia(createPinia());
   const { useMenuStore } = await import('@/web/web/stores/menuStore');
