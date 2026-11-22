@@ -61,6 +61,56 @@ test('goNext marks breadcrumb replace before pushing the sibling route', async (
   expect(recordSet.active?.index).toBe(1);
 });
 
+test('goTo bails when the session index changes during confirm', async () => {
+  setActivePinia(createPinia());
+  const recordSet = useRecordSetStore();
+  recordSet.seed({
+    key: 'k',
+    model: 'base.Country',
+    condition: {},
+    total: 3,
+    index: 0,
+    ids: ['a', 'b', 'c'],
+    windowStart: 0,
+  });
+  const pushed: unknown[] = [];
+  let resolveConfirm: ((ok: boolean) => void) | null = null;
+  const pager = useFormRecordPager({
+    model: computed(() => 'base.Country'),
+    recordId: computed(() => 'a'),
+    isCreate: computed(() => false),
+    router: {
+      currentRoute: {
+        value: { path: '/base/countries/a', name: 'CountryDetail', params: { id: 'a' }, query: {} },
+      },
+      push: (to: unknown) => {
+        pushed.push(to);
+        return Promise.resolve();
+      },
+    },
+    store: {},
+    confirmDiscardIfDirty: () =>
+      new Promise<boolean>(resolve => {
+        resolveConfirm = resolve;
+      }),
+  });
+  const pending = pager.goTo(3);
+  await Promise.resolve();
+  recordSet.replaceActive({
+    key: 'k',
+    model: 'base.Country',
+    condition: {},
+    total: 3,
+    index: 1,
+    ids: ['a', 'b', 'c'],
+    windowStart: 0,
+  });
+  resolveConfirm!(true);
+  await pending;
+  expect(pushed).toEqual([]);
+  expect(recordSet.active?.index).toBe(1);
+});
+
 test('goTo jumps by 1-based position and marks breadcrumb replace', async () => {
   setActivePinia(createPinia());
   const recordSet = useRecordSetStore();

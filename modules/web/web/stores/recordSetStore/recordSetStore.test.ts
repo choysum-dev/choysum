@@ -140,6 +140,9 @@ test('useRecordSetStore replaceActive keeps seedGeneration', () => {
   expect(store.active?.index).toBe(2);
   store.seed(sampleEntry({ key: 'other' }));
   expect(store.seedGeneration).toBe(gen + 1);
+  store.clear();
+  expect(store.seedGeneration).toBe(gen + 2);
+  expect(store.active).toBeNull();
 });
 
 test('useRecordSetStore installMenuClearWatch is idempotent and clears on menu change', async () => {

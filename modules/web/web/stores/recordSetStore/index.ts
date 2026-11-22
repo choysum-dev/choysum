@@ -55,6 +55,8 @@ export const useRecordSetStore = defineStore('recordSet', () => {
   }
 
   function clear(): void {
+    // Invalidate in-flight move/moveTo so they cannot resurrect a cleared session.
+    seedGeneration.value += 1;
     active.value = null;
   }
 

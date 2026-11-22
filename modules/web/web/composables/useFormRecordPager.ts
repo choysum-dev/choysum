@@ -185,7 +185,9 @@ export function useFormRecordPager(opts: UseFormRecordPagerOpts) {
     busy.value = true;
     try {
       if (!(await opts.confirmDiscardIfDirty())) return;
-      const previous = entry.value ? { ...entry.value } : null;
+      const current = entry.value;
+      if (!current) return;
+      const previous = { ...current };
       const generation = recordSet.seedGeneration;
       const moved = await recordSet.move(delta, buildSearchIds(opts.store));
       await navigateToMoved(moved, previous, generation);
@@ -207,7 +209,10 @@ export function useFormRecordPager(opts: UseFormRecordPagerOpts) {
     busy.value = true;
     try {
       if (!(await opts.confirmDiscardIfDirty())) return;
-      const previous = entry.value ? { ...entry.value } : null;
+      // Re-read after confirm: a concurrent move/re-seed may have changed the session.
+      const current = entry.value;
+      if (!current || current.index !== e.index) return;
+      const previous = { ...current };
       const generation = recordSet.seedGeneration;
       const moved = await recordSet.moveTo(index, buildSearchIds(opts.store));
       await navigateToMoved(moved, previous, generation);

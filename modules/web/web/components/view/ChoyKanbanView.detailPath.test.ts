@@ -219,6 +219,27 @@ test('detailPath respects canOpenDetail gate and emits card-click when blocked',
   expect(pushes).toEqual([]);
   expect(clicks).toEqual([card]);
   mounted.unmount();
+
+  // Throwing canOpenDetail must not break the click handler.
+  const clicks2: ChoyKanbanCard[] = [];
+  const throwing = mountApp(ChoyKanbanView as any, {
+    props: {
+      store: makeStore([{ Id: 'a' }]),
+      autoBootstrap: false,
+      detailPath: '/sandbox/records/:id',
+      canOpenDetail: () => {
+        throw new Error('acl boom');
+      },
+    },
+    on: { onCardClick: (c: ChoyKanbanCard) => clicks2.push(c) },
+    plugins: [pinia, router as any],
+  });
+  await flushPromises();
+  (throwing.setupState() as any).onCardClick(card);
+  await flushPromises();
+  expect(pushes).toEqual([]);
+  expect(clicks2).toEqual([card]);
+  throwing.unmount();
 });
 
 test('detailPath without router emits card-click; blank id / null path emit', async () => {
