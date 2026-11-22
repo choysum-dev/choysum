@@ -88,6 +88,13 @@ test('syncControlledOrderByToQueryState / writeQueryStateOrderBy cover mount and
   syncControlledOrderByToQueryState(state, [{ field: 'Name', direction: 'desc' }]);
   expect(state.queryState?.orderBy).toEqual([{ field: 'Name', direction: 'desc' }]);
 
+  // Single-object controlled sort (ChoyListView prop union) becomes a one-item array.
+  writeQueryStateOrderBy(state, { field: 'Code', order: 'DESC' });
+  expect(state.queryState?.orderBy).toEqual([{ field: 'Code', direction: 'desc' }]);
+
+  writeQueryStateOrderBy(state, []);
+  expect(state.queryState?.orderBy).toEqual([]);
+
   writeQueryStateOrderBy(state, undefined);
   expect('orderBy' in (state.queryState || {})).toBe(true);
   expect(state.queryState?.orderBy).toBeUndefined();

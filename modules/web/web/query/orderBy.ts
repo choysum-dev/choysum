@@ -88,15 +88,25 @@ export function resolveTableOrderBy(
 
 /**
  * Write orderBy into store.queryState (including explicit undefined clears).
+ * Defined values are normalized to OrderByState[] so a single-object prop
+ * (allowed by ChoyListView) is stored as a one-item array that applyImpl accepts.
  */
 export function writeQueryStateOrderBy(
   state: { queryState?: Record<string, unknown> } | null | undefined,
   orderBy: unknown
 ): void {
   if (!state) return;
+  let next: unknown = orderBy;
+  if (orderBy !== undefined && orderBy !== null) {
+    if (Array.isArray(orderBy) && orderBy.length === 0) {
+      next = [];
+    } else {
+      next = metadataOrderByToState(orderBy) ?? [];
+    }
+  }
   state.queryState = {
     ...(state.queryState || {}),
-    orderBy,
+    orderBy: next,
   };
 }
 
