@@ -586,7 +586,8 @@ const showHandleColumn = computed(
 
 const isReordering = ref(false);
 const tableOrderBy = computed(() => {
-  const raw = (store.state as any)?.queryState?.orderBy ?? (store.state as any)?.orderBy ?? props.orderBy;
+  // Prefer queryState (props mount/watch + listController seed); fall back to props before first write.
+  const raw = (store.state as any)?.queryState?.orderBy ?? props.orderBy;
   if (raw == null) return undefined;
   return (Array.isArray(raw) ? raw : [raw]) as OrderByState[];
 });

@@ -400,10 +400,10 @@ func (m *ModuleManager) bootstrapMetaTables(txScope scope.Scope) error {
 	migrator := session.Migrator()
 	baseReady := migrator.HasTable(&meta.Module{}) && migrator.HasTable(&modmeta.LockLease{})
 	if baseReady {
-		// Existing installs still need ops satellites (catalog/operation/source
-		// snapshot/migration) after the W1 hard-cut table rename.
-		if err := session.AutoMigrate(modmeta.OpsEntities()...); err != nil {
-			return xfmt.Errorf("auto migrate ops entities: %w", err)
+		// Existing installs: keep ops satellites (W1 hard-cut) and dual-store /
+		// effective catalog columns aligned (e.g. additive Model.OrderBy).
+		if err := session.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
+			return xfmt.Errorf("auto migrate catalog entities: %w", err)
 		}
 		if migrator.HasTable(&meta.Model{}) {
 			if err := modmeta.EnsureEffectiveAppNameUniqueIndex(db); err != nil {
