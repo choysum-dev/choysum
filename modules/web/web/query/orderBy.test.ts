@@ -70,8 +70,13 @@ test('resolveTableOrderBy prefers queryState.orderBy including explicit clear', 
     resolveTableOrderBy({ orderBy: [{ field: 'Seq', direction: 'asc' }] }, [{ field: 'Name', direction: 'desc' }])
   ).toEqual([{ field: 'Seq', direction: 'asc' }]);
   expect(resolveTableOrderBy({ orderBy: undefined }, [{ field: 'Name', direction: 'desc' }])).toBeUndefined();
+  expect(resolveTableOrderBy({ orderBy: [] }, [{ field: 'Name', direction: 'desc' }])).toEqual([]);
   expect(resolveTableOrderBy({ orderBy: { field: 'Only', direction: 'asc' } }, undefined)).toEqual([
     { field: 'Only', direction: 'asc' },
+  ]);
+  // RPC-shaped `{ order }` rows normalize onto FE `{ direction }`.
+  expect(resolveTableOrderBy({ orderBy: [{ field: 'Code', order: 'DESC' }] }, undefined)).toEqual([
+    { field: 'Code', direction: 'desc' },
   ]);
 });
 

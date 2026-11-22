@@ -81,7 +81,9 @@ export function resolveTableOrderBy(
       ? queryState.orderBy
       : propsOrderBy;
   if (raw == null) return undefined;
-  return (Array.isArray(raw) ? raw : [raw]) as OrderByState[];
+  // Preserve explicit empty clear; otherwise normalize order/direction into OrderByState.
+  if (Array.isArray(raw) && raw.length === 0) return [];
+  return metadataOrderByToState(raw);
 }
 
 /**

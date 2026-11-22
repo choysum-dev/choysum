@@ -908,7 +908,9 @@ watch(
     controller
       .apply({ forcedCondition: props.forcedCondition as any })
       .then(afterLayoutRecompute)
-      .catch(() => {});
+      .catch((e: unknown) => {
+        emit('action-error', { action: 'sort', error: e instanceof Error ? e : new Error(String(e)) });
+      });
   },
   { deep: true }
 );

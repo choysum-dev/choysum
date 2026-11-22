@@ -370,7 +370,7 @@ const rootHeightStyle = computed(() => {
   return { height: `${h}px` };
 });
 
-const sorting = ref<SortingState>(props.sorting ? [...props.sorting] : []);
+const sorting = ref<SortingState>(props.sorting !== undefined ? [...props.sorting] : []);
 const rowSelection = ref<RowSelectionState>({});
 /** TanStack keys are always strings; keep originals for emit typing. */
 const idRegistry = new Map<string, DataTableRowId>();
@@ -685,7 +685,7 @@ watch(
 watch(
   () => props.columns,
   () => {
-    if (props.sorting) {
+    if (props.sorting !== undefined) {
       sorting.value = props.sorting.filter((sort) => !!table.getColumn(sort.id));
       return;
     }
