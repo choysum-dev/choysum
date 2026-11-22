@@ -16,6 +16,7 @@ import {
 import type { ComposerLike } from '../i18n';
 import { resolveDocumentTitle } from './documentTitle';
 import { resolveNavLoadingPolicy } from './navLoadingPolicy';
+import { clearViewLoadError, isRouteChunkLoadError, setViewLoadError } from './viewLoadError';
 
 export { resolveDocumentTitle, resolveRoutePageTitle } from './documentTitle';
 export { resolveNavLoadingPolicy } from './navLoadingPolicy';
@@ -83,6 +84,8 @@ export function createAppRouter(base = '/', composer?: ComposerLike): Router {
       if (generation) settleNavigationIfActive({ generation });
       return;
     }
+    // Successful navigation clears a prior chunk-load blank.
+    clearViewLoadError();
     const policy = resolveNavLoadingPolicy(to);
     if (policy === 'none') {
       settleNavigationIfActive();
@@ -101,6 +104,13 @@ export function createAppRouter(base = '/', composer?: ComposerLike): Router {
   router.onError(error => {
     console.error('Router error:', error);
     settleNavigationIfActive();
+    if (isRouteChunkLoadError(error)) {
+      const fullPath = String(router.currentRoute.value.fullPath || '/');
+      setViewLoadError({
+        message: String((error as { message?: string })?.message || error || ''),
+        fullPath,
+      });
+    }
   });
 
   return router;

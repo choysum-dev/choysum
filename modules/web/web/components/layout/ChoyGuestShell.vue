@@ -35,11 +35,12 @@ SPDX-License-Identifier: Apache-2.0
           data-testid="choy-shell-content"
         >
           <slot>
+            <ChoyViewLoadError />
             <!-- Guest never KeepAlive (login/setup/register must not revive instance state). -->
             <router-view v-slot="{ Component, route: viewRoute }">
               <component
                 :is="Component"
-                v-if="Component"
+                v-if="Component && !hasViewLoadError"
                 class="min-h-0 flex-1"
                 :key="viewRoute.fullPath"
               />
@@ -63,9 +64,13 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { viewLoadError as viewLoadErrorRef } from '../../router/viewLoadError'
 import ChoyAppFooter from './ChoyAppFooter.vue'
 import ChoyGuestHeader from './ChoyGuestHeader.vue'
+import ChoyViewLoadError from './ChoyViewLoadError.vue'
 import { createGuestHomeNavigate } from './guestHomeNavigate'
+
+const hasViewLoadError = computed(() => viewLoadErrorRef.value != null)
 
 /** Guest "Home" is the site root, not the authenticated default land path. */
 const GUEST_HOME_HREF = '/'

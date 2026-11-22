@@ -67,6 +67,19 @@ describe('createAppRouter', () => {
     resetLoadingRegistryForTests();
   });
 
+  test('router onError records chunk load failures for shell retry UI', async () => {
+    const { clearViewLoadError, viewLoadError } = await import('./viewLoadError');
+    clearViewLoadError();
+    const router = createAppRouter('/');
+    await router.isReady().catch(() => undefined);
+    const anyRouter = router as { triggerError?: (err: Error) => void };
+    anyRouter.triggerError?.(
+      new Error('Failed to fetch dynamically imported module: /web/assets/Company-x.js')
+    );
+    expect(viewLoadError.value?.fullPath).toBeTruthy();
+    clearViewLoadError();
+  });
+
   test('older cancelled navigation settlement does not clear a newer ticket', async () => {
     resetLoadingRegistryForTests();
     const router = createAppRouter('/');

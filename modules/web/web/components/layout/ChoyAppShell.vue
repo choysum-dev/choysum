@@ -88,9 +88,14 @@ SPDX-License-Identifier: Apache-2.0
             data-testid="choy-shell-content"
           >
             <slot>
+              <ChoyViewLoadError />
               <router-view v-slot="{ Component, route: viewRoute }">
                 <!-- Remount KeepAlive when company or leaf menu changes. -->
-                <div :key="keepAliveScopeKey" class="flex min-h-0 min-w-0 w-full flex-1 flex-col">
+                <div
+                  v-if="!hasViewLoadError"
+                  :key="keepAliveScopeKey"
+                  class="flex min-h-0 min-w-0 w-full flex-1 flex-col"
+                >
                   <KeepAlive :max="5">
                     <component
                       :is="Component"
@@ -132,12 +137,17 @@ import { useNavigationHandoffBusy } from '@/core/web/client/loadingRegistry'
 import { useI18n } from 'vue-i18n'
 import { routeShouldKeepAlive } from '../../composables/useChoyViewRouteSwitch'
 import { useKeepAliveScopeKey } from '../../composables/useKeepAliveScopeKey'
+import { viewLoadError as viewLoadErrorRef } from '../../router/viewLoadError'
 import ChoyAppFooter from './ChoyAppFooter.vue'
 import ChoyAppHeader from './ChoyAppHeader.vue'
 import ChoyAppRail from './ChoyAppRail.vue'
 import ChoyNavigationHandoff from './ChoyNavigationHandoff.vue'
 import ChoySidebarNav from './ChoySidebarNav.vue'
 import ChoySidebarBridge from './ChoySidebarBridge.vue'
+import ChoyViewLoadError from './ChoyViewLoadError.vue'
+
+/** Local binding so the template unwraps the imported computed. */
+const hasViewLoadError = computed(() => viewLoadErrorRef.value != null)
 import {
   Sidebar,
   SidebarFooter,
