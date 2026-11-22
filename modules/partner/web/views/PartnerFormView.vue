@@ -221,6 +221,7 @@ import type Partner from '@/partner/service/models/partner';
 import type Company from '@/base/service/models/company';
 import type Address from '@/base/service/models/address';
 import type { ValueClickPayload as ManyToOneValueClickPayload } from '@/web/web/components/field/manyToOneTypes';
+import { openRelatedRecord } from '@/web/web/navigation/openRelatedRecord';
 import CompanyListView from '@/base/web/views/CompanyListView.vue';
 import LanguageListView from '@/base/web/views/LanguageListView.vue';
 import CurrencyListView from '@/base/web/views/CurrencyListView.vue';
@@ -347,7 +348,7 @@ function getContactRoleLabel(value?: string) {
 function onCompanyValueClick(payload: ManyToOneValueClickPayload<Company>) {
   const id = String(payload?.id || '').trim();
   if (!id) return;
-  void router.push({ name: 'CompanyDetail', params: { id } });
+  openRelatedRecord({ router, to: { name: 'CompanyDetail', params: { id } } });
 }
 
 /**
@@ -356,7 +357,7 @@ function onCompanyValueClick(payload: ManyToOneValueClickPayload<Company>) {
 function onDefaultContactValueClick(payload: ManyToOneValueClickPayload<Partner>) {
   const id = String(payload?.id || '').trim();
   if (!id) return;
-  void router.push({ name: 'PartnerDetail', params: { id } });
+  openRelatedRecord({ router, to: { name: 'PartnerDetail', params: { id } } });
 }
 
 /**
@@ -365,7 +366,7 @@ function onDefaultContactValueClick(payload: ManyToOneValueClickPayload<Partner>
 function onDefaultBillingAddressValueClick(payload: ManyToOneValueClickPayload<Address>) {
   const id = String(payload?.id || '').trim();
   if (!id) return;
-  void router.push({ name: 'AddressDetail', params: { id } });
+  openRelatedRecord({ router, to: { name: 'AddressDetail', params: { id } } });
 }
 
 /**
@@ -374,7 +375,7 @@ function onDefaultBillingAddressValueClick(payload: ManyToOneValueClickPayload<A
 function onDefaultShippingAddressValueClick(payload: ManyToOneValueClickPayload<Address>) {
   const id = String(payload?.id || '').trim();
   if (!id) return;
-  void router.push({ name: 'AddressDetail', params: { id } });
+  openRelatedRecord({ router, to: { name: 'AddressDetail', params: { id } } });
 }
 </script>
 

@@ -345,6 +345,16 @@ import {
   type ChoyKanbanDragMode,
   type ChoyKanbanVirtualizeMode,
 } from './kanbanVirtualHelpers';
+import {
+  canOpenDetailRow,
+  resolveDetailPath,
+  type DetailPathProp,
+} from '@/web/web/navigation/detailPath';
+import { openRecordFromCollection } from '@/web/web/navigation/openRecordFromCollection';
+import { snapshotFromListStore } from '@/web/web/navigation/snapshotFromListStore';
+import { useRecordSetStore } from '@/web/web/stores/recordSetStore';
+import { onActivated, onMounted } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 
 /** Shared default card body for lane cards. */
 const ChoyKanbanCardFallback = defineComponent({
@@ -409,6 +419,12 @@ const props = withDefaults(
     onMoveError?: (error: unknown) => void;
     /** Opt out of page IO action-target registration (embedded boards). */
     registerActionTarget?: boolean;
+    /**
+     * When set, card open seeds the Form record pager and navigates.
+     * Same contract as ChoyListView `detailPath`.
+     */
+    detailPath?: DetailPathProp;
+    canOpenDetail?: boolean | ((row: Record<string, unknown>) => boolean);
   }>(),
   {
     showHeader: true,
@@ -420,6 +436,8 @@ const props = withDefaults(
     autoBootstrap: true,
     // Keep omitted as undefined (not false) so matching page-store views auto-register.
     registerActionTarget: undefined,
+    // Vue Boolean cast would otherwise default a missing canOpenDetail to false.
+    canOpenDetail: true,
   },
 );
 
@@ -442,6 +460,32 @@ const emit = defineEmits<{
 
 const pageStore = useOptionalPageStore<ModelStore<any>>();
 const boundStore = resolvePageStore(props.store ?? pageStore.value, 'ChoyKanbanView');
+// Chrome unit mounts use mountApp without vue-router; keep setup resilient.
+let router: ReturnType<typeof useRouter> | null = null;
+let route: ReturnType<typeof useRoute> | null = null;
+try {
+  router = useRouter();
+  route = useRoute();
+} catch {
+  router = null;
+  route = null;
+}
+function clearRecordSetSessionIfDetailHost() {
+  if (props.detailPath == null) return;
+  try {
+    const rs = useRecordSetStore();
+    const active = rs.active;
+    if (!active) return;
+    // Relation pickers for another model must not wipe the open Form's session.
+    const model = String((boundStore as { modelName?: string }).modelName || '').trim();
+    if (model && active.model && active.model !== model) return;
+    rs.clear();
+  } catch {
+    // Pinia may be unavailable in unit mounts without an app shell.
+  }
+}
+onMounted(clearRecordSetSessionIfDetailHost);
+onActivated(clearRecordSetSessionIfDetailHost);
 
 function handleMoveError(error: unknown): void {
   if (props.onMoveError) {
@@ -556,6 +600,65 @@ function otherLanes(fromKey: string): ChoyKanbanLane[] {
 }
 
 function onCardClick(card: ChoyKanbanCard): void {
+  if (props.detailPath != null) {
+    if (!router) {
+      emit('card-click', card);
+      return;
+    }
+    const row = (card.payload || {}) as Record<string, unknown>;
+    let to: ReturnType<typeof resolveDetailPath> = null;
+    try {
+      if (!canOpenDetailRow(props.canOpenDetail as any, row)) {
+        emit('card-click', card);
+        return;
+      }
+      to = resolveDetailPath(props.detailPath, row);
+    } catch {
+      emit('card-click', card);
+      return;
+    }
+    if (to == null) {
+      emit('card-click', card);
+      return;
+    }
+    const model = String((boundStore as { modelName?: string }).modelName || '').trim();
+    const id = String(row.Id ?? row.id ?? card.id ?? '').trim();
+    if (!id) {
+      emit('card-click', card);
+      return;
+    }
+    // Grouped lane cards are not Search offsets — open without a pager session.
+    // Flat boards keep Search pagination offset via snapshotFromListStore.
+    const isGrouped =
+      (boundStore as { state?: { result?: { kind?: string } } }).state?.result?.kind === 'group';
+    if (isGrouped) {
+      try {
+        useRecordSetStore().clear();
+      } catch {
+        // Pinia may be unavailable in unit mounts without an app shell.
+      }
+      void router.push(to as any);
+      return;
+    }
+    const entry = snapshotFromListStore(boundStore as any, {
+      model: model || 'unknown',
+      key: `${model || 'unknown'}|${String(route?.path || 'kanban')}`,
+      rowIndex: 0,
+      recordId: id,
+    });
+    // Seed only when the opened id is in the known Search window.
+    if (entry && entry.ids.length > 0 && entry.ids.includes(id)) {
+      openRecordFromCollection({ router, to, entry });
+    } else {
+      try {
+        useRecordSetStore().clear();
+      } catch {
+        // Pinia may be unavailable in unit mounts without an app shell.
+      }
+      void router.push(to as any);
+    }
+    return;
+  }
   emit('card-click', card);
 }
 

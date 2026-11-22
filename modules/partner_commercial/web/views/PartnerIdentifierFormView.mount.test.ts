@@ -1,22 +1,44 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { mount, flushPromises } from '@choysum/test-utils';
+import { createPinia, setActivePinia } from 'pinia';
+import * as VueRouter from 'vue-router';
+import { flushPromises, mountApp } from '@/web/web/__tests__/mountApp';
 import PartnerIdentifierFormView from './PartnerIdentifierFormView.vue';
-import { buildPageMountGlobal } from '@choysum/page-mount';
+
+const createFeStubRouter = (VueRouter as any).createFeStubRouter as (overrides?: object) => {
+  router: {
+    push: (to: unknown) => Promise<unknown>;
+    currentRoute: { value: { path: string } };
+  };
+};
 
 test('PartnerIdentifierFormView mount coverage', async () => {
-  const store = { $id: 'fe-stub-id-store', records: {} };
-  const wrapper = mount(PartnerIdentifierFormView as any, {
+  const pinia = createPinia();
+  setActivePinia(pinia);
+  const { router } = createFeStubRouter();
+  const pushes: unknown[] = [];
+  const orig = router.push.bind(router);
+  router.push = (to: unknown) => {
+    pushes.push(to);
+    return orig(to);
+  };
+
+  const store = { $id: 'fe-stub-id-store', records: {}, modelName: 'partner.Identifier' };
+  const mounted = mountApp(PartnerIdentifierFormView as any, {
     props: { store, viewMode: 'create' },
-    global: buildPageMountGlobal(),
+    plugins: [pinia, router as any],
   });
   await flushPromises();
-  expect(
-    wrapper.find('[data-anchor="choy.form-view"]').exists() ||
-      wrapper.find('[data-testid="fe-stub-child-view"]').exists() ||
-      wrapper.find('[data-testid="fe-stub-choy-page"]').exists() ||
-      wrapper.find('[data-anchor="choy.page"]').exists(),
-  ).toBe(true);
-  wrapper.unmount();
+  expect(mounted.el != null).toBe(true);
+
+  const ss = mounted.setupState() as {
+    onCountryValueClick?: (payload: { id?: string }) => void;
+  };
+  ss.onCountryValueClick?.({ id: '' });
+  ss.onCountryValueClick?.({ id: 'country-1' });
+  await flushPromises();
+  expect(pushes.some(p => JSON.stringify(p).includes('country-1'))).toBe(true);
+
+  mounted.unmount();
 });

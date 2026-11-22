@@ -11,7 +11,7 @@ SPDX-License-Identifier: Apache-2.0
     :searchView="ChoySearchView"
     :action-ids="{ create: currencyActions.create, delete: currencyActions.delete }"
     :has-action="hasAction"
-    @row-click="onRowClick"
+    detail-path="/base/currencies/:id"
   >
     <ChoyTableColumn type="selection" :vColumnProps="{ align: 'center' }" />
     <ChoyTableColumn type="index" :vColumnProps="{ align: 'right' }" />
@@ -27,14 +27,12 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts">
 import type { ModelStore } from '@/web/web/stores/modelStore';
 import type Currency from '@/base/service/models/currency';
-import { useRouter } from 'vue-router';
 import { useListViewExpose } from '@/web/web/composables/useListView';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
 import { ChoyBooleanField, ChoyDecimalField, ChoyListView, ChoySearchView, ChoyTableColumn, ChoyVarcharField, ChoyIntField} from '@/web';
-import type { RowEventPayload } from '@/web';
 
 defineOptions({ name: 'CurrencyListView', inheritAttrs: true });
 const { _t, _lt } = createTranslate('base', { scope: 'web/views/CurrencyListView' });
@@ -42,11 +40,6 @@ const props = defineProps<{ store?: ModelStore<Currency> }>();
 const store = resolvePageStore(props.store, 'CurrencyListView');
 const currencyActions = defineModelActions('base.Currency', { entityTitle: _lt('Currency') });
 const { hasAction } = usePermission();
-const router = useRouter();
-function onRowClick(payload: RowEventPayload) {
-  const id = String(payload.row?.Id ?? '').trim();
-  if (id) router.push(`/base/currencies/${id}`);
-}
 const { listRef, expose } = useListViewExpose<Currency>();
 defineExpose(expose);
 </script>

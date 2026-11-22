@@ -13,7 +13,7 @@ SPDX-License-Identifier: Apache-2.0
     :show-header="showHeader"
     :action-ids="{ create: sandboxRecordActions.create, delete: sandboxRecordActions.delete }"
     :has-action="hasAction"
-    @row-click="onRowClick"
+    detail-path="/sandbox/records/:id"
   >
     <template v-if="showHeader" #header-right>
       <ChoyViewSwitcher
@@ -42,7 +42,6 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import { useRouter } from 'vue-router';
 import type { ModelStore } from '@/web/web/stores/modelStore';
 import type SandboxRecord from '@/sandbox/service/models/sandbox_record';
 import { useListViewExpose } from '@/web/web/composables/useListView';
@@ -62,7 +61,6 @@ import {
   ChoyViewSwitcher,
   useChoyViewRouteSwitch,
   type ChoyViewSwitcherOption,
-  type RowEventPayload,
 } from '@/web';
 import { createTranslate } from '@/web/web/i18n';
 import { sandboxRecordActions } from './sandbox_record_actions';
@@ -70,7 +68,6 @@ import { sandboxRecordActions } from './sandbox_record_actions';
 defineOptions({ name: 'SandboxRecordListView', inheritAttrs: false });
 const { _t } = createTranslate('sandbox', { scope: 'web/views/SandboxRecordListView' });
 
-const router = useRouter();
 
 const props = withDefaults(
   defineProps<{
@@ -93,11 +90,7 @@ const viewSwitcherOptions = computed<ChoyViewSwitcherOption[]>(() => [
   { value: 'chart', label: _t('Chart View') },
 ]);
 
-function onRowClick(payload: RowEventPayload) {
-  const id = String(payload.row?.Id ?? '').trim();
-  if (id) router.push(`/sandbox/records/${id}`);
-}
 
 const { listRef, expose } = useListViewExpose<SandboxRecord>();
-defineExpose({ ...expose, onRowClick });
+defineExpose(expose);
 </script>

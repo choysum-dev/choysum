@@ -27,7 +27,7 @@ SPDX-License-Identifier: Apache-2.0
       :on-search-error="onSearchError"
       :on-load-more-error="onLoadMoreError"
       :on-move-error="onMoveError"
-      @card-click="onCardClick"
+      detail-path="/auth/tokens/:id"
       @create="onCreate"
     >
       <template #search="{ onQueryUpdate }">
@@ -53,7 +53,6 @@ SPDX-License-Identifier: Apache-2.0
         <div
           class="flex cursor-grab flex-col gap-1.5 text-xs"
           :class="{ 'opacity-90': isRevokedCard(card) }"
-          @dblclick.stop="openDetailFromCard(card)"
         >
           <div class="top-row flex items-center justify-between gap-3">
             <span class="token-type rounded px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide" :class="tokenTypeClass(card)">
@@ -190,15 +189,6 @@ function onMoveError(e: unknown) {
 
 function onCreate() {
   router.push('/auth/tokens/new');
-}
-
-function openDetailFromCard(card: ChoyKanbanCard) {
-  const id = String(card.payload?.Id ?? '').trim();
-  if (id) router.push(`/auth/tokens/${id}`);
-}
-
-function onCardClick(card: ChoyKanbanCard) {
-  openDetailFromCard(card);
 }
 
 function payloadOf(card: ChoyKanbanCard): Record<string, unknown> {

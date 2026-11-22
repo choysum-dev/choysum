@@ -11,7 +11,8 @@ SPDX-License-Identifier: Apache-2.0
     :searchView="ChoySearchView"
     :action-ids="{ create: partnerActions.create, delete: partnerActions.delete }"
     :has-action="hasAction"
-    @row-click="onRowClick"
+    detail-path="/partner/partners/:id"
+    :can-open-detail="canOpenPartnerDetail"
   >
     <ChoyTableColumn type="selection" :vColumnProps="{ align: 'center' }" />
     <ChoyTableColumn type="index" :vColumnProps="{ align: 'right' }" />
@@ -27,7 +28,6 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { useRouter } from 'vue-router';
 import type { ModelStore } from '@/web/web/stores/modelStore';
 import type Partner from '@/partner/service/models/partner';
 import { useListViewExpose } from '@/web/web/composables/useListView';
@@ -38,42 +38,28 @@ import {
   ChoyBooleanField,
   ChoyDatetimeField,
   ChoyListView,
-  ChoyManyToOneField,
-  ChoyNumberField,
   ChoySearchView,
   ChoyTableColumn,
-  ChoyVarcharField,  ChoyIntField, ChoyManyToOneRefField} from '@/web';
-import type { RowEventPayload } from '@/web';
+  ChoyVarcharField,
+  ChoyIntField,
+  ChoyManyToOneRefField,
+} from '@/web';
 import { partnerActions, partnerOpenDetailAction } from './partner_actions';
-import { navigatePartnerDetail } from './partner_list_nav';
 
 defineOptions({ name: 'PartnerListView', inheritAttrs: true });
 const { _t } = createTranslate('partner', { scope: 'web/views/PartnerListView' });
 
-/**
- * Props consumed by the partner list view.
- * `store` falls back to ChoyPage provided store when omitted.
- */
 const props = defineProps<{
   store?: ModelStore<Partner>;
 }>();
 
 const store = resolvePageStore(props.store, 'PartnerListView');
-
-const router = useRouter();
-
-/**
- * Action descriptor used to open the partner detail page from the list.
- */
 const { hasAction } = usePermission();
 
-/**
- * Opens the clicked partner row when the actor has detail access.
- */
-function onRowClick(payload: RowEventPayload) {
-  navigatePartnerDetail(payload, hasAction(partnerOpenDetailAction), (path) => router.push(path));
+function canOpenPartnerDetail() {
+  return hasAction(partnerOpenDetailAction);
 }
 
 const { listRef, expose } = useListViewExpose<Partner>();
-defineExpose({ ...expose, onRowClick });
+defineExpose(expose);
 </script>

@@ -44,6 +44,7 @@ import type City from '@/base/service/models/city';
 import type Country from '@/base/service/models/country';
 import type State from '@/base/service/models/state';
 import type { ValueClickPayload as ManyToOneValueClickPayload } from '@/web/web/components/field/manyToOneTypes';
+import { openRelatedRecord } from '@/web/web/navigation/openRelatedRecord';
 import CountryListView from './CountryListView.vue';
 import StateListView from './StateListView.vue';
 import { defineModelActions } from '@/core/web/resource';
@@ -69,13 +70,13 @@ const router = useRouter();
 function onCountryValueClick(payload: ManyToOneValueClickPayload<Country>) {
   const id = String(payload?.id || '').trim();
   if (!id) return;
-  void router.push({ name: 'CountryDetail', params: { id } });
+  openRelatedRecord({ router, to: { name: 'CountryDetail', params: { id } } });
 }
 
 function onStateValueClick(payload: ManyToOneValueClickPayload<State>) {
   const id = String(payload?.id || '').trim();
   if (!id) return;
-  void router.push({ name: 'StateDetail', params: { id } });
+  openRelatedRecord({ router, to: { name: 'StateDetail', params: { id } } });
 }
 </script>
 

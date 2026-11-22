@@ -197,6 +197,17 @@ SPDX-License-Identifier: Apache-2.0
             </template>
             <slot v-else name="statusbar" />
             <slot v-if="!isSettingsPresentation" name="button-box" />
+            <ChoyFormPager
+              v-if="!isSettingsPresentation && formRecordPager.visible.value"
+              :current="formRecordPager.current.value"
+              :total="formRecordPager.total.value"
+              :can-prev="formRecordPager.canPrev.value"
+              :can-next="formRecordPager.canNext.value"
+              :busy="formRecordPager.busy.value"
+              @prev="formRecordPager.goPrev()"
+              @next="formRecordPager.goNext()"
+              @goto="formRecordPager.goTo($event)"
+            />
             <slot name="header-right" />
           </template>
         </ChoyViewActionBar>
@@ -259,6 +270,7 @@ import { createFormController } from '@/web/web/controllers/formController';
 import { useCancelableEmit } from '@/web/web/composables/useCancelableEmit';
 import { useOnchangeAggregation } from '@/web/web/composables/useOnchangeAggregation';
 import { useFormViewLifecycle } from '@/web/web/composables/useFormViewLifecycle';
+import { useFormRecordPager } from '@/web/web/composables/useFormRecordPager';
 import { useFormViewSubmit } from '@/web/web/composables/useFormViewSubmit';
 import { nextLocalToken } from '@/web/web/components/view/localToken';
 import { createTranslate } from '@/web/web/i18n';
@@ -268,6 +280,7 @@ import ChoyPageTitleActions from '@/web/web/components/layout/ChoyPageTitleActio
 import ChoyViewContainer from '@/web/web/components/view/ChoyViewContainer.vue';
 import ChoyViewActionBar from '@/web/web/components/view/ChoyViewActionBar.vue';
 import ChoyViewBusyHost from '@/web/web/components/view/ChoyViewBusyHost.vue';
+import ChoyFormPager from '@/web/web/components/view/ChoyFormPager.vue';
 import ChoyViewSwitcher, { type ChoyViewSwitcherOption } from '@/web/web/components/view/ChoyViewSwitcher.vue';
 import DropdownMenuItem from '@/web/web/components/vendor/ui/dropdown-menu/DropdownMenuItem.vue';
 import { Plus, Pencil, RefreshCw, Trash2, Check, X, Copy, RotateCcw } from 'lucide-vue-next';
@@ -669,6 +682,15 @@ const {
   },
   externalDirty: () => (hasDirtyProp ? props.dirty === true : undefined),
   leaveBlocked: () => isSettingsPresentation.value && (props.controlBusy === true || submitting.value),
+});
+
+const formRecordPager = useFormRecordPager({
+  model: () => String((store as { modelName?: string }).modelName || '').trim() || undefined,
+  recordId: () => effectiveRecordId.value,
+  isCreate: () => viewMode.value === 'create',
+  router,
+  store: store as any,
+  confirmDiscardIfDirty,
 });
 
 const { submitting, handleSubmit, onNativeSubmit } = useFormViewSubmit({

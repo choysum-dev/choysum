@@ -11,7 +11,7 @@ SPDX-License-Identifier: Apache-2.0
     :searchView="ChoySearchView"
     :action-ids="{ create: exchangeRateActions.create, delete: exchangeRateActions.delete }"
     :has-action="hasAction"
-    @row-click="onRowClick"
+    detail-path="/base/exchange-rates/:id"
   >
     <ChoyTableColumn type="selection" :vColumnProps="{ align: 'center' }" />
     <ChoyTableColumn type="index" :vColumnProps="{ align: 'right' }" />
@@ -27,14 +27,12 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts">
 import type { ModelStore } from '@/web/web/stores/modelStore';
 import type ExchangeRate from '@/base/service/models/exchange_rate';
-import { useRouter } from 'vue-router';
 import { useListViewExpose } from '@/web/web/composables/useListView';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
 import { ChoyDateField, ChoyDecimalField, ChoyListView, ChoySearchView, ChoyTableColumn, ChoyVarcharField, ChoyManyToOneField} from '@/web';
-import type { RowEventPayload } from '@/web';
 
 defineOptions({ name: 'ExchangeRateListView', inheritAttrs: true });
 const { _t, _lt } = createTranslate('base', { scope: 'web/views/ExchangeRateListView' });
@@ -42,11 +40,6 @@ const props = defineProps<{ store?: ModelStore<ExchangeRate> }>();
 const store = resolvePageStore(props.store, 'ExchangeRateListView');
 const exchangeRateActions = defineModelActions('base.ExchangeRate', { entityTitle: _lt('Exchange Rate') });
 const { hasAction } = usePermission();
-const router = useRouter();
-function onRowClick(payload: RowEventPayload) {
-  const id = String(payload.row?.Id ?? '').trim();
-  if (id) router.push(`/base/exchange-rates/${id}`);
-}
 const { listRef, expose } = useListViewExpose<ExchangeRate>();
 defineExpose(expose);
 </script>

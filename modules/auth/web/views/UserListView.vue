@@ -11,7 +11,7 @@ SPDX-License-Identifier: Apache-2.0
     :searchView="ChoySearchView"
     :action-ids="{ create: userActions.create, delete: userActions.delete }"
     :has-action="hasAction"
-    @row-click="onRowClick"
+    detail-path="/auth/users/:id"
   >
     <ChoyTableColumn type="selection" :vColumnProps="{ align: 'center' }" />
     <ChoyTableColumn type="index" :vColumnProps="{ align: 'right' }" />
@@ -35,18 +35,15 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts">
 import type { ModelStore } from '@/web/web/stores/modelStore';
 import type User from '@/auth/service/models/user/user';
-import { useRouter } from 'vue-router';
 import { useListViewExpose } from '@/web/web/composables/useListView';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { ChoyDatetimeField, ChoyImageField, ChoyListView, ChoyManyToOneField, ChoySearchView, ChoyTableColumn, ChoyVarcharField, ChoyManyToOneRefField} from '@/web';
-import type { RowEventPayload } from '@/web';
 import { createTranslate } from '@/web/web/i18n';
 import { useReactiveCollaborationCaps } from '@/web/web/platform/collaborationCaps';
 import { isUserAvatarFieldVisible } from './user_avatar_visibility';
 
-const router = useRouter();
 
 defineOptions({ name: 'UserListView', inheritAttrs: true });
 const { _t, _lt } = createTranslate('auth', { scope: 'web/views/UserListView' });
@@ -68,10 +65,6 @@ const { hasAction } = usePermission();
 /**
  * Open the clicked user record in detail view.
  */
-function onRowClick(payload: RowEventPayload) {
-  const id = String(payload.row?.Id ?? '').trim();
-  if (id) router.push(`/auth/users/${id}`);
-}
 
 const { listRef, expose } = useListViewExpose<User>();
 defineExpose(expose);

@@ -65,6 +65,7 @@ import { useRouter } from 'vue-router';
 import type { ModelStore } from '@/web/web/stores/modelStore';
 import type Country from '@/base/service/models/country';
 import type { ValueClickPayload as ManyToOneValueClickPayload } from '@/web/web/components/field/manyToOneTypes';
+import { openRelatedRecord } from '@/web/web/navigation/openRelatedRecord';
 import CountryListView from '@/base/web/views/CountryListView.vue';
 import { createTranslate } from '@/web/web/i18n';
 import {
@@ -107,7 +108,7 @@ const router = useRouter();
 function onCountryValueClick(payload: ManyToOneValueClickPayload<Country>) {
   const id = String(payload?.id || '').trim();
   if (!id) return;
-  void router.push({ name: 'CountryDetail', params: { id } });
+  openRelatedRecord({ router, to: { name: 'CountryDetail', params: { id } } });
 }
 </script>
 

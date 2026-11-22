@@ -27,7 +27,7 @@ SPDX-License-Identifier: Apache-2.0
       :on-search-error="onSearchError"
       :on-load-more-error="onLoadMoreError"
       :on-move-error="onMoveError"
-      @card-click="onCardClick"
+      detail-path="/sandbox/records/:id"
       @create="onCreate"
     >
       <template #search="{ onQueryUpdate }">
@@ -51,7 +51,6 @@ SPDX-License-Identifier: Apache-2.0
       <template #card="{ card }">
         <div
           class="flex cursor-grab flex-col gap-1.5 text-xs"
-          @dblclick.stop="openDetailFromCard(card)"
         >
           <div class="flex items-center justify-between gap-3">
             <span class="truncate text-sm font-medium text-foreground">{{ cardTitle(card) }}</span>
@@ -189,15 +188,6 @@ function cardIsActive(card: ChoyKanbanCard): boolean {
 function cardCategory(card: ChoyKanbanCard): string {
   const cat = cardPayload(card).CategoryId as { Name?: string } | undefined;
   return String(cat?.Name || '').trim();
-}
-
-function openDetailFromCard(card: ChoyKanbanCard) {
-  const id = String(card.payload?.Id ?? '').trim();
-  if (id) router.push(`/sandbox/records/${id}`);
-}
-
-function onCardClick(card: ChoyKanbanCard) {
-  openDetailFromCard(card);
 }
 
 function onCreate() {

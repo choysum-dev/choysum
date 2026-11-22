@@ -79,6 +79,7 @@ import type Company from '@/base/service/models/company';
 import type Currency from '@/base/service/models/currency';
 
 import type { ValueClickPayload as ManyToOneValueClickPayload } from '@/web/web/components/field/manyToOneTypes';
+import { openRelatedRecord } from '@/web/web/navigation/openRelatedRecord';
 import CompanyListView from './CompanyListView.vue';
 import CurrencyListView from './CurrencyListView.vue';
 import { defineModelActions } from '@/core/web/resource';
@@ -126,12 +127,12 @@ const router = useRouter();
 function onParentCompanyValueClick(payload: ManyToOneValueClickPayload<Company>) {
   const id = String(payload?.id || '').trim();
   if (!id) return;
-  void router.push({ name: 'CompanyDetail', params: { id } });
+  openRelatedRecord({ router, to: { name: 'CompanyDetail', params: { id } } });
 }
 
 function onCurrencyValueClick(payload: ManyToOneValueClickPayload<Currency>) {
   const id = String(payload?.id || '').trim();
   if (!id) return;
-  void router.push({ name: 'CurrencyDetail', params: { id } });
+  openRelatedRecord({ router, to: { name: 'CurrencyDetail', params: { id } } });
 }
 </script>

@@ -11,7 +11,7 @@ SPDX-License-Identifier: Apache-2.0
     :searchView="ChoySearchView"
     :action-ids="{ create: sequenceActions.create, delete: sequenceActions.delete }"
     :has-action="hasAction"
-    @row-click="onRowClick"
+    detail-path="/base/sequences/:id"
   >
     <ChoyTableColumn type="selection" :vColumnProps="{ align: 'center' }" />
     <ChoyTableColumn type="index" :vColumnProps="{ align: 'right' }" />
@@ -29,14 +29,12 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts">
 import type { ModelStore } from '@/web/web/stores/modelStore';
 import type Sequence from '@/base/service/models/sequence';
-import { useRouter } from 'vue-router';
 import { useListViewExpose } from '@/web/web/composables/useListView';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
 import { ChoyBooleanField, ChoyListView, ChoyManyToOneField, ChoyNumberField, ChoySearchView, ChoyTableColumn, ChoyVarcharField, ChoyIntField, ChoyBigintField} from '@/web';
-import type { RowEventPayload } from '@/web';
 
 defineOptions({ name: 'SequenceListView', inheritAttrs: true });
 const { _t, _lt } = createTranslate('base', { scope: 'web/views/SequenceListView' });
@@ -44,11 +42,6 @@ const props = defineProps<{ store?: ModelStore<Sequence> }>();
 const store = resolvePageStore(props.store, 'SequenceListView');
 const sequenceActions = defineModelActions('base.Sequence', { entityTitle: _lt('Sequence') });
 const { hasAction } = usePermission();
-const router = useRouter();
-function onRowClick(payload: RowEventPayload) {
-  const id = String(payload.row?.Id ?? '').trim();
-  if (id) router.push(`/base/sequences/${id}`);
-}
 const { listRef, expose } = useListViewExpose<Sequence>();
 defineExpose(expose);
 </script>

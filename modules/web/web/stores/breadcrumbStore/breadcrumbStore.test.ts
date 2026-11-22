@@ -595,6 +595,85 @@ describe('breadcrumbStore L1+L2 trail', () => {
     mounted.unmount();
   });
 
+  test('same-leaf page→page defaults to push; pending replace updates tip only', async () => {
+    const menuPlugin = installMenus();
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const { router } = createFeStubRouter({
+      route: { path: '/', fullPath: '/', meta: {} },
+    });
+    const i18n = createI18n({ legacy: false, locale: 'en', messages: { en: {} } });
+    const Host = defineComponent({
+      setup() {
+        useMenuStore().bindRouteFromInjection();
+        useBreadcrumbStore();
+        return () => h('div');
+      },
+    });
+    const mounted = mountApp(Host as any, { plugins: [menuPlugin, pinia, router, i18n] });
+    await flushPromises();
+
+    const menuStore = useMenuStore();
+    const store = useBreadcrumbStore();
+    const currency = menuStore.getMenu('currency');
+    expect(currency).toBeTruthy();
+    menuStore.setActiveMenu(currency!);
+
+    await router.push({ path: '/base/currencies', meta: {} });
+    await flushPromises();
+    await router.push({
+      path: '/base/currencies/a',
+      meta: { pageTitle: 'Currency Details' },
+    });
+    await flushPromises();
+    expect(store.breadcrumbStack.map((i) => i.kind)).toEqual(['app', 'menu', 'page']);
+    expect(store.breadcrumbStack[2]?.path).toBe('/base/currencies/a');
+
+    await router.push({
+      path: '/base/currencies/b',
+      meta: { pageTitle: 'Currency Details' },
+    });
+    await flushPromises();
+    expect(store.breadcrumbStack.filter((i) => i.kind === 'page').map((i) => i.path)).toEqual([
+      '/base/currencies/a',
+      '/base/currencies/b',
+    ]);
+
+    store.setPendingPageMode('replace');
+    await router.push({
+      path: '/base/currencies/c',
+      meta: { pageTitle: 'Currency Details' },
+    });
+    await flushPromises();
+    expect(store.breadcrumbStack.filter((i) => i.kind === 'page').map((i) => i.path)).toEqual([
+      '/base/currencies/a',
+      '/base/currencies/c',
+    ]);
+    expect(store.breadcrumbStack.map((i) => i.kind)).toEqual(['app', 'menu', 'page', 'page']);
+
+    // Clearing a sticky replace intent must be a no-op for the next page push.
+    store.setPendingPageMode('replace');
+    store.setPendingPageMode(null);
+    await router.push({
+      path: '/base/currencies/d',
+      meta: { pageTitle: 'Currency Details' },
+    });
+    await flushPromises();
+    expect(store.breadcrumbStack.filter((i) => i.kind === 'page').map((i) => i.path)).toEqual([
+      '/base/currencies/a',
+      '/base/currencies/c',
+      '/base/currencies/d',
+    ]);
+
+    // Returning to the menu leaf consumes a pending replace and truncates pages.
+    store.setPendingPageMode('replace');
+    await router.push({ path: '/base/currencies', meta: {} });
+    await flushPromises();
+    expect(store.breadcrumbStack.map((i) => i.kind)).toEqual(['app', 'menu']);
+
+    mounted.unmount();
+  });
+
   test('afterEach clears when no active menu', async () => {
     const menuPlugin = installMenus();
     const pinia = createPinia();

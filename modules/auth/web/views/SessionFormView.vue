@@ -63,6 +63,7 @@ import type Session from '@/auth/service/models/session';
 import type User from '@/auth/service/models/user/user';
 
 import type { ValueClickPayload as ManyToOneValueClickPayload } from '@/web/web/components/field/manyToOneTypes';
+import { openRelatedRecord } from '@/web/web/navigation/openRelatedRecord';
 import UserListView from '@/auth/web/views/UserListView.vue';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
@@ -100,7 +101,7 @@ const router = useRouter();
 function onUserValueClick(payload: ManyToOneValueClickPayload<User>) {
   const id = String(payload?.id || '').trim();
   if (!id) return;
-  void router.push(`/auth/users/${id}`);
+  openRelatedRecord({ router, to: `/auth/users/${id}` });
 }
 </script>
 

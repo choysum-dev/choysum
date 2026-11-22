@@ -13,7 +13,7 @@ SPDX-License-Identifier: Apache-2.0
     v-bind="$attrs"
     :store="store"
     :searchView="ChoySearchView"
-    @row-click="onRowClick"
+    :detail-path="detailPathForRow"
   >
     <ChoyTableColumn type="index" :vColumnProps="{ align: 'end', width: 44 }" />
     <ChoyVarcharField
@@ -56,7 +56,6 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { useRouter } from 'vue-router';
 import type { ModelStore } from '@/web/web/stores/modelStore';
 import { useListViewExpose } from '@/web/web/composables/useListView';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
@@ -67,13 +66,10 @@ import {
   ChoySearchView,
   ChoyTableColumn,
   ChoyVarcharField,
-  type RowEventPayload,
 } from '@/web';
 
 defineOptions({ name: 'MetaModelDataListView', inheritAttrs: true });
 const { _t } = createTranslate('meta', { scope: 'web/views/MetaModelDataListView' });
-
-const router = useRouter();
 
 const props = defineProps<{
   store?: ModelStore<any>;
@@ -81,10 +77,10 @@ const props = defineProps<{
 
 const store = resolvePageStore(props.store, 'MetaModelDataListView');
 
-function onRowClick(payload: RowEventPayload) {
-  const id = String(payload.row?.Id ?? '').trim();
-  if (!id) return;
-  router.push({ name: 'MetaModelDataDetail', params: { id } });
+function detailPathForRow(row: Record<string, unknown>) {
+  const id = String(row?.Id ?? '').trim();
+  if (!id) return null;
+  return { name: 'MetaModelDataDetail', params: { id } };
 }
 
 const { listRef, expose } = useListViewExpose<any>();

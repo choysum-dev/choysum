@@ -1,0 +1,543 @@
+// SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+// SPDX-License-Identifier: Apache-2.0
+
+import { computed, nextTick, ref } from 'vue';
+import { createPinia, setActivePinia } from 'pinia';
+import { useFormRecordPager } from './useFormRecordPager';
+import { useBreadcrumbStore } from '@/web/web/stores/breadcrumbStore';
+import { useRecordSetStore } from '@/web/web/stores/recordSetStore';
+
+test('goNext marks breadcrumb replace before pushing the sibling route', async () => {
+  setActivePinia(createPinia());
+  const recordSet = useRecordSetStore();
+  recordSet.seed({
+    key: 'k',
+    model: 'base.Country',
+    condition: {},
+    total: 2,
+    index: 0,
+    ids: ['a', 'b'],
+    windowStart: 0,
+  });
+
+  const breadcrumb = useBreadcrumbStore();
+  const modes: unknown[] = [];
+  const original = breadcrumb.setPendingPageMode.bind(breadcrumb);
+  breadcrumb.setPendingPageMode = (mode: 'push' | 'replace' | null) => {
+    modes.push(mode);
+    original(mode);
+  };
+
+  const pushed: unknown[] = [];
+  const router = {
+    currentRoute: {
+      value: {
+        path: '/base/countries/a',
+        name: 'CountryDetail',
+        params: { id: 'a' },
+        query: {},
+      },
+    },
+    push: (to: unknown) => {
+      pushed.push(to);
+      return Promise.resolve();
+    },
+  };
+
+  const pager = useFormRecordPager({
+    model: computed(() => 'base.Country'),
+    recordId: computed(() => 'a'),
+    isCreate: computed(() => false),
+    router,
+    store: {},
+    confirmDiscardIfDirty: async () => true,
+  });
+
+  await pager.goNext();
+  expect(modes).toEqual(['replace']);
+  expect(pushed).toEqual([
+    { name: 'CountryDetail', params: { id: 'b' }, query: {} },
+  ]);
+  expect(recordSet.active?.index).toBe(1);
+});
+
+test('goTo bails when the session index changes during confirm', async () => {
+  setActivePinia(createPinia());
+  const recordSet = useRecordSetStore();
+  recordSet.seed({
+    key: 'k',
+    model: 'base.Country',
+    condition: {},
+    total: 3,
+    index: 0,
+    ids: ['a', 'b', 'c'],
+    windowStart: 0,
+  });
+  const pushed: unknown[] = [];
+  let resolveConfirm: ((ok: boolean) => void) | null = null;
+  const pager = useFormRecordPager({
+    model: computed(() => 'base.Country'),
+    recordId: computed(() => 'a'),
+    isCreate: computed(() => false),
+    router: {
+      currentRoute: {
+        value: { path: '/base/countries/a', name: 'CountryDetail', params: { id: 'a' }, query: {} },
+      },
+      push: (to: unknown) => {
+        pushed.push(to);
+        return Promise.resolve();
+      },
+    },
+    store: {},
+    confirmDiscardIfDirty: () =>
+      new Promise<boolean>(resolve => {
+        resolveConfirm = resolve;
+      }),
+  });
+  const pending = pager.goTo(3);
+  await Promise.resolve();
+  recordSet.replaceActive({
+    key: 'k',
+    model: 'base.Country',
+    condition: {},
+    total: 3,
+    index: 1,
+    ids: ['a', 'b', 'c'],
+    windowStart: 0,
+  });
+  resolveConfirm!(true);
+  await pending;
+  expect(pushed).toEqual([]);
+  expect(recordSet.active?.index).toBe(1);
+});
+
+test('goTo jumps by 1-based position and marks breadcrumb replace', async () => {
+  setActivePinia(createPinia());
+  const recordSet = useRecordSetStore();
+  recordSet.seed({
+    key: 'k',
+    model: 'base.Country',
+    condition: {},
+    total: 3,
+    index: 0,
+    ids: ['a', 'b', 'c'],
+    windowStart: 0,
+  });
+
+  const breadcrumb = useBreadcrumbStore();
+  const modes: unknown[] = [];
+  const original = breadcrumb.setPendingPageMode.bind(breadcrumb);
+  breadcrumb.setPendingPageMode = (mode: 'push' | 'replace' | null) => {
+    modes.push(mode);
+    original(mode);
+  };
+
+  const pushed: unknown[] = [];
+  const router = {
+    currentRoute: {
+      value: {
+        path: '/base/countries/a',
+        name: 'CountryDetail',
+        params: { id: 'a' },
+        query: {},
+      },
+    },
+    push: (to: unknown) => {
+      pushed.push(to);
+      return Promise.resolve();
+    },
+  };
+
+  const pager = useFormRecordPager({
+    model: computed(() => 'base.Country'),
+    recordId: computed(() => 'a'),
+    isCreate: computed(() => false),
+    router,
+    store: {},
+    confirmDiscardIfDirty: async () => true,
+  });
+
+  await pager.goTo(3);
+  expect(modes).toEqual(['replace']);
+  expect(pushed).toEqual([
+    { name: 'CountryDetail', params: { id: 'c' }, query: {} },
+  ]);
+  expect(recordSet.active?.index).toBe(2);
+
+  pushed.length = 0;
+  modes.length = 0;
+  await pager.goTo(3);
+  expect(pushed).toEqual([]);
+  expect(modes).toEqual([]);
+});
+
+test('goNext restores recordSet when router.push fails', async () => {
+  setActivePinia(createPinia());
+  const recordSet = useRecordSetStore();
+  recordSet.seed({
+    key: 'k',
+    model: 'base.Country',
+    condition: {},
+    total: 2,
+    index: 0,
+    ids: ['a', 'b'],
+    windowStart: 0,
+  });
+  const breadcrumb = useBreadcrumbStore();
+  const modes: unknown[] = [];
+  const original = breadcrumb.setPendingPageMode.bind(breadcrumb);
+  breadcrumb.setPendingPageMode = (mode: 'push' | 'replace' | null) => {
+    modes.push(mode);
+    original(mode);
+  };
+
+  const pager = useFormRecordPager({
+    model: computed(() => 'base.Country'),
+    recordId: computed(() => 'a'),
+    isCreate: computed(() => false),
+    router: {
+      currentRoute: {
+        value: { path: '/base/countries/a', name: 'CountryDetail', params: { id: 'a' }, query: {} },
+      },
+      push: () => Promise.reject(new Error('aborted')),
+    },
+    store: {},
+    confirmDiscardIfDirty: async () => true,
+  });
+
+  await pager.goNext();
+  expect(modes).toEqual(['replace', null]);
+  expect(recordSet.active?.index).toBe(0);
+  expect(recordSet.active?.ids).toEqual(['a', 'b']);
+});
+
+test('goNext restore skips when a newer seed replaced the session', async () => {
+  setActivePinia(createPinia());
+  const recordSet = useRecordSetStore();
+  recordSet.seed({
+    key: 'k',
+    model: 'base.Country',
+    condition: {},
+    total: 2,
+    index: 0,
+    ids: ['a', 'b'],
+    windowStart: 0,
+  });
+  const pager = useFormRecordPager({
+    model: computed(() => 'base.Country'),
+    recordId: computed(() => 'a'),
+    isCreate: computed(() => false),
+    router: {
+      currentRoute: {
+        value: { path: '/base/countries/a', name: 'CountryDetail', params: { id: 'a' }, query: {} },
+      },
+      push: async () => {
+        // Newer open for the same key while this navigation is in flight.
+        recordSet.seed({
+          key: 'k',
+          model: 'base.Country',
+          condition: {},
+          total: 1,
+          index: 0,
+          ids: ['newer'],
+          windowStart: 0,
+        });
+        throw new Error('aborted');
+      },
+    },
+    store: {},
+    confirmDiscardIfDirty: async () => true,
+  });
+  await pager.goNext();
+  expect(recordSet.active?.ids).toEqual(['newer']);
+});
+
+test('goNext restores recordSet on fulfilled NavigationFailure', async () => {
+  setActivePinia(createPinia());
+  const recordSet = useRecordSetStore();
+  recordSet.seed({
+    key: 'k',
+    model: 'base.Country',
+    condition: {},
+    total: 2,
+    index: 0,
+    ids: ['a', 'b'],
+    windowStart: 0,
+  });
+  const breadcrumb = useBreadcrumbStore();
+  const modes: unknown[] = [];
+  const original = breadcrumb.setPendingPageMode.bind(breadcrumb);
+  breadcrumb.setPendingPageMode = (mode: 'push' | 'replace' | null) => {
+    modes.push(mode);
+    original(mode);
+  };
+
+  const VueRouter = await import('vue-router');
+  const { router: stub } = (VueRouter as any).createFeStubRouter({
+    route: { path: '/base/countries/a', fullPath: '/base/countries/a' },
+  });
+  stub.beforeEach(() => false);
+  const navFailure = await stub.push('/base/countries/b');
+  expect((VueRouter as any).isNavigationFailure(navFailure)).toBe(true);
+
+  const pager = useFormRecordPager({
+    model: computed(() => 'base.Country'),
+    recordId: computed(() => 'a'),
+    isCreate: computed(() => false),
+    router: {
+      currentRoute: {
+        value: { path: '/base/countries/a', name: 'CountryDetail', params: { id: 'a' }, query: {} },
+      },
+      push: () => Promise.resolve(navFailure),
+    },
+    store: {},
+    confirmDiscardIfDirty: async () => true,
+  });
+
+  await pager.goNext();
+  expect(modes).toEqual(['replace', null]);
+  expect(recordSet.active?.index).toBe(0);
+});
+
+test('path siblingLocation preserves query and syncs index from recordId', async () => {
+  setActivePinia(createPinia());
+  const recordSet = useRecordSetStore();
+  recordSet.seed({
+    key: 'k',
+    model: 'base.Country',
+    condition: {},
+    total: 2,
+    index: 0,
+    ids: ['a', 'b'],
+    windowStart: 0,
+  });
+
+  const recordId = ref('a');
+  const pushed: unknown[] = [];
+  const pager = useFormRecordPager({
+    model: computed(() => 'base.Country'),
+    recordId,
+    isCreate: computed(() => false),
+    router: {
+      currentRoute: {
+        value: {
+          path: '/base/countries/a',
+          query: { tab: 'details' },
+        },
+      },
+      push: (to: unknown) => {
+        pushed.push(to);
+        return Promise.resolve();
+      },
+    },
+    store: {},
+    confirmDiscardIfDirty: async () => true,
+  });
+
+  await pager.goNext();
+  expect(pushed).toEqual([{ path: '/base/countries/b', query: { tab: 'details' } }]);
+  expect(recordSet.active?.index).toBe(1);
+
+  // Simulate route settling on the moved id, then browser Back to the prior id.
+  recordId.value = 'b';
+  await nextTick();
+  recordId.value = 'a';
+  await nextTick();
+  expect(recordSet.active?.index).toBe(0);
+});
+
+test('path siblingLocation appends id when last segment is not the current record', async () => {
+  setActivePinia(createPinia());
+  const recordSet = useRecordSetStore();
+  recordSet.seed({
+    key: 'k',
+    model: 'base.Country',
+    condition: {},
+    total: 2,
+    index: 0,
+    ids: ['a', 'b'],
+    windowStart: 0,
+  });
+  const pushed: unknown[] = [];
+  const pager = useFormRecordPager({
+    model: computed(() => 'base.Country'),
+    recordId: computed(() => 'a'),
+    isCreate: computed(() => false),
+    router: {
+      currentRoute: {
+        value: {
+          path: '/base/countries',
+          query: {},
+        },
+      },
+      push: (to: unknown) => {
+        pushed.push(to);
+        return Promise.resolve();
+      },
+    },
+    store: {},
+    confirmDiscardIfDirty: async () => true,
+  });
+  await pager.goNext();
+  expect(pushed).toEqual(['/base/countries/b']);
+});
+
+test('path siblingLocation keeps malformed percent escapes when decoding fails', async () => {
+  setActivePinia(createPinia());
+  const badId = '%E0%A4%A';
+  const recordSet = useRecordSetStore();
+  recordSet.seed({
+    key: 'k',
+    model: 'base.Country',
+    condition: {},
+    total: 2,
+    index: 0,
+    ids: [badId, 'b'],
+    windowStart: 0,
+  });
+  const pushed: unknown[] = [];
+  const pager = useFormRecordPager({
+    model: computed(() => 'base.Country'),
+    recordId: computed(() => badId),
+    isCreate: computed(() => false),
+    router: {
+      currentRoute: {
+        value: {
+          path: `/base/countries/${badId}`,
+          query: {},
+        },
+      },
+      push: (to: unknown) => {
+        pushed.push(to);
+        return Promise.resolve();
+      },
+    },
+    store: {},
+    confirmDiscardIfDirty: async () => true,
+  });
+  await pager.goNext();
+  expect(pushed).toEqual(['/base/countries/b']);
+});
+
+test('create mode clears the active record set; discard cancel skips move', async () => {
+  setActivePinia(createPinia());
+  const recordSet = useRecordSetStore();
+  recordSet.seed({
+    key: 'k',
+    model: 'base.Country',
+    condition: {},
+    total: 2,
+    index: 0,
+    ids: ['a', 'b'],
+    windowStart: 0,
+  });
+  const isCreate = ref(false);
+  const pager = useFormRecordPager({
+    model: computed(() => 'base.Country'),
+    recordId: computed(() => 'a'),
+    isCreate,
+    router: {
+      currentRoute: { value: { path: '/base/countries/a', params: { id: 'a' }, name: 'CountryDetail', query: {} } },
+      push: () => Promise.resolve(),
+    },
+    store: {},
+    confirmDiscardIfDirty: async () => false,
+  });
+  expect(pager.visible.value).toBe(true);
+  await pager.goNext();
+  expect(recordSet.active?.index).toBe(0);
+
+  isCreate.value = true;
+  await nextTick();
+  expect(recordSet.active).toBeNull();
+});
+
+test('goPrev and Search-backed moveTo cover buildSearchIds', async () => {
+  setActivePinia(createPinia());
+  const recordSet = useRecordSetStore();
+  recordSet.seed({
+    key: 'k',
+    model: 'base.Country',
+    condition: {},
+    total: 5,
+    index: 2,
+    ids: ['a', 'b', 'c'],
+    windowStart: 0,
+  });
+  const searches: unknown[] = [];
+  const pager = useFormRecordPager({
+    model: computed(() => 'base.Country'),
+    recordId: computed(() => 'c'),
+    isCreate: computed(() => false),
+    router: {
+      currentRoute: {
+        value: { path: '/base/countries/c', name: 'CountryDetail', params: { id: 'c' }, query: {} },
+      },
+      push: () => Promise.resolve(),
+    },
+    store: {
+      Search: async (_c?: unknown, opts?: Record<string, unknown>) => {
+        searches.push(opts);
+        return [{ Id: 'd' }, { Id: 'e' }];
+      },
+    },
+    confirmDiscardIfDirty: async () => true,
+  });
+  await pager.goPrev();
+  expect(recordSet.active?.index).toBe(1);
+  await pager.goTo(5);
+  expect(searches.length).toBeGreaterThan(0);
+  expect(recordSet.active?.index).toBe(4);
+});
+
+test('visible requires current id in window; goTo guards and path sibling without query', async () => {
+  setActivePinia(createPinia());
+  const recordSet = useRecordSetStore();
+  recordSet.seed({
+    key: 'k',
+    model: 'base.Country',
+    condition: {},
+    total: 2,
+    index: 0,
+    ids: ['a', 'b'],
+    windowStart: 0,
+  });
+  const recordId = ref('z');
+  const pager = useFormRecordPager({
+    model: computed(() => 'base.Country'),
+    recordId,
+    isCreate: computed(() => false),
+    router: {
+      currentRoute: { value: { path: '/base/countries/a', query: {} } },
+      push: () => Promise.resolve(),
+    },
+    store: {},
+    confirmDiscardIfDirty: async () => true,
+  });
+  expect(pager.visible.value).toBe(false);
+  recordId.value = 'a';
+  await nextTick();
+  expect(pager.visible.value).toBe(true);
+
+  await pager.goTo(0);
+  await pager.goTo(-1);
+  expect(recordSet.active?.index).toBe(0);
+
+  const pushed: unknown[] = [];
+  const pathPager = useFormRecordPager({
+    model: computed(() => 'base.Country'),
+    recordId: computed(() => 'a'),
+    isCreate: computed(() => false),
+    router: {
+      currentRoute: { value: { path: '/base/countries/a', query: {} } },
+      push: (to: unknown) => {
+        pushed.push(to);
+        return Promise.resolve();
+      },
+    },
+    store: {},
+    confirmDiscardIfDirty: async () => true,
+  });
+  await pathPager.goNext();
+  expect(pushed).toEqual(['/base/countries/b']);
+});
