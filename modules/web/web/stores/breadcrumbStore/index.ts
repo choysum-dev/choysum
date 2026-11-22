@@ -24,6 +24,9 @@ const MAX_STACK = 10;
 
 export type BreadcrumbKind = 'app' | 'folder' | 'menu' | 'page';
 
+/** How the next same-leaf page segment should update the trail (consumed once). */
+export type BreadcrumbPageMode = 'push' | 'replace';
+
 export interface BreadcrumbItem {
   title: string;
   titleText?: TermReference;
@@ -37,7 +40,7 @@ export interface BreadcrumbItem {
 }
 
 /**
- * Breadcrumb store that tracks route-driven navigation history.
+ * Breadcrumb trail for menu IA plus optional page segments (not browser history).
  * Stack shape: [app?, ...folders, leaf, ...pages].
  */
 export const useBreadcrumbStore = defineStore('breadcrumb', () => {
@@ -45,6 +48,8 @@ export const useBreadcrumbStore = defineStore('breadcrumb', () => {
   const currentMenuId = ref<string | null>(null);
   const currentAppId = ref<string | null>(null);
   const routerGuardInstalled = ref(false);
+  /** One-shot mode for the next same-leaf page sync; defaults to push when unset. */
+  const pendingPageMode = ref<BreadcrumbPageMode | null>(null);
 
   /**
    * Installs the router guard that maintains breadcrumbs.
@@ -147,13 +152,16 @@ export const useBreadcrumbStore = defineStore('breadcrumb', () => {
 
     if (sameLeaf) {
       if (route.path !== leafPath) {
-        const pageTitle = getPageTitle(route);
-        if (pageTitle) pushBreadcrumb(pageTitle, route.path);
+        applySameLeafPage(route);
       } else {
+        consumePendingPageMode();
         truncateToMenuRoot();
       }
       return;
     }
+
+    // Drop unused same-leaf intent when the active leaf changes.
+    consumePendingPageMode();
 
     if (sameApp && app && appId !== leafId) {
       replaceLeafUnderApp(app, activeMenu, leafPath, leafSource);
@@ -169,6 +177,37 @@ export const useBreadcrumbStore = defineStore('breadcrumb', () => {
 
   function getPageTitle(route: any): TextSource {
     return resolvePageTitle(route, detailsFallback, pageFallback);
+  }
+
+  function setPendingPageMode(mode: BreadcrumbPageMode) {
+    pendingPageMode.value = mode;
+  }
+
+  function consumePendingPageMode(): BreadcrumbPageMode {
+    const mode = pendingPageMode.value ?? 'push';
+    pendingPageMode.value = null;
+    return mode;
+  }
+
+  /**
+   * Same menu leaf, deeper than the list path: push a page or replace the tip page.
+   */
+  function applySameLeafPage(route: any) {
+    const pageTitle = getPageTitle(route);
+    if (!pageTitle) {
+      consumePendingPageMode();
+      return;
+    }
+    const mode = consumePendingPageMode();
+    const tip = breadcrumbStack.value[breadcrumbStack.value.length - 1];
+    if (mode === 'replace' && tip?.kind === 'page') {
+      tip.path = route.path;
+      Object.assign(tip, normalizeTitle(pageTitle));
+      tip.timestamp = Date.now();
+      applyClickableFlags();
+      return;
+    }
+    pushBreadcrumb(pageTitle, route.path);
   }
 
   function normalizeTitle(source: TextSource): Pick<BreadcrumbItem, 'title' | 'titleText'> {
@@ -400,6 +439,7 @@ export const useBreadcrumbStore = defineStore('breadcrumb', () => {
     breadcrumbStack.value = [];
     currentMenuId.value = null;
     currentAppId.value = null;
+    pendingPageMode.value = null;
   }
 
   installRouterGuard();
@@ -412,6 +452,7 @@ export const useBreadcrumbStore = defineStore('breadcrumb', () => {
 
     resetBreadcrumb,
     pushBreadcrumb,
+    setPendingPageMode,
     navigateToBreadcrumb,
     updateCurrentTitle,
     clearBreadcrumb,
