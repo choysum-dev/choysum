@@ -201,4 +201,32 @@ test('useRecordSetStore move/moveTo drop result when session key changes during 
   resolveTo!(['h', 'i', 'j']);
   expect(await toPromise).toBeNull();
   expect(store.active?.key).toBe('session-c');
+
+  // Same collection key with a newer seedGeneration must also drop the stale move.
+  store.seed(
+    sampleEntry({
+      total: 10,
+      index: 1,
+      ids: ['a', 'b', 'c'],
+      windowStart: 0,
+      key: 'same-key',
+    })
+  );
+  let resolveSame: ((ids: string[]) => void) | null = null;
+  const pendingSame = new Promise<string[]>(resolve => {
+    resolveSame = resolve;
+  });
+  const samePromise = store.move(1, async () => pendingSame);
+  store.seed(
+    sampleEntry({
+      total: 1,
+      index: 0,
+      ids: ['newer'],
+      windowStart: 0,
+      key: 'same-key',
+    })
+  );
+  resolveSame!(['d', 'e', 'f']);
+  expect(await samePromise).toBeNull();
+  expect(store.active?.ids).toEqual(['newer']);
 });

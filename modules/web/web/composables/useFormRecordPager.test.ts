@@ -332,6 +332,43 @@ test('path siblingLocation appends id when last segment is not the current recor
   expect(pushed).toEqual(['/base/countries/b']);
 });
 
+test('path siblingLocation keeps malformed percent escapes when decoding fails', async () => {
+  setActivePinia(createPinia());
+  const badId = '%E0%A4%A';
+  const recordSet = useRecordSetStore();
+  recordSet.seed({
+    key: 'k',
+    model: 'base.Country',
+    condition: {},
+    total: 2,
+    index: 0,
+    ids: [badId, 'b'],
+    windowStart: 0,
+  });
+  const pushed: unknown[] = [];
+  const pager = useFormRecordPager({
+    model: computed(() => 'base.Country'),
+    recordId: computed(() => badId),
+    isCreate: computed(() => false),
+    router: {
+      currentRoute: {
+        value: {
+          path: `/base/countries/${badId}`,
+          query: {},
+        },
+      },
+      push: (to: unknown) => {
+        pushed.push(to);
+        return Promise.resolve();
+      },
+    },
+    store: {},
+    confirmDiscardIfDirty: async () => true,
+  });
+  await pager.goNext();
+  expect(pushed).toEqual(['/base/countries/b']);
+});
+
 test('create mode clears the active record set; discard cancel skips move', async () => {
   setActivePinia(createPinia());
   const recordSet = useRecordSetStore();

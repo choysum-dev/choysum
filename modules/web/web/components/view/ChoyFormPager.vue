@@ -183,7 +183,8 @@ function cancelEdit(): void {
   suppressBlurCommit.value = true;
   editing.value = false;
   editDraft.value = '';
-  queueMicrotask(() => {
+  // Reset after the input unmount patch so the follow-up blur stays suppressed.
+  void nextTick(() => {
     suppressBlurCommit.value = false;
   });
   // Escape closes the input; restore focus to the idle control.
@@ -197,7 +198,8 @@ function commitEdit(opts?: { restoreFocus?: boolean }): void {
   const draft = editDraft.value;
   editing.value = false;
   editDraft.value = '';
-  queueMicrotask(() => {
+  // Reset after the input unmount patch so the follow-up blur stays suppressed.
+  void nextTick(() => {
     suppressBlurCommit.value = false;
   });
   // Blur (Tab / click away) must not steal focus from the user's next target.

@@ -126,6 +126,26 @@ test('openRecordFromCollection seeds store and pushes route', async () => {
   expect(useRecordSetStore().active?.model).toBe('base.Country');
   expect(pushed).toEqual(['/base/countries/b']);
 
+  // Without Pinia, seed is skipped but navigation still proceeds.
+  const { setActivePinia: setPinia } = await import('pinia');
+  setPinia(undefined as any);
+  const pushedNoPinia: unknown[] = [];
+  openRecordFromCollection({
+    router: { push: to => pushedNoPinia.push(to) },
+    to: '/base/countries/np',
+    entry: {
+      key: 'np',
+      model: 'base.Country',
+      condition: {},
+      total: 1,
+      index: 0,
+      ids: ['np'],
+      windowStart: 0,
+    },
+  });
+  expect(pushedNoPinia).toEqual(['/base/countries/np']);
+  setActivePinia(createPinia());
+
   // Named route object target.
   openRecordFromCollection({
     router: { push: to => pushed.push(to) },

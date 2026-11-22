@@ -139,15 +139,6 @@ test('detailPath grouped Kanban opens without pager seed (lane order ≠ Search 
 
   const grouped = makeStore([{ kind: 'group', key: 'todo' }]);
   grouped.state.result.kind = 'group';
-  useRecordSetStore().seed({
-    key: 'stale',
-    model: 'sandbox.Record',
-    condition: {},
-    total: 1,
-    index: 0,
-    ids: ['old'],
-    windowStart: 0,
-  });
   const mounted = mountApp(ChoyKanbanView as any, {
     props: {
       store: grouped,
@@ -157,6 +148,17 @@ test('detailPath grouped Kanban opens without pager seed (lane order ≠ Search 
     plugins: [pinia, router as any],
   });
   await flushPromises();
+  // Seed after mount so onMounted clear does not wipe the fixture before click.
+  useRecordSetStore().seed({
+    key: 'stale',
+    model: 'sandbox.Record',
+    condition: {},
+    total: 1,
+    index: 0,
+    ids: ['old'],
+    windowStart: 0,
+  });
+  expect(useRecordSetStore().active).not.toBeNull();
 
   const state = mounted.setupState() as {
     displayLanes: ChoyKanbanLane[];

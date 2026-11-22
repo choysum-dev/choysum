@@ -54,7 +54,7 @@ function siblingLocation(
   try {
     decodedLast = decodeURIComponent(last);
   } catch {
-    decodedLast = last;
+    // Malformed % escapes keep the raw segment for the current-id comparison.
   }
   // Only replace the last segment when it is the current record id; otherwise append.
   if (parts.length && currentId && decodedLast === currentId) {

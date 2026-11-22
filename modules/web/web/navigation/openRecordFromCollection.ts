@@ -28,11 +28,16 @@ function clearSeededSession(generation: number): void {
  * Seed the Form pager session and navigate to the detail target.
  */
 export function openRecordFromCollection(args: OpenRecordFromCollectionArgs): void {
-  const store = useRecordSetStore();
-  store.seed(args.entry);
-  store.installMenuClearWatch();
-  // Only clear this open on failure — a later open may have already re-seeded.
-  const generation = store.seedGeneration;
+  let generation = -1;
+  try {
+    const store = useRecordSetStore();
+    store.seed(args.entry);
+    store.installMenuClearWatch();
+    // Only clear this open on failure — a later open may have already re-seeded.
+    generation = store.seedGeneration;
+  } catch {
+    // Pinia may be unavailable; still navigate without a pager session.
+  }
   const to = args.to;
   let push: unknown;
   try {
@@ -41,17 +46,17 @@ export function openRecordFromCollection(args: OpenRecordFromCollectionArgs): vo
         ? args.router.push(to)
         : args.router.push(to as Record<string, unknown>);
   } catch {
-    clearSeededSession(generation);
+    if (generation >= 0) clearSeededSession(generation);
     return;
   }
   // Aborted / failed navigations must not leave a seeded pager session behind.
   // Vue Router resolves guard aborts as NavigationFailure (fulfilled, not rejected).
   Promise.resolve(push).then(
     result => {
-      if (isNavigationFailure(result)) clearSeededSession(generation);
+      if (generation >= 0 && isNavigationFailure(result)) clearSeededSession(generation);
     },
     () => {
-      clearSeededSession(generation);
+      if (generation >= 0) clearSeededSession(generation);
     }
   );
 }
