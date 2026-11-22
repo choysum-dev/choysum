@@ -1,0 +1,112 @@
+// SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+// SPDX-License-Identifier: Apache-2.0
+
+import { h } from 'vue';
+import { createPinia, setActivePinia } from 'pinia';
+import * as VueRouter from 'vue-router';
+import { flushPromises, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
+import ChoyListView from './ChoyListView.vue';
+import ChoyPagination from './ChoyPagination.vue';
+import ChoyTableHost from '@/web/web/components/internal/ChoyTableHost.vue';
+import ChoyTableColumn from '@/web/web/components/table/ChoyTableColumn.vue';
+import ListInlineEditScope from '@/web/web/components/view/ListInlineEditScope.vue';
+import { useRecordSetStore } from '@/web/web/stores/recordSetStore';
+
+const createFeStubRouter = (VueRouter as any).createFeStubRouter as (overrides?: object) => {
+  router: {
+    push: (to: unknown) => Promise<unknown>;
+    currentRoute: { value: { path: string } };
+  };
+};
+
+function makeStore() {
+  return {
+    modelName: 'base.Country',
+    fullModelName: 'base.Country',
+    storeId: 'list-detail-' + Math.random().toString(36).slice(2),
+    metadata: { fields: { Name: { type: 'varchar' } } },
+    state: {
+      queryState: {
+        keyword: '',
+        appliedFilters: [],
+        appliedGroups: [],
+        keywordFields: [],
+        pagination: { limit: 20, offset: 20 },
+        orderBy: [{ field: 'Name', direction: 'asc' }],
+      },
+      result: {
+        total: 40,
+        rows: [
+          { kind: 'record', key: 'a', payload: { Id: 'a', Name: 'A' } },
+          { kind: 'record', key: 'b', payload: { Id: 'b', Name: 'B' } },
+        ],
+      },
+      selection: [],
+      planCache: new Map(),
+    },
+    setContext: () => {},
+    getContext: () => ({}),
+    withContext: async (_c: any, fn: any) => fn(),
+    Search: async () => [],
+  } as any;
+}
+
+test('detailPath row click seeds recordSet and pushes detail path', async () => {
+  const pinia = createPinia();
+  setActivePinia(pinia);
+  const { router } = createFeStubRouter({
+    route: { path: '/base/countries', fullPath: '/base/countries' },
+  });
+  const pushes: unknown[] = [];
+  const origPush = router.push.bind(router);
+  router.push = (to: unknown) => {
+    pushes.push(to);
+    return origPush(to);
+  };
+
+  stubSfc(ChoyTableHost, {
+    name: 'ChoyTableHost',
+    emits: ['row-click'],
+    setup: () => () => h('div', { 'data-stub': 'ChoyTableHost' }),
+  });
+  stubSfc(ChoyTableColumn, { name: 'ChoyTableColumn', setup: () => () => null });
+  stubSfc(ChoyPagination, {
+    name: 'ChoyPagination',
+    setup: () => () => h('div', { 'data-stub': 'Pagination' }),
+  });
+  stubSfc(ListInlineEditScope, {
+    name: 'ListInlineEditScope',
+    setup: (_p: any, { slots }: any) => () => h('div', slots.default?.()),
+  });
+
+  const mounted = mountApp(ChoyListView as any, {
+    props: {
+      store: makeStore(),
+      detailPath: '/base/countries/:id',
+      showHeader: false,
+      showPaginate: false,
+    },
+    plugins: [pinia, router as any],
+  });
+  await flushPromises();
+
+  const ss = mounted.setupState() as any;
+  await ss.onRowClick({
+    rowData: { kind: 'record', key: 'b', payload: { Id: 'b', Name: 'B' } },
+    rowIndex: 1,
+    rowKey: 'b',
+  });
+  await flushPromises();
+
+  expect(pushes).toEqual(['/base/countries/b']);
+  const entry = useRecordSetStore().getActiveForModel('base.Country');
+  expect(entry?.index).toBe(21);
+  expect(entry?.total).toBe(40);
+  expect(entry?.ids).toEqual(['a', 'b']);
+
+  mounted.unmount();
+  restoreSfc(ChoyTableHost);
+  restoreSfc(ChoyTableColumn);
+  restoreSfc(ChoyPagination);
+  restoreSfc(ListInlineEditScope);
+});

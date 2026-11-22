@@ -125,6 +125,7 @@ export {
   resolveChoyViewSwitcherOptions,
 } from './components/view/choyViewSwitcherPresets';
 export { default as ChoyPagination } from './components/view/ChoyPagination.vue';
+export { default as ChoyFormPager } from './components/view/ChoyFormPager.vue';
 export { default as ChoyBreadcrumb } from './components/view/ChoyBreadcrumb.vue';
 export { default as ChoyViewScope } from './components/view/ChoyViewScope.vue';
 export { default as ChoyButtonBox } from './components/view/ChoyButtonBox.vue';

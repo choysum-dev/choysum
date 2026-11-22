@@ -1,0 +1,61 @@
+// SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+// SPDX-License-Identifier: Apache-2.0
+
+export type DetailPathTarget =
+  | string
+  | {
+      name: string;
+      params?: Record<string, string>;
+      query?: Record<string, string>;
+    };
+
+export type DetailPathProp =
+  | string
+  | ((row: Record<string, unknown>) => DetailPathTarget | null | undefined);
+
+/**
+ * Resolve a detailPath template or factory for a row.
+ * String templates replace `:id` / `{id}` with the record Id.
+ */
+export function resolveDetailPath(
+  detailPath: DetailPathProp | null | undefined,
+  row: Record<string, unknown> | null | undefined
+): DetailPathTarget | null {
+  if (detailPath == null || !row) return null;
+  const id = String(row.Id ?? row.id ?? '').trim();
+  if (typeof detailPath === 'function') {
+    const out = detailPath(row);
+    if (out == null || out === '') return null;
+    if (typeof out === 'string') {
+      return applyIdToPathTemplate(out, id);
+    }
+    return out;
+  }
+  const path = String(detailPath).trim();
+  if (!path) return null;
+  if (!id) return null;
+  return applyIdToPathTemplate(path, id);
+}
+
+export function applyIdToPathTemplate(template: string, id: string): string | null {
+  const t = String(template || '').trim();
+  if (!t || !id) return null;
+  if (t.includes(':id') || t.includes('{id}')) {
+    return t.replace(/:id\b/g, id).replace(/\{id\}/g, id);
+  }
+  // Bare prefix: append /id when it does not already end with the id.
+  if (t.endsWith(`/${id}`)) return t;
+  return `${t.replace(/\/+$/, '')}/${id}`;
+}
+
+export function canOpenDetailRow(
+  canOpenDetail: boolean | ((row: Record<string, unknown>) => boolean) | null | undefined,
+  row: Record<string, unknown> | null | undefined
+): boolean {
+  if (canOpenDetail == null) return true;
+  if (typeof canOpenDetail === 'function') {
+    if (!row) return false;
+    return !!canOpenDetail(row);
+  }
+  return !!canOpenDetail;
+}

@@ -345,6 +345,16 @@ import {
   type ChoyKanbanDragMode,
   type ChoyKanbanVirtualizeMode,
 } from './kanbanVirtualHelpers';
+import {
+  canOpenDetailRow,
+  resolveDetailPath,
+  type DetailPathProp,
+} from '@/web/web/navigation/detailPath';
+import { openRecordFromCollection } from '@/web/web/navigation/openRecordFromCollection';
+import { snapshotFromListStore } from '@/web/web/navigation/snapshotFromListStore';
+import { useRecordSetStore } from '@/web/web/stores/recordSetStore';
+import { onActivated, onMounted } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 
 /** Shared default card body for lane cards. */
 const ChoyKanbanCardFallback = defineComponent({
@@ -409,6 +419,12 @@ const props = withDefaults(
     onMoveError?: (error: unknown) => void;
     /** Opt out of page IO action-target registration (embedded boards). */
     registerActionTarget?: boolean;
+    /**
+     * When set, card open seeds the Form record pager and navigates.
+     * Same contract as ChoyListView `detailPath`.
+     */
+    detailPath?: DetailPathProp;
+    canOpenDetail?: boolean | ((row: Record<string, unknown>) => boolean);
   }>(),
   {
     showHeader: true,
@@ -420,6 +436,8 @@ const props = withDefaults(
     autoBootstrap: true,
     // Keep omitted as undefined (not false) so matching page-store views auto-register.
     registerActionTarget: undefined,
+    // Vue Boolean cast would otherwise default a missing canOpenDetail to false.
+    canOpenDetail: true,
   },
 );
 
@@ -442,6 +460,15 @@ const emit = defineEmits<{
 
 const pageStore = useOptionalPageStore<ModelStore<any>>();
 const boundStore = resolvePageStore(props.store ?? pageStore.value, 'ChoyKanbanView');
+const router = useRouter();
+const route = useRoute();
+const recordSetStore = useRecordSetStore();
+function clearRecordSetSessionIfDetailHost() {
+  if (props.detailPath == null) return;
+  recordSetStore.clear();
+}
+onMounted(clearRecordSetSessionIfDetailHost);
+onActivated(clearRecordSetSessionIfDetailHost);
 
 function handleMoveError(error: unknown): void {
   if (props.onMoveError) {
@@ -556,6 +583,36 @@ function otherLanes(fromKey: string): ChoyKanbanLane[] {
 }
 
 function onCardClick(card: ChoyKanbanCard): void {
+  if (props.detailPath != null) {
+    const row = (card.payload || {}) as Record<string, unknown>;
+    if (!canOpenDetailRow(props.canOpenDetail as any, row)) {
+      emit('card-click', card);
+      return;
+    }
+    const to = resolveDetailPath(props.detailPath, row);
+    if (to == null) {
+      emit('card-click', card);
+      return;
+    }
+    const model = String((boundStore as { modelName?: string }).modelName || '').trim();
+    const id = String(row.Id ?? row.id ?? card.id ?? '').trim();
+    if (!id) {
+      emit('card-click', card);
+      return;
+    }
+    const entry = snapshotFromListStore(boundStore as any, {
+      model: model || 'unknown',
+      key: `${model || 'unknown'}|${String(route?.path || 'kanban')}`,
+      rowIndex: 0,
+      recordId: id,
+    });
+    if (entry) {
+      openRecordFromCollection({ router, to, entry });
+    } else {
+      void router.push(to as any);
+    }
+    return;
+  }
   emit('card-click', card);
 }
 

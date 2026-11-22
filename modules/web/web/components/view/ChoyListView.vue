@@ -267,6 +267,7 @@ import type { ConditionGroup, QueryUpdatePayload } from '@/web/web/query/types';
 import { ChoyMessage } from '../../composables/useChoyMessage';
 import {
   computed,
+  onActivated,
   onMounted,
   onBeforeUnmount,
   provide,
@@ -277,7 +278,7 @@ import {
   toRaw,
   useSlots,
 } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import type { RouteLocationRaw } from 'vue-router';
 import type { ClientModel, BaseModel, QueryCondition, OrderBy } from '@/core/rpc';
 import type { ModelStore } from '@/web/web/stores/modelStore';
@@ -345,6 +346,14 @@ import {
   useRegisterPageActionTarget,
 } from '@/web/web/composables/usePageContext';
 import { useResolvedCreateAction } from '@/web/web/composables/resolveCreateRoute';
+import {
+  canOpenDetailRow,
+  resolveDetailPath,
+  type DetailPathProp,
+} from '@/web/web/navigation/detailPath';
+import { openRecordFromCollection } from '@/web/web/navigation/openRecordFromCollection';
+import { snapshotFromListStore } from '@/web/web/navigation/snapshotFromListStore';
+import { useRecordSetStore } from '@/web/web/stores/recordSetStore';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
 import ChoyPageTitleActions from '@/web/web/components/layout/ChoyPageTitleActions.vue';
 import { Separator } from '@/web/web/components/vendor/ui/separator';
@@ -413,6 +422,14 @@ const props = withDefaults(
     showHandle?: boolean;
     /** Opt out of page IO action-target registration (embedded lists). */
     registerActionTarget?: boolean;
+
+    /**
+     * When set, row open seeds the Form record pager and navigates.
+     * String templates use `:id` / `{id}`; a factory may return a path or named route.
+     */
+    detailPath?: DetailPathProp;
+    /** Gate detailPath navigation (Partner-style ACL). Default true. */
+    canOpenDetail?: boolean | ((row: Record<string, unknown>) => boolean);
   }>(),
   {
     showHeader: true,
@@ -444,10 +461,24 @@ const props = withDefaults(
     showHandle: true,
     // Keep omitted as undefined (not false) so matching page-store views auto-register.
     registerActionTarget: undefined,
+    // Vue Boolean cast would otherwise default a missing canOpenDetail to false and
+    // silently block detailPath navigation.
+    canOpenDetail: true,
   }
 );
 
 const store = resolvePageStore(props.store, 'ListView');
+const router = useRouter();
+const route = useRoute();
+const recordSetStore = useRecordSetStore();
+// Only collection pages that open Form clear the pager session on return —
+// embedded / Search-more lists must not wipe an open Form's record set.
+function clearRecordSetSessionIfDetailHost() {
+  if (props.detailPath == null) return;
+  recordSetStore.clear();
+}
+onMounted(clearRecordSetSessionIfDetailHost);
+onActivated(clearRecordSetSessionIfDetailHost);
 // Relation pickers set registerActionTarget=false; do not inherit the host page's Create route.
 const resolvedCreateAction = useResolvedCreateAction(() => props.createAction, {
   enabled: () => props.registerActionTarget !== false,
@@ -488,7 +519,6 @@ const { emitCancelable } = useCancelableEmit(emit as any);
 const listViewMode = ref<ViewMode>('display');
 useProvideViewScope({ kind: 'List', mode: listViewMode });
 
-const router = useRouter();
 // Avoid Vue "component made reactive" warn when a Component is passed as searchView prop.
 const resolvedSearchView = computed(() => {
   const view = props.searchView;
@@ -1032,7 +1062,7 @@ async function onRowClick(p: RowEventHandlerParams) {
         selection.toggleRow?.(row, nextChecked);
         return;
       }
-      emit('row-click', {
+      openDetailOrEmitRowClick({
         row: row.payload as ClientModel<T>,
         rowIndex: p.rowIndex,
         rowKey: p.rowKey as RowEventHandlerParams['rowKey'],
@@ -1057,12 +1087,52 @@ async function onRowClick(p: RowEventHandlerParams) {
 
   // In non-grouped mode, unwrap wrapped RecordRow objects to the actual record
   const record = row?.type === 'record' ? row?.record : row?.kind === 'record' ? row?.payload : row;
-  emit('row-click', {
+  openDetailOrEmitRowClick({
     row: record as ClientModel<T>,
     rowIndex: p.rowIndex,
     rowKey: p.rowKey as RowEventHandlerParams['rowKey'],
     event: p.event as MouseEvent,
   });
+}
+
+function openDetailOrEmitRowClick(payload: RowEventPayload<T>) {
+  if (props.detailPath != null) {
+    const row = (payload.row || {}) as Record<string, unknown>;
+    if (!canOpenDetailRow(props.canOpenDetail as any, row)) {
+      emit('row-click', payload);
+      return;
+    }
+    const to = resolveDetailPath(props.detailPath, row);
+    if (to == null) {
+      emit('row-click', payload);
+      return;
+    }
+    const model = String((store as { modelName?: string }).modelName || '').trim();
+    const id = String(row.Id ?? row.id ?? '').trim();
+    if (!id) {
+      emit('row-click', payload);
+      return;
+    }
+    let entry = null as ReturnType<typeof snapshotFromListStore>;
+    try {
+      entry = snapshotFromListStore(store as any, {
+        model: model || 'unknown',
+        key: `${model || 'unknown'}|${String(route?.path || 'list')}`,
+        rowIndex: payload.rowIndex,
+        recordId: id,
+      });
+    } catch {
+      entry = null;
+    }
+    if (entry) {
+      openRecordFromCollection({ router, to, entry });
+    } else {
+      // Still open the record when snapshot is unavailable (no pager session).
+      void router.push(to as any);
+    }
+    return;
+  }
+  emit('row-click', payload);
 }
 
 // =============================
