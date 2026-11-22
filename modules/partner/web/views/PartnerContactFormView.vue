@@ -74,6 +74,7 @@ import { useRouter } from 'vue-router';
 import type { ModelStore } from '@/web/web/stores/modelStore';
 import type Address from '@/base/service/models/address';
 import type { ValueClickPayload as ManyToOneValueClickPayload } from '@/web/web/components/field/manyToOneTypes';
+import { openRelatedRecord } from '@/web/web/navigation/openRelatedRecord';
 import AddressListView from '@/base/web/views/AddressListView.vue';
 import { createTranslate } from '@/web/web/i18n';
 import {
@@ -127,7 +128,7 @@ const contactRoleOptions = ['general', 'billing', 'shipping', 'procurement', 'sa
 function onAddressValueClick(payload: ManyToOneValueClickPayload<Address>) {
   const id = String(payload?.id || '').trim();
   if (!id) return;
-  void router.push({ name: 'AddressDetail', params: { id } });
+  openRelatedRecord({ router, to: { name: 'AddressDetail', params: { id } } });
 }
 </script>
 

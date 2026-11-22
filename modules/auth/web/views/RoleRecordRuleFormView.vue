@@ -75,6 +75,7 @@ import type RoleRecordRule from '@/auth/service/models/role_record_rule';
 import type Role from '@/auth/service/models/role';
 
 import type { ValueClickPayload as ManyToOneValueClickPayload } from '@/web/web/components/field/manyToOneTypes';
+import { openRelatedRecord } from '@/web/web/navigation/openRelatedRecord';
 import RoleListView from '@/auth/web/views/RoleListView.vue';
 import RoleRecordRuleAudienceHints from '@/auth/web/views/RoleRecordRuleAudienceHints.vue';
 import { defineModelActions } from '@/core/web/resource';
@@ -114,7 +115,7 @@ const router = useRouter();
 function onRoleValueClick(payload: ManyToOneValueClickPayload<Role>) {
   const id = roleIdFromValueClick(payload);
   if (!id) return;
-  void router.push(`/auth/roles/${id}`);
+  openRelatedRecord({ router, to: `/auth/roles/${id}` });
 }
 </script>
 

@@ -39,6 +39,7 @@ import type { ModelStore } from '@/web/web/stores/modelStore';
 import type Bank from '@/base/service/models/bank';
 import type Address from '@/base/service/models/address';
 import type { ValueClickPayload as ManyToOneValueClickPayload } from '@/web/web/components/field/manyToOneTypes';
+import { openRelatedRecord } from '@/web/web/navigation/openRelatedRecord';
 import CountryListView from './CountryListView.vue';
 import AddressListView from './AddressListView.vue';
 import { defineModelActions } from '@/core/web/resource';
@@ -64,7 +65,7 @@ const router = useRouter();
 function onAddressValueClick(payload: ManyToOneValueClickPayload<Address>) {
   const id = String(payload?.id || '').trim();
   if (!id) return;
-  void router.push({ name: 'AddressDetail', params: { id } });
+  openRelatedRecord({ router, to: { name: 'AddressDetail', params: { id } } });
 }
 </script>
 

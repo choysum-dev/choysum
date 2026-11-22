@@ -82,6 +82,7 @@ import { useRouter } from 'vue-router';
 import type { ModelStore } from '@/web/web/stores/modelStore';
 import type Bank from '@/base/service/models/bank';
 import type { ValueClickPayload as ManyToOneValueClickPayload } from '@/web/web/components/field/manyToOneTypes';
+import { openRelatedRecord } from '@/web/web/navigation/openRelatedRecord';
 import BankListView from '@/base/web/views/BankListView.vue';
 import { createTranslate } from '@/web/web/i18n';
 import {
@@ -129,7 +130,7 @@ const accountTypeOptions = ['checking', 'savings', 'corporate', 'other'];
 function onBankValueClick(payload: ManyToOneValueClickPayload<Bank>) {
   const id = String(payload?.id || '').trim();
   if (!id) return;
-  void router.push({ name: 'BankDetail', params: { id } });
+  openRelatedRecord({ router, to: { name: 'BankDetail', params: { id } } });
 }
 </script>
 

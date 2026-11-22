@@ -145,6 +145,7 @@ import type Company from '@/base/service/models/company';
 
 import type { ValueClickPayload as ManyToOneRefValueClickPayload } from '@/web/web/components/field/manyToOneTypes';
 import type { TagClickPayload as RefTagClickPayload } from '@/web/web/components/field/manyToManyTagsTypes';
+import { openRelatedRecord } from '@/web/web/navigation/openRelatedRecord';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
@@ -208,7 +209,7 @@ const router = useRouter();
 function onCompanyValueClick(payload: ManyToOneRefValueClickPayload<Company>) {
   const id = String(payload?.id || '').trim();
   if (!id) return;
-  void router.push({ name: 'CompanyDetail', params: { id } });
+  openRelatedRecord({ router, to: { name: 'CompanyDetail', params: { id } } });
 }
 
 /**
@@ -217,7 +218,7 @@ function onCompanyValueClick(payload: ManyToOneRefValueClickPayload<Company>) {
 function onCompanyTagClick(payload: RefTagClickPayload<Company>) {
   const id = String(payload?.id || '').trim();
   if (!id) return;
-  void router.push({ name: 'CompanyDetail', params: { id } });
+  openRelatedRecord({ router, to: { name: 'CompanyDetail', params: { id } } });
 }
 </script>
 
