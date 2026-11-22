@@ -58,11 +58,11 @@ describe('SearchFilterGroup selection filter (T4.5)', () => {
       },
     }));
     const helpers = createFieldsGetHelpers(
-      { fieldsMetadata: { Status: statusMeta }, FieldsGet },
+      { metadata: { fields: { Status: statusMeta } }, FieldsGet },
       { getLang: () => 'zh_CN' }
     );
     const store = {
-      fieldsMetadata: { Status: statusMeta },
+      metadata: { fields: { Status: statusMeta } },
       FieldsGet,
       ...helpers,
     };

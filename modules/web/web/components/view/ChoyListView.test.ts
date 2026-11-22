@@ -22,7 +22,7 @@ function makeStore(extra?: Record<string, unknown>) {
   return {
     fullModelName: 'partner.Partner',
     storeId: 'list-main-' + Math.random().toString(36).slice(2),
-    fieldsMetadata: { Name: { type: 'varchar' }, Sequence: { type: 'integer' } },
+    metadata: { fields: { Name: { type: 'varchar' }, Sequence: { type: 'integer' } } },
     state: {
       queryState: {
         keyword: '',

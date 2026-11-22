@@ -416,7 +416,7 @@ describe('useUserFilters', () => {
     Search.setImpl(async () => []);
     const api = runInSetup(() =>
       useUserFilters({
-        store: { application: 'demo', modelName: 'Widget', fieldsMetadata: {}, state: { queryState: {} } },
+        store: { application: 'demo', modelName: 'Widget', metadata: { fields: {} }, state: { queryState: {} } },
         filtersRef: ref([]),
         applyNamedFilter: fnRecorder(),
         scopeKey: () => '/web/partners/42/edit?x=1',
@@ -495,7 +495,7 @@ describe('useUserFilters', () => {
         store: {
           application: 'demo',
           modelName: 'Widget',
-          fieldsMetadata: fieldsMeta,
+          metadata: { fields: fieldsMeta },
           state: { queryState: { keywordFields: ['Name', 'Code'] } },
         },
         filtersRef: ref(groups),
@@ -529,7 +529,7 @@ describe('useUserFilters', () => {
     actorId = '';
     const api = runInSetup(() =>
       useUserFilters({
-        store: { application: 'demo', modelName: 'Widget', fieldsMetadata: {}, state: { queryState: {} } },
+        store: { application: 'demo', modelName: 'Widget', metadata: { fields: {} }, state: { queryState: {} } },
         filtersRef: ref([]),
         applyNamedFilter: fnRecorder(),
         ...deps(),
@@ -545,7 +545,7 @@ describe('useUserFilters', () => {
     filtersToQuery.setImpl(() => null);
     const api = runInSetup(() =>
       useUserFilters({
-        store: { application: 'demo', modelName: 'Widget', fieldsMetadata: {}, state: { queryState: {} } },
+        store: { application: 'demo', modelName: 'Widget', metadata: { fields: {} }, state: { queryState: {} } },
         filtersRef: ref(null as any),
         applyNamedFilter: fnRecorder(),
         ...deps(),
@@ -579,7 +579,7 @@ describe('useUserFilters', () => {
   test('saveCurrent persists getAppliedGroups into GroupBy', async () => {
     const api = runInSetup(() =>
       useUserFilters({
-        store: { application: 'demo', modelName: 'Widget', fieldsMetadata: {}, state: { queryState: {} } },
+        store: { application: 'demo', modelName: 'Widget', metadata: { fields: {} }, state: { queryState: {} } },
         filtersRef: ref([]),
         applyNamedFilter: fnRecorder(),
         getAppliedGroups: () => [{ field: 'CreatedAt', granularity: 'year' }],
@@ -609,7 +609,7 @@ describe('useUserFilters', () => {
     });
     const api = runInSetup(() =>
       useUserFilters({
-        store: { application: 'demo', modelName: 'Widget', fieldsMetadata: {}, state: { queryState: {} } },
+        store: { application: 'demo', modelName: 'Widget', metadata: { fields: {} }, state: { queryState: {} } },
         filtersRef: ref([]),
         applyNamedFilter: fnRecorder(),
         getAppliedGroups: () => [{ field: 'CreatedAt', granularity: 'year' }],
@@ -632,7 +632,7 @@ describe('useUserFilters', () => {
     }));
     const api = runInSetup(() =>
       useUserFilters({
-        store: { application: 'demo', modelName: 'Widget', fieldsMetadata: {}, state: { queryState: {} } },
+        store: { application: 'demo', modelName: 'Widget', metadata: { fields: {} }, state: { queryState: {} } },
         filtersRef: ref([]),
         applyNamedFilter: fnRecorder(),
         ...deps(),
@@ -845,7 +845,7 @@ describe('useUserFilters', () => {
   test('saveCurrent null name and empty CreatedUid/Name fallbacks', async () => {
     const api = runInSetup(() =>
       useUserFilters({
-        store: { application: 'demo', modelName: 'Widget', fieldsMetadata: {}, state: { queryState: {} } },
+        store: { application: 'demo', modelName: 'Widget', metadata: { fields: {} }, state: { queryState: {} } },
         filtersRef: ref([]),
         applyNamedFilter: fnRecorder(),
         ...deps(),

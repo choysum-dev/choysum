@@ -53,11 +53,11 @@ describe('SearchFilter preview labels', () => {
     });
 
     const store = {
-      fieldsMetadata: {
+      metadata: { fields: {
         Name: { type: 'varchar' },
         PartnerId: { type: 'manytoone', relationModel: 'base.Partner' },
         Active: { type: 'boolean' },
-      },
+      } },
     } as any;
     const draft = {
       root: {
@@ -105,7 +105,7 @@ describe('SearchFilter preview labels', () => {
       },
     });
 
-    const store = { fieldsMetadata: { Name: { type: 'varchar' }, PartnerId: { type: 'manytoone' } } } as any;
+    const store = { metadata: { fields: { Name: { type: 'varchar' }, PartnerId: { type: 'manytoone' } } } } as any;
     const draft = {
       root: {
         id: 'g1',
@@ -165,10 +165,10 @@ describe('SearchFilter preview labels', () => {
     };
 
     const store = {
-      fieldsMetadata: {
+      metadata: { fields: {
         PartnerId: { type: 'manytoone', relationModel: 'base.Partner' },
         CompanyId: { type: 'ManyToOneRef', relationModel: 'base.Company' },
-      },
+      } },
     } as any;
     const draft = {
       root: {
@@ -225,9 +225,9 @@ describe('SearchFilter preview labels', () => {
     const { unmount, q } = mountApp(SearchFilter as any, {
       props: {
         store: {
-          fieldsMetadata: {
+          metadata: { fields: {
             LanguageId: { type: 'manytooneref', relationModel: 'base.Language' },
-          },
+          } },
         } as any,
         draft: {
           root: {
@@ -289,7 +289,7 @@ describe('SearchFilter preview labels', () => {
     const onCancel = fnRecorder();
     const onConfirm = fnRecorder();
 
-    const store = { fieldsMetadata: { Name: { type: 'varchar' } } } as any;
+    const store = { metadata: { fields: { Name: { type: 'varchar' } } } } as any;
     const { unmount, click, qa, q, props } = mountApp(SearchFilter as any, {
       props: {
         store,

@@ -6,7 +6,7 @@ import { asyncFnRecorder, syncFnRecorder, type AsyncFnRecorder, type SyncFnRecor
 
 function newStore(
   updateResult: Record<string, unknown>,
-  fieldsMetadata: Record<string, { type: string }> = {
+  fields: Record<string, { type: string }> = {
     Avatar: { type: 'image' },
     Username: { type: 'varchar' },
   }
@@ -14,7 +14,7 @@ function newStore(
   return {
     fullModelName: 'auth.User',
     storeId: 'auth.User',
-    fieldsMetadata,
+    metadata: { fields },
     state: {},
     getContext: () => ({}),
     UpdateById: asyncFnRecorder(async () => updateResult),

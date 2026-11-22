@@ -21,51 +21,60 @@ import { useI18nStore } from '@/web/web/stores/i18nStore';
  */
 export const {{.Model.Name}}Api = webApiService('{{.App}}.{{.Model.Name}}', {{.Model.Name}}Service);
 
-// Field metadata.
-export const {{.Model.Name}}FieldsMetadata = {
-{{- range $field := .FieldsMetadata}}
-  {{$field.Name}}: {
-    {{- if $field.Id}}id: '{{$field.Id}}',{{- end}}
-    type: '{{$field.FieldType}}',
-    typeAnnotation: '{{$field.TypeAnnotation}}',
-    {{- if $field.StorageKind}}storageKind: '{{$field.StorageKind}}',{{- end}}
-    {{- if ne $field.ShouldCreateColumn nil}}shouldCreateColumn: {{$field.ShouldCreateColumn}},{{- end}}
-    {{- if $field.ResolvedColumnType}}resolvedColumnType: '{{$field.ResolvedColumnType}}',{{- end}}
-    {{- if $field.ReasonCode}}reasonCode: '{{$field.ReasonCode}}',{{- end}}
-    {{- if $field.ComputedKind}}computedKind: '{{$field.ComputedKind}}',{{- end}}
-    {{- if $field.RelatedPath}}relatedPath: '{{$field.RelatedPath}}',{{- end}}
-    {{- if ne $field.RelatedStore nil}}relatedStore: {{$field.RelatedStore}},{{- end}}
-    {{- if ne $field.Searchable nil}}searchable: {{$field.Searchable}},{{- end}}
-    {{- if and $field.RelationModel (or (eq $field.FieldType "ManyToOne") (eq $field.FieldType "OneToMany") (eq $field.FieldType "ManyToMany") (eq $field.FieldType "ManyToOneRef") (eq $field.FieldType "ManyToManyRef"))}}relationModel: '{{$field.RelationModel}}',{{- end}}
-    {{- if $field.RelationFilter}}relationFilter: "{{$field.RelationFilter}}",{{- end}}
-    {{- if $field.RelationModelParentField}}relationModelParentField: '{{$field.RelationModelParentField}}',{{- end}}
-    {{- if $field.NotNull}}notNull: {{$field.NotNull}},{{- end}}
-    {{- if $field.Size}}size: {{$field.Size}},{{- end}}
-    {{- if $field.Precision}}precision: {{$field.Precision}},{{- end}}
-    {{- if $field.Scale}}scale: {{$field.Scale}},{{- end}}
-    {{- if $field.ScaleField}}scaleField: {{$field.ScaleField}},{{- end}}
-    {{- if $field.CurrencyField}}currencyField: {{$field.CurrencyField}},{{- end}}
-    {{- if $field.Round}}round: '{{$field.Round}}',{{- end}}
-    {{- if $field.IsReadonly}}isReadonly: {{$field.IsReadonly}},{{- end}}
-    {{- if $field.MaxUploadBytes}}maxUploadBytes: {{$field.MaxUploadBytes}},{{- end}}
-    {{- if $field.MaxWidth}}maxWidth: {{$field.MaxWidth}},{{- end}}
-    {{- if $field.MaxHeight}}maxHeight: {{$field.MaxHeight}},{{- end}}
-    {{- if $field.Indexed}}indexed: {{$field.Indexed}},{{- end}}
-    {{- if $field.Translate}}translate: {{$field.Translate}},{{- end}}
-    {{- if $field.CompanyDependent}}companyDependent: {{$field.CompanyDependent}},{{- end}}
-    {{- if ne $field.Copy nil}}copy: false,{{- end}}
-    {{- if $field.RelationInverseField}}relationInverseField: '{{$field.RelationInverseField}}',{{- end}}
-    {{- if $field.RelationJoinModel}}relationJoinModel: '{{$field.RelationJoinModel}}',{{- end}}
-    {{- if $field.RelationJoinField}}relationJoinField: '{{$field.RelationJoinField}}',{{- end}}
-    {{- if $field.RelationInverseJoinField}}relationInverseJoinField: '{{$field.RelationInverseJoinField}}',{{- end}}
-    {{- if $field.String}}string: {{$field.String}},{{- end}}
-    {{- if $field.StringText}}stringText: {{$field.StringText}},{{- end}}
-    {{- if $field.Help}}help: {{$field.Help}},{{- end}}
-    {{- if $field.HelpText}}helpText: {{$field.HelpText}},{{- end}}
-    {{- if $field.SelectionKind}}selectionKind: '{{$field.SelectionKind}}',{{- end}}
-    {{- if $field.Selection}}selection: {{$field.Selection}},{{- end}}
-  },
+// Model + field metadata (static codegen).
+export const {{.Model.Name}}Metadata = {
+{{- if .OrderBy}}
+  orderBy: [
+{{- range $item := .OrderBy}}
+    { field: '{{$item.Field}}', order: '{{$item.Order}}' as const },
 {{- end}}
+  ],
+{{- end}}
+  fields: {
+{{- range $field := .FieldsMetadata}}
+    {{$field.Name}}: {
+      {{- if $field.Id}}id: '{{$field.Id}}',{{- end}}
+      type: '{{$field.FieldType}}',
+      typeAnnotation: '{{$field.TypeAnnotation}}',
+      {{- if $field.StorageKind}}storageKind: '{{$field.StorageKind}}',{{- end}}
+      {{- if ne $field.ShouldCreateColumn nil}}shouldCreateColumn: {{$field.ShouldCreateColumn}},{{- end}}
+      {{- if $field.ResolvedColumnType}}resolvedColumnType: '{{$field.ResolvedColumnType}}',{{- end}}
+      {{- if $field.ReasonCode}}reasonCode: '{{$field.ReasonCode}}',{{- end}}
+      {{- if $field.ComputedKind}}computedKind: '{{$field.ComputedKind}}',{{- end}}
+      {{- if $field.RelatedPath}}relatedPath: '{{$field.RelatedPath}}',{{- end}}
+      {{- if ne $field.RelatedStore nil}}relatedStore: {{$field.RelatedStore}},{{- end}}
+      {{- if ne $field.Searchable nil}}searchable: {{$field.Searchable}},{{- end}}
+      {{- if and $field.RelationModel (or (eq $field.FieldType "ManyToOne") (eq $field.FieldType "OneToMany") (eq $field.FieldType "ManyToMany") (eq $field.FieldType "ManyToOneRef") (eq $field.FieldType "ManyToManyRef"))}}relationModel: '{{$field.RelationModel}}',{{- end}}
+      {{- if $field.RelationFilter}}relationFilter: "{{$field.RelationFilter}}",{{- end}}
+      {{- if $field.RelationModelParentField}}relationModelParentField: '{{$field.RelationModelParentField}}',{{- end}}
+      {{- if $field.NotNull}}notNull: {{$field.NotNull}},{{- end}}
+      {{- if $field.Size}}size: {{$field.Size}},{{- end}}
+      {{- if $field.Precision}}precision: {{$field.Precision}},{{- end}}
+      {{- if $field.Scale}}scale: {{$field.Scale}},{{- end}}
+      {{- if $field.ScaleField}}scaleField: {{$field.ScaleField}},{{- end}}
+      {{- if $field.CurrencyField}}currencyField: {{$field.CurrencyField}},{{- end}}
+      {{- if $field.Round}}round: '{{$field.Round}}',{{- end}}
+      {{- if $field.IsReadonly}}isReadonly: {{$field.IsReadonly}},{{- end}}
+      {{- if $field.MaxUploadBytes}}maxUploadBytes: {{$field.MaxUploadBytes}},{{- end}}
+      {{- if $field.MaxWidth}}maxWidth: {{$field.MaxWidth}},{{- end}}
+      {{- if $field.MaxHeight}}maxHeight: {{$field.MaxHeight}},{{- end}}
+      {{- if $field.Indexed}}indexed: {{$field.Indexed}},{{- end}}
+      {{- if $field.Translate}}translate: {{$field.Translate}},{{- end}}
+      {{- if $field.CompanyDependent}}companyDependent: {{$field.CompanyDependent}},{{- end}}
+      {{- if ne $field.Copy nil}}copy: false,{{- end}}
+      {{- if $field.RelationInverseField}}relationInverseField: '{{$field.RelationInverseField}}',{{- end}}
+      {{- if $field.RelationJoinModel}}relationJoinModel: '{{$field.RelationJoinModel}}',{{- end}}
+      {{- if $field.RelationJoinField}}relationJoinField: '{{$field.RelationJoinField}}',{{- end}}
+      {{- if $field.RelationInverseJoinField}}relationInverseJoinField: '{{$field.RelationInverseJoinField}}',{{- end}}
+      {{- if $field.String}}string: {{$field.String}},{{- end}}
+      {{- if $field.StringText}}stringText: {{$field.StringText}},{{- end}}
+      {{- if $field.Help}}help: {{$field.Help}},{{- end}}
+      {{- if $field.HelpText}}helpText: {{$field.HelpText}},{{- end}}
+      {{- if $field.SelectionKind}}selectionKind: '{{$field.SelectionKind}}',{{- end}}
+      {{- if $field.Selection}}selection: {{$field.Selection}},{{- end}}
+    },
+{{- end}}
+  },
 } as const;
 
 // Do not redeclare base service methods from ModelStore; only append custom services.
@@ -114,7 +123,7 @@ export function create{{.Model.Name}}Store(options?: Create{{.Model.Name}}StoreO
 
     const fieldsGetHelpers = createFieldsGetHelpers(
       {
-        fieldsMetadata: {{.Model.Name}}FieldsMetadata as any,
+        metadata: {{.Model.Name}}Metadata as any,
         FieldsGet: {{.Model.Name}}Api.FieldsGet as any,
       },
       {
@@ -147,7 +156,7 @@ export function create{{.Model.Name}}Store(options?: Create{{.Model.Name}}StoreO
       get isLoading() { return isLoading.value; },
       get lastError() { return lastError.value; },
       destroy,
-      fieldsMetadata: {{.Model.Name}}FieldsMetadata,
+      metadata: {{.Model.Name}}Metadata,
       ensureFieldsGet: fieldsGetHelpers.ensureFieldsGet,
       getFieldMeta: fieldsGetHelpers.getFieldMeta,
       getFieldsGetTranslatedString: fieldsGetHelpers.getFieldsGetTranslatedString,

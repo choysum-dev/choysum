@@ -84,7 +84,7 @@ describe('SearchFilterGroup interactions', () => {
     const onAddGroup = fnRecorder();
     const onRemoveGroup = fnRecorder();
     const onAddCondition = fnRecorder();
-    const store = { fieldsMetadata: { Name: { type: 'varchar' } } } as any;
+    const store = { metadata: { fields: { Name: { type: 'varchar' } } } } as any;
 
     const m = mountApp(SearchFilterGroup as any, {
       props: {
@@ -210,7 +210,7 @@ describe('SearchFilterGroup interactions', () => {
         group,
         isRoot: true,
         fields: [{ prop: 'Name', label: 'Name' }],
-        store: { fieldsMetadata: { Name: { type: 'varchar' } } },
+        store: { metadata: { fields: { Name: { type: 'varchar' } } } },
         onSetLogic,
         onAddGroup: () => {},
         onRemoveGroup: () => {},

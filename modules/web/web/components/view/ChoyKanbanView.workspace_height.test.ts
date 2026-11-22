@@ -15,7 +15,7 @@ function makeStore() {
     storeId: 'web.kanban.workspace.height',
     modelName: 'demo.Widget',
     fullModelName: 'demo.Widget',
-    fieldsMetadata: {},
+    metadata: { fields: {} },
     state: { queryState: {} },
     meta: { fields: {} },
   } as any;

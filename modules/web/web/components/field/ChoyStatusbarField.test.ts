@@ -57,10 +57,10 @@ const staticMeta: WebFieldMetadata = {
 function makeStore(meta: WebFieldMetadata = staticMeta) {
   const FieldsGet = fnRecorder(async () => ({ State: meta }));
   const helpers = createFieldsGetHelpers(
-    { fieldsMetadata: { State: meta }, FieldsGet },
+    { metadata: { fields: { State: meta } }, FieldsGet },
     { getLang: () => 'en_US' }
   );
-  return { fieldsMetadata: { State: meta }, FieldsGet, ...helpers };
+  return { metadata: { fields: { State: meta } }, FieldsGet, ...helpers };
 }
 
 const lastBaseProps: { current: Record<string, unknown> | null } = { current: null };
@@ -378,12 +378,12 @@ describe('ChoyStatusbarField mount wiring', () => {
   test('ensures FieldsGet on mount and merges formItemProps class', async () => {
     const FieldsGet = fnRecorder(async () => ({ State: staticMeta }));
     const helpers = createFieldsGetHelpers(
-      { fieldsMetadata: { State: staticMeta }, FieldsGet },
+      { metadata: { fields: { State: staticMeta } }, FieldsGet },
       { getLang: () => 'en_US' }
     );
     const ensureCalls: unknown[][] = [];
     const store = {
-      fieldsMetadata: { State: staticMeta },
+      metadata: { fields: { State: staticMeta } },
       FieldsGet,
       ensureFieldsGet: async (...args: any[]) => {
         ensureCalls.push(args);

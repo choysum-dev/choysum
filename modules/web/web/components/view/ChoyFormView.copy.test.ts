@@ -22,7 +22,7 @@ function fakeStore(opts?: { DefaultGet?: (seed: any) => Promise<any> }) {
   return {
     fullModelName: 'demo.Widget',
     storeId: 'demo.Widget',
-    fieldsMetadata: { Name: { type: 'varchar' } },
+    metadata: { fields: { Name: { type: 'varchar' } } },
     state: { queryState: {}, result: undefined, selection: [], planCache: new Map() },
     setContext: () => {},
     getContext: () => ({}),

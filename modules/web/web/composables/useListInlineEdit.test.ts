@@ -29,10 +29,10 @@ function mountInline(opts?: {
   const UpdateById = fnRecorder(opts?.updateImpl ?? (async () => ({})));
   const Onchange = fnRecorder(async () => ({ value: {}, messages: [] }));
   const store = {
-    fieldsMetadata: {
+    metadata: { fields: {
       Name: { id: '1', type: 'varchar', typeAnnotation: '' },
       Sequence: { id: '2', type: 'int', typeAnnotation: '', isReadonly: true },
-    },
+    } },
     UpdateById,
     Onchange,
     state: {

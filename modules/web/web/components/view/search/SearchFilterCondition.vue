@@ -322,7 +322,7 @@ const valueRef = computed({
 const fieldMeta = computed(() => {
   const fieldName = props.condition.field || '';
   const t = metaTypeOf(fieldName);
-  const staticMeta = ((props.store as any)?.fieldsMetadata?.[fieldName] || {}) as Partial<WebFieldMetadata>;
+  const staticMeta = ((props.store as any)?.metadata?.fields?.[fieldName] || {}) as Partial<WebFieldMetadata>;
   return {
     ...staticMeta,
     type: (staticMeta.type || t) as any,
@@ -339,14 +339,14 @@ const binding = useStandaloneField({
 }) as any;
 
 binding.store = {
-  get fieldsMetadata() {
-    return (props.store as any)?.fieldsMetadata;
+  get metadata() {
+    return { fields: (props.store as any)?.metadata?.fields || {} };
   },
   getFieldMeta(name: string) {
     const raw =
       typeof (props.store as any)?.getFieldMeta === 'function'
         ? (props.store as any).getFieldMeta(name)
-        : (props.store as any)?.fieldsMetadata?.[name];
+        : (props.store as any)?.metadata?.fields?.[name];
     return raw ? { ...raw, isReadonly: false } : raw;
   },
   ensureFieldsGet: (...args: any[]) => (props.store as any)?.ensureFieldsGet?.(...args),

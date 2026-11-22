@@ -198,7 +198,7 @@ export function useField<T = any, P extends string = string, V = any>(opts: {
 
     for (let i = 0; i < segs.length; i++) {
       const seg = segs[i]!;
-      const meta = (owningStore?.fieldsMetadata as any)?.[seg] as WebFieldMetadata | undefined;
+      const meta = (owningStore?.metadata?.fields as any)?.[seg] as WebFieldMetadata | undefined;
       const view = getFieldMetadataView(meta);
       leafMeta = meta;
       const isLeaf = i === segs.length - 1;

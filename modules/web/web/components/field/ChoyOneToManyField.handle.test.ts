@@ -39,10 +39,12 @@ function makeBinding(opts: {
     recordRef: () => computed(() => ({ Id: 'parent' })) as any,
     registerFields: () => {},
     relationStore: {
-      fieldsMetadata:
-        opts.sequenceMeta === false
-          ? { Name: { id: '1', type: 'string', typeAnnotation: '' } }
-          : { Sequence: { id: '2', type: 'int', typeAnnotation: '', isReadonly: false } },
+      metadata: {
+        fields:
+          opts.sequenceMeta === false
+            ? { Name: { id: '1', type: 'string', typeAnnotation: '' } }
+            : { Sequence: { id: '2', type: 'int', typeAnnotation: '', isReadonly: false } },
+      },
     } as any,
     asMutableArray: () => ({
       getItems: () => items.value,
@@ -204,7 +206,7 @@ describe('ChoyOneToManyField handle column', () => {
       recordRef: () => computed(() => ({ Id: 'parent' })) as any,
       registerFields: () => {},
       relationStore: {
-        fieldsMetadata: { Sequence: { id: '2', type: 'int', typeAnnotation: '', isReadonly: false } },
+        metadata: { fields: { Sequence: { id: '2', type: 'int', typeAnnotation: '', isReadonly: false } } },
       } as any,
       asMutableArray: () => ({
         getItems: () => items.value,
@@ -259,7 +261,7 @@ describe('ChoyOneToManyField handle column', () => {
       fieldRefOf: () => displayItems as any,
       recordRef: () => computed(() => ({ Id: 'p' })) as any,
       registerFields: () => {},
-      relationStore: { fieldsMetadata: {} } as any,
+      relationStore: { metadata: { fields: {} } } as any,
       asMutableArray: () => ({
         getItems: () => displayItems.value,
         insertItem: fnRecorder(),
@@ -306,7 +308,7 @@ describe('ChoyOneToManyField handle column', () => {
       fieldRefOf: () => nullItems as any,
       recordRef: () => computed(() => ({})) as any,
       registerFields: () => {},
-      relationStore: { fieldsMetadata: {} } as any,
+      relationStore: { metadata: { fields: {} } } as any,
       asMutableArray: () => ({
         getItems: () => (Array.isArray(nullItems.value) ? nullItems.value : []),
         insertItem: ensureInsert,

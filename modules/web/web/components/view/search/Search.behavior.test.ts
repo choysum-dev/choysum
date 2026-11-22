@@ -198,11 +198,11 @@ function makeUserFiltersFactory() {
 function makeStore() {
   return {
     storeId: 'demo.Widget',
-    fieldsMetadata: {
+    metadata: { fields: {
       Name: { id: '1', type: 'varchar', string: 'Name' },
       CreatedAt: { id: '2', type: 'datetime', string: 'Created At' },
       Status: { id: '3', type: 'selection', string: 'Status' },
-    },
+    } },
     state: { queryState: { defaultFilters: [{ name: 'Active', query: ['Active', '=', true] }] } },
     getFieldsGetTranslatedString: () => undefined,
   } as any;

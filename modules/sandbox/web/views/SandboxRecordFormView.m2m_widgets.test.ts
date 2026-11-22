@@ -15,20 +15,22 @@ function makeStore() {
   return {
     fullModelName: 'sandbox.SandboxRecord',
     storeId: 'sandbox-form-m2m-' + Math.random().toString(36).slice(2),
-    fieldsMetadata: {
-      Tags: { type: 'ManyToMany', relation: 'sandbox.SandboxTag' },
-      TagChips: { type: 'ManyToMany', relation: 'sandbox.SandboxTag' },
-      Categories: { type: 'ManyToMany', relation: 'sandbox.SandboxCategory' },
-      TagTableRefIds: { type: 'ManyToManyRef', relation: 'sandbox.SandboxTag' },
-      TagRefIds: { type: 'ManyToManyRef', relation: 'sandbox.SandboxTag' },
-      CategoryPathIds: { type: 'ManyToManyRef', relation: 'sandbox.SandboxCategory' },
-      NameChar: { type: 'char' },
-      Title: { type: 'varchar' },
-      Code: { type: 'varchar' },
-      IsActive: { type: 'boolean' },
-      Sequence: { type: 'int' },
-      State: { type: 'selection' },
-      Lines: { type: 'OneToMany', relation: 'sandbox.SandboxLine' },
+    metadata: {
+      fields: {
+        Tags: { type: 'ManyToMany', relation: 'sandbox.SandboxTag' },
+        TagChips: { type: 'ManyToMany', relation: 'sandbox.SandboxTag' },
+        Categories: { type: 'ManyToMany', relation: 'sandbox.SandboxCategory' },
+        TagTableRefIds: { type: 'ManyToManyRef', relation: 'sandbox.SandboxTag' },
+        TagRefIds: { type: 'ManyToManyRef', relation: 'sandbox.SandboxTag' },
+        CategoryPathIds: { type: 'ManyToManyRef', relation: 'sandbox.SandboxCategory' },
+        NameChar: { type: 'char' },
+        Title: { type: 'varchar' },
+        Code: { type: 'varchar' },
+        IsActive: { type: 'boolean' },
+        Sequence: { type: 'int' },
+        State: { type: 'selection' },
+        Lines: { type: 'OneToMany', relation: 'sandbox.SandboxLine' },
+      },
     },
     state: {
       current: {

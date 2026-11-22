@@ -167,6 +167,7 @@ func rawModelAsModel(raw *rawModel) *pkgmeta.Model {
 		RawExtends:   raw.RawExtends,
 		Extends:      raw.Extends,
 		CompanyField: raw.CompanyField,
+		OrderBy:      raw.OrderBy,
 		ModuleId:     raw.ModuleId,
 	}
 	for _, f := range raw.Fields {

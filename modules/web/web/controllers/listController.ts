@@ -18,6 +18,7 @@ import { exportFieldSelection } from '@/web/web/query/utils/registry/field';
 import { awaitFieldSelection } from '@/web/web/query/utils/registry/fieldReady';
 import { filtersToQuery } from '@/web/web/query/utils/condition/builder';
 import { combineFilters, combinePresentConditions } from '@/web/web/query/utils/condition/absent';
+import { metadataOrderByToState } from '@/web/web/query/orderBy';
 
 // ListViewModel & GroupBySpec now centralized in query/types.ts
 
@@ -222,7 +223,7 @@ export function createListController(store: ModelStore<any>): IListController {
       const uiFiltersEff: any[] | undefined = (effectiveOverrides as any).appliedFilters;
       const kwEff: string | undefined = (effectiveOverrides as any).keyword;
       let kwFieldsEff: string[] | undefined = (effectiveOverrides as any).keywordFields ?? (store.state as any)?.queryState?.keywordFields;
-      let compiledFromUi = filtersToQuery(Array.isArray(uiFiltersEff) ? uiFiltersEff : [], kwEff, kwFieldsEff, (store as any)?.fieldsMetadata);
+      let compiledFromUi = filtersToQuery(Array.isArray(uiFiltersEff) ? uiFiltersEff : [], kwEff, kwFieldsEff, (store as any)?.metadata?.fields);
 
       // Merge forced conditions stored in queryState first.
       const forcedInState = (store.state as any)?.queryState?.forcedCondition;
@@ -270,6 +271,33 @@ export function createListController(store: ModelStore<any>): IListController {
       const relationConditionSource = (store.state as any)?.queryState?.relationConditionSource as
         | { model: string; field: string }
         | undefined;
+
+      // Resolve orderBy: explicit apply override → existing queryState → metadata.orderBy.
+      // Empty explicit override (user cleared sort) reseeds model default when declared.
+      const hasOrderByOverride =
+        !!effectiveOverrides && Object.prototype.hasOwnProperty.call(effectiveOverrides, 'orderBy');
+      const existingOrderBy = (store.state as any)?.queryState?.orderBy as OrderByState[] | undefined;
+      const modelDefaultOrderBy = metadataOrderByToState((store as any)?.metadata?.orderBy);
+      let resolvedOrderBy: OrderByState[] | undefined;
+      if (hasOrderByOverride) {
+        const override = effectiveOverrides!.orderBy;
+        if (Array.isArray(override) && override.length === 0) {
+          resolvedOrderBy = modelDefaultOrderBy;
+        } else {
+          resolvedOrderBy = override;
+        }
+      } else if (Array.isArray(existingOrderBy) && existingOrderBy.length > 0) {
+        resolvedOrderBy = existingOrderBy;
+      } else {
+        resolvedOrderBy = modelDefaultOrderBy;
+      }
+      if (resolvedOrderBy !== undefined || hasOrderByOverride) {
+        (store.state as any).queryState = {
+          ...(store.state as any).queryState,
+          orderBy: resolvedOrderBy,
+        };
+      }
+
       const ctx = buildSearchOrGroupContext(store, {
         shape,
         filters: finalCondition,
@@ -277,11 +305,11 @@ export function createListController(store: ModelStore<any>): IListController {
           gbStrings && gbStrings.length > 0
             ? {
                 appliedGroups: gbStrings,
-                orderBy: effectiveOverrides?.orderBy,
+                orderBy: resolvedOrderBy,
                 pagination: effectiveOverrides?.pagination as any,
               }
             : {
-                orderBy: effectiveOverrides?.orderBy,
+                orderBy: resolvedOrderBy,
                 pagination: effectiveOverrides?.pagination as any,
               },
         options: relationConditionSource ? { relationConditionSource } : undefined,
@@ -293,14 +321,6 @@ export function createListController(store: ModelStore<any>): IListController {
         (store.state as any).queryState = {
           ...(store.state as any).queryState,
           pagination: { ...p },
-        };
-      }
-
-      // Persist sort so header chevrons and later paginate/apply reuse the same orderBy.
-      if (effectiveOverrides && Object.prototype.hasOwnProperty.call(effectiveOverrides, 'orderBy')) {
-        (store.state as any).queryState = {
-          ...(store.state as any).queryState,
-          orderBy: effectiveOverrides.orderBy,
         };
       }
 

@@ -59,3 +59,12 @@ export function orderByToSortingState(
 export function orderByStateToRpc(orderBy: OrderByState[] | undefined): RpcOrderBy[] | undefined {
   return toRpcOrderBy(orderBy);
 }
+
+/**
+ * Map static `metadata.orderBy` (`order`) onto FE query-state rows (`direction`).
+ */
+export function metadataOrderByToState(input: unknown): OrderByState[] | undefined {
+  const rpc = toRpcOrderBy(input);
+  if (!rpc?.length) return undefined;
+  return rpc.map(row => ({ field: row.field, direction: row.order }));
+}

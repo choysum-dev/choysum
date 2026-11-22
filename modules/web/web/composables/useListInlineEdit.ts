@@ -94,7 +94,7 @@ export function useListInlineEdit<T extends BaseModel>(opts: {
   }
 
   function isDirty(): boolean {
-    return isRowDraftDirty(editingOriginal.value, editingDraft.value, opts.store.fieldsMetadata as any);
+    return isRowDraftDirty(editingOriginal.value, editingDraft.value, opts.store.metadata.fields as any);
   }
 
   async function promptDirtySwitch(): Promise<'save' | 'discard' | 'cancel'> {
@@ -159,7 +159,7 @@ export function useListInlineEdit<T extends BaseModel>(opts: {
         }
         return true;
       }
-      const payload = collectRowDirtyPayload(editingOriginal.value, editingDraft.value, opts.store.fieldsMetadata as any);
+      const payload = collectRowDirtyPayload(editingOriginal.value, editingDraft.value, opts.store.metadata.fields as any);
       if (Object.keys(payload).length === 0) {
         exitEdit();
         try {

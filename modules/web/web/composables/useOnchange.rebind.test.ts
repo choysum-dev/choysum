@@ -21,7 +21,7 @@ async function waitUntil(pred: () => boolean, timeoutMs = 800): Promise<void> {
 
 function makeStore(onchange = fnRecorder(async () => ({ value: {}, messages: [] }))) {
   return {
-    fieldsMetadata: { Name: { id: '1', type: 'varchar', typeAnnotation: '' } },
+    metadata: { fields: { Name: { id: '1', type: 'varchar', typeAnnotation: '' } } },
     state: {} as Record<string, any>,
     Onchange: onchange,
   } as any;

@@ -7,7 +7,7 @@ import { createKanbanController } from './kanbanController';
 function makeStore(search: () => Promise<unknown>, count: () => Promise<unknown>) {
   return {
     storeId: 'demo.Task',
-    fieldsMetadata: {},
+    metadata: { fields: {} },
     state: {
       queryState: {
         pagination: { limit: 2, offset: 0 },

@@ -57,7 +57,7 @@ export function listSearchFieldOptions(
   store: ModelStore<any>,
   predicate: (prop: string, meta: Partial<WebFieldMetadata> | undefined) => boolean
 ): SearchFieldOption[] {
-  const md = (store.fieldsMetadata ?? {}) as Record<string, Partial<WebFieldMetadata>>;
+  const md = (store.metadata.fields ?? {}) as Record<string, Partial<WebFieldMetadata>>;
   const items: SearchFieldOption[] = [];
   for (const [prop, meta] of Object.entries(md)) {
     if (!predicate(prop, meta)) continue;
@@ -79,6 +79,6 @@ export function useFilterableSearchFields(store: ModelStore<any>): ComputedRef<A
 
 export function resolveSearchFieldLabel(store: ModelStore<any> | undefined, prop: string): string {
   if (!store || !prop) return prop;
-  const meta = (store.fieldsMetadata as any)?.[prop];
+  const meta = (store.metadata.fields as any)?.[prop];
   return labelFor(store, prop, meta);
 }

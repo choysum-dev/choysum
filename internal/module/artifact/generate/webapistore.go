@@ -31,6 +31,43 @@ var webApiStoreTplStr string
 //go:embed webapistore.index.ts.tpl
 var webApiStoreIndexTplStr string
 
+// ModelOrderBySpec is one @Model({ orderBy }) entry for web store metadata.
+type ModelOrderBySpec struct {
+	Field string
+	Order string
+}
+
+// parseModelOrderByJSON decodes meta.Model.OrderBy JSON into template specs.
+func parseModelOrderByJSON(raw string) []ModelOrderBySpec {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return nil
+	}
+	var rows []struct {
+		Field string `json:"field"`
+		Order string `json:"order"`
+	}
+	if err := json.Unmarshal([]byte(raw), &rows); err != nil {
+		return nil
+	}
+	out := make([]ModelOrderBySpec, 0, len(rows))
+	for _, row := range rows {
+		field := strings.TrimSpace(row.Field)
+		if field == "" {
+			continue
+		}
+		order := strings.ToLower(strings.TrimSpace(row.Order))
+		if order != "desc" {
+			order = "asc"
+		}
+		out = append(out, ModelOrderBySpec{Field: field, Order: order})
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
+}
+
 // FieldMetadata contains client-facing field metadata.
 type FieldMetadata struct {
 	Id                       *string `json:"id,omitempty"`
@@ -490,12 +527,14 @@ func (g *webApiStoreGenerator) generate(ctx context.Context, app *meta.Applicati
 			data := struct {
 				App            string
 				Model          *meta.Model
+				OrderBy        []ModelOrderBySpec
 				FieldsMetadata []FieldMetadata
 				RelationFields []RelationFieldInfo
 				ImportModels   []string
 			}{
 				App:            app.Name,
 				Model:          model,
+				OrderBy:        parseModelOrderByJSON(model.OrderBy),
 				FieldsMetadata: fieldsMetadata,
 				RelationFields: relationFields,
 				ImportModels:   importModels,

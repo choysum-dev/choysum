@@ -848,9 +848,12 @@ function afterLayoutRecompute() {
 onMounted(async () => {
   await nextTick();
 
-  // Sync external sorting from controlled props
+  // Sync controlled props.orderBy into queryState (Search/RPC + header chevrons).
   if (props.orderBy !== undefined) {
-    (store.state as any).orderBy = props.orderBy as any;
+    (store.state as any).queryState = {
+      ...(store.state as any).queryState,
+      orderBy: props.orderBy as any,
+    };
   }
 
   // Initial height sync
@@ -903,11 +906,15 @@ async function loadData() {
   }
 }
 
-// Sync props.orderBy to state.orderBy
+// Sync props.orderBy into queryState when the host changes controlled sorting.
 watch(
   () => props.orderBy,
   v => {
-    (store.state as any).orderBy = v as any;
+    if (v === undefined) return;
+    (store.state as any).queryState = {
+      ...(store.state as any).queryState,
+      orderBy: v as any,
+    };
   }
 );
 

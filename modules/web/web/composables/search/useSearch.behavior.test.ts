@@ -169,9 +169,9 @@ describe('useSearch actions and helpers', () => {
 
   test('summarizes nested groups, fields, tooltips, and buildQuery', () => {
     const store = {
-      fieldsMetadata: {
+      metadata: { fields: {
         Name: { type: 'varchar', string: 'Name' },
-      },
+      } },
     } as any;
     const { helpers } = useSearch({ attachStore: store });
     const nested: ConditionGroup = {
@@ -236,7 +236,7 @@ describe('useSearch actions and helpers', () => {
   test('buildQuery returns undefined when conversion throws', () => {
     const { helpers } = useSearch({
       attachStore: {
-        get fieldsMetadata() {
+        get metadata() {
           throw new Error('boom');
         },
       } as any,

@@ -28,11 +28,11 @@ describe('useGroupingOptions field labels', () => {
       scope: 'demo.model.Widget.fields',
     });
     const store = {
-      fieldsMetadata: {
+      metadata: { fields: {
         Status: { id: '1', type: 'selection', string: 'Status', stringText: statusText },
         Code: { id: '2', type: 'varchar', string: 'Code' },
         DeletedAt: { id: '9', type: 'datetime' },
-      },
+      } },
       getFieldsGetTranslatedString: () => undefined,
     } as any;
 
@@ -50,9 +50,9 @@ describe('useGroupingOptions field labels', () => {
 
   test('prefers warm FieldsGet translated string when present', () => {
     const store = {
-      fieldsMetadata: {
+      metadata: { fields: {
         Status: { id: '1', type: 'selection', string: 'Status' },
-      },
+      } },
       getFieldsGetTranslatedString: (name: string) => (name === 'Status' ? '启用状态' : undefined),
     } as any;
 

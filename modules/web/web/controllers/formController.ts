@@ -84,7 +84,7 @@ function attachMonetaryCurrencyCompanions(
   }
 }
 
-function resolveStoreFieldMeta(store: { getFieldMeta?: (name: string) => MonetaryFieldMeta | undefined; fieldsMetadata?: Record<string, MonetaryFieldMeta> }, fieldName: string): MonetaryFieldMeta | undefined {
+function resolveStoreFieldMeta(store: { getFieldMeta?: (name: string) => MonetaryFieldMeta | undefined; metadata?: { fields?: Record<string, MonetaryFieldMeta> } }, fieldName: string): MonetaryFieldMeta | undefined {
   try {
     if (typeof store.getFieldMeta === 'function') {
       const merged = store.getFieldMeta(fieldName);
@@ -93,13 +93,13 @@ function resolveStoreFieldMeta(store: { getFieldMeta?: (name: string) => Monetar
   } catch {
     /* ignore */
   }
-  return store.fieldsMetadata?.[fieldName];
+  return store.metadata?.fields?.[fieldName];
 }
 
 /** Drop select-only / deny-write / declarative readonly keys from a write payload. */
 function omitReadonlyWriteFields(
   values: Record<string, unknown>,
-  store: { getFieldMeta?: (name: string) => { isReadonly?: boolean } | undefined; fieldsMetadata?: Record<string, { isReadonly?: boolean }> }
+  store: { getFieldMeta?: (name: string) => { isReadonly?: boolean } | undefined; metadata?: { fields?: Record<string, { isReadonly?: boolean }> } }
 ): Record<string, unknown> {
   const out: Record<string, unknown> = { ...values };
   for (const key of Object.keys(out)) {
@@ -216,7 +216,7 @@ function resolveAttachmentDisplayFileName(raw: unknown): string | undefined {
 }
 
 function resolveAttachmentFieldType(store: ModelStore<any>, fieldName: string): string | undefined {
-  const metas = (store as any)?.fieldsMetadata as Record<string, { type?: string }> | undefined;
+  const metas = (store as any)?.metadata?.fields as Record<string, { type?: string }> | undefined;
   const raw = metas?.[fieldName]?.type;
   return typeof raw === 'string' ? raw.trim().toLowerCase() : undefined;
 }
@@ -402,7 +402,7 @@ function isNoopAttachmentEnvelope(value: unknown): boolean {
 }
 
 function attachmentFieldNames(store: ModelStore<any>): string[] {
-  const metas = (store as any)?.fieldsMetadata as Record<string, { type?: string }> | undefined;
+  const metas = (store as any)?.metadata?.fields as Record<string, { type?: string }> | undefined;
   if (!metas) return [];
   return Object.entries(metas)
     .filter(([, meta]) => {

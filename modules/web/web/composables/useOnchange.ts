@@ -109,7 +109,7 @@ const diffFieldsMetaCache = new WeakMap<
 >();
 
 export function buildDiffFieldsMeta(store: ModelStore<any>): DiffFieldsMeta {
-  const raw = ((store as any).fieldsMetadata || {}) as Record<string, WebFieldMetadata | undefined>;
+  const raw = ((store as any).metadata?.fields || {}) as Record<string, WebFieldMetadata | undefined>;
   const cached = diffFieldsMetaCache.get(store);
   if (cached && cached.source === raw) {
     return cached.normalized;
@@ -139,7 +139,7 @@ export function buildDiffFieldsMeta(store: ModelStore<any>): DiffFieldsMeta {
 
 export function buildRelationFieldSet(store: ModelStore<any>): Set<string> {
   const rel = new Set<string>();
-  const fields: Record<string, WebFieldMetadata | undefined> = store.fieldsMetadata || {};
+  const fields: Record<string, WebFieldMetadata | undefined> = store.metadata.fields || {};
   for (const [fieldName, meta] of Object.entries(fields)) {
     if (looksLikeRelation(meta)) rel.add(fieldName);
   }
@@ -448,7 +448,7 @@ export function toSelectorPath(rootObj: any, leafPath: string): string | null {
 export function detectStructuralChangedRelations(collapsed: Set<string>, baseline: any, current: any, store: ModelStore<any>): Set<string> {
   const structural = new Set<string>();
   if (!collapsed.size) return structural;
-  const meta = (store as any).fieldsMetadata || {};
+  const meta = (store as any).metadata?.fields || {};
 
   for (const top of collapsed) {
     const m = meta[top];
@@ -626,7 +626,7 @@ function createAutoOnchangeController(store: ModelStore<any>, opts?: CreateOncha
 
       if (!changed.length) return;
 
-      const draftForSend = slimRelationRefsForChanged(r, changed, (store as any).fieldsMetadata);
+      const draftForSend = slimRelationRefsForChanged(r, changed, (store as any).metadata?.fields);
 
       const payload: OnchangeFlushPayload = {
         draft: draftForSend,

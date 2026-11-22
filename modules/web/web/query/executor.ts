@@ -24,7 +24,7 @@ type ExecutorStoreDeps = {
 };
 
 function manyToOneRefFields(store: ModelStore<any>): Array<[string, { type?: string; relationModel?: string }]> {
-  const meta = store.fieldsMetadata || {};
+  const meta = store.metadata.fields || {};
   return Object.entries(meta).filter(([, f]) => f.type === 'ManyToOneRef' && f.relationModel) as Array<
     [string, { type?: string; relationModel?: string }]
   >;
@@ -166,7 +166,7 @@ async function hydrateManyToManyRefs(store: ModelStore<any>, items: any[], deps:
   if (!items || items.length === 0) return;
 
   try {
-    const meta = store.fieldsMetadata || {};
+    const meta = store.metadata.fields || {};
     const refFields = Object.entries(meta).filter(([, f]) => f.type === 'ManyToManyRef' && f.relationModel);
     if (refFields.length === 0) return;
 
@@ -351,7 +351,7 @@ function normalizeRelationProjectionPayload(items: any[]) {
 function decodeBinaryImageFields(store: ModelStore<any>, items: any[]) {
   if (!Array.isArray(items) || items.length === 0) return;
 
-  const fieldsMeta = store.fieldsMetadata || {};
+  const fieldsMeta = store.metadata.fields || {};
   const descriptorFields = Object.entries(fieldsMeta).filter(([, meta]) => {
     const t = String((meta as any)?.type || '').toLowerCase();
     return t === 'binary' || t === 'image';
@@ -434,7 +434,7 @@ async function enrichBinaryImageDescriptors(
 ): Promise<void> {
   if (!Array.isArray(items) || items.length === 0) return;
 
-  const fieldsMeta = store.fieldsMetadata || {};
+  const fieldsMeta = store.metadata.fields || {};
   const descriptorFieldNames = Object.entries(fieldsMeta)
     .filter(([, meta]) => {
       const t = String((meta as any)?.type || '').toLowerCase();

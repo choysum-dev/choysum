@@ -16,7 +16,7 @@ function makeStore(pagination: { limit: number; offset: number }, total = 100) {
   return {
     fullModelName: 'partner.Partner',
     storeId: 'list-page-' + Math.random().toString(36).slice(2),
-    fieldsMetadata: { Name: { type: 'varchar' } },
+    metadata: { fields: { Name: { type: 'varchar' } } },
     state: {
       queryState: {
         keyword: '',

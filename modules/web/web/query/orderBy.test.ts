@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { orderByToSortingState, toRpcOrderBy } from './orderBy';
+import { metadataOrderByToState, orderByToSortingState, toRpcOrderBy } from './orderBy';
 
 test('toRpcOrderBy maps FE direction onto RPC order', () => {
   expect(toRpcOrderBy([{ field: 'Name', direction: 'desc' }])).toEqual([
@@ -35,5 +35,15 @@ test('orderByToSortingState mirrors primary orderBy for DataTable headers', () =
   ]);
   expect(orderByToSortingState([{ field: 'CreatedAt', order: 'desc' }])).toEqual([
     { id: 'CreatedAt', desc: true },
+  ]);
+});
+
+test('metadataOrderByToState maps order onto direction', () => {
+  expect(metadataOrderByToState(undefined)).toBeUndefined();
+  expect(metadataOrderByToState([{ field: 'Name', order: 'ASC' }])).toEqual([
+    { field: 'Name', direction: 'asc' },
+  ]);
+  expect(metadataOrderByToState({ field: 'CreatedAt', order: 'desc' })).toEqual([
+    { field: 'CreatedAt', direction: 'desc' },
   ]);
 });

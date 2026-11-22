@@ -58,7 +58,7 @@ test('ChoyFieldBase table mode defaults varchar columns to sortable', async () =
     prop: 'Name',
     meta,
     store: {
-      fieldsMetadata: { Name: meta },
+      metadata: { fields: { Name: meta } },
       getFieldMeta: (n: string) => (n === 'Name' ? meta : undefined),
     },
     env: {

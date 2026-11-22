@@ -11,10 +11,10 @@ import type { WebFieldMetadata } from './modelStore';
 import { asyncFnRecorder, syncFnRecorder } from '@/web/web/__tests__/mountApp';
 
 function makeHost(
-  fieldsMetadata: Record<string, WebFieldMetadata>,
+  fields: Record<string, WebFieldMetadata>,
   FieldsGet: FieldsGetRpcLike
 ): FieldsGetHost {
-  return { fieldsMetadata, FieldsGet: FieldsGet as FieldsGetHost['FieldsGet'] };
+  return { metadata: { fields }, FieldsGet: FieldsGet as FieldsGetHost['FieldsGet'] };
 }
 
 describe('createFieldsGetHelpers', () => {

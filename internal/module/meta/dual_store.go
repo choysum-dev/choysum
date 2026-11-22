@@ -103,6 +103,7 @@ func copyModelTreeToRaw(db *gorm.DB, src *pkgmeta.Model) error {
 		RawExtends:   src.RawExtends,
 		Extends:      src.Extends,
 		CompanyField: src.CompanyField,
+		OrderBy:      src.OrderBy,
 		ModuleId:     src.ModuleId,
 	}
 	ensureBaseModelID(&raw.BaseModel)
@@ -299,6 +300,7 @@ func persistEffectiveProjection(db *gorm.DB, merged *pkgmeta.Model, effectiveID 
 		RawExtends:   merged.RawExtends,
 		Extends:      merged.Extends,
 		CompanyField: merged.CompanyField,
+		OrderBy:      merged.OrderBy,
 		// No single ModuleId on effective projection.
 	}
 	if err := db.Session(&gorm.Session{SkipHooks: true}).Create(eff).Error; err != nil {

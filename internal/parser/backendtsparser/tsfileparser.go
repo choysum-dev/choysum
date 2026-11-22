@@ -26,6 +26,62 @@ type tsFileParser struct {
 	translateBindings map[string]parser.TranslateBinding
 }
 
+// encodeModelOrderByOption normalizes @Model orderBy (object or array) to JSON
+// [{"field":"Name","order":"asc"}]. Empty string means undeclared / invalid.
+func encodeModelOrderByOption(raw any) string {
+	if raw == nil {
+		return ""
+	}
+	var items []any
+	switch v := raw.(type) {
+	case map[string]any:
+		items = []any{v}
+	case []any:
+		items = v
+	default:
+		return ""
+	}
+	type orderSpec struct {
+		Field string `json:"field"`
+		Order string `json:"order"`
+	}
+	out := make([]orderSpec, 0, len(items))
+	for _, item := range items {
+		m, ok := item.(map[string]any)
+		if !ok {
+			continue
+		}
+		field := strings.TrimSpace(fmtString(m["field"]))
+		if field == "" {
+			continue
+		}
+		order := strings.ToLower(strings.TrimSpace(fmtString(m["order"])))
+		if order != "desc" {
+			order = "asc"
+		}
+		out = append(out, orderSpec{Field: field, Order: order})
+	}
+	if len(out) == 0 {
+		return ""
+	}
+	b, err := json.Marshal(out)
+	if err != nil {
+		return ""
+	}
+	return string(b)
+}
+
+func fmtString(v any) string {
+	if v == nil {
+		return ""
+	}
+	s, ok := v.(string)
+	if !ok {
+		return ""
+	}
+	return s
+}
+
 var (
 	referenceScopePattern    = regexp.MustCompile(`\bscope\s*:\s*("(?:\\.|[^"])*"|'(?:\\.|[^'])*'|` + "`[^`]*`" + `)`)
 	referencePathPattern     = regexp.MustCompile(`\bpath\s*:\s*("(?:\\.|[^"])*"|'(?:\\.|[^'])*'|` + "`[^`]*`" + `)`)
@@ -306,6 +362,7 @@ func (p *tsFileParser) parseModel() (*meta.Model, *parser.Class, *parser.Propert
 	// Parse-stage support for @Model('Name', { ...options }) object-literal arguments.
 	parentFieldName := ""
 	var companyFieldOpt *string
+	orderByJSON := ""
 	for _, d := range class.Decorators {
 		if d.Name != "Model" || len(d.Arguments) == 0 {
 			continue
@@ -332,13 +389,21 @@ func (p *tsFileParser) parseModel() (*meta.Model, *parser.Class, *parser.Propert
 				parentFieldName = pf
 				// don't break here; continue scanning to also capture companyField if present
 			}
+			if orderByJSON == "" {
+				if encoded := encodeModelOrderByOption(opts["orderBy"]); encoded != "" {
+					orderByJSON = encoded
+				}
+			}
 		}
-		if parentFieldName != "" && companyFieldOpt != nil {
+		if parentFieldName != "" && companyFieldOpt != nil && orderByJSON != "" {
 			break
 		}
 	}
 	if companyFieldOpt != nil {
 		model.CompanyField = companyFieldOpt
+	}
+	if orderByJSON != "" {
+		model.OrderBy = orderByJSON
 	}
 
 	// Synthesize ParentPath when parentField is declared and ParentPath is absent.

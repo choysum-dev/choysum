@@ -33,10 +33,10 @@ describe('useFilterEditorBindings static meta', () => {
     const FieldsGet = fnRecorder(async () => ({}));
     const ensureFieldsGet = fnRecorder(async () => ({}));
     const store = {
-      fieldsMetadata: {
+      metadata: { fields: {
         Status: { type: 'selection' },
         Name: { type: 'varchar' },
-      },
+      } },
       FieldsGet,
       ensureFieldsGet,
     } as any;
@@ -54,11 +54,11 @@ describe('useFilterEditorBindings static meta', () => {
     const FieldsGet = fnRecorder(async () => ({}));
     const ensureFieldsGet = fnRecorder(async () => ({}));
     const store = {
-      fieldsMetadata: {
+      metadata: { fields: {
         Id: { type: 'char' },
         ParentPath: { type: 'varchar' },
         PartnerId: { type: 'manytoone', relationModel: 'base.Partner' },
-      },
+      } },
       FieldsGet,
       ensureFieldsGet,
     } as any;
@@ -74,7 +74,7 @@ describe('useFilterEditorBindings static meta', () => {
   test('adds child_of/parent_of for tree Id and tree manytoone', () => {
     const store = {
       storeId: 's1',
-      fieldsMetadata: {
+      metadata: { fields: {
         Id: { type: 'char' },
         ParentPath: { type: 'varchar' },
         ParentId: {
@@ -84,7 +84,7 @@ describe('useFilterEditorBindings static meta', () => {
         },
         PartnerId: { type: 'manytoone', relationModel: 'base.Partner' },
         TagIds: { type: 'manytooneref', relationModel: 'base.Tag' },
-      },
+      } },
     } as any;
     const api = runInSetup(() => useFilterEditorBindings(store));
     expect(api.isTreeModel()).toBe(true);
@@ -116,9 +116,9 @@ describe('useFilterEditorBindings static meta', () => {
     const getRelationStore = fnRecorder(() => rel);
     const store = {
       storeId: 's2',
-      fieldsMetadata: {
+      metadata: { fields: {
         PartnerId: { type: 'manytoone', relationModel: 'base.Partner' },
-      },
+      } },
       getRelationStore,
     } as any;
 
