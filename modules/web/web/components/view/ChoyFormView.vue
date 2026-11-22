@@ -206,6 +206,7 @@ SPDX-License-Identifier: Apache-2.0
               :busy="formRecordPager.busy.value"
               @prev="formRecordPager.goPrev()"
               @next="formRecordPager.goNext()"
+              @goto="formRecordPager.goTo($event)"
             />
             <slot name="header-right" />
           </template>

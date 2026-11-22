@@ -6,6 +6,7 @@ import { defineStore } from 'pinia';
 import { useMenuStore } from '@/web/web/stores/menuStore';
 import {
   canMoveRecordSet,
+  resolveRecordSetAtIndex,
   resolveRecordSetNeighbor,
 } from './recordSetLogic';
 import type { RecordSetEntry, SearchRecordSetIds } from './types';
@@ -16,6 +17,7 @@ export {
   canMoveRecordSet,
   clampRecordSetIndex,
   idAtGlobalIndex,
+  resolveRecordSetAtIndex,
   resolveRecordSetNeighbor,
 } from './recordSetLogic';
 
@@ -71,6 +73,19 @@ export const useRecordSetStore = defineStore('recordSet', () => {
     return next;
   }
 
+  /** Jump to a 0-based absolute index (clamped); no-op when already there. */
+  async function moveTo(
+    index: number,
+    searchIds?: SearchRecordSetIds
+  ): Promise<{ id: string; entry: RecordSetEntry } | null> {
+    const cur = active.value;
+    if (!cur) return null;
+    const next = await resolveRecordSetAtIndex(cur, index, searchIds);
+    if (!next) return null;
+    active.value = next.entry;
+    return next;
+  }
+
   function installMenuClearWatch(): void {
     if (menuWatchInstalled.value) return;
     try {
@@ -95,6 +110,7 @@ export const useRecordSetStore = defineStore('recordSet', () => {
     getActiveForModel,
     replaceActive,
     move,
+    moveTo,
     canMove: (delta: -1 | 1) => canMoveRecordSet(active.value, delta),
     installMenuClearWatch,
   };

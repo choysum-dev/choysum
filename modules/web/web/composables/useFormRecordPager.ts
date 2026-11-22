@@ -3,6 +3,7 @@
 
 import { computed, ref, watch, type ComputedRef, type Ref } from 'vue';
 import { toRpcOrderBy } from '@/web/web/query/orderBy';
+import { useBreadcrumbStore } from '@/web/web/stores/breadcrumbStore';
 import {
   useRecordSetStore,
   type SearchRecordSetIds,
@@ -92,14 +93,41 @@ export function useFormRecordPager(opts: UseFormRecordPagerOpts) {
     }
   );
 
+  async function navigateToMoved(
+    moved: { id: string } | null
+  ): Promise<void> {
+    if (!moved) return;
+    // Sibling id under the same menu leaf: replace the current page crumb, do not deepen.
+    useBreadcrumbStore().setPendingPageMode('replace');
+    await opts.router.push(siblingLocation(opts.router, moved.id) as any);
+  }
+
   async function navigate(delta: -1 | 1): Promise<void> {
     if (busy.value) return;
     if (!(await opts.confirmDiscardIfDirty())) return;
     busy.value = true;
     try {
       const moved = await recordSet.move(delta, buildSearchIds(opts.store));
-      if (!moved) return;
-      await opts.router.push(siblingLocation(opts.router, moved.id) as any);
+      await navigateToMoved(moved);
+    } finally {
+      busy.value = false;
+    }
+  }
+
+  /** Jump to a 1-based position in the active collection. */
+  async function goTo(position: number): Promise<void> {
+    if (busy.value) return;
+    const e = entry.value;
+    if (!e || e.total <= 0) return;
+    const target = Math.trunc(Number(position) || 0);
+    if (target <= 0) return;
+    const index = Math.max(0, Math.min(target - 1, e.total - 1));
+    if (index === e.index) return;
+    if (!(await opts.confirmDiscardIfDirty())) return;
+    busy.value = true;
+    try {
+      const moved = await recordSet.moveTo(index, buildSearchIds(opts.store));
+      await navigateToMoved(moved);
     } finally {
       busy.value = false;
     }
@@ -114,5 +142,6 @@ export function useFormRecordPager(opts: UseFormRecordPagerOpts) {
     busy,
     goPrev: () => navigate(-1),
     goNext: () => navigate(1),
+    goTo,
   };
 }

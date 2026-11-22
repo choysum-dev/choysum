@@ -53,9 +53,15 @@ test('form record pager: page-2 open, next, deep link hides pager', async () => 
   const urlOnPage2First = String(await page.url());
   const idOnPage2First = urlOnPage2First.replace(/.*\/countries\//, '').replace(/\/$/, '');
 
+  const crumbBeforeNext = page.getByTestId('choy-shell-breadcrumb');
+  await expect(crumbBeforeNext).toBeVisible({ timeout: 15_000 });
+  const crumbCountBefore = await crumbBeforeNext.locator('[data-slot=breadcrumb-item]').count();
+
   await page.getByTestId('choy-form-pager-next').click();
   await expect.poll(async () => String(await page.url()), { timeout: 20_000 }).not.toBe(urlOnPage2First);
   await expect(pager).toHaveText(new RegExp(`${page2Start + 1}\\s*/\\s*${listTotal}`));
+  // Sibling pager must replace the detail crumb, not deepen the trail.
+  await expect(crumbBeforeNext.locator('[data-slot=breadcrumb-item]')).toHaveCount(crumbCountBefore);
 
   // Deep link after list clear: no pager.
   await page.goto(`${baseURL}/web/base/countries`, { waitUntil: 'domcontentloaded' });

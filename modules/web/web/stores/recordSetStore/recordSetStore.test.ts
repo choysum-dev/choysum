@@ -6,6 +6,7 @@ import {
   canMoveRecordSet,
   clampRecordSetIndex,
   idAtGlobalIndex,
+  resolveRecordSetAtIndex,
   resolveRecordSetNeighbor,
   useRecordSetStore,
   type RecordSetEntry,
@@ -77,6 +78,40 @@ test('resolveRecordSetNeighbor returns null when Search fails or empty', async (
   ).toBeNull();
 });
 
+test('resolveRecordSetAtIndex jumps in-window and no-ops when already there', async () => {
+  const entry = sampleEntry({ index: 1 });
+  expect(await resolveRecordSetAtIndex(entry, 1)).toBeNull();
+  const jumped = await resolveRecordSetAtIndex(entry, 0);
+  expect(jumped?.id).toBe('a');
+  expect(jumped?.entry.index).toBe(0);
+  const toEndOfWindow = await resolveRecordSetAtIndex(entry, 2);
+  expect(toEndOfWindow?.id).toBe('c');
+  expect(toEndOfWindow?.entry.index).toBe(2);
+  // Beyond total clamps to last index; outside window without Search → null.
+  expect(await resolveRecordSetAtIndex(entry, 99)).toBeNull();
+  const clamped = await resolveRecordSetAtIndex(entry, 99, async () => ['d', 'e']);
+  expect(clamped?.id).toBe('d');
+  expect(clamped?.entry.index).toBe(4);
+});
+
+test('resolveRecordSetAtIndex fetches when target is outside the window', async () => {
+  const entry = sampleEntry({
+    total: 10,
+    index: 1,
+    ids: ['a', 'b', 'c'],
+    windowStart: 0,
+  });
+  const search = async (args: { offset: number; limit: number }) => {
+    expect(args.offset).toBe(7);
+    expect(args.limit).toBe(4);
+    return ['h', 'i', 'j'];
+  };
+  const next = await resolveRecordSetAtIndex(entry, 7, search, 4);
+  expect(next?.id).toBe('h');
+  expect(next?.entry.index).toBe(7);
+  expect(next?.entry.windowStart).toBe(7);
+});
+
 test('useRecordSetStore seed / getActiveForModel / move / clear', async () => {
   setActivePinia(createPinia());
   const store = useRecordSetStore();
@@ -87,6 +122,9 @@ test('useRecordSetStore seed / getActiveForModel / move / clear', async () => {
   const moved = await store.move(1);
   expect(moved?.id).toBe('c');
   expect(store.active?.index).toBe(2);
+  const jumped = await store.moveTo(0);
+  expect(jumped?.id).toBe('a');
+  expect(store.active?.index).toBe(0);
   store.clear();
   expect(store.active).toBeNull();
   expect(store.hasActive).toBe(false);
