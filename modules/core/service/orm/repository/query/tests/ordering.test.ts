@@ -10,6 +10,13 @@ test('repository ordering normalizes inputs and falls back to Id desc', () => {
     { field: 'Name', order: 'desc' },
     { field: 'CreatedAt', order: 'asc' },
   ]);
+  // FE query-state uses `direction`; accept it as an alias for `order`.
+  expect(normalizeOrderBy([{ field: 'Name', direction: 'DESC' }])).toEqual([
+    { field: 'Name', order: 'desc' },
+  ]);
+  expect(normalizeOrderBy([{ field: 'Name', order: 'asc', direction: 'desc' }])).toEqual([
+    { field: 'Name', order: 'asc' },
+  ]);
 
   const meta = { fields: new Map(), type: { name: 'Demo' } } as any;
   expect(computeFallbackOrder(meta)).toEqual([{ field: 'Id', order: 'desc' }]);

@@ -267,6 +267,9 @@ describe('DataTable chrome', () => {
       },
     });
     await flushPromises();
+    // Unsorted: no active chevron; neutral ↕ stays opacity-0 until hover/focus.
+    expect(mounted.qa('[data-lucide=ChevronUp]').length).toBe(0);
+    expect(mounted.qa('[data-lucide=ChevronDown]').length).toBe(0);
     const state = mounted.setupState() as { onHeaderClick?: (id: string, canSort: boolean) => void };
     expect(typeof state.onHeaderClick).toBe('function');
     state.onHeaderClick!('Name', true);
@@ -276,6 +279,24 @@ describe('DataTable chrome', () => {
     expect(chevrons).toBeGreaterThan(0);
     expect(mounted.text()).not.toContain('↑');
     expect(mounted.text()).not.toContain('↓');
+    mounted.unmount();
+  });
+
+  test('controlled sorting prop mirrors active header chevron', async () => {
+    const mounted = mountApp(DataTable as any, {
+      props: {
+        columns,
+        data: rows,
+        height: 120,
+        virtualize: false,
+        enableRowSelection: false,
+        enableSorting: true,
+        sortingMode: 'server',
+        sorting: [{ id: 'Name', desc: true }],
+      },
+    });
+    await flushPromises();
+    expect(mounted.qa('[data-lucide=ChevronDown]').length).toBeGreaterThan(0);
     mounted.unmount();
   });
 

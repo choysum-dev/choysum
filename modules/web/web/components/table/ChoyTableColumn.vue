@@ -56,6 +56,9 @@ const props = withDefaults(
   {
     label: '',
     vColumnProps: () => ({}),
+    // Vue Boolean props default to false when omitted; keep undefined so
+    // vColumnProps.sortable can enable list column sorting.
+    sortable: undefined,
   }
 );
 
@@ -122,7 +125,9 @@ function mergeColumnProps(raw: any) {
     minWidth: raw?.minWidth,
     align: raw?.align,
     fixed: raw?.fixed,
-    sortable: raw?.sortable,
+    // Omit when unset so vColumnProps.sortable is not overwritten by Vue's
+    // Boolean-prop false default on the top-level `sortable` prop.
+    sortable: raw?.sortable === true || raw?.sortable === false ? raw.sortable : undefined,
   };
   const base = raw?.vColumnProps || {};
   const flatClean = Object.fromEntries(Object.entries(flat).filter(([, v]) => v !== undefined));

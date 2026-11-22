@@ -72,7 +72,7 @@ SPDX-License-Identifier: Apache-2.0
           <button
             v-else
             type="button"
-            class="flex flex-1 items-center gap-1 border-0 bg-transparent p-0 text-start text-sm font-medium text-muted-foreground hover:text-foreground"
+            class="group flex flex-1 items-center gap-1 border-0 bg-transparent p-0 text-start text-sm font-medium text-muted-foreground hover:text-foreground"
             :class="[
               columnJustifyClass(header.column),
               !header.column.getCanSort() ? 'cursor-default' : 'cursor-pointer',
@@ -89,6 +89,12 @@ SPDX-License-Identifier: Apache-2.0
             <ChevronUp
               v-else-if="header.column.getIsSorted() === 'asc'"
               class="size-3.5 shrink-0 text-muted-foreground"
+              aria-hidden="true"
+            />
+            <!-- Unsorted: hover / keyboard-focus only — avoid ↕ noise on every column. -->
+            <ChevronsUpDown
+              v-else-if="header.column.getCanSort()"
+              class="size-3.5 shrink-0 text-muted-foreground/70 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
               aria-hidden="true"
             />
           </button>
@@ -223,7 +229,7 @@ import {
   type SortingState
 } from '@tanstack/vue-table';
 import { useVirtualizer } from '@tanstack/vue-virtual';
-import { ChevronDown, ChevronUp } from 'lucide-vue-next';
+import { ChevronDown, ChevronsUpDown, ChevronUp } from 'lucide-vue-next';
 import { CHOY_LIST_ROW_HEIGHT } from '../../composables/listDensity';
 import {
   LIST_HANDLE_API_KEY,
@@ -286,6 +292,11 @@ const props = withDefaults(
      * server: header clicks emit sort-change; data order is host-owned.
      */
     sortingMode?: 'client' | 'server';
+    /**
+     * Controlled sort state (e.g. ListView queryState.orderBy).
+     * When set, mirrors into the header chevrons; header clicks still emit sort-change.
+     */
+    sorting?: SortingState;
     enableRowSelection?: boolean;
     /** When false, host renders its own empty state. */
     showEmpty?: boolean;
@@ -359,10 +370,24 @@ const rootHeightStyle = computed(() => {
   return { height: `${h}px` };
 });
 
-const sorting = ref<SortingState>([]);
+const sorting = ref<SortingState>(props.sorting ? [...props.sorting] : []);
 const rowSelection = ref<RowSelectionState>({});
 /** TanStack keys are always strings; keep originals for emit typing. */
 const idRegistry = new Map<string, DataTableRowId>();
+
+watch(
+  () => props.sorting,
+  (next) => {
+    if (next === undefined) return;
+    const current = sorting.value;
+    const same =
+      current.length === next.length &&
+      current.every((row, i) => row.id === next[i]?.id && !!row.desc === !!next[i]?.desc);
+    if (same) return;
+    sorting.value = [...next];
+  },
+  { deep: true }
+);
 
 function isControlledSelection(): boolean {
   return props.rowSelection !== undefined;

@@ -203,6 +203,7 @@ SPDX-License-Identifier: Apache-2.0
           :selection-api="selection"
           :base-index="baseIndex"
           :store="store"
+          :order-by="tableOrderBy"
           @selection-change="onSelectionChange"
           @row-click="onRowClick"
           @sort-change="onTableSortChange"
@@ -584,15 +585,20 @@ const showHandleColumn = computed(
 );
 
 const isReordering = ref(false);
+const tableOrderBy = computed(() => {
+  const raw = (store.state as any)?.queryState?.orderBy ?? (store.state as any)?.orderBy ?? props.orderBy;
+  if (raw == null) return undefined;
+  return (Array.isArray(raw) ? raw : [raw]) as OrderByState[];
+});
+
 const handleEnabled = computed(() => {
   if (!showHandleColumn.value || inlineEdit.isEditing.value || isReordering.value) return false;
   // Reorder only when unsorted, or sorted by handleField ascending (matches renumber semantics).
-  const raw = (store.state as any)?.queryState?.orderBy ?? (store.state as any)?.orderBy;
-  const list = Array.isArray(raw) ? raw : raw ? [raw] : [];
+  const list = tableOrderBy.value || [];
   if (!list.length) return true;
-  const primary = list[0] as { field?: string; direction?: string } | undefined;
+  const primary = list[0] as { field?: string; direction?: string; order?: string } | undefined;
   const field = primary?.field;
-  const dir = String(primary?.direction || '').toLowerCase();
+  const dir = String(primary?.direction || primary?.order || '').toLowerCase();
   return field === props.handleField && dir === 'asc';
 });
 

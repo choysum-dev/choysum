@@ -30,6 +30,8 @@ type RepositoryOrderDeps = {
 type OrderByInputLike = {
   field?: unknown;
   order?: unknown;
+  /** FE query-state alias; prefer `order` when both are set. */
+  direction?: unknown;
 };
 
 function asOrderByInputLike(value: unknown): OrderByInputLike | undefined {
@@ -47,7 +49,8 @@ export function normalizeOrderBy(input: unknown): RepositoryOrderSpec[] | undefi
 
       const field = String(candidate.field ?? '');
       if (!field) return null;
-      const order = String(candidate.order ?? 'asc').toLowerCase() === 'desc' ? 'desc' : 'asc';
+      const dirRaw = candidate.order ?? candidate.direction ?? 'asc';
+      const order = String(dirRaw).toLowerCase() === 'desc' ? 'desc' : 'asc';
       return { field, order } as RepositoryOrderSpec;
     })
     .filter(Boolean) as RepositoryOrderSpec[];

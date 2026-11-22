@@ -15,6 +15,7 @@ import {
 import { createModelStore } from '../stores/registry';
 import { getTokenProvider } from '@/core/web/rpc/providers';
 import { normalizeOptionalString } from '@/core/service/utils/normalization';
+import { toRpcOrderBy } from './orderBy';
 
 type CreateModelStore = typeof createModelStore;
 
@@ -584,7 +585,8 @@ async function call(plan: QueryPlan, store: ModelStore<any>): Promise<any> {
   switch (plan.kind) {
     case 'search': {
       const { condition, fields, orderBy, limit, offset, relationConditionSource } = plan.params || {};
-      const options = { fields, orderBy, limit, offset, relationConditionSource };
+      // FE OrderByState uses `direction`; repository Search expects `order`.
+      const options = { fields, orderBy: toRpcOrderBy(orderBy) as any, limit, offset, relationConditionSource };
       // `return await` so QuickJS adopts rejections (bare `return promise` can unhandle).
       return await store.Search!(condition ?? [], options);
     }
@@ -594,7 +596,7 @@ async function call(plan: QueryPlan, store: ModelStore<any>): Promise<any> {
     }
     case 'readGroup': {
       const { groupby, condition, fields, orderBy, limit, offset } = plan.params || {};
-      const opts = { fields, orderBy, limit, offset };
+      const opts = { fields, orderBy: toRpcOrderBy(orderBy) as any, limit, offset };
       const gbArray: any[] = Array.isArray(groupby) ? groupby : groupby ? [groupby] : [];
       const cond = Array.isArray(condition) || !condition ? (condition ?? []) : condition;
       return await store.ReadGroup!(gbArray, cond, opts);

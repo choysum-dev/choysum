@@ -296,6 +296,14 @@ export function createListController(store: ModelStore<any>): IListController {
         };
       }
 
+      // Persist sort so header chevrons and later paginate/apply reuse the same orderBy.
+      if (effectiveOverrides && Object.prototype.hasOwnProperty.call(effectiveOverrides, 'orderBy')) {
+        (store.state as any).queryState = {
+          ...(store.state as any).queryState,
+          orderBy: effectiveOverrides.orderBy,
+        };
+      }
+
       // Write applied groups back so the search header reflects controlled state.
       if (overrides?.appliedGroups !== undefined) {
         const gb = gbStrings ?? [];
