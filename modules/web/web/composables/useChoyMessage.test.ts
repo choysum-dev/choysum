@@ -1,10 +1,12 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
+import { createPinia, setActivePinia } from 'pinia';
 import { ChoyMessage, useChoyMessage } from '@/web/web/composables/useChoyMessage';
 import { toast } from 'vue-sonner';
 // Pull a .vue import so the FE unit runner enables the Vue host bundle (resolves `vue`).
 import Toaster from '@/web/web/components/vendor/ui/sonner/Sonner.vue';
+import { useConnectivityStore } from '../stores/connectivityStore';
 
 void Toaster;
 
@@ -23,6 +25,11 @@ function entries(): Array<{
 }
 
 describe('useChoyMessage', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+    useConnectivityStore().resetForTests();
+  });
+
   test('exposes ChoyMessage facade levels onto vue-sonner', () => {
     clearToasts();
     const api = useChoyMessage();
@@ -98,6 +105,16 @@ describe('useChoyMessage', () => {
     clearToasts();
     api.info('Sticky', { duration: 0 });
     expect(entries()[0].duration).toBe(Number.POSITIVE_INFINITY);
+    clearToasts();
+  });
+
+  test('suppresses transport-like errors while unreachable', () => {
+    clearToasts();
+    useConnectivityStore().markUnreachable();
+    expect(ChoyMessage.error('Failed to fetch')).toBe(0);
+    expect(entries().length).toBe(0);
+    expect(ChoyMessage.error('Name is required')).not.toBe(0);
+    expect(entries().length).toBe(1);
     clearToasts();
   });
 });

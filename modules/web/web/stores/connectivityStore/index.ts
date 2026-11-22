@@ -142,6 +142,10 @@ export function bindConnectivityLifecycle(): void {
     onTransportOutage: () => store.noteTransportOutage(),
   });
   store.bindNavigator();
+  // Lazy import avoids circular init with useChoyMessage ↔ store.
+  void import('./recoveryToast').then(mod => {
+    mod.bindConnectivityRecoveryToast();
+  });
 }
 
 /** Test helper: drop hooks registered by bindConnectivityLifecycle. */
