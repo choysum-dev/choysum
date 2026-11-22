@@ -4,6 +4,8 @@
 import { ConnectError, Code } from '@connectrpc/connect';
 import type { RpcRequestContext, RequestLifecycleProvider } from '../../rpc/types';
 import { asObjectRecord } from '../../utils/object';
+import { isTransportOutage } from '../rpc/transportOutage';
+import { getConnectivityHooks } from './connectivityHooks';
 import { loadingRegistryOnRpcFinish, loadingRegistryOnRpcStart } from './loadingRegistry';
 import type { ApiState, ApiStateInternal } from './state';
 
@@ -28,7 +30,13 @@ export function createLifecycleProvider(apiState: ApiStateInternal): RequestLife
       loadingRegistryOnRpcStart(spanId);
     },
 
-    onSuccess: () => {},
+    onSuccess: () => {
+      try {
+        getConnectivityHooks().onTransportSuccess?.();
+      } catch {
+        // Connectivity hooks must never break RPC success.
+      }
+    },
 
     onError: (context: RpcRequestContext, error: unknown) => {
       const { serviceName, methodName } = context;
@@ -43,6 +51,14 @@ export function createLifecycleProvider(apiState: ApiStateInternal): RequestLife
           return error;
         }
       } catch {}
+
+      try {
+        if (isTransportOutage(error)) {
+          getConnectivityHooks().onTransportOutage?.();
+        }
+      } catch {
+        // Connectivity hooks must never break RPC error propagation.
+      }
 
       return apiState._internal.handleError(stateKey, error);
     },
