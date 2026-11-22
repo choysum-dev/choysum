@@ -11,7 +11,7 @@ SPDX-License-Identifier: Apache-2.0
     :searchView="ChoySearchView"
     :action-ids="{ create: countryActions.create, delete: countryActions.delete }"
     :has-action="hasAction"
-    @row-click="onRowClick"
+    detail-path="/base/countries/:id"
   >
     <ChoyTableColumn type="selection" :vColumnProps="{ align: 'center' }" />
     <ChoyTableColumn type="index" :vColumnProps="{ align: 'right' }" />
@@ -30,14 +30,12 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts">
 import type { ModelStore } from '@/web/web/stores/modelStore';
 import type Country from '@/base/service/models/country';
-import { useRouter } from 'vue-router';
 import { useListViewExpose } from '@/web/web/composables/useListView';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
 import { ChoyBooleanField, ChoyListView, ChoyManyToOneField, ChoySearchView, ChoyTableColumn, ChoyVarcharField} from '@/web';
-import type { RowEventPayload } from '@/web';
 
 defineOptions({ name: 'CountryListView', inheritAttrs: true });
 const { _t, _lt } = createTranslate('base', { scope: 'web/views/CountryListView' });
@@ -45,11 +43,6 @@ const props = defineProps<{ store?: ModelStore<Country> }>();
 const store = resolvePageStore(props.store, 'CountryListView');
 const countryActions = defineModelActions('base.Country', { entityTitle: _lt('Country') });
 const { hasAction } = usePermission();
-const router = useRouter();
-function onRowClick(payload: RowEventPayload) {
-  const id = String(payload.row?.Id ?? '').trim();
-  if (id) router.push(`/base/countries/${id}`);
-}
 const { listRef, expose } = useListViewExpose<Country>();
 defineExpose(expose);
 </script>

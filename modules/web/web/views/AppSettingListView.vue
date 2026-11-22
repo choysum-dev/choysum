@@ -15,7 +15,7 @@ SPDX-License-Identifier: Apache-2.0
       delete: appSettingActions.delete,
     }"
     :has-action="hasAction"
-    @row-click="onRowClick"
+    :detail-path="detailPathForRow"
   >
     <template v-if="showSettingsSwitcher" #header-right>
       <ChoyViewSwitcher
@@ -44,7 +44,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { useRoute } from 'vue-router';
 import type { ModelStore } from '@/web/web/stores/modelStore';
 import { useListViewExpose } from '@/web/web/composables/useListView';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
@@ -60,14 +60,12 @@ import {
   resolveChoyViewRoutePath,
   useChoyViewRouteSwitch,
   type ChoyViewSwitcherOption,
-  type RowEventPayload,
 } from '@/web';
 import { appSettingActions } from './app_setting_actions';
 
 defineOptions({ name: 'AppSettingListView', inheritAttrs: true });
 const { _t } = createTranslate('web', { scope: 'web/views/AppSettingListView' });
 
-const router = useRouter();
 const route = useRoute();
 
 const props = defineProps<{
@@ -94,10 +92,11 @@ const viewSwitcherOptions = computed<ChoyViewSwitcherOption[]>(() => [
   { value: 'list', label: _t('Parameters View') },
 ]);
 
-function onRowClick(payload: RowEventPayload) {
-  const id = String(payload.row?.Id ?? '').trim();
+function detailPathForRow(row: Record<string, unknown>) {
+  const id = String(row?.Id ?? '').trim();
   const app = application.value;
-  if (id && app) router.push(`/web/app-settings/${app}/${id}`);
+  if (!id || !app) return null;
+  return `/web/app-settings/${app}/${id}`;
 }
 
 const { listRef, expose } = useListViewExpose<any>();

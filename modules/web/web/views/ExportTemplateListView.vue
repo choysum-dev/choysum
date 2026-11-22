@@ -19,7 +19,7 @@ SPDX-License-Identifier: Apache-2.0
       delete: exportTemplateActions.delete,
     }"
     :has-action="hasAction"
-    @row-click="onRowClick"
+    detail-path="/web/export-templates/:id"
   >
     <ChoyTableColumn type="selection" :vColumnProps="{ align: 'center' }" />
     <ChoyTableColumn type="index" :vColumnProps="{ align: 'end', width: 44 }" />
@@ -63,7 +63,6 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { useRouter } from 'vue-router';
 import type { ModelStore } from '@/web/web/stores/modelStore';
 import { useListViewExpose } from '@/web/web/composables/useListView';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
@@ -76,14 +75,12 @@ import {
   ChoySearchView,
   ChoyTableColumn,
   ChoyVarcharField,
-  type RowEventPayload,
 } from '@/web';
 import { exportTemplateActions } from './export_template_actions';
 
 defineOptions({ name: 'ExportTemplateListView', inheritAttrs: true });
 const { _t } = createTranslate('web', { scope: 'web/views/ExportTemplateListView' });
 
-const router = useRouter();
 
 const props = defineProps<{
   store?: ModelStore<any>;
@@ -92,10 +89,6 @@ const props = defineProps<{
 const store = resolvePageStore(props.store, 'ExportTemplateListView');
 const { hasAction } = usePermission();
 
-function onRowClick(payload: RowEventPayload) {
-  const id = String(payload.row?.Id ?? '').trim();
-  if (id) router.push(`/web/export-templates/${id}`);
-}
 
 const { listRef, expose } = useListViewExpose<any>();
 defineExpose(expose);

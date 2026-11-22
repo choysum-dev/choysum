@@ -11,7 +11,7 @@ SPDX-License-Identifier: Apache-2.0
     :searchView="ChoySearchView"
     :action-ids="{ create: uomActions.create, delete: uomActions.delete }"
     :has-action="hasAction"
-    @row-click="onRowClick"
+    detail-path="/base/uoms/:id"
   >
     <ChoyTableColumn type="selection" :vColumnProps="{ align: 'center' }" />
     <ChoyTableColumn type="index" :vColumnProps="{ align: 'right' }" />
@@ -30,14 +30,12 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts">
 import type { ModelStore } from '@/web/web/stores/modelStore';
 import type UoM from '@/base/service/models/uom';
-import { useRouter } from 'vue-router';
 import { useListViewExpose } from '@/web/web/composables/useListView';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
 import { ChoyBooleanField, ChoyDecimalField, ChoyListView, ChoySearchView, ChoyTableColumn, ChoyVarcharField, ChoyManyToOneField} from '@/web';
-import type { RowEventPayload } from '@/web';
 
 defineOptions({ name: 'UoMListView', inheritAttrs: true });
 const { _t, _lt } = createTranslate('base', { scope: 'web/views/UoMListView' });
@@ -45,11 +43,6 @@ const props = defineProps<{ store?: ModelStore<UoM> }>();
 const store = resolvePageStore(props.store, 'UoMListView');
 const uomActions = defineModelActions('base.UoM', { entityTitle: _lt('Unit of Measure') });
 const { hasAction } = usePermission();
-const router = useRouter();
-function onRowClick(payload: RowEventPayload) {
-  const id = String(payload.row?.Id ?? '').trim();
-  if (id) router.push(`/base/uoms/${id}`);
-}
 const { listRef, expose } = useListViewExpose<UoM>();
 defineExpose(expose);
 </script>

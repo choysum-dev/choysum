@@ -10,7 +10,7 @@ SPDX-License-Identifier: Apache-2.0
     :store="store"
     :searchView="ChoySearchView"
     :action-ids="{}"
-    @row-click="onRowClick"
+    :detail-path="detailPathForRow"
   >
     <template #user-actions>
       <TerminologyExportMenu :application="application" />
@@ -29,7 +29,6 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts">
 import type { ModelStore } from '@/web/web/stores/modelStore';
 import { computed } from 'vue';
-import { useRouter } from 'vue-router';
 import { useListViewExpose } from '@/web/web/composables/useListView';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import {
@@ -39,7 +38,6 @@ import {
   ChoyTextField,
   ChoyVarcharField,
 } from '@/web';
-import type { RowEventPayload } from '@/web';
 import TerminologyExportMenu from '../components/terminology/TerminologyExportMenu.vue';
 
 defineOptions({ name: 'TranslationTermListView', inheritAttrs: true });
@@ -51,12 +49,12 @@ const props = defineProps<{
 
 const application = computed(() => String(props.application || '').trim());
 const store = resolvePageStore(props.store, 'TranslationTermListView');
-const router = useRouter();
 
-function onRowClick(payload: RowEventPayload) {
-  const id = String(payload.row?.Id ?? '').trim();
+function detailPathForRow(row: Record<string, unknown>) {
+  const id = String(row?.Id ?? '').trim();
   const app = application.value;
-  if (id && app) router.push(`/web/terminology/${app}/${id}`);
+  if (!id || !app) return null;
+  return `/web/terminology/${app}/${id}`;
 }
 
 const { listRef, expose } = useListViewExpose<any>();

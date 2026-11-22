@@ -13,7 +13,7 @@ SPDX-License-Identifier: Apache-2.0
     :show-header="showHeader"
     :action-ids="{ create: tokenActions.create, delete: tokenActions.delete }"
     :has-action="hasAction"
-    @row-click="onRowClick"
+    detail-path="/auth/tokens/:id"
   >
     <!-- View-mode toggles only; ListView keeps pagination at the trailing edge. -->
     <template v-if="showHeader" #header-right>
@@ -39,7 +39,6 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import { useRouter } from 'vue-router';
 import type { ModelStore } from '@/web/web/stores/modelStore';
 import type Token from '@/auth/service/models/token';
 import { useListViewExpose } from '@/web/web/composables/useListView';
@@ -56,14 +55,12 @@ import {
   ChoyViewSwitcher,
   useChoyViewRouteSwitch,
   type ChoyViewSwitcherOption,
-  type RowEventPayload,
 } from '@/web';
 import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'TokenListView', inheritAttrs: false });
 const { _t, _lt } = createTranslate('auth', { scope: 'web/views/TokenListView' });
 
-const router = useRouter();
 
 const props = withDefaults(
   defineProps<{
@@ -87,10 +84,6 @@ const viewSwitcherOptions = computed<ChoyViewSwitcherOption[]>(() => [
   { value: 'chart', label: _t('Chart View') },
 ]);
 
-function onRowClick(payload: RowEventPayload) {
-  const id = String(payload.row?.Id ?? '').trim();
-  if (id) router.push(`/auth/tokens/${id}`);
-}
 
 const { listRef, expose } = useListViewExpose<Token>();
 defineExpose(expose);

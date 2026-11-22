@@ -12,7 +12,7 @@ SPDX-License-Identifier: Apache-2.0
     :show-header="showHeader"
     :action-ids="{ create: roleActions.create, delete: roleActions.delete }"
     :has-action="hasAction"
-    @row-click="onRowClick"
+    detail-path="/auth/roles/:id"
   >
     <ChoyTableColumn type="selection" :vColumnProps="{ align: 'center' }" />
     <ChoyTableColumn type="index" :vColumnProps="{ align: 'right' }" />
@@ -26,7 +26,6 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { useRouter } from 'vue-router';
 import type { ModelStore } from '@/web/web/stores/modelStore';
 import type Role from '@/auth/service/models/role';
 import { useListViewExpose } from '@/web/web/composables/useListView';
@@ -34,14 +33,12 @@ import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { ChoyBooleanField, ChoyDatetimeField, ChoyListView, ChoySearchView, ChoyTableColumn, ChoyVarcharField } from '@/web';
-import type { RowEventPayload } from '@/web';
 import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'RoleListView', inheritAttrs: true });
 const { _t, _lt } = createTranslate('auth', { scope: 'web/views/RoleListView' });
 
 
-const router = useRouter();
 
 const props = withDefaults(
   defineProps<{
@@ -61,10 +58,6 @@ const { hasAction } = usePermission();
 /**
  * Open the clicked role record in detail view.
  */
-function onRowClick(payload: RowEventPayload) {
-  const id = String(payload.row?.Id ?? '').trim();
-  if (id) router.push(`/auth/roles/${id}`);
-}
 
 const { listRef, expose } = useListViewExpose<Role>();
 defineExpose(expose);

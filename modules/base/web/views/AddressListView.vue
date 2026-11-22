@@ -11,7 +11,7 @@ SPDX-License-Identifier: Apache-2.0
     :searchView="ChoySearchView"
     :action-ids="{ create: addressActions.create, delete: addressActions.delete }"
     :has-action="hasAction"
-    @row-click="onRowClick"
+    detail-path="/base/addresses/:id"
   >
     <ChoyTableColumn type="selection" :vColumnProps="{ align: 'center' }" />
     <ChoyTableColumn type="index" :vColumnProps="{ align: 'right' }" />
@@ -29,14 +29,12 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts">
 import type { ModelStore } from '@/web/web/stores/modelStore';
 import type Address from '@/base/service/models/address';
-import { useRouter } from 'vue-router';
 import { useListViewExpose } from '@/web/web/composables/useListView';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { createTranslate } from '@/web/web/i18n';
 import { ChoyListView, ChoyManyToOneField, ChoySearchView, ChoyTableColumn, ChoyVarcharField} from '@/web';
-import type { RowEventPayload } from '@/web';
 
 defineOptions({ name: 'AddressListView', inheritAttrs: true });
 const { _t, _lt } = createTranslate('base', { scope: 'web/views/AddressListView' });
@@ -44,11 +42,6 @@ const props = defineProps<{ store?: ModelStore<Address> }>();
 const store = resolvePageStore(props.store, 'AddressListView');
 const addressActions = defineModelActions('base.Address', { entityTitle: _lt('Address') });
 const { hasAction } = usePermission();
-const router = useRouter();
-function onRowClick(payload: RowEventPayload) {
-  const id = String(payload.row?.Id ?? '').trim();
-  if (id) router.push(`/base/addresses/${id}`);
-}
 const { listRef, expose } = useListViewExpose<Address>();
 defineExpose(expose);
 </script>

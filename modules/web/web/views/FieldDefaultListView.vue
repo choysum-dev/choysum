@@ -15,7 +15,7 @@ SPDX-License-Identifier: Apache-2.0
       delete: fieldDefaultActions.delete,
     }"
     :has-action="hasAction"
-    @row-click="onRowClick"
+    :detail-path="detailPathForRow"
   >
     <ChoyTableColumn type="selection" :vColumnProps="{ align: 'center' }" />
     <ChoyTableColumn type="index" :vColumnProps="{ align: 'end', width: 44 }" />
@@ -54,7 +54,6 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import { useRouter } from 'vue-router';
 import type { ModelStore } from '@/web/web/stores/modelStore';
 import { useListViewExpose } from '@/web/web/composables/useListView';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
@@ -66,14 +65,11 @@ import {
   ChoySearchView,
   ChoyTableColumn,
   ChoyVarcharField,
-  type RowEventPayload,
 } from '@/web';
 import { fieldDefaultActions } from './field_default_actions';
 
 defineOptions({ name: 'FieldDefaultListView', inheritAttrs: true });
 const { _t } = createTranslate('web', { scope: 'web/views/FieldDefaultListView' });
-
-const router = useRouter();
 
 const props = defineProps<{
   store?: ModelStore<any>;
@@ -89,10 +85,11 @@ const createPath = computed(() => {
 
 const { hasAction } = usePermission();
 
-function onRowClick(payload: RowEventPayload) {
-  const id = String(payload.row?.Id ?? '').trim();
+function detailPathForRow(row: Record<string, unknown>) {
+  const id = String(row?.Id ?? '').trim();
   const app = application.value;
-  if (id && app) router.push(`/web/field-defaults/${app}/${id}`);
+  if (!id || !app) return null;
+  return `/web/field-defaults/${app}/${id}`;
 }
 
 const { listRef, expose } = useListViewExpose<any>();
