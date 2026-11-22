@@ -193,11 +193,8 @@ export const useBreadcrumbStore = defineStore('breadcrumb', () => {
    * Same menu leaf, deeper than the list path: push a page or replace the tip page.
    */
   function applySameLeafPage(route: any) {
+    // getPageTitle always resolves a TextSource (explicit / heuristics / fallback).
     const pageTitle = getPageTitle(route);
-    if (!pageTitle) {
-      consumePendingPageMode();
-      return;
-    }
     const mode = consumePendingPageMode();
     const tip = breadcrumbStack.value[breadcrumbStack.value.length - 1];
     if (mode === 'replace' && tip?.kind === 'page') {

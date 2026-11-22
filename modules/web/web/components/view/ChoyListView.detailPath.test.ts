@@ -351,6 +351,7 @@ test('detailPath emits row-click for null path / blank id; snapshot throw still 
     setup: (_p: any, { slots }: any) => () => h('div', slots.default?.()),
   });
 
+  const clicks: unknown[] = [];
   const nullPath = mountApp(ChoyListView as any, {
     props: {
       store: makeStore(),
@@ -358,6 +359,7 @@ test('detailPath emits row-click for null path / blank id; snapshot throw still 
       showHeader: false,
       showPaginate: false,
     },
+    on: { onRowClick: (p: unknown) => clicks.push(p) },
     plugins: [pinia, router as any],
   });
   await flushPromises();
@@ -368,14 +370,52 @@ test('detailPath emits row-click for null path / blank id; snapshot throw still 
   });
   await flushPromises();
   expect(pushes).toEqual([]);
+  expect(clicks.length).toBe(1);
 
-  await (nullPath.setupState() as any).onRowClick({
+  // detailPath set but blank id → emit (no navigation).
+  clicks.length = 0;
+  const blankId = mountApp(ChoyListView as any, {
+    props: {
+      store: makeStore(),
+      detailPath: '/base/countries/:id',
+      showHeader: false,
+      showPaginate: false,
+    },
+    on: { onRowClick: (p: unknown) => clicks.push(p) },
+    plugins: [pinia, router as any],
+  });
+  await flushPromises();
+  await (blankId.setupState() as any).onRowClick({
     rowData: { kind: 'record', key: 'x', payload: {} },
     rowIndex: 0,
     rowKey: 'x',
   });
   await flushPromises();
   expect(pushes).toEqual([]);
+  expect(clicks.length).toBe(1);
+  blankId.unmount();
+
+  // No detailPath → always emit row-click.
+  clicks.length = 0;
+  const noPath = mountApp(ChoyListView as any, {
+    props: {
+      store: makeStore(),
+      showHeader: false,
+      showPaginate: false,
+    },
+    on: { onRowClick: (p: unknown) => clicks.push(p) },
+    plugins: [pinia, router as any],
+  });
+  await flushPromises();
+  await (noPath.setupState() as any).onRowClick({
+    rowData: { kind: 'record', key: 'a', payload: { Id: 'a' } },
+    rowIndex: 0,
+    rowKey: 'a',
+  });
+  await flushPromises();
+  expect(pushes).toEqual([]);
+  expect(clicks.length).toBe(1);
+  noPath.unmount();
   nullPath.unmount();
 
   const boomStore = makeStore();

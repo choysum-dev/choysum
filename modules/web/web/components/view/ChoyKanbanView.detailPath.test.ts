@@ -249,8 +249,6 @@ test('detailPath without router emits card-click; blank id / null path emit', as
     plugins: [pinia, router as any],
   });
   await flushPromises();
-  const blank = { id: '', title: 'X', laneKey: 'todo', payload: {} };
-  (withRouter.setupState() as any).onCardClick(blank);
   (withRouter.setupState() as any).onCardClick({
     id: 'a',
     title: 'A',
@@ -259,8 +257,27 @@ test('detailPath without router emits card-click; blank id / null path emit', as
   });
   await flushPromises();
   expect(pushes).toEqual([]);
-  expect(clicks2.length).toBe(2);
+  expect(clicks2.length).toBe(1);
   withRouter.unmount();
+
+  // detailPath set but blank id (no payload Id and empty card.id) → emit.
+  const clicks3: ChoyKanbanCard[] = [];
+  const blankMount = mountApp(ChoyKanbanView as any, {
+    props: {
+      store: makeStore([{ Id: 'a' }]),
+      autoBootstrap: false,
+      detailPath: '/sandbox/records/:id',
+    },
+    on: { onCardClick: (c: ChoyKanbanCard) => clicks3.push(c) },
+    plugins: [pinia, router as any],
+  });
+  await flushPromises();
+  const blank = { id: '', title: 'X', laneKey: 'todo', payload: {} };
+  (blankMount.setupState() as any).onCardClick(blank);
+  await flushPromises();
+  expect(pushes).toEqual([]);
+  expect(clicks3).toEqual([blank]);
+  blankMount.unmount();
 });
 
 test('detailPath clear catches missing Pinia on mount', async () => {

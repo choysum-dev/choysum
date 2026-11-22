@@ -21,6 +21,8 @@ export function openRecordFromCollection(args: OpenRecordFromCollectionArgs): vo
   const store = useRecordSetStore();
   store.seed(args.entry);
   store.installMenuClearWatch();
+  // Only clear this open on failure — a later open may have already re-seeded.
+  const seededKey = store.active?.key;
   const to = args.to;
   const push =
     typeof to === 'string'
@@ -29,7 +31,8 @@ export function openRecordFromCollection(args: OpenRecordFromCollectionArgs): vo
   // Aborted / failed navigations must not leave a seeded pager session behind.
   Promise.resolve(push).catch(() => {
     try {
-      useRecordSetStore().clear();
+      const rs = useRecordSetStore();
+      if (rs.active && rs.active.key === seededKey) rs.clear();
     } catch {
       // Pinia may be unavailable in unit mounts without an app shell.
     }

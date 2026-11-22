@@ -75,8 +75,8 @@ export function canOpenDetailRow(
 ): boolean {
   if (canOpenDetail == null) return true;
   if (typeof canOpenDetail === 'function') {
-    if (!row) return false;
-    return !!canOpenDetail(row);
+    // Parameterless ACL getters (e.g. () => hasAction(...)) still run when row is missing.
+    return !!canOpenDetail(row ?? {});
   }
   return !!canOpenDetail;
 }

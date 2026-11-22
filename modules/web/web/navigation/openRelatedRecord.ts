@@ -17,11 +17,10 @@ export type OpenRelatedRecordArgs = {
  * Breadcrumb defaults to push under the same menu leaf so the source form stays backable.
  */
 export function openRelatedRecord(args: OpenRelatedRecordArgs): void {
-  useRecordSetStore().clear();
-  const to = args.to;
-  if (typeof to === 'string') {
-    void args.router.push(to);
-    return;
+  try {
+    useRecordSetStore().clear();
+  } catch {
+    // Pinia may be unavailable in unit mounts without an app shell.
   }
-  void args.router.push(to);
+  void args.router.push(args.to as string | Record<string, unknown>);
 }

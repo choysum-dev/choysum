@@ -36,6 +36,9 @@ test('canOpenDetailRow gates navigation', () => {
   expect(canOpenDetailRow(false, { Id: '1' })).toBe(false);
   expect(canOpenDetailRow(row => String(row.Id) === 'ok', { Id: 'ok' })).toBe(true);
   expect(canOpenDetailRow(row => String(row.Id) === 'ok', { Id: 'no' })).toBe(false);
+  // Parameterless ACL still evaluates when row is missing.
+  expect(canOpenDetailRow(() => true, null)).toBe(true);
+  expect(canOpenDetailRow(() => false, undefined)).toBe(false);
 });
 
 test('snapshotFromListStore builds global index and page ids', () => {
@@ -156,6 +159,43 @@ test('openRecordFromCollection seeds store and pushes route', async () => {
   await Promise.resolve();
   await Promise.resolve();
   expect(useRecordSetStore().active).toBeNull();
+
+  // Failed push must not clear a newer session seeded under a different key.
+  let rejectFirst: (err: Error) => void = () => undefined;
+  const firstPush = new Promise((_, reject) => {
+    rejectFirst = reject as (err: Error) => void;
+  });
+  openRecordFromCollection({
+    router: { push: () => firstPush },
+    to: '/base/countries/old',
+    entry: {
+      key: 'old',
+      model: 'base.Country',
+      condition: {},
+      total: 1,
+      index: 0,
+      ids: ['old'],
+      windowStart: 0,
+    },
+  });
+  openRecordFromCollection({
+    router: { push: to => pushed.push(to) },
+    to: '/base/countries/new',
+    entry: {
+      key: 'new',
+      model: 'base.Country',
+      condition: {},
+      total: 1,
+      index: 0,
+      ids: ['new'],
+      windowStart: 0,
+    },
+  });
+  expect(useRecordSetStore().active?.key).toBe('new');
+  rejectFirst(new Error('aborted'));
+  await Promise.resolve();
+  await Promise.resolve();
+  expect(useRecordSetStore().active?.key).toBe('new');
 });
 
 test('snapshotFromListStore pageIds override ignores group-only result.rows', () => {
@@ -214,4 +254,18 @@ test('snapshotFromListStore empty total and unmatched recordId', () => {
   );
   expect(zero?.total).toBe(0);
   expect(zero?.index).toBe(0);
+
+  // Non-record objects without Id/id are skipped (unwrap returns null).
+  const skipped = snapshotFromListStore(
+    {
+      modelName: 'base.Country',
+      state: {
+        queryState: { pagination: { offset: 0 } },
+        result: { rows: [{ Name: 'no-id' }, null, 'x', { Id: 'kept' }] },
+      },
+      metadata: { fields: {} },
+    },
+    { model: 'base.Country', key: 'k', rowIndex: 0, recordId: 'kept' }
+  );
+  expect(skipped?.ids).toEqual(['kept']);
 });

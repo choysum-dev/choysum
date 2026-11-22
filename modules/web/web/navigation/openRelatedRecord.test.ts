@@ -38,3 +38,13 @@ test('openRelatedRecord accepts a string path', () => {
   });
   expect(pushed).toEqual(['/auth/roles/r1']);
 });
+
+test('openRelatedRecord still pushes when Pinia is unavailable', () => {
+  // No active Pinia — clear must not block navigation.
+  const pushed: unknown[] = [];
+  openRelatedRecord({
+    router: { push: to => pushed.push(to) },
+    to: '/auth/roles/r2',
+  });
+  expect(pushed).toEqual(['/auth/roles/r2']);
+});

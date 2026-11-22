@@ -33,3 +33,16 @@ export function formPagerCurrentInputCh(opts: {
   const digits = Math.max(draftLen, currentLen, totalLen, 2);
   return Math.min(12, digits + 3);
 }
+
+/**
+ * Resolve the native input from a template ref (plain element or component `$el`).
+ */
+export function resolvePagerInputEl(ref: unknown): HTMLInputElement | null {
+  if (!ref || typeof ref !== 'object') return null;
+  const r = ref as HTMLInputElement & { $el?: unknown };
+  if (typeof r.focus === 'function' && !r.$el) {
+    return r as HTMLInputElement;
+  }
+  const el = r.$el;
+  return el instanceof HTMLInputElement ? el : null;
+}

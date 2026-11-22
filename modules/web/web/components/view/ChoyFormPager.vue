@@ -88,7 +88,11 @@ import ChoyButton from '../layout/ChoyButton.vue';
 import ChoyButtonGroup from '../layout/ChoyButtonGroup.vue';
 import Input from '../vendor/ui/input/Input.vue';
 import { createTranslate } from '../../i18n';
-import { formPagerCurrentInputCh, parseFormPagerCurrentDraft } from './formPagerHelpers';
+import {
+  formPagerCurrentInputCh,
+  parseFormPagerCurrentDraft,
+  resolvePagerInputEl,
+} from './formPagerHelpers';
 
 const { _t } = createTranslate('web', { scope: 'web/components/view/ChoyFormPager' });
 
@@ -125,13 +129,7 @@ const currentIdleRef = ref<HTMLButtonElement | null>(null);
 const suppressBlurCommit = ref(false);
 
 function currentInputEl(): HTMLInputElement | null {
-  const r = currentInputRef.value;
-  if (!r) return null;
-  if (typeof (r as HTMLInputElement).focus === 'function' && !(r as { $el?: unknown }).$el) {
-    return r as HTMLInputElement;
-  }
-  const el = (r as { $el?: HTMLInputElement }).$el;
-  return el instanceof HTMLInputElement ? el : null;
+  return resolvePagerInputEl(currentInputRef.value);
 }
 
 const normalizedCurrent = computed(() => {
