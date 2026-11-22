@@ -477,7 +477,7 @@ import { FIELD_PRESENTATION_FIELDS_GET_ATTRS } from '@/web/web/stores/fieldsGet'
 import FieldTranslationsDialog from './ChoyFieldTranslationsDialog.vue';
 import FieldCompanyValuesDialog from './ChoyFieldCompanyValuesDialog.vue';
 import { defaultListColumnAlignForFieldType } from './numericFieldHelpers';
-import { defaultListColumnSortableForFieldType } from './listColumnSortable';
+import { defaultListColumnSortable } from './listColumnSortable';
 import { dataTableColumnJustifyClass } from '@/web/web/components/internal/dataTableHelpers';
 
 export type { ChoyInlineErrorSpace };
@@ -593,12 +593,28 @@ const effectiveFieldMeta = computed(() => {
   return modelStore.value?.getFieldMeta?.(leaf) ?? binding.meta;
 });
 
-/** List columns: default align + sortable by field type; explicit vColumnProps win. */
+/** List columns: default align + sortable by field type/storage; explicit vColumnProps win. */
 const resolvedVColumnProps = computed(() => {
   const incoming = { ...(props.vColumnProps || {}) } as Record<string, unknown>;
-  const fieldType =
-    (effectiveFieldMeta.value as { type?: unknown } | undefined)?.type ??
-    (binding.meta as { type?: unknown } | undefined)?.type;
+  // Dotted related paths must use binding.meta (the leaf field), never a same-named
+  // root-store field from effectiveFieldMeta.
+  const propPath = String(binding.prop || '');
+  const isDotted = propPath.includes('.');
+  const typeMeta = (
+    isDotted
+      ? ((binding.meta as { type?: unknown } | undefined) ??
+        (effectiveFieldMeta.value as { type?: unknown } | undefined))
+      : ((effectiveFieldMeta.value as { type?: unknown } | undefined) ??
+        (binding.meta as { type?: unknown } | undefined))
+  ) as
+    | {
+        type?: unknown;
+        shouldCreateColumn?: boolean;
+        storageKind?: string;
+        computedKind?: string;
+      }
+    | undefined;
+  const fieldType = typeMeta?.type;
 
   let next = incoming;
   if (incoming.align == null || String(incoming.align).trim() === '') {
@@ -606,7 +622,7 @@ const resolvedVColumnProps = computed(() => {
     if (align) next = { ...next, align };
   }
   if (incoming.sortable == null) {
-    next = { ...next, sortable: defaultListColumnSortableForFieldType(fieldType) };
+    next = { ...next, sortable: defaultListColumnSortable(fieldType, typeMeta) };
   }
   return next;
 });

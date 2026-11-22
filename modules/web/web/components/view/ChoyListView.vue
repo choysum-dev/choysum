@@ -586,8 +586,10 @@ const showHandleColumn = computed(
 
 const isReordering = ref(false);
 const tableOrderBy = computed(() => {
-  // Prefer queryState (props mount/watch + listController seed); fall back to props before first write.
-  const raw = (store.state as any)?.queryState?.orderBy ?? props.orderBy;
+  // Prefer queryState when it owns orderBy (including explicit clear → undefined);
+  // fall back to props only before the first queryState write.
+  const queryState = (store.state as any)?.queryState as Record<string, unknown> | undefined;
+  const raw = queryState && 'orderBy' in queryState ? queryState.orderBy : props.orderBy;
   if (raw == null) return undefined;
   return (Array.isArray(raw) ? raw : [raw]) as OrderByState[];
 });
@@ -911,11 +913,12 @@ async function loadData() {
 watch(
   () => props.orderBy,
   v => {
-    if (v === undefined) return;
     (store.state as any).queryState = {
       ...(store.state as any).queryState,
       orderBy: v as any,
     };
+    if (!firstApplied.value) return;
+    controller.apply().then(afterLayoutRecompute).catch(() => {});
   }
 );
 

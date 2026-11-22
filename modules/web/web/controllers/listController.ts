@@ -274,22 +274,32 @@ export function createListController(store: ModelStore<any>): IListController {
 
       // Resolve orderBy: explicit apply override → existing queryState → metadata.orderBy.
       // Empty explicit override (user cleared sort) reseeds model default when declared.
-      const hasOrderByOverride =
-        !!effectiveOverrides && Object.prototype.hasOwnProperty.call(effectiveOverrides, 'orderBy');
+      // Grouped ReadGroup only accepts ORDER BY on group keys / aggregates (PostgreSQL).
+      const hasOrderByOverride = Object.prototype.hasOwnProperty.call(effectiveOverrides ?? {}, 'orderBy');
       const existingOrderBy = (store.state as any)?.queryState?.orderBy as OrderByState[] | undefined;
       const modelDefaultOrderBy = metadataOrderByToState((store as any)?.metadata?.orderBy);
+      const groupKeysForOrder =
+        gbStrings ??
+        (Array.isArray(existingGroups) ? normalizeGroupbyToStrings(existingGroups as any) : undefined);
+      const isGroupedRequest =
+        shape === 'groups' || (Array.isArray(groupKeysForOrder) && groupKeysForOrder.length > 0);
       let resolvedOrderBy: OrderByState[] | undefined;
       if (hasOrderByOverride) {
-        const override = effectiveOverrides!.orderBy;
+        const override = (effectiveOverrides as any).orderBy;
         if (Array.isArray(override) && override.length === 0) {
-          resolvedOrderBy = modelDefaultOrderBy;
+          resolvedOrderBy = isGroupedRequest ? undefined : modelDefaultOrderBy;
         } else {
           resolvedOrderBy = override;
         }
       } else if (Array.isArray(existingOrderBy) && existingOrderBy.length > 0) {
         resolvedOrderBy = existingOrderBy;
       } else {
-        resolvedOrderBy = modelDefaultOrderBy;
+        resolvedOrderBy = isGroupedRequest ? undefined : modelDefaultOrderBy;
+      }
+      if (isGroupedRequest && resolvedOrderBy?.length) {
+        const keySet = new Set((groupKeysForOrder || []).map(k => String(k)));
+        const filtered = resolvedOrderBy.filter(row => keySet.has(String(row?.field || '')));
+        resolvedOrderBy = filtered.length ? filtered : undefined;
       }
       if (resolvedOrderBy !== undefined || hasOrderByOverride) {
         (store.state as any).queryState = {

@@ -387,4 +387,23 @@ describe('SearchFilterCondition', () => {
     expect(q('[data-slot="search-filter-row"]')?.getAttribute('data-incomplete')).toBe('false');
     unmount();
   });
+
+  test('fieldMeta reads static metadata.fields when getFieldMeta is absent', async () => {
+    const condition = reactive<any>({ id: 'c1', field: 'Amount', operator: '=', value: null });
+    const { unmount, setupState } = mountRow(condition, {
+      store: {
+        getFieldMeta: undefined,
+        metadata: {
+          fields: {
+            Amount: { type: 'monetary', currencyField: 'CurrencyId', string: 'Amount', stringText: '金额' },
+          },
+        },
+      },
+    });
+    await nextTick();
+    const meta = setupState().fieldMeta;
+    expect(meta?.type).toBe('monetary');
+    expect(meta?.stringText || meta?.string).toBeTruthy();
+    unmount();
+  });
 });

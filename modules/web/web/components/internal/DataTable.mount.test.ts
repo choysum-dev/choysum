@@ -294,7 +294,60 @@ describe('DataTable chrome', () => {
         sortingMode: 'server',
         sorting: [{ id: 'Name', desc: true }],
       },
+      reactiveProps: true,
     });
+    await flushPromises();
+    expect(mounted.qa('[data-lucide=ChevronDown]').length).toBeGreaterThan(0);
+
+    // Prop update path: switch to asc and assert the watcher rewrites local sorting.
+    mounted.props.sorting = [{ id: 'Name', desc: false }];
+    await flushPromises();
+    expect(mounted.qa('[data-lucide=ChevronUp]').length).toBeGreaterThan(0);
+
+    // Clearing controlled sorting resets the header.
+    mounted.props.sorting = undefined;
+    await flushPromises();
+    expect(mounted.qa('[data-lucide=ChevronUp]').length).toBe(0);
+    expect(mounted.qa('[data-lucide=ChevronDown]').length).toBe(0);
+    mounted.unmount();
+  });
+
+  test('controlled sorting restores when sorted column returns', async () => {
+    const amountCol: ColumnDef<Row, unknown> = {
+      accessorKey: 'Name',
+      id: 'Name',
+      header: 'Name',
+      cell: (ctx) => String(ctx.getValue() ?? ''),
+      enableSorting: true,
+    };
+    const otherCol: ColumnDef<Row, unknown> = {
+      accessorKey: 'Id',
+      id: 'Id',
+      header: 'Id',
+      cell: (ctx) => String(ctx.getValue() ?? ''),
+      enableSorting: true,
+    };
+    const mounted = mountApp(DataTable as any, {
+      props: {
+        columns: [amountCol],
+        data: rows,
+        height: 120,
+        virtualize: false,
+        enableRowSelection: false,
+        enableSorting: true,
+        sortingMode: 'server',
+        sorting: [{ id: 'Name', desc: true }],
+      },
+      reactiveProps: true,
+    });
+    await flushPromises();
+    expect(mounted.qa('[data-lucide=ChevronDown]').length).toBeGreaterThan(0);
+
+    mounted.props.columns = [otherCol];
+    await flushPromises();
+    expect(mounted.qa('[data-lucide=ChevronDown]').length).toBe(0);
+
+    mounted.props.columns = [amountCol];
     await flushPromises();
     expect(mounted.qa('[data-lucide=ChevronDown]').length).toBeGreaterThan(0);
     mounted.unmount();

@@ -26,8 +26,13 @@ type tsFileParser struct {
 	translateBindings map[string]parser.TranslateBinding
 }
 
+// modelOrderByFieldPattern restricts orderBy.field to identifiers so generated
+// webapistore TS can emit field: 'Name' without escaping or quote breakage.
+var modelOrderByFieldPattern = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
+
 // encodeModelOrderByOption normalizes @Model orderBy (object or array) to JSON
 // [{"field":"Name","order":"asc"}]. Empty string means undeclared / invalid.
+// Invalid entries (non-object, empty/non-identifier field, order not asc|desc) are dropped.
 func encodeModelOrderByOption(raw any) string {
 	if raw == nil {
 		return ""
@@ -52,12 +57,15 @@ func encodeModelOrderByOption(raw any) string {
 			continue
 		}
 		field := strings.TrimSpace(fmtString(m["field"]))
-		if field == "" {
+		if field == "" || !modelOrderByFieldPattern.MatchString(field) {
 			continue
 		}
 		order := strings.ToLower(strings.TrimSpace(fmtString(m["order"])))
-		if order != "desc" {
+		if order == "" {
 			order = "asc"
+		}
+		if order != "asc" && order != "desc" {
+			continue
 		}
 		out = append(out, orderSpec{Field: field, Order: order})
 	}

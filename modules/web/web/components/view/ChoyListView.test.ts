@@ -122,6 +122,40 @@ describe('ListView', () => {
     unmount();
   });
 
+  test('seeds queryState.orderBy from controlled props and syncs prop updates', async () => {
+    const store = makeStore({
+      metadata: {
+        orderBy: [{ field: 'Sequence', order: 'asc' }],
+        fields: { Name: { type: 'varchar' }, Sequence: { type: 'integer' } },
+      },
+    });
+    const { plugins } = buildPageMountGlobal();
+    const mounted = mountApp(ChoyListView as any, {
+      props: {
+        store,
+        orderBy: [{ field: 'Name', direction: 'desc' }],
+        showPaginate: false,
+        refreshAction: false,
+        deleteAction: false,
+        showHeader: false,
+      },
+      plugins,
+      reactiveProps: true,
+    });
+    await flushPromises();
+    expect(store.state.queryState.orderBy).toEqual([{ field: 'Name', direction: 'desc' }]);
+
+    mounted.props.orderBy = [{ field: 'Sequence', direction: 'asc' }];
+    await flushPromises();
+    expect(store.state.queryState.orderBy).toEqual([{ field: 'Sequence', direction: 'asc' }]);
+
+    // Removing the controlled prop re-applies; listController reseeds metadata.orderBy.
+    mounted.props.orderBy = undefined;
+    await flushPromises();
+    expect(store.state.queryState.orderBy).toEqual([{ field: 'Sequence', direction: 'asc' }]);
+    mounted.unmount();
+  });
+
 
   test('selection change and clearSelection update selectedItems', async () => {
     const { plugins } = buildPageMountGlobal();

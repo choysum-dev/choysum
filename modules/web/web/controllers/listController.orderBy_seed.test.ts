@@ -27,6 +27,8 @@ function makeStore(overrides: Record<string, unknown> = {}) {
     getContext: () => ({}),
     withContext: async (_c: unknown, fn: () => unknown) => fn(),
     Search: async () => [],
+    ReadGroup: async () => ({ groups: [], total: 0 }),
+    ReadGroupCount: async () => 0,
     Count: async () => 0,
     ...overrides,
   } as any;
@@ -61,4 +63,42 @@ test('listController reseeds metadata default when sort is cleared to empty', as
   await ctrl.apply({ orderBy: [{ field: 'Name', direction: 'desc' }] });
   await ctrl.apply({ orderBy: [] });
   expect(store.state.queryState.orderBy).toEqual([{ field: 'CreatedAt', direction: 'asc' }]);
+});
+
+test('listController keeps existing queryState.orderBy across apply without override', async () => {
+  const store = makeStore({
+    metadata: { fields: { Name: { type: 'varchar' } } },
+  });
+  store.state.queryState.orderBy = [{ field: 'Name', direction: 'desc' }];
+  const ctrl = createListController(store);
+  await ctrl.apply();
+  expect(store.state.queryState.orderBy).toEqual([{ field: 'Name', direction: 'desc' }]);
+});
+
+test('listController does not seed metadata.orderBy into grouped ReadGroup requests', async () => {
+  const store = makeStore();
+  const ctrl = createListController(store);
+  await ctrl.apply({ appliedGroups: ['Name'] as any });
+  expect(store.state.queryState.orderBy).toBeUndefined();
+});
+
+test('listController filters grouped orderBy to group keys only', async () => {
+  const store = makeStore();
+  store.state.queryState.orderBy = [
+    { field: 'CreatedAt', direction: 'asc' },
+    { field: 'Name', direction: 'desc' },
+  ];
+  const ctrl = createListController(store);
+  await ctrl.apply({ appliedGroups: ['Name'] as any });
+  expect(store.state.queryState.orderBy).toEqual([{ field: 'Name', direction: 'desc' }]);
+});
+
+test('listController clears grouped sort when clear yields only non-group defaults', async () => {
+  const store = makeStore();
+  const ctrl = createListController(store);
+  await ctrl.apply({
+    appliedGroups: ['Name'] as any,
+    orderBy: [],
+  });
+  expect(store.state.queryState.orderBy).toBeUndefined();
 });

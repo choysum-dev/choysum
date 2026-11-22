@@ -378,7 +378,10 @@ const idRegistry = new Map<string, DataTableRowId>();
 watch(
   () => props.sorting,
   (next) => {
-    if (next === undefined) return;
+    if (next === undefined) {
+      if (sorting.value.length) sorting.value = [];
+      return;
+    }
     const current = sorting.value;
     const same =
       current.length === next.length &&
@@ -677,9 +680,15 @@ watch(
 );
 
 // Swapping columns (e.g. another entity) can leave a sort id with no matching column.
+// Controlled sorting re-applies from props when the column set changes so a returning
+// column restores the header; uncontrolled sorting only clears stale ids.
 watch(
   () => props.columns,
   () => {
+    if (props.sorting) {
+      sorting.value = props.sorting.filter((sort) => !!table.getColumn(sort.id));
+      return;
+    }
     if (sorting.value.some((sort) => !table.getColumn(sort.id))) {
       sorting.value = [];
     }
