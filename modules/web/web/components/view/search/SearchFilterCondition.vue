@@ -136,6 +136,7 @@ import ComboboxInput from '@/web/web/components/vendor/ui/combobox/ComboboxInput
 import ComboboxItem from '@/web/web/components/vendor/ui/combobox/ComboboxItem.vue';
 import { Trash2 } from 'lucide-vue-next';
 import { isConditionComplete } from '@/web/web/query/utils/filter/structures';
+import { buildFilterConditionFieldMeta, readStoreFieldMeta } from '@/web/web/composables/search/storeFieldMeta';
 
 import ChoyVarcharField from '@/web/web/components/field/ChoyVarcharField.vue';
 import ChoyTextField from '@/web/web/components/field/ChoyTextField.vue';
@@ -319,16 +320,9 @@ const valueRef = computed({
   set: v => props.onUpdateCondition(conditionId.value, { value: v }),
 });
 
-const fieldMeta = computed(() => {
-  const fieldName = props.condition.field || '';
-  const t = metaTypeOf(fieldName);
-  const staticMeta = ((props.store as any)?.metadata?.fields?.[fieldName] || {}) as Partial<WebFieldMetadata>;
-  return {
-    ...staticMeta,
-    type: (staticMeta.type || t) as any,
-    isReadonly: false,
-  } as Partial<WebFieldMetadata>;
-});
+const fieldMeta = computed(() =>
+  buildFilterConditionFieldMeta(props.store as any, props.condition.field || '', metaTypeOf(props.condition.field || ''))
+);
 
 const binding = useStandaloneField({
   value: valueRef,
@@ -346,8 +340,8 @@ binding.store = {
     const raw =
       typeof (props.store as any)?.getFieldMeta === 'function'
         ? (props.store as any).getFieldMeta(name)
-        : (props.store as any)?.metadata?.fields?.[name];
-    return raw ? { ...raw, isReadonly: false } : raw;
+        : readStoreFieldMeta(props.store as any, name);
+    return raw && Object.keys(raw).length ? { ...raw, isReadonly: false } : undefined;
   },
   ensureFieldsGet: (...args: any[]) => (props.store as any)?.ensureFieldsGet?.(...args),
   getFieldsGetTranslatedString: (name: string) => (props.store as any)?.getFieldsGetTranslatedString?.(name),

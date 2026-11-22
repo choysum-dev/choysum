@@ -68,3 +68,60 @@ export function metadataOrderByToState(input: unknown): OrderByState[] | undefin
   if (!rpc?.length) return undefined;
   return rpc.map(row => ({ field: row.field, direction: row.order }));
 }
+
+/**
+ * Resolve List header sort from queryState (including explicit clear) or props.
+ */
+export function resolveTableOrderBy(
+  queryState: Record<string, unknown> | null | undefined,
+  propsOrderBy: unknown
+): OrderByState[] | undefined {
+  const raw =
+    queryState && Object.prototype.hasOwnProperty.call(queryState, 'orderBy')
+      ? queryState.orderBy
+      : propsOrderBy;
+  if (raw == null) return undefined;
+  return (Array.isArray(raw) ? raw : [raw]) as OrderByState[];
+}
+
+/**
+ * Write orderBy into store.queryState (including explicit undefined clears).
+ */
+export function writeQueryStateOrderBy(
+  state: { queryState?: Record<string, unknown> } | null | undefined,
+  orderBy: unknown
+): void {
+  if (!state) return;
+  state.queryState = {
+    ...(state.queryState || {}),
+    orderBy,
+  };
+}
+
+/**
+ * Mount-time sync: only copy a defined controlled props.orderBy into queryState.
+ */
+export function syncControlledOrderByToQueryState(
+  state: { queryState?: Record<string, unknown> } | null | undefined,
+  orderBy: unknown
+): void {
+  if (orderBy === undefined) return;
+  writeQueryStateOrderBy(state, orderBy);
+}
+
+/**
+ * Handle-column reorder is allowed only when unsorted, or sorted solely by
+ * handleField ascending (matches renumber semantics).
+ */
+export function isHandleReorderSortAllowed(
+  orderByList: Array<{ field?: string; direction?: string; order?: string }> | undefined | null,
+  handleField: string
+): boolean {
+  const list = orderByList || [];
+  if (!list.length) return true;
+  if (list.length > 1) return false;
+  const primary = list[0];
+  const field = primary?.field;
+  const dir = String(primary?.direction || primary?.order || '').toLowerCase();
+  return field === handleField && dir === 'asc';
+}

@@ -1,7 +1,15 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { metadataOrderByToState, orderByToSortingState, toRpcOrderBy } from './orderBy';
+import {
+  isHandleReorderSortAllowed,
+  metadataOrderByToState,
+  orderByToSortingState,
+  resolveTableOrderBy,
+  syncControlledOrderByToQueryState,
+  toRpcOrderBy,
+  writeQueryStateOrderBy,
+} from './orderBy';
 
 test('toRpcOrderBy maps FE direction onto RPC order', () => {
   expect(toRpcOrderBy([{ field: 'Name', direction: 'desc' }])).toEqual([
@@ -49,4 +57,53 @@ test('metadataOrderByToState maps order onto direction', () => {
   expect(metadataOrderByToState({ field: 'CreatedAt', order: 'desc' })).toEqual([
     { field: 'CreatedAt', direction: 'desc' },
   ]);
+});
+
+test('resolveTableOrderBy prefers queryState.orderBy including explicit clear', () => {
+  expect(resolveTableOrderBy(undefined, [{ field: 'Name', direction: 'desc' }])).toEqual([
+    { field: 'Name', direction: 'desc' },
+  ]);
+  expect(resolveTableOrderBy({ keyword: '' }, [{ field: 'Name', direction: 'desc' }])).toEqual([
+    { field: 'Name', direction: 'desc' },
+  ]);
+  expect(
+    resolveTableOrderBy({ orderBy: [{ field: 'Seq', direction: 'asc' }] }, [{ field: 'Name', direction: 'desc' }])
+  ).toEqual([{ field: 'Seq', direction: 'asc' }]);
+  expect(resolveTableOrderBy({ orderBy: undefined }, [{ field: 'Name', direction: 'desc' }])).toBeUndefined();
+  expect(resolveTableOrderBy({ orderBy: { field: 'Only', direction: 'asc' } }, undefined)).toEqual([
+    { field: 'Only', direction: 'asc' },
+  ]);
+});
+
+test('syncControlledOrderByToQueryState / writeQueryStateOrderBy cover mount and clear', () => {
+  const state: { queryState?: Record<string, unknown> } = { queryState: { keyword: '' } };
+  syncControlledOrderByToQueryState(state, undefined);
+  expect(state.queryState).toEqual({ keyword: '' });
+
+  syncControlledOrderByToQueryState(state, [{ field: 'Name', direction: 'desc' }]);
+  expect(state.queryState?.orderBy).toEqual([{ field: 'Name', direction: 'desc' }]);
+
+  writeQueryStateOrderBy(state, undefined);
+  expect('orderBy' in (state.queryState || {})).toBe(true);
+  expect(state.queryState?.orderBy).toBeUndefined();
+
+  writeQueryStateOrderBy(undefined as any, [{ field: 'X', direction: 'asc' }]);
+});
+
+test('isHandleReorderSortAllowed requires sole handleField asc', () => {
+  expect(isHandleReorderSortAllowed(undefined, 'Sequence')).toBe(true);
+  expect(isHandleReorderSortAllowed([], 'Sequence')).toBe(true);
+  expect(isHandleReorderSortAllowed([{ field: 'Sequence', direction: 'asc' }], 'Sequence')).toBe(true);
+  expect(isHandleReorderSortAllowed([{ field: 'Sequence', order: 'asc' }], 'Sequence')).toBe(true);
+  expect(isHandleReorderSortAllowed([{ field: 'Sequence', direction: 'desc' }], 'Sequence')).toBe(false);
+  expect(isHandleReorderSortAllowed([{ field: 'Name', direction: 'asc' }], 'Sequence')).toBe(false);
+  expect(
+    isHandleReorderSortAllowed(
+      [
+        { field: 'Sequence', direction: 'asc' },
+        { field: 'Name', direction: 'asc' },
+      ],
+      'Sequence'
+    )
+  ).toBe(false);
 });

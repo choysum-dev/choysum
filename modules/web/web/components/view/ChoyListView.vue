@@ -313,6 +313,12 @@ import ListInlineEditScope from '@/web/web/components/view/ListInlineEditScope.v
 // Controller: unified loading with grouping-first handling
 import { createListController } from '@/web/web/controllers/listController';
 import type { OrderByState, PaginationState } from '@/web/web/query/state';
+import {
+  isHandleReorderSortAllowed,
+  resolveTableOrderBy,
+  syncControlledOrderByToQueryState,
+  writeQueryStateOrderBy,
+} from '@/web/web/query/orderBy';
 import { useCancelableEmit } from '@/web/web/composables/useCancelableEmit';
 import { useAdaptiveHeight } from '@/web/web/composables/useAdaptiveHeight';
 import ChoyViewContainer from '@/web/web/components/view/ChoyViewContainer.vue';
@@ -585,25 +591,13 @@ const showHandleColumn = computed(
 );
 
 const isReordering = ref(false);
-const tableOrderBy = computed(() => {
-  // Prefer queryState when it owns orderBy (including explicit clear → undefined);
-  // fall back to props only before the first queryState write.
-  const queryState = (store.state as any)?.queryState as Record<string, unknown> | undefined;
-  const raw = queryState && 'orderBy' in queryState ? queryState.orderBy : props.orderBy;
-  if (raw == null) return undefined;
-  return (Array.isArray(raw) ? raw : [raw]) as OrderByState[];
-});
+const tableOrderBy = computed(() =>
+  resolveTableOrderBy((store.state as any)?.queryState as Record<string, unknown> | undefined, props.orderBy)
+);
 
 const handleEnabled = computed(() => {
   if (!showHandleColumn.value || inlineEdit.isEditing.value || isReordering.value) return false;
-  // Reorder only when unsorted, or sorted solely by handleField ascending (matches renumber semantics).
-  const list = tableOrderBy.value || [];
-  if (!list.length) return true;
-  if (list.length > 1) return false;
-  const primary = list[0] as { field?: string; direction?: string; order?: string } | undefined;
-  const field = primary?.field;
-  const dir = String(primary?.direction || primary?.order || '').toLowerCase();
-  return field === props.handleField && dir === 'asc';
+  return isHandleReorderSortAllowed(tableOrderBy.value, props.handleField);
 });
 
 const handleReorder = useListHandleReorder({
@@ -853,12 +847,7 @@ onMounted(async () => {
   await nextTick();
 
   // Sync controlled props.orderBy into queryState (Search/RPC + header chevrons).
-  if (props.orderBy !== undefined) {
-    (store.state as any).queryState = {
-      ...(store.state as any).queryState,
-      orderBy: props.orderBy as any,
-    };
-  }
+  syncControlledOrderByToQueryState((store.state as any), props.orderBy);
 
   // Initial height sync
   recomputeTableHeight();
@@ -914,10 +903,7 @@ async function loadData() {
 watch(
   () => props.orderBy,
   v => {
-    (store.state as any).queryState = {
-      ...(store.state as any).queryState,
-      orderBy: v as any,
-    };
+    writeQueryStateOrderBy((store.state as any), v);
     if (!firstApplied.value) return;
     controller.apply().then(afterLayoutRecompute).catch(() => {});
   }
