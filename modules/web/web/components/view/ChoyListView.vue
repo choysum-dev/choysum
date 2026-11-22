@@ -470,12 +470,21 @@ const props = withDefaults(
 const store = resolvePageStore(props.store, 'ListView');
 const router = useRouter();
 const route = useRoute();
-const recordSetStore = useRecordSetStore();
 // Only collection pages that open Form clear the pager session on return —
 // embedded / Search-more lists must not wipe an open Form's record set.
 function clearRecordSetSessionIfDetailHost() {
   if (props.detailPath == null) return;
-  recordSetStore.clear();
+  try {
+    const rs = useRecordSetStore();
+    const active = rs.active;
+    if (!active) return;
+    // Relation pickers for another model must not wipe the open Form's session.
+    const model = String((store as { modelName?: string })?.modelName || '').trim();
+    if (model && active.model && active.model !== model) return;
+    rs.clear();
+  } catch {
+    // Pinia may be unavailable in unit mounts without an app shell.
+  }
 }
 onMounted(clearRecordSetSessionIfDetailHost);
 onActivated(clearRecordSetSessionIfDetailHost);
@@ -1124,7 +1133,8 @@ function openDetailOrEmitRowClick(payload: RowEventPayload<T>) {
     } catch {
       entry = null;
     }
-    if (entry) {
+    // Seed only when the opened id is in the known window (skip grouped/empty).
+    if (entry && entry.ids.length > 0 && entry.ids.includes(id)) {
       openRecordFromCollection({ router, to, entry });
     } else {
       // Still open the record when snapshot is unavailable (no pager session).

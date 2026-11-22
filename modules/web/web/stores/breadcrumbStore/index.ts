@@ -179,7 +179,7 @@ export const useBreadcrumbStore = defineStore('breadcrumb', () => {
     return resolvePageTitle(route, detailsFallback, pageFallback);
   }
 
-  function setPendingPageMode(mode: BreadcrumbPageMode) {
+  function setPendingPageMode(mode: BreadcrumbPageMode | null) {
     pendingPageMode.value = mode;
   }
 

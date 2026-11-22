@@ -85,7 +85,12 @@ export function snapshotFromListStore(
   const offset = Math.max(0, Math.trunc(Number(qs?.pagination?.offset) || 0));
   const ids = collectPageIds(store.state.result?.rows);
   const totalRaw = Number(store.state.result?.total);
-  const total = Number.isFinite(totalRaw) && totalRaw >= 0 ? Math.trunc(totalRaw) : ids.length;
+  const pageSpan = ids.length ? offset + ids.length : offset;
+  // Prefer Search total, but never under-count the known page span before clamping index.
+  const total =
+    Number.isFinite(totalRaw) && totalRaw >= 0
+      ? Math.max(Math.trunc(totalRaw), pageSpan)
+      : Math.max(pageSpan, ids.length);
 
   let index = offset + Math.max(0, Math.trunc(Number(opts.rowIndex) || 0));
   const wantId = String(opts.recordId ?? '').trim();
@@ -104,7 +109,7 @@ export function snapshotFromListStore(
     model,
     condition: buildListMergedCondition(store),
     orderBy: qs?.orderBy,
-    total: Math.max(total, ids.length ? offset + ids.length : 0),
+    total,
     index,
     ids,
     windowStart: offset,

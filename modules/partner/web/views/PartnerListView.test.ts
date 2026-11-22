@@ -19,20 +19,9 @@ test('PartnerListView.vue mounts under choysumMount and runs script setup', asyn
       wrapper.find('[data-testid="fe-stub-choy-page"]').exists(),
   ).toBe(true);
 
-  // Exercise exposed row-click navigation (permission stub always allows).
-  const vm = wrapper.vm as {
-    onRowClick?: (payload: {
-      row: { Id?: string };
-      rowIndex: number;
-      rowKey: undefined;
-      event: Event;
-    }) => void;
-  };
-  expect(typeof vm.onRowClick).toBe('function');
-  const click = new Event('click');
-  vm.onRowClick?.({ row: { Id: 'ptn-cover-1' }, rowIndex: 0, rowKey: undefined, event: click });
-  vm.onRowClick?.({ row: { Id: '' }, rowIndex: 0, rowKey: undefined, event: click });
-  await flushPromises();
+  // Row→detail is owned by ChoyListView detailPath (no local onRowClick expose).
+  const vm = wrapper.vm as { onRowClick?: unknown };
+  expect(vm.onRowClick).toBeUndefined();
 
   wrapper.unmount();
 });

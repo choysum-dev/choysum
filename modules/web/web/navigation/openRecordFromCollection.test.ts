@@ -12,6 +12,10 @@ test('applyIdToPathTemplate replaces :id and appends bare prefixes', () => {
   expect(applyIdToPathTemplate('/base/countries/{id}', 'c1')).toBe('/base/countries/c1');
   expect(applyIdToPathTemplate('/base/countries', 'c1')).toBe('/base/countries/c1');
   expect(applyIdToPathTemplate('/base/countries/c1', 'c1')).toBe('/base/countries/c1');
+  expect(applyIdToPathTemplate('/base/countries?tab=details', 'c1')).toBe(
+    '/base/countries/c1?tab=details'
+  );
+  expect(applyIdToPathTemplate('/base/countries#sec', 'c1')).toBe('/base/countries/c1#sec');
 });
 
 test('resolveDetailPath supports templates and factories', () => {
@@ -60,6 +64,20 @@ test('snapshotFromListStore builds global index and page ids', () => {
   expect(entry?.ids).toEqual(['a', 'b', 'c']);
   expect(entry?.windowStart).toBe(100);
   expect(entry?.condition).toEqual({ IsActive: true });
+
+  // Missing Search total must still span offset + page before clamping index.
+  const noTotal = snapshotFromListStore(
+    {
+      ...store,
+      state: {
+        ...store.state,
+        result: { rows: [{ Id: 'a' }, { Id: 'b' }, { Id: 'c' }] },
+      },
+    },
+    { model: 'base.Country', key: 'k', rowIndex: 2, recordId: 'c' }
+  );
+  expect(noTotal?.total).toBe(103);
+  expect(noTotal?.index).toBe(102);
 });
 
 test('openRecordFromCollection seeds store and pushes route', () => {

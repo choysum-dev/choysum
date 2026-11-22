@@ -97,10 +97,30 @@ export function useFormRecordPager(opts: UseFormRecordPagerOpts) {
     moved: { id: string } | null
   ): Promise<void> {
     if (!moved) return;
+    const breadcrumb = useBreadcrumbStore();
     // Sibling id under the same menu leaf: replace the current page crumb, do not deepen.
-    useBreadcrumbStore().setPendingPageMode('replace');
-    await opts.router.push(siblingLocation(opts.router, moved.id) as any);
+    breadcrumb.setPendingPageMode('replace');
+    try {
+      await opts.router.push(siblingLocation(opts.router, moved.id) as any);
+    } catch {
+      // Failed / aborted navigations must not leave a sticky replace intent.
+      breadcrumb.setPendingPageMode(null);
+    }
   }
+
+  // Browser Back can change the route id without updating the stored index.
+  watch(
+    () => String(read(opts.recordId) || '').trim(),
+    id => {
+      const e = entry.value;
+      if (!e || !id) return;
+      const local = e.ids.indexOf(id);
+      if (local < 0) return;
+      const nextIndex = e.windowStart + local;
+      if (nextIndex === e.index) return;
+      recordSet.replaceActive({ ...e, index: nextIndex });
+    }
+  );
 
   async function navigate(delta: -1 | 1): Promise<void> {
     if (busy.value) return;

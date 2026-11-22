@@ -43,9 +43,24 @@ export function applyIdToPathTemplate(template: string, id: string): string | nu
   if (t.includes(':id') || t.includes('{id}')) {
     return t.replace(/:id\b/g, id).replace(/\{id\}/g, id);
   }
-  // Bare prefix: append /id when it does not already end with the id.
-  if (t.endsWith(`/${id}`)) return t;
-  return `${t.replace(/\/+$/, '')}/${id}`;
+  // Preserve ?query and #hash when appending /id to a bare prefix.
+  let pathPart = t;
+  let suffix = '';
+  const hashIdx = t.indexOf('#');
+  const queryIdx = t.indexOf('?');
+  const cut =
+    hashIdx >= 0 && queryIdx >= 0
+      ? Math.min(hashIdx, queryIdx)
+      : hashIdx >= 0
+        ? hashIdx
+        : queryIdx;
+  if (cut >= 0) {
+    pathPart = t.slice(0, cut);
+    suffix = t.slice(cut);
+  }
+  const base = pathPart.replace(/\/+$/, '');
+  if (base.endsWith(`/${id}`)) return `${base}${suffix}`;
+  return `${base}/${id}${suffix}`;
 }
 
 export function canOpenDetailRow(

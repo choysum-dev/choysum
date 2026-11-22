@@ -460,12 +460,29 @@ const emit = defineEmits<{
 
 const pageStore = useOptionalPageStore<ModelStore<any>>();
 const boundStore = resolvePageStore(props.store ?? pageStore.value, 'ChoyKanbanView');
-const router = useRouter();
-const route = useRoute();
-const recordSetStore = useRecordSetStore();
+// Chrome unit mounts use mountApp without vue-router; keep setup resilient.
+let router: ReturnType<typeof useRouter> | null = null;
+let route: ReturnType<typeof useRoute> | null = null;
+try {
+  router = useRouter();
+  route = useRoute();
+} catch {
+  router = null;
+  route = null;
+}
 function clearRecordSetSessionIfDetailHost() {
   if (props.detailPath == null) return;
-  recordSetStore.clear();
+  try {
+    const rs = useRecordSetStore();
+    const active = rs.active;
+    if (!active) return;
+    // Relation pickers for another model must not wipe the open Form's session.
+    const model = String((boundStore as { modelName?: string }).modelName || '').trim();
+    if (model && active.model && active.model !== model) return;
+    rs.clear();
+  } catch {
+    // Pinia may be unavailable in unit mounts without an app shell.
+  }
 }
 onMounted(clearRecordSetSessionIfDetailHost);
 onActivated(clearRecordSetSessionIfDetailHost);
@@ -584,6 +601,10 @@ function otherLanes(fromKey: string): ChoyKanbanLane[] {
 
 function onCardClick(card: ChoyKanbanCard): void {
   if (props.detailPath != null) {
+    if (!router) {
+      emit('card-click', card);
+      return;
+    }
     const row = (card.payload || {}) as Record<string, unknown>;
     if (!canOpenDetailRow(props.canOpenDetail as any, row)) {
       emit('card-click', card);
@@ -600,13 +621,19 @@ function onCardClick(card: ChoyKanbanCard): void {
       emit('card-click', card);
       return;
     }
+    const pageIds = ((boundStore as { state?: { result?: { rows?: unknown[] } } }).state?.result
+      ?.rows || [])
+      .map((r: any) => String(r?.Id ?? r?.id ?? r?.payload?.Id ?? '').trim())
+      .filter(Boolean);
+    const local = pageIds.indexOf(id);
     const entry = snapshotFromListStore(boundStore as any, {
       model: model || 'unknown',
       key: `${model || 'unknown'}|${String(route?.path || 'kanban')}`,
-      rowIndex: 0,
+      rowIndex: local >= 0 ? local : 0,
       recordId: id,
     });
-    if (entry) {
+    // Grouped / empty windows: open the Form without a misleading pager session.
+    if (entry && entry.ids.length > 0 && entry.ids.includes(id)) {
       openRecordFromCollection({ router, to, entry });
     } else {
       void router.push(to as any);

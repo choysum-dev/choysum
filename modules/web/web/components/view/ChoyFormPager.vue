@@ -173,6 +173,14 @@ async function startEditWith(draft: string): Promise<void> {
   editDraft.value = draft;
 }
 
+async function focusCurrentIdle(): Promise<void> {
+  await nextTick();
+  const btn = document.querySelector(
+    '[data-testid="choy-form-pager-current"]'
+  ) as HTMLButtonElement | null;
+  if (btn && typeof btn.focus === 'function') btn.focus();
+}
+
 function cancelEdit(): void {
   suppressBlurCommit.value = true;
   editing.value = false;
@@ -180,13 +188,20 @@ function cancelEdit(): void {
   queueMicrotask(() => {
     suppressBlurCommit.value = false;
   });
+  void focusCurrentIdle();
 }
 
 function commitEdit(): void {
   if (suppressBlurCommit.value || !editing.value) return;
+  // Enter unmounts the input and can fire blur; ignore that follow-up commit.
+  suppressBlurCommit.value = true;
   const draft = editDraft.value;
   editing.value = false;
   editDraft.value = '';
+  queueMicrotask(() => {
+    suppressBlurCommit.value = false;
+  });
+  void focusCurrentIdle();
   if (draft.trim() === currentLabel.value) return;
   const next = parseFormPagerCurrentDraft(draft, normalizedTotal.value);
   if (next == null || next === normalizedCurrent.value) return;

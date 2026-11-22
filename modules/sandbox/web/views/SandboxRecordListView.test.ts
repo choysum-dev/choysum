@@ -7,7 +7,6 @@ import { buildPageMountGlobal } from '@choysum/page-mount';
 
 test('SandboxRecordListView.vue mounts under choysumMount and runs script setup', async () => {
   const store = { $id: 'fe-stub-sandbox-record-list-store', records: {}, state: {} };
-  const pushed: string[] = [];
   const wrapper = mount(SandboxRecordListView as any, {
     props: { store },
     global: buildPageMountGlobal({
@@ -24,12 +23,6 @@ test('SandboxRecordListView.vue mounts under choysumMount and runs script setup'
           },
         },
       },
-      router: {
-        push: (to: unknown) => {
-          pushed.push(String(to));
-          return Promise.resolve(to);
-        },
-      },
     }),
   });
   await flushPromises();
@@ -41,20 +34,9 @@ test('SandboxRecordListView.vue mounts under choysumMount and runs script setup'
       wrapper.element != null,
   ).toBe(true);
 
-  const vm = wrapper.vm as {
-    onRowClick?: (payload: {
-      row: { Id?: string };
-      rowIndex: number;
-      rowKey: undefined;
-      event: Event;
-    }) => void;
-  };
-  expect(typeof vm.onRowClick).toBe('function');
-  const click = new Event('click');
-  vm.onRowClick?.({ row: { Id: 'sbx-cover-1' }, rowIndex: 0, rowKey: undefined, event: click });
-  vm.onRowClick?.({ row: { Id: '' }, rowIndex: 0, rowKey: undefined, event: click });
-  await flushPromises();
-  expect(pushed).toEqual(['/sandbox/records/sbx-cover-1']);
+  // Row→detail is owned by ChoyListView detailPath (no local onRowClick expose).
+  const vm = wrapper.vm as { onRowClick?: unknown };
+  expect(vm.onRowClick).toBeUndefined();
 
   wrapper.unmount();
 });

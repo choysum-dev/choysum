@@ -69,6 +69,8 @@ export const useRecordSetStore = defineStore('recordSet', () => {
     if (!cur) return null;
     const next = await resolveRecordSetNeighbor(cur, delta, searchIds);
     if (!next) return null;
+    // Drop the result if the session was cleared/replaced during the await.
+    if (!active.value || active.value.key !== cur.key) return null;
     active.value = next.entry;
     return next;
   }
@@ -82,6 +84,7 @@ export const useRecordSetStore = defineStore('recordSet', () => {
     if (!cur) return null;
     const next = await resolveRecordSetAtIndex(cur, index, searchIds);
     if (!next) return null;
+    if (!active.value || active.value.key !== cur.key) return null;
     active.value = next.entry;
     return next;
   }
