@@ -1911,6 +1911,36 @@ msgctxt "web/components/view/ListView"
 msgid "Failed to load list"
 msgstr "列表加载失败"
 
+#: web/composables/resolveViewSurfaceErrorCopy.ts
+msgctxt "web/composables/resolveViewSurfaceErrorCopy"
+msgid "Failed to load"
+msgstr "加载失败"
+
+#: web/composables/resolveViewSurfaceErrorCopy.ts
+msgctxt "web/composables/resolveViewSurfaceErrorCopy"
+msgid "Something went wrong. Retry to try again."
+msgstr "出了点问题。请重试。"
+
+#: web/composables/resolveViewSurfaceErrorCopy.ts
+msgctxt "web/composables/resolveViewSurfaceErrorCopy"
+msgid "Connection lost"
+msgstr "连接已断开"
+
+#: web/composables/resolveViewSurfaceErrorCopy.ts
+msgctxt "web/composables/resolveViewSurfaceErrorCopy"
+msgid "Could not load this data. Check your network, then retry."
+msgstr "无法加载此数据。请检查网络后重试。"
+
+#: web/composables/resolveViewSurfaceErrorCopy.ts
+msgctxt "web/composables/resolveViewSurfaceErrorCopy"
+msgid "Could not refresh."
+msgstr "无法刷新。"
+
+#: web/components/layout/ChoyViewLoadError.vue
+msgctxt "web/components/layout/ChoyViewLoadError"
+msgid "Retry loading"
+msgstr "重试加载"
+
 #: web/components/view/ChoyListView.vue:372
 msgctxt "web/components/view/ListView"
 msgid "Failed to refresh after reorder"

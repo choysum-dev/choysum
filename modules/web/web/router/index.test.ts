@@ -3,6 +3,7 @@
 
 import { computed } from 'vue';
 import { createI18n } from 'vue-i18n';
+import { createPinia, setActivePinia } from 'pinia';
 import { createTermReference } from '@/core/service/i18n';
 import {
   beginNavigationLoading,
@@ -12,6 +13,7 @@ import {
   settleNavigationIfActive,
 } from '@/core/web/client/loadingRegistry';
 import { projectTerminologyMessages } from '../i18n/terminology';
+import { useConnectivityStore } from '../stores/connectivityStore';
 import { resolveDocumentTitle, resolveRoutePageTitle } from './documentTitle';
 import { createAppRouter, defaultAppName } from './index';
 
@@ -177,6 +179,22 @@ describe('createAppRouter', () => {
     expect(getLoadingRegistryDebugState().navTicketActive).toBe(true);
     expect(getLoadingRegistryDebugState().navTicketGeneration).toBe(newerGen);
     removeGuard();
+    resetLoadingRegistryForTests();
+  });
+
+  test('unreachable session does not open a navigation ticket', async () => {
+    resetLoadingRegistryForTests();
+    setActivePinia(createPinia());
+    useConnectivityStore().markUnreachable();
+    const router = createAppRouter('/');
+    await router.isReady().catch(() => undefined);
+
+    await router
+      .push({ path: '/__nav_unreachable__', meta: { navLoading: 'content' } } as any)
+      .catch(() => undefined);
+    expect(getLoadingRegistryDebugState().navTicketActive).toBe(false);
+
+    useConnectivityStore().resetForTests();
     resetLoadingRegistryForTests();
   });
 });

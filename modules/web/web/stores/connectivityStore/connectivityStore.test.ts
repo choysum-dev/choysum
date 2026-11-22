@@ -6,6 +6,7 @@ import { getConnectivityHooks, resetConnectivityHooksForTests } from '@/core/web
 import {
   TRANSPORT_OUTAGE_THRESHOLD,
   bindConnectivityLifecycle,
+  isConnectivityUnreachable,
   unbindConnectivityLifecycleForTests,
   useConnectivityStore,
 } from './index';
@@ -31,6 +32,16 @@ test('connectivityStore: reaches unreachable after threshold transport outages',
   store.noteTransportOutage();
   expect(store.status).toBe('unreachable');
   expect(store.isUnreachable).toBe(true);
+});
+
+test('isConnectivityUnreachable mirrors store status and is false without Pinia', () => {
+  expect(isConnectivityUnreachable()).toBe(false);
+  useConnectivityStore().markUnreachable();
+  expect(isConnectivityUnreachable()).toBe(true);
+  setActivePinia(undefined as any);
+  expect(isConnectivityUnreachable()).toBe(false);
+  // Restore for describe afterEach (unbind / reset need an active Pinia).
+  setActivePinia(createPinia());
 });
 
 test('connectivityStore: transport success clears streak and recovers', () => {

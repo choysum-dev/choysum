@@ -2,8 +2,17 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { h } from 'vue';
-import { flushPromises, mountApp } from '@/web/web/__tests__/mountApp';
+import { createPinia, setActivePinia } from 'pinia';
+import {
+  flushPromises,
+  fnRecorder,
+  mountApp,
+  restoreSfc,
+  stubSfc,
+} from '@/web/web/__tests__/mountApp';
 import { loadingTiming } from '@/core/web/client/loadingRegistry';
+import ChoyButton from '../layout/ChoyButton.vue';
+import { useConnectivityStore } from '../../stores/connectivityStore';
 import ChoyViewBusyHost from './ChoyViewBusyHost.vue';
 
 function sleep(ms: number): Promise<void> {
@@ -34,7 +43,7 @@ describe('ChoyViewBusyHost', () => {
     mounted.unmount();
   });
 
-  test('busy host overlays spinner after delay, sets inert immediately, and teleports a live status', async () => {
+  test('busy host with hasFrame overlays spinner after delay, sets inert immediately, and teleports a live status', async () => {
     // Clear teleports left by earlier view mounts in the same FE bundle run.
     for (const node of Array.from(
       document.body.querySelectorAll('[data-slot=view-busy-status]'),
@@ -42,7 +51,8 @@ describe('ChoyViewBusyHost', () => {
       node.parentNode?.removeChild(node);
     }
     const mounted = mountApp(ChoyViewBusyHost as any, {
-      props: { busy: true, busyLabel: 'Saving…', class: 'min-h-40' },
+      // hasFrame: delay still applies; no-frame busy paints overlay immediately.
+      props: { busy: true, hasFrame: true, busyLabel: 'Saving…', class: 'min-h-40' },
       slots: {
         default: () => h('div', { 'data-testid': 'body' }, 'ok'),
       },
@@ -84,10 +94,10 @@ describe('ChoyViewBusyHost', () => {
     ).toBe(0);
   });
 
-  test('busy host never shows overlay when cleared before delay', async () => {
+  test('busy host never shows overlay when cleared before delay (hasFrame)', async () => {
     const mounted = mountApp(ChoyViewBusyHost as any, {
       reactiveProps: true,
-      props: { busy: true },
+      props: { busy: true, hasFrame: true },
       slots: {
         default: () => h('div', { 'data-testid': 'body' }, 'ok'),
       },
@@ -102,6 +112,19 @@ describe('ChoyViewBusyHost', () => {
     await flushPromises();
     expect(mounted.q('[data-slot=view-busy-overlay]')).toBeNull();
     expect(mounted.q('[data-slot=view-body-host]')?.getAttribute('aria-busy')).toBeNull();
+    mounted.unmount();
+  });
+
+  test('no-frame busy shows overlay immediately and keeps slot', async () => {
+    const mounted = mountApp(ChoyViewBusyHost as any, {
+      props: { busy: true, hasFrame: false },
+      slots: {
+        default: () => h('div', { 'data-testid': 'body' }, 'table chrome'),
+      },
+    });
+    await flushPromises();
+    expect(mounted.q('[data-slot=view-busy-overlay]')).not.toBeNull();
+    expect(mounted.q('[data-testid=body]')?.textContent).toBe('table chrome');
     mounted.unmount();
   });
 
@@ -125,4 +148,115 @@ describe('ChoyViewBusyHost', () => {
     expect(mounted.q('[data-slot=view-busy-overlay]')).toBeNull();
     mounted.unmount();
   });
+
+  test('settled error without frame overlays surface error and keeps slot chrome', async () => {
+    setActivePinia(createPinia());
+    useConnectivityStore().markUnreachable();
+    // fe-qjs: nested vendor Button often drops native click; stub like List chrome tests.
+    stubSfc(ChoyButton as any, {
+      name: 'ChoyButton',
+      inheritAttrs: false,
+      props: {
+        type: { type: String, default: 'button' },
+        disabled: { type: Boolean, default: false },
+      },
+      emits: ['click'],
+      setup(props: any, { slots, emit, attrs }: any) {
+        return () =>
+          h(
+            'button',
+            {
+              type: props.type || 'button',
+              ...attrs,
+              disabled: props.disabled || undefined,
+              onClick: (e: Event) => emit('click', e),
+            },
+            slots.default?.(),
+          );
+      },
+    });
+    const onRetry = fnRecorder(() => {});
+    try {
+      const mounted = mountApp(ChoyViewBusyHost as any, {
+        props: {
+          busy: false,
+          error: new Error('Failed to fetch'),
+          hasFrame: false,
+          hasSettled: true,
+        },
+        on: { onRetry: () => onRetry() },
+        slots: {
+          default: () => h('div', { 'data-testid': 'body' }, 'table chrome'),
+        },
+      });
+      await flushPromises();
+      expect(mounted.q('[data-testid=choy-view-surface-error]')).not.toBeNull();
+      expect(mounted.text()).toContain('Connection lost');
+      expect(mounted.text()).toContain('Could not load this data');
+      // Slot stays mounted under the overlay (no table-header flicker on Retry).
+      expect(mounted.q('[data-testid=body]')?.textContent).toBe('table chrome');
+      mounted.click('[data-testid=choy-view-surface-error-retry]');
+      await flushPromises();
+      expect(onRetry.calls.length).toBe(1);
+      mounted.unmount();
+    } finally {
+      restoreSfc(ChoyButton as any);
+      useConnectivityStore().resetForTests();
+    }
+  });
+
+  test('error with hasFrame shows stale banner and keeps slot content', async () => {
+    setActivePinia(createPinia());
+    stubSfc(ChoyButton as any, {
+      name: 'ChoyButton',
+      inheritAttrs: false,
+      props: {
+        type: { type: String, default: 'button' },
+        size: { type: String, default: 'default' },
+        variant: { type: String, default: 'default' },
+        disabled: { type: Boolean, default: false },
+      },
+      emits: ['click'],
+      setup(props: any, { slots, emit, attrs }: any) {
+        return () =>
+          h(
+            'button',
+            {
+              type: props.type || 'button',
+              ...attrs,
+              disabled: props.disabled || undefined,
+              onClick: (e: Event) => emit('click', e),
+            },
+            slots.default?.(),
+          );
+      },
+    });
+    const onRetry = fnRecorder(() => {});
+    try {
+      const mounted = mountApp(ChoyViewBusyHost as any, {
+        props: {
+          busy: false,
+          error: new Error('Failed to fetch'),
+          hasFrame: true,
+          hasSettled: true,
+        },
+        on: { onRetry: () => onRetry() },
+        slots: {
+          default: () => h('div', { 'data-testid': 'body' }, 'cached rows'),
+        },
+      });
+      await flushPromises();
+      expect(mounted.q('[data-testid=choy-view-surface-error]')).toBeNull();
+      expect(mounted.q('[data-testid=choy-view-surface-stale-banner]')).not.toBeNull();
+      expect(mounted.text()).toContain('Could not refresh.');
+      expect(mounted.q('[data-testid=body]')?.textContent).toBe('cached rows');
+      mounted.click('[data-testid=choy-view-surface-stale-retry]');
+      await flushPromises();
+      expect(onRetry.calls.length).toBe(1);
+      mounted.unmount();
+    } finally {
+      restoreSfc(ChoyButton as any);
+    }
+  });
 });
+

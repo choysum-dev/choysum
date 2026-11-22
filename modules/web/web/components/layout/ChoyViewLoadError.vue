@@ -13,7 +13,7 @@ SPDX-License-Identifier: Apache-2.0
     <p class="max-w-md text-sm text-muted-foreground">{{ detail }}</p>
     <div class="flex flex-wrap items-center justify-center gap-2">
       <ChoyButton type="button" data-testid="choy-view-load-error-retry" @click="onRetry">
-        {{ _t('Retry') }}
+        {{ _t('Retry loading') }}
       </ChoyButton>
       <ChoyButton type="button" variant="outline" data-testid="choy-view-load-error-reload" @click="onReload">
         {{ _t('Reload page') }}

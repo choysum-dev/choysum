@@ -131,6 +131,19 @@ export const useConnectivityStore = defineStore('connectivity', () => {
 });
 
 /**
+ * Safe read for shell/router code that may run before Pinia is installed.
+ * Returns false when the store is unavailable (treat as reachable).
+ */
+export function isConnectivityUnreachable(): boolean {
+  try {
+    if (!getActivePinia()) return false;
+    return useConnectivityStore().status === 'unreachable';
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Wire RPC lifecycle transport hooks to this Pinia store and bind navigator.
  * Call once after Pinia is installed (appSetup).
  */

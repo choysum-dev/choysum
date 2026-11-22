@@ -180,6 +180,11 @@ SPDX-License-Identifier: Apache-2.0
       :busy="listBusy"
       :mode="listBusyMode"
       class="flex min-h-0 min-w-0 flex-1 flex-col"
+      :error="controller.vm.error"
+      :has-frame="listHasFrame"
+      :has-settled="!!controller.vm.hasAppliedOnce"
+      :error-fallback-title="_t('Failed to load list')"
+      @retry="onSurfaceRetry"
     >
     <div
       ref="tableWrapRef"
@@ -570,8 +575,25 @@ const listBusyMode = computed<'stale' | 'block'>(() => {
   if (Array.isArray(rows) && rows.length > 0) return 'stale';
   return 'block';
 });
-/** Empty copy only after the first apply finished and the table is idle with no rows. */
-const showListEmpty = computed(() => !!controller.vm.hasAppliedOnce && !listBusy.value);
+/** True when the list already has a successful content frame (rows or group nodes). */
+const listHasFrame = computed(() => {
+  const nodes = controller.vm.visibleNodes;
+  if (Array.isArray(nodes) && nodes.length > 0) return true;
+  const rows = (controller.vm.result as { rows?: unknown[] } | null)?.rows;
+  return Array.isArray(rows) && rows.length > 0;
+});
+/** Empty copy only after a successful settle with no rows — not when apply failed. */
+const showListEmpty = computed(
+  () => !!controller.vm.hasAppliedOnce && !listBusy.value && controller.vm.error == null,
+);
+
+async function onSurfaceRetry(): Promise<void> {
+  try {
+    await loadData();
+  } catch {
+    // loadData already emits action-error / toast; Host keeps showing surface error.
+  }
+}
 
 // Whether grouped mode is active, based on the controller result
 const isGroupMode = computed(() => controller.vm.result?.kind === 'group');

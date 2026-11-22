@@ -828,6 +828,7 @@ export function createFormController(store: ModelStore<any>, deps: FormControlle
       vm.result = snap;
       store.state.result = snap;
       vm.loading = false;
+      vm.hasAppliedOnce = true;
       return cached;
     }
 
@@ -857,7 +858,11 @@ export function createFormController(store: ModelStore<any>, deps: FormControlle
       vm.error = e;
       throw e;
     } finally {
-      if (seq === loadSeq) vm.loading = false;
+      if (seq === loadSeq) {
+        vm.loading = false;
+        // Mark settled even on failure so BusyHost can show surface error (not empty form).
+        vm.hasAppliedOnce = true;
+      }
     }
   }
 

@@ -5,12 +5,18 @@ import { computed, defineComponent, h, reactive, ref } from 'vue';
 import * as VueRouter from 'vue-router';
 import { createPinia, setActivePinia } from 'pinia';
 
+import {
+  beginNavigationLoading,
+  getLoadingRegistryDebugState,
+  resetLoadingRegistryForTests,
+} from '@/core/web/client/loadingRegistry';
 import { flushPromises, fnRecorder, mountApp } from '@/web/web/__tests__/mountApp';
 import { resolveConfirmChoy, useConfirmChoyStore } from '@/web/web/composables/confirmChoyAction';
 import { ChoyMessage } from '@/web/web/composables/useChoyMessage';
 import { useFormViewLifecycle } from '@/web/web/composables/useFormViewLifecycle';
 import type { ViewMode } from '@/web/web/components/view/viewScopeKeys';
 import { useBreadcrumbStore } from '@/web/web/stores/breadcrumbStore';
+import { useConnectivityStore } from '@/web/web/stores/connectivityStore';
 
 const createFeStubRouter = (VueRouter as any).createFeStubRouter;
 
@@ -373,6 +379,44 @@ describe('useFormViewLifecycle', () => {
     m.unmount();
   });
 
+  test('handleCancel create back keeps leaving through a delayed history commit', async () => {
+    const m = mountLifecycle({
+      viewMode: 'create',
+      watchIdentity: false,
+      route: {
+        name: 'New',
+        path: '/app/items/new',
+        fullPath: '/app/items/new',
+        params: {},
+        query: {},
+        meta: {},
+      },
+    });
+    m.controller.beginCreate.mockImplementation(async (seed: any) => {
+      m.controller.vm.draft = { ...(seed || {}) };
+      m.controller.vm.mode = 'create';
+    });
+    await m.api().initializeForm();
+    await flushPromises();
+    m.controller.vm.draft = { Name: 'edited-away' };
+
+    // history.go(-1) often commits after the next macrotask; leaving must still
+    // cover the leave guard so discard confirm does not reopen.
+    m.router.back = () => {
+      setTimeout(() => {
+        void m.router.push('/app/items');
+      }, 20);
+    };
+    const cancelPending = m.api().handleCancel();
+    await flushPromises();
+    resolveConfirmChoy('confirm');
+    await cancelPending;
+    await flushPromises();
+    expect(useConfirmChoyStore().open).toBe(false);
+    expect(m.router.currentRoute.value.fullPath).toBe('/app/items');
+    m.unmount();
+  });
+
   test('handleCancel create back with popstate still suppresses the leave prompt', async () => {
     const m = mountLifecycle({
       viewMode: 'create',
@@ -688,48 +732,52 @@ describe('useFormViewLifecycle', () => {
 
   test('handleDelete breadcrumb update failure is warned', async () => {
     setActivePinia(undefined as any);
-    const { router, route } = createFeStubRouter({
-      route: {
-        name: 'Detail',
-        path: '/app/items/warn-1',
-        fullPath: '/app/items/warn-1',
-        params: { id: 'warn-1' },
-        query: {},
-        meta: {},
-      },
-    });
-    const identity = reactive<MutableIdentity>({ viewMode: 'display' });
-    const controller = makeController();
-    controller.vm.original = { Id: 'warn-1' };
-    const emitCancelable = fnRecorder(async () => true);
-    const emit = fnRecorder(() => {});
-    let api: ReturnType<typeof useFormViewLifecycle<any>> | null = null;
-    const Host = defineComponent({
-      setup() {
-        api = useFormViewLifecycle({
-          identity,
-          route,
-          router,
-          controller: controller as any,
-          resolvedResolveRecordIdFromRoute: computed(() => false),
-          resolvedShowMessages: computed(() => false),
-          resolvedCreateAction: computed(() => undefined),
-          viewMode: computed(() => 'display'),
-          exposedFormData: computed(() => ({})),
-          onchangeCtrl: { reset: () => {} } as any,
-          resetOnchangeAgg: () => {},
-          emitCancelable,
-          emit,
-          _t: (k: string) => k,
-        });
-        return () => h('div');
-      },
-    });
-    mountApp(Host, { plugins: [router] });
-    api!.handleDelete();
-    resolveConfirmChoy('confirm');
-    await flushPromises();
-    expect((console.warn as any).calls.some((c: any[]) => String(c[0]).includes('breadcrumb'))).toBe(true);
+    try {
+      const { router, route } = createFeStubRouter({
+        route: {
+          name: 'Detail',
+          path: '/app/items/warn-1',
+          fullPath: '/app/items/warn-1',
+          params: { id: 'warn-1' },
+          query: {},
+          meta: {},
+        },
+      });
+      const identity = reactive<MutableIdentity>({ viewMode: 'display' });
+      const controller = makeController();
+      controller.vm.original = { Id: 'warn-1' };
+      const emitCancelable = fnRecorder(async () => true);
+      const emit = fnRecorder(() => {});
+      let api: ReturnType<typeof useFormViewLifecycle<any>> | null = null;
+      const Host = defineComponent({
+        setup() {
+          api = useFormViewLifecycle({
+            identity,
+            route,
+            router,
+            controller: controller as any,
+            resolvedResolveRecordIdFromRoute: computed(() => false),
+            resolvedShowMessages: computed(() => false),
+            resolvedCreateAction: computed(() => undefined),
+            viewMode: computed(() => 'display'),
+            exposedFormData: computed(() => ({})),
+            onchangeCtrl: { reset: () => {} } as any,
+            resetOnchangeAgg: () => {},
+            emitCancelable,
+            emit,
+            _t: (k: string) => k,
+          });
+          return () => h('div');
+        },
+      });
+      mountApp(Host, { plugins: [router] });
+      api!.handleDelete();
+      resolveConfirmChoy('confirm');
+      await flushPromises();
+      expect((console.warn as any).calls.some((c: any[]) => String(c[0]).includes('breadcrumb'))).toBe(true);
+    } finally {
+      setActivePinia(createPinia());
+    }
   });
 
   test('dirty edit cancel and refresh wait for discard confirmation', async () => {
@@ -762,6 +810,62 @@ describe('useFormViewLifecycle', () => {
     resolveConfirmChoy('dismiss');
     await pending;
     m.unmount();
+  });
+
+  test('dirty leave settles a premature nav ticket while the discard dialog is open', async () => {
+    resetLoadingRegistryForTests();
+    const m = mountLifecycle({ watchIdentity: false, viewMode: 'edit' });
+    m.controller.vm.original = { Id: 'rec-1', Name: 'a' };
+    m.controller.vm.draft = { Id: 'rec-1', Name: 'b' };
+    // Mimic app-router ordering: nav ticket already open when the leave guard runs.
+    beginNavigationLoading();
+    expect(getLoadingRegistryDebugState().navTicketActive).toBe(true);
+    const pending = m.router.push('/elsewhere-while-dirty');
+    await flushPromises();
+    expect(useConfirmChoyStore().open).toBe(true);
+    expect(getLoadingRegistryDebugState().navTicketActive).toBe(false);
+    resolveConfirmChoy('dismiss');
+    await pending;
+    m.unmount();
+    resetLoadingRegistryForTests();
+  });
+
+  test('dirty leave does not re-arm nav chrome after discard while unreachable', async () => {
+    resetLoadingRegistryForTests();
+    const m = mountLifecycle({ watchIdentity: false, viewMode: 'edit' });
+    // mountLifecycle installs its own Pinia — mark unreachable on that active store.
+    useConnectivityStore().markUnreachable();
+    m.controller.vm.original = { Id: 'rec-1', Name: 'a' };
+    m.controller.vm.draft = { Id: 'rec-1', Name: 'b' };
+    beginNavigationLoading();
+    const pending = m.router.push('/elsewhere-unreachable');
+    await flushPromises();
+    expect(useConfirmChoyStore().open).toBe(true);
+    resolveConfirmChoy('confirm');
+    await pending;
+    await flushPromises();
+    expect(getLoadingRegistryDebugState().navTicketActive).toBe(false);
+    useConnectivityStore().resetForTests();
+    m.unmount();
+    resetLoadingRegistryForTests();
+  });
+
+  test('dirty leave re-arms nav chrome after discard while reachable', async () => {
+    resetLoadingRegistryForTests();
+    const m = mountLifecycle({ watchIdentity: false, viewMode: 'edit' });
+    m.controller.vm.original = { Id: 'rec-1', Name: 'a' };
+    m.controller.vm.draft = { Id: 'rec-1', Name: 'b' };
+    beginNavigationLoading();
+    const pending = m.router.push('/elsewhere-reachable');
+    await flushPromises();
+    expect(useConfirmChoyStore().open).toBe(true);
+    expect(getLoadingRegistryDebugState().navTicketActive).toBe(false);
+    resolveConfirmChoy('confirm');
+    await pending;
+    await flushPromises();
+    expect(getLoadingRegistryDebugState().navTicketActive).toBe(true);
+    m.unmount();
+    resetLoadingRegistryForTests();
   });
 
   test('route leave skips discard prompt when navigating to login', async () => {

@@ -39,6 +39,7 @@ function makeStore() {
     getContext: () => ({}),
     withContext: async (_c: any, fn: any) => fn(),
     Search: async () => [],
+    Count: async () => 0,
   } as any;
 }
 

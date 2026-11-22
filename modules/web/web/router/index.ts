@@ -14,6 +14,7 @@ import {
   settleNavigationIfActive,
 } from '@/core/web/client/loadingRegistry';
 import type { ComposerLike } from '../i18n';
+import { isConnectivityUnreachable } from '../stores/connectivityStore';
 import { resolveDocumentTitle } from './documentTitle';
 import { resolveNavLoadingPolicy } from './navLoadingPolicy';
 import { clearViewLoadError, isRouteChunkLoadError, setViewLoadError } from './viewLoadError';
@@ -64,7 +65,9 @@ export function createAppRouter(base = '/', composer?: ComposerLike): Router {
   router.beforeEach(async to => {
     titleRoute.value = to;
     // none: do not open a nav ticket; drop any stale generation marker on meta.
-    if (resolveNavLoadingPolicy(to) === 'none') {
+    // Unreachable: Connection lost pill already owns session truth — do not open a
+    // 15s handoff that waits on chunks/RPC that will not complete.
+    if (resolveNavLoadingPolicy(to) === 'none' || isConnectivityUnreachable()) {
       delete (to.meta as { __navLoadingGen?: number }).__navLoadingGen;
       return true;
     }
