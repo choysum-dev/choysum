@@ -905,8 +905,12 @@ watch(
   v => {
     writeQueryStateOrderBy((store.state as any), v);
     if (!firstApplied.value) return;
-    controller.apply().then(afterLayoutRecompute).catch(() => {});
-  }
+    controller
+      .apply({ forcedCondition: props.forcedCondition as any })
+      .then(afterLayoutRecompute)
+      .catch(() => {});
+  },
+  { deep: true }
 );
 
 // Unified note: resetToFirstPageOrLoad was removed because it was unused; all refresh logic now goes through controller.apply()

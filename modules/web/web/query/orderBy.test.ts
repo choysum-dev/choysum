@@ -95,7 +95,12 @@ test('isHandleReorderSortAllowed requires sole handleField asc', () => {
   expect(isHandleReorderSortAllowed([], 'Sequence')).toBe(true);
   expect(isHandleReorderSortAllowed([{ field: 'Sequence', direction: 'asc' }], 'Sequence')).toBe(true);
   expect(isHandleReorderSortAllowed([{ field: 'Sequence', order: 'asc' }], 'Sequence')).toBe(true);
+  expect(isHandleReorderSortAllowed([{ field: 'Sequence', order: ' ASC ' }], 'Sequence')).toBe(true);
   expect(isHandleReorderSortAllowed([{ field: 'Sequence', direction: 'desc' }], 'Sequence')).toBe(false);
+  // Prefer `order` over `direction` (same as toRpcOrderBy).
+  expect(
+    isHandleReorderSortAllowed([{ field: 'Sequence', order: 'desc', direction: 'asc' }], 'Sequence')
+  ).toBe(false);
   expect(isHandleReorderSortAllowed([{ field: 'Name', direction: 'asc' }], 'Sequence')).toBe(false);
   expect(
     isHandleReorderSortAllowed(

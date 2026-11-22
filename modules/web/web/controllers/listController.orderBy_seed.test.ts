@@ -114,6 +114,17 @@ test('listController keeps explicit collection orderBy even when stored groups r
   expect(store.state.queryState.orderBy).toEqual([{ field: 'CreatedAt', direction: 'desc' }]);
 });
 
+test('listController keeps group-key orderBy when apply({ kind: group }) reuses stored groups', async () => {
+  const store = makeStore({
+    metadata: { fields: { Name: { type: 'varchar' } } },
+  });
+  store.state.queryState.appliedGroups = ['Name'];
+  store.state.queryState.orderBy = [{ field: 'Name', direction: 'desc' }];
+  const ctrl = createListController(store);
+  await ctrl.apply({ kind: 'group' });
+  expect(store.state.queryState.orderBy).toEqual([{ field: 'Name', direction: 'desc' }]);
+});
+
 test('listController persists undefined orderBy when grouped filter drops every field', async () => {
   const store = makeStore();
   store.state.queryState.orderBy = [{ field: 'CreatedAt', direction: 'asc' }];

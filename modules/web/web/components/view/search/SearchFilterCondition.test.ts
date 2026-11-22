@@ -388,7 +388,7 @@ describe('SearchFilterCondition', () => {
     unmount();
   });
 
-  test('resolveConditionFieldMeta reads static metadata.fields when getFieldMeta is absent', async () => {
+  test('fieldMeta tracks static metadata.fields when getFieldMeta is absent', async () => {
     const condition = reactive<any>({ id: 'c1', field: 'Amount', operator: '=', value: null });
     const { unmount, setupState } = mountRow(condition, {
       store: {
@@ -402,14 +402,14 @@ describe('SearchFilterCondition', () => {
       },
     });
     await nextTick();
-    const meta = setupState().resolveConditionFieldMeta('Amount');
+    const meta = unref(setupState().fieldMeta);
     expect(meta?.type).toBe('monetary');
     expect(meta?.stringText || meta?.string).toBeTruthy();
     expect(setupState().binding.meta?.type).toBe('monetary');
 
     condition.field = 'Name';
     await nextTick();
-    expect(setupState().binding.meta?.type).toBe('varchar');
+    expect(unref(setupState().fieldMeta)?.type).toBe('varchar');
     unmount();
   });
 });

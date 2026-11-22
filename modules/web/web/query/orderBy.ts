@@ -122,6 +122,7 @@ export function isHandleReorderSortAllowed(
   if (list.length > 1) return false;
   const primary = list[0];
   const field = primary?.field;
-  const dir = String(primary?.direction || primary?.order || '').toLowerCase();
+  // Match toRpcOrderBy: prefer `order` over `direction`, then normalize.
+  const dir = normalizeSortDir(primary?.order ?? primary?.direction ?? 'asc');
   return field === handleField && dir === 'asc';
 }

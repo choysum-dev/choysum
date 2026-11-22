@@ -278,11 +278,11 @@ export function createListController(store: ModelStore<any>): IListController {
       const hasOrderByOverride = Object.prototype.hasOwnProperty.call(effectiveOverrides ?? {}, 'orderBy');
       const existingOrderBy = (store.state as any)?.queryState?.orderBy as OrderByState[] | undefined;
       const modelDefaultOrderBy = metadataOrderByToState((store as any)?.metadata?.orderBy);
-      // Stored groups only classify as grouped when shape is still unresolved.
-      // Explicit collection mode (kind:'search') must keep its requested orderBy.
+      // Prefer override group keys; otherwise reuse stored groups unless this apply is
+      // an explicit collection (kind:'search') that must ignore stale groups.
       const groupKeysForOrder =
         gbStrings ??
-        (shape == null && Array.isArray(existingGroups)
+        (shape !== 'collection' && Array.isArray(existingGroups)
           ? normalizeGroupbyToStrings(existingGroups as any)
           : undefined);
       const isGroupedRequest =
