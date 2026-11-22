@@ -129,3 +129,45 @@ test('useRecordSetStore seed / getActiveForModel / move / clear', async () => {
   expect(store.active).toBeNull();
   expect(store.hasActive).toBe(false);
 });
+
+test('useRecordSetStore move/moveTo drop result when session key changes during await', async () => {
+  setActivePinia(createPinia());
+  const store = useRecordSetStore();
+  store.seed(
+    sampleEntry({
+      total: 10,
+      index: 2,
+      ids: ['a', 'b', 'c'],
+      windowStart: 0,
+      key: 'session-a',
+    })
+  );
+  let resolveSearch: ((ids: string[]) => void) | null = null;
+  const pending = new Promise<string[]>(resolve => {
+    resolveSearch = resolve;
+  });
+  const movePromise = store.move(1, async () => pending);
+  store.clear();
+  resolveSearch!(['d', 'e', 'f', 'g']);
+  expect(await movePromise).toBeNull();
+  expect(store.active).toBeNull();
+
+  store.seed(
+    sampleEntry({
+      total: 10,
+      index: 1,
+      ids: ['a', 'b', 'c'],
+      windowStart: 0,
+      key: 'session-b',
+    })
+  );
+  let resolveTo: ((ids: string[]) => void) | null = null;
+  const pendingTo = new Promise<string[]>(resolve => {
+    resolveTo = resolve;
+  });
+  const toPromise = store.moveTo(7, async () => pendingTo);
+  store.seed(sampleEntry({ key: 'session-c', ids: ['x'], index: 0, total: 1, windowStart: 0 }));
+  resolveTo!(['h', 'i', 'j']);
+  expect(await toPromise).toBeNull();
+  expect(store.active?.key).toBe('session-c');
+});

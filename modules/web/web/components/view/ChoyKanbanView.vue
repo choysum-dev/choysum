@@ -621,21 +621,22 @@ function onCardClick(card: ChoyKanbanCard): void {
       emit('card-click', card);
       return;
     }
-    const pageIds = ((boundStore as { state?: { result?: { rows?: unknown[] } } }).state?.result
-      ?.rows || [])
-      .map((r: any) => String(r?.Id ?? r?.id ?? r?.payload?.Id ?? '').trim())
-      .filter(Boolean);
-    const local = pageIds.indexOf(id);
+    // snapshotFromListStore unwraps wrapped rows and corrects index via recordId.
     const entry = snapshotFromListStore(boundStore as any, {
       model: model || 'unknown',
       key: `${model || 'unknown'}|${String(route?.path || 'kanban')}`,
-      rowIndex: local >= 0 ? local : 0,
+      rowIndex: 0,
       recordId: id,
     });
     // Grouped / empty windows: open the Form without a misleading pager session.
     if (entry && entry.ids.length > 0 && entry.ids.includes(id)) {
       openRecordFromCollection({ router, to, entry });
     } else {
+      try {
+        useRecordSetStore().clear();
+      } catch {
+        // Pinia may be unavailable in unit mounts without an app shell.
+      }
       void router.push(to as any);
     }
     return;

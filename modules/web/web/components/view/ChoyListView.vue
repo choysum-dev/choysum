@@ -1137,6 +1137,11 @@ function openDetailOrEmitRowClick(payload: RowEventPayload<T>) {
     if (entry && entry.ids.length > 0 && entry.ids.includes(id)) {
       openRecordFromCollection({ router, to, entry });
     } else {
+      try {
+        useRecordSetStore().clear();
+      } catch {
+        // Pinia may be unavailable in unit mounts without an app shell.
+      }
       // Still open the record when snapshot is unavailable (no pager session).
       void router.push(to as any);
     }

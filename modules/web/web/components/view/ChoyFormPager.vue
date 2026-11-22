@@ -188,10 +188,11 @@ function cancelEdit(): void {
   queueMicrotask(() => {
     suppressBlurCommit.value = false;
   });
+  // Escape closes the input; restore focus to the idle control.
   void focusCurrentIdle();
 }
 
-function commitEdit(): void {
+function commitEdit(opts?: { restoreFocus?: boolean }): void {
   if (suppressBlurCommit.value || !editing.value) return;
   // Enter unmounts the input and can fire blur; ignore that follow-up commit.
   suppressBlurCommit.value = true;
@@ -201,7 +202,8 @@ function commitEdit(): void {
   queueMicrotask(() => {
     suppressBlurCommit.value = false;
   });
-  void focusCurrentIdle();
+  // Blur (Tab / click away) must not steal focus from the user's next target.
+  if (opts?.restoreFocus) void focusCurrentIdle();
   if (draft.trim() === currentLabel.value) return;
   const next = parseFormPagerCurrentDraft(draft, normalizedTotal.value);
   if (next == null || next === normalizedCurrent.value) return;
@@ -211,7 +213,7 @@ function commitEdit(): void {
 function onEditKeydown(event: KeyboardEvent): void {
   if (event.key === 'Enter') {
     event.preventDefault();
-    commitEdit();
+    commitEdit({ restoreFocus: true });
   } else if (event.key === 'Escape') {
     event.preventDefault();
     cancelEdit();

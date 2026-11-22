@@ -6,6 +6,7 @@ import { toRpcOrderBy } from '@/web/web/query/orderBy';
 import { useBreadcrumbStore } from '@/web/web/stores/breadcrumbStore';
 import {
   useRecordSetStore,
+  type RecordSetEntry,
   type SearchRecordSetIds,
 } from '@/web/web/stores/recordSetStore';
 
@@ -43,8 +44,13 @@ function siblingLocation(router: RouterLike, nextId: string): string | Record<st
   const parts = String(route.path || '')
     .replace(/\/+$/, '')
     .split('/');
-  if (parts.length) parts[parts.length - 1] = nextId;
-  return parts.join('/') || `/${nextId}`;
+  if (parts.length) parts[parts.length - 1] = encodeURIComponent(nextId);
+  const targetPath = parts.join('/') || `/${encodeURIComponent(nextId)}`;
+  const query = route.query;
+  if (query && typeof query === 'object' && Object.keys(query as object).length > 0) {
+    return { path: targetPath, query: query as any };
+  }
+  return targetPath;
 }
 
 function buildSearchIds(store: SearchStoreLike): SearchRecordSetIds {
@@ -94,7 +100,8 @@ export function useFormRecordPager(opts: UseFormRecordPagerOpts) {
   );
 
   async function navigateToMoved(
-    moved: { id: string } | null
+    moved: { id: string } | null,
+    previous: RecordSetEntry | null
   ): Promise<void> {
     if (!moved) return;
     const breadcrumb = useBreadcrumbStore();
@@ -103,8 +110,13 @@ export function useFormRecordPager(opts: UseFormRecordPagerOpts) {
     try {
       await opts.router.push(siblingLocation(opts.router, moved.id) as any);
     } catch {
-      // Failed / aborted navigations must not leave a sticky replace intent.
+      // Failed / aborted navigations must not leave a sticky replace intent
+      // or an advanced pager index while the Form route stayed put.
       breadcrumb.setPendingPageMode(null);
+      const cur = recordSet.active;
+      if (previous && cur && cur.key === previous.key) {
+        recordSet.replaceActive(previous);
+      }
     }
   }
 
@@ -127,8 +139,9 @@ export function useFormRecordPager(opts: UseFormRecordPagerOpts) {
     if (!(await opts.confirmDiscardIfDirty())) return;
     busy.value = true;
     try {
+      const previous = entry.value ? { ...entry.value } : null;
       const moved = await recordSet.move(delta, buildSearchIds(opts.store));
-      await navigateToMoved(moved);
+      await navigateToMoved(moved, previous);
     } finally {
       busy.value = false;
     }
@@ -146,8 +159,9 @@ export function useFormRecordPager(opts: UseFormRecordPagerOpts) {
     if (!(await opts.confirmDiscardIfDirty())) return;
     busy.value = true;
     try {
+      const previous = entry.value ? { ...entry.value } : null;
       const moved = await recordSet.moveTo(index, buildSearchIds(opts.store));
-      await navigateToMoved(moved);
+      await navigateToMoved(moved, previous);
     } finally {
       busy.value = false;
     }

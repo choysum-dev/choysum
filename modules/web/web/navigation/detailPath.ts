@@ -40,8 +40,12 @@ export function resolveDetailPath(
 export function applyIdToPathTemplate(template: string, id: string): string | null {
   const t = String(template || '').trim();
   if (!t || !id) return null;
+  const encodedId = encodeURIComponent(id);
   if (t.includes(':id') || t.includes('{id}')) {
-    return t.replace(/:id\b/g, id).replace(/\{id\}/g, id);
+    // Function replacer avoids `$` sequences in id being treated as replace tokens.
+    return t
+      .replace(/:id\b/g, () => encodedId)
+      .replace(/\{id\}/g, () => encodedId);
   }
   // Preserve ?query and #hash when appending /id to a bare prefix.
   let pathPart = t;
@@ -59,8 +63,10 @@ export function applyIdToPathTemplate(template: string, id: string): string | nu
     suffix = t.slice(cut);
   }
   const base = pathPart.replace(/\/+$/, '');
-  if (base.endsWith(`/${id}`)) return `${base}${suffix}`;
-  return `${base}/${id}${suffix}`;
+  if (base.endsWith(`/${encodedId}`) || base.endsWith(`/${id}`)) {
+    return `${base}${suffix}`;
+  }
+  return `${base}/${encodedId}${suffix}`;
 }
 
 export function canOpenDetailRow(

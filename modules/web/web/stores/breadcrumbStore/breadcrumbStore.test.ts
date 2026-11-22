@@ -651,6 +651,20 @@ describe('breadcrumbStore L1+L2 trail', () => {
     ]);
     expect(store.breadcrumbStack.map((i) => i.kind)).toEqual(['app', 'menu', 'page', 'page']);
 
+    // Clearing a sticky replace intent must be a no-op for the next page push.
+    store.setPendingPageMode('replace');
+    store.setPendingPageMode(null);
+    await router.push({
+      path: '/base/currencies/d',
+      meta: { pageTitle: 'Currency Details' },
+    });
+    await flushPromises();
+    expect(store.breadcrumbStack.filter((i) => i.kind === 'page').map((i) => i.path)).toEqual([
+      '/base/currencies/a',
+      '/base/currencies/c',
+      '/base/currencies/d',
+    ]);
+
     mounted.unmount();
   });
 

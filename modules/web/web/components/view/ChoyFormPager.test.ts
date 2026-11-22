@@ -75,3 +75,54 @@ test('ChoyFormPager unchanged draft does not emit goto', async () => {
   expect(gotos).toEqual([]);
   mounted.unmount();
 });
+
+test('ChoyFormPager cancelEdit and commitEdit restoreFocus option', async () => {
+  const gotos: number[] = [];
+  const mounted = mountApp(ChoyFormPager as any, {
+    props: { current: 2, total: 5, canPrev: true, canNext: true },
+    on: { onGoto: (n: number) => gotos.push(n) },
+  });
+  await flushPromises();
+  const state = mounted.setupState() as {
+    startEditWith: (draft: string) => Promise<void>;
+    cancelEdit: () => void;
+    commitEdit: (opts?: { restoreFocus?: boolean }) => void;
+  };
+
+  await state.startEditWith('4');
+  await flushPromises();
+  expect(mounted.q('[data-testid="choy-form-pager-current-input"]')).not.toBeNull();
+  state.cancelEdit();
+  await flushPromises();
+  expect(gotos).toEqual([]);
+  expect(mounted.q('[data-testid="choy-form-pager-current-input"]')).toBeNull();
+
+  await state.startEditWith('4');
+  await flushPromises();
+  state.commitEdit({ restoreFocus: true });
+  await flushPromises();
+  expect(gotos).toEqual([4]);
+
+  gotos.length = 0;
+  await state.startEditWith('5');
+  await flushPromises();
+  // Blur-style commit without restoreFocus.
+  state.commitEdit();
+  await flushPromises();
+  expect(gotos).toEqual([5]);
+  mounted.unmount();
+});
+
+test('ChoyFormPager busy blocks startEdit; idle buttons are present', async () => {
+  const busyMount = mountApp(ChoyFormPager as any, {
+    props: { current: 1, total: 3, canPrev: true, canNext: true, busy: true },
+  });
+  await flushPromises();
+  const busyState = busyMount.setupState() as { startEdit: () => Promise<void> };
+  await busyState.startEdit();
+  await flushPromises();
+  expect(busyMount.q('[data-testid="choy-form-pager-current-input"]')).toBeNull();
+  expect(busyMount.q('[data-testid="choy-form-pager-prev"]')).not.toBeNull();
+  expect(busyMount.q('[data-testid="choy-form-pager-next"]')).not.toBeNull();
+  busyMount.unmount();
+});

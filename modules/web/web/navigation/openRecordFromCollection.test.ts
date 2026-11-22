@@ -16,6 +16,8 @@ test('applyIdToPathTemplate replaces :id and appends bare prefixes', () => {
     '/base/countries/c1?tab=details'
   );
   expect(applyIdToPathTemplate('/base/countries#sec', 'c1')).toBe('/base/countries/c1#sec');
+  expect(applyIdToPathTemplate('/base/countries/:id', 'a$b')).toBe('/base/countries/a%24b');
+  expect(applyIdToPathTemplate('/base/countries/c1?tab=x', 'c1')).toBe('/base/countries/c1?tab=x');
 });
 
 test('resolveDetailPath supports templates and factories', () => {
@@ -78,6 +80,28 @@ test('snapshotFromListStore builds global index and page ids', () => {
   );
   expect(noTotal?.total).toBe(103);
   expect(noTotal?.index).toBe(102);
+
+  expect(snapshotFromListStore(null, { model: 'x', key: 'k', rowIndex: 0 })).toBeNull();
+  expect(
+    snapshotFromListStore({ state: {} }, { model: '', key: 'k', rowIndex: 0 })
+  ).toBeNull();
+  // type:record wrapper + empty total clamps index to 0.
+  const wrapped = snapshotFromListStore(
+    {
+      modelName: 'base.Country',
+      state: {
+        queryState: { pagination: { offset: 0 } },
+        result: {
+          rows: [{ type: 'record', record: { Id: 'z' } }, { kind: 'more' }],
+        },
+      },
+      metadata: { fields: {} },
+    },
+    { model: 'base.Country', key: 'k', rowIndex: 0, recordId: 'z' }
+  );
+  expect(wrapped?.ids).toEqual(['z']);
+  expect(wrapped?.total).toBe(1);
+  expect(wrapped?.index).toBe(0);
 });
 
 test('openRecordFromCollection seeds store and pushes route', () => {

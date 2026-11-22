@@ -110,3 +110,140 @@ test('detailPath row click seeds recordSet and pushes detail path', async () => 
   restoreSfc(ChoyPagination);
   restoreSfc(ListInlineEditScope);
 });
+
+test('detailPath clears same-model session on mount and skips seed for missing id window', async () => {
+  const pinia = createPinia();
+  setActivePinia(pinia);
+  const rs = useRecordSetStore();
+  rs.seed({
+    key: 'stale',
+    model: 'base.Country',
+    condition: {},
+    total: 1,
+    index: 0,
+    ids: ['z'],
+    windowStart: 0,
+  });
+  // Other model must be preserved by clearRecordSetSessionIfDetailHost.
+  // Seed same-model only — mount clears it.
+  const { router } = createFeStubRouter({
+    route: { path: '/base/countries', fullPath: '/base/countries' },
+  });
+  const pushes: unknown[] = [];
+  router.push = (to: unknown) => {
+    pushes.push(to);
+    return Promise.resolve(to);
+  };
+
+  stubSfc(ChoyTableHost, {
+    name: 'ChoyTableHost',
+    emits: ['row-click'],
+    setup: () => () => h('div', { 'data-stub': 'ChoyTableHost' }),
+  });
+  stubSfc(ChoyTableColumn, { name: 'ChoyTableColumn', setup: () => () => null });
+  stubSfc(ChoyPagination, {
+    name: 'ChoyPagination',
+    setup: () => () => h('div', { 'data-stub': 'Pagination' }),
+  });
+  stubSfc(ListInlineEditScope, {
+    name: 'ListInlineEditScope',
+    setup: (_p: any, { slots }: any) => () => h('div', slots.default?.()),
+  });
+
+  const store = makeStore();
+  store.state.result = { total: 0, rows: [{ kind: 'group', key: 'g' }] };
+
+  const mounted = mountApp(ChoyListView as any, {
+    props: {
+      store,
+      detailPath: '/base/countries/:id',
+      showHeader: false,
+      showPaginate: false,
+    },
+    plugins: [pinia, router as any],
+  });
+  await flushPromises();
+  expect(useRecordSetStore().active).toBeNull();
+
+  const ss = mounted.setupState() as any;
+  await ss.onRowClick({
+    rowData: { kind: 'record', key: 'x', payload: { Id: 'x', Name: 'X' } },
+    rowIndex: 0,
+    rowKey: 'x',
+  });
+  await flushPromises();
+  expect(pushes).toEqual(['/base/countries/x']);
+  expect(useRecordSetStore().active).toBeNull();
+
+  // canOpenDetail false → emit path (no push)
+  pushes.length = 0;
+  const blocked = mountApp(ChoyListView as any, {
+    props: {
+      store: makeStore(),
+      detailPath: '/base/countries/:id',
+      canOpenDetail: () => false,
+      showHeader: false,
+      showPaginate: false,
+    },
+    plugins: [pinia, router as any],
+  });
+  await flushPromises();
+  await (blocked.setupState() as any).onRowClick({
+    rowData: { kind: 'record', key: 'a', payload: { Id: 'a' } },
+    rowIndex: 0,
+    rowKey: 'a',
+  });
+  await flushPromises();
+  expect(pushes).toEqual([]);
+
+  mounted.unmount();
+  blocked.unmount();
+  restoreSfc(ChoyTableHost);
+  restoreSfc(ChoyTableColumn);
+  restoreSfc(ChoyPagination);
+  restoreSfc(ListInlineEditScope);
+});
+
+test('detailPath clear preserves other-model recordSet session', async () => {
+  const pinia = createPinia();
+  setActivePinia(pinia);
+  useRecordSetStore().seed({
+    key: 'partner',
+    model: 'partner.Partner',
+    condition: {},
+    total: 1,
+    index: 0,
+    ids: ['p1'],
+    windowStart: 0,
+  });
+  const { router } = createFeStubRouter({
+    route: { path: '/base/countries', fullPath: '/base/countries' },
+  });
+  stubSfc(ChoyTableHost, {
+    name: 'ChoyTableHost',
+    setup: () => () => h('div'),
+  });
+  stubSfc(ChoyTableColumn, { name: 'ChoyTableColumn', setup: () => () => null });
+  stubSfc(ChoyPagination, { name: 'ChoyPagination', setup: () => () => h('div') });
+  stubSfc(ListInlineEditScope, {
+    name: 'ListInlineEditScope',
+    setup: (_p: any, { slots }: any) => () => h('div', slots.default?.()),
+  });
+
+  const mounted = mountApp(ChoyListView as any, {
+    props: {
+      store: makeStore(),
+      detailPath: '/base/countries/:id',
+      showHeader: false,
+      showPaginate: false,
+    },
+    plugins: [pinia, router as any],
+  });
+  await flushPromises();
+  expect(useRecordSetStore().getActiveForModel('partner.Partner')?.ids).toEqual(['p1']);
+  mounted.unmount();
+  restoreSfc(ChoyTableHost);
+  restoreSfc(ChoyTableColumn);
+  restoreSfc(ChoyPagination);
+  restoreSfc(ListInlineEditScope);
+});
