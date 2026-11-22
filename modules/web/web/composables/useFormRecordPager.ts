@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { computed, ref, watch, type ComputedRef, type Ref } from 'vue';
+import { isNavigationFailure } from 'vue-router';
 import { toRpcOrderBy } from '@/web/web/query/orderBy';
 import { useBreadcrumbStore } from '@/web/web/stores/breadcrumbStore';
 import {
@@ -102,6 +103,17 @@ export function useFormRecordPager(opts: UseFormRecordPagerOpts) {
     }
   );
 
+  function restoreAfterNavFailure(previous: RecordSetEntry | null): void {
+    const breadcrumb = useBreadcrumbStore();
+    // Failed / aborted navigations must not leave a sticky replace intent
+    // or an advanced pager index while the Form route stayed put.
+    breadcrumb.setPendingPageMode(null);
+    const cur = recordSet.active;
+    if (previous && cur && cur.key === previous.key) {
+      recordSet.replaceActive(previous);
+    }
+  }
+
   async function navigateToMoved(
     moved: { id: string } | null,
     previous: RecordSetEntry | null
@@ -111,15 +123,11 @@ export function useFormRecordPager(opts: UseFormRecordPagerOpts) {
     // Sibling id under the same menu leaf: replace the current page crumb, do not deepen.
     breadcrumb.setPendingPageMode('replace');
     try {
-      await opts.router.push(siblingLocation(opts.router, moved.id) as any);
+      const result = await opts.router.push(siblingLocation(opts.router, moved.id) as any);
+      // Guard aborts resolve as NavigationFailure (fulfilled), not as a rejection.
+      if (isNavigationFailure(result)) restoreAfterNavFailure(previous);
     } catch {
-      // Failed / aborted navigations must not leave a sticky replace intent
-      // or an advanced pager index while the Form route stayed put.
-      breadcrumb.setPendingPageMode(null);
-      const cur = recordSet.active;
-      if (previous && cur && cur.key === previous.key) {
-        recordSet.replaceActive(previous);
-      }
+      restoreAfterNavFailure(previous);
     }
   }
 
@@ -139,9 +147,10 @@ export function useFormRecordPager(opts: UseFormRecordPagerOpts) {
 
   async function navigate(delta: -1 | 1): Promise<void> {
     if (busy.value) return;
-    if (!(await opts.confirmDiscardIfDirty())) return;
+    // Acquire busy before the confirm await so a second click cannot race in.
     busy.value = true;
     try {
+      if (!(await opts.confirmDiscardIfDirty())) return;
       const previous = entry.value ? { ...entry.value } : null;
       const moved = await recordSet.move(delta, buildSearchIds(opts.store));
       await navigateToMoved(moved, previous);
@@ -159,9 +168,10 @@ export function useFormRecordPager(opts: UseFormRecordPagerOpts) {
     if (target <= 0) return;
     const index = Math.max(0, Math.min(target - 1, e.total - 1));
     if (index === e.index) return;
-    if (!(await opts.confirmDiscardIfDirty())) return;
+    // Acquire busy before the confirm await so a second click cannot race in.
     busy.value = true;
     try {
+      if (!(await opts.confirmDiscardIfDirty())) return;
       const previous = entry.value ? { ...entry.value } : null;
       const moved = await recordSet.moveTo(index, buildSearchIds(opts.store));
       await navigateToMoved(moved, previous);

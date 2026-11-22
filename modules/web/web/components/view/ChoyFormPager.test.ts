@@ -137,12 +137,21 @@ test('ChoyFormPager keydown Enter/Escape and invalid draft paths', async () => {
   const state = mounted.setupState() as {
     startEditWith: (draft: string) => Promise<void>;
     commitEdit: (opts?: { restoreFocus?: boolean }) => void;
-    onEditKeydown: (event: { key: string; preventDefault: () => void }) => void;
+    onEditKeydown: (event: {
+      key: string;
+      isComposing?: boolean;
+      preventDefault: () => void;
+    }) => void;
   };
   const keyEvent = (key: string) => ({ key, preventDefault: () => undefined });
 
   await state.startEditWith('abc');
   await flushPromises();
+  expect(mounted.q('[data-testid="choy-form-pager-current-input"]')).not.toBeNull();
+  // IME composition Enter must not commit.
+  state.onEditKeydown({ key: 'Enter', isComposing: true, preventDefault: () => undefined });
+  await flushPromises();
+  expect(gotos).toEqual([]);
   expect(mounted.q('[data-testid="choy-form-pager-current-input"]')).not.toBeNull();
   state.onEditKeydown(keyEvent('Escape'));
   await flushPromises();

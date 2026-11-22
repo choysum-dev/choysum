@@ -210,6 +210,8 @@ function commitEdit(opts?: { restoreFocus?: boolean }): void {
 
 function onEditKeydown(event: KeyboardEvent): void {
   if (event.key === 'Enter') {
+    // IME confirmation also sends Enter; wait until composition finishes.
+    if (event.isComposing) return;
     event.preventDefault();
     commitEdit({ restoreFocus: true });
   } else if (event.key === 'Escape') {

@@ -372,12 +372,12 @@ test('detailPath emits row-click for null path / blank id; snapshot throw still 
   expect(pushes).toEqual([]);
   expect(clicks.length).toBe(1);
 
-  // detailPath set but blank id → emit (no navigation).
+  // Named-route factory can resolve without an id; blank id still emits (no navigation).
   clicks.length = 0;
   const blankId = mountApp(ChoyListView as any, {
     props: {
       store: makeStore(),
-      detailPath: '/base/countries/:id',
+      detailPath: () => ({ name: 'CountryDetail', params: {} }),
       showHeader: false,
       showPaginate: false,
     },
@@ -385,8 +385,8 @@ test('detailPath emits row-click for null path / blank id; snapshot throw still 
     plugins: [pinia, router as any],
   });
   await flushPromises();
-  await (blankId.setupState() as any).onRowClick({
-    rowData: { kind: 'record', key: 'x', payload: {} },
+  await (blankId.setupState() as any).openDetailOrEmitRowClick({
+    row: {},
     rowIndex: 0,
     rowKey: 'x',
   });
@@ -418,10 +418,15 @@ test('detailPath emits row-click for null path / blank id; snapshot throw still 
   noPath.unmount();
   nullPath.unmount();
 
+  // Keep store.state readable during mount; poison it only for the click snapshot.
   const boomStore = makeStore();
+  const realState = boomStore.state;
+  let boomOn = false;
   Object.defineProperty(boomStore, 'state', {
+    configurable: true,
     get() {
-      throw new Error('snapshot boom');
+      if (boomOn) throw new Error('snapshot boom');
+      return realState;
     },
   });
   const boom = mountApp(ChoyListView as any, {
@@ -434,6 +439,7 @@ test('detailPath emits row-click for null path / blank id; snapshot throw still 
     plugins: [pinia, router as any],
   });
   await flushPromises();
+  boomOn = true;
   await (boom.setupState() as any).onRowClick({
     rowData: { kind: 'record', key: 'b', payload: { Id: 'b' } },
     rowIndex: 0,
@@ -441,6 +447,7 @@ test('detailPath emits row-click for null path / blank id; snapshot throw still 
   });
   await flushPromises();
   expect(pushes).toEqual(['/base/countries/b']);
+  expect(useRecordSetStore().active).toBeNull();
   boom.unmount();
 
   restoreSfc(ChoyTableHost);

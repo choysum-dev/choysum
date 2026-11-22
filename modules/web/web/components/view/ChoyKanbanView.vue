@@ -622,11 +622,18 @@ function onCardClick(card: ChoyKanbanCard): void {
       return;
     }
     // Grouped boards: result.rows are lane/group headers; use loaded lane cards as the window.
-    const laneIds = displayLanes.value.flatMap(lane =>
-      (lane.cards || []).map(c =>
-        String((c.payload as any)?.Id ?? (c.payload as any)?.id ?? c.id ?? '').trim()
-      )
-    ).filter(Boolean);
+    // Flat boards keep Search pagination offset — do not override pageIds there.
+    const isGrouped =
+      (boundStore as { state?: { result?: { kind?: string } } }).state?.result?.kind === 'group';
+    const laneIds = isGrouped
+      ? displayLanes.value
+          .flatMap(lane =>
+            (lane.cards || []).map(c =>
+              String((c.payload as any)?.Id ?? (c.payload as any)?.id ?? c.id ?? '').trim()
+            )
+          )
+          .filter(Boolean)
+      : [];
     const pageIds = laneIds.length > 0 ? laneIds : undefined;
     const entry = snapshotFromListStore(boundStore as any, {
       model: model || 'unknown',

@@ -160,7 +160,52 @@ test('openRecordFromCollection seeds store and pushes route', async () => {
   await Promise.resolve();
   expect(useRecordSetStore().active).toBeNull();
 
-  // Failed push must not clear a newer session seeded under a different key.
+  // Fulfilled NavigationFailure also clears the seed for that open.
+  const VueRouter = await import('vue-router');
+  const { router: stub } = (VueRouter as any).createFeStubRouter({
+    route: { path: '/', fullPath: '/' },
+  });
+  stub.beforeEach(() => false);
+  const navFailure = await stub.push('/blocked');
+  expect((VueRouter as any).isNavigationFailure(navFailure)).toBe(true);
+  openRecordFromCollection({
+    router: { push: () => Promise.resolve(navFailure) },
+    to: '/base/countries/fail',
+    entry: {
+      key: 'k-fail',
+      model: 'base.Country',
+      condition: {},
+      total: 1,
+      index: 0,
+      ids: ['fail'],
+      windowStart: 0,
+    },
+  });
+  await Promise.resolve();
+  await Promise.resolve();
+  expect(useRecordSetStore().active).toBeNull();
+
+  // Sync push throw clears the seed.
+  openRecordFromCollection({
+    router: {
+      push: () => {
+        throw new Error('sync boom');
+      },
+    },
+    to: '/base/countries/sync',
+    entry: {
+      key: 'k-sync',
+      model: 'base.Country',
+      condition: {},
+      total: 1,
+      index: 0,
+      ids: ['sync'],
+      windowStart: 0,
+    },
+  });
+  expect(useRecordSetStore().active).toBeNull();
+
+  // Failed push must not clear a newer session (same collection key, newer generation).
   let rejectFirst: (err: Error) => void = () => undefined;
   const firstPush = new Promise((_, reject) => {
     rejectFirst = reject as (err: Error) => void;
@@ -169,7 +214,7 @@ test('openRecordFromCollection seeds store and pushes route', async () => {
     router: { push: () => firstPush },
     to: '/base/countries/old',
     entry: {
-      key: 'old',
+      key: 'same',
       model: 'base.Country',
       condition: {},
       total: 1,
@@ -182,7 +227,7 @@ test('openRecordFromCollection seeds store and pushes route', async () => {
     router: { push: to => pushed.push(to) },
     to: '/base/countries/new',
     entry: {
-      key: 'new',
+      key: 'same',
       model: 'base.Country',
       condition: {},
       total: 1,
@@ -191,11 +236,11 @@ test('openRecordFromCollection seeds store and pushes route', async () => {
       windowStart: 0,
     },
   });
-  expect(useRecordSetStore().active?.key).toBe('new');
+  expect(useRecordSetStore().active?.ids).toEqual(['new']);
   rejectFirst(new Error('aborted'));
   await Promise.resolve();
   await Promise.resolve();
-  expect(useRecordSetStore().active?.key).toBe('new');
+  expect(useRecordSetStore().active?.ids).toEqual(['new']);
 });
 
 test('snapshotFromListStore pageIds override ignores group-only result.rows', () => {

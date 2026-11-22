@@ -27,6 +27,8 @@ export {
 export const useRecordSetStore = defineStore('recordSet', () => {
   const active = ref<RecordSetEntry | null>(null);
   const menuWatchInstalled = ref(false);
+  // Monotonic id for the active seed; used so a late failed open cannot clear a newer session.
+  const seedGeneration = ref(0);
 
   const hasActive = computed(() => active.value != null && active.value.total > 0);
 
@@ -35,6 +37,7 @@ export const useRecordSetStore = defineStore('recordSet', () => {
     const total = Math.max(0, Math.trunc(Number(entry.total) || 0));
     const index = Math.max(0, Math.min(Math.trunc(Number(entry.index) || 0), Math.max(0, total - 1)));
     const windowStart = Math.max(0, Math.trunc(Number(entry.windowStart) || 0));
+    seedGeneration.value += 1;
     active.value = {
       key: String(entry.key || ''),
       model: String(entry.model || ''),
@@ -108,6 +111,7 @@ export const useRecordSetStore = defineStore('recordSet', () => {
   return {
     active,
     hasActive,
+    seedGeneration,
     seed,
     clear,
     getActiveForModel,

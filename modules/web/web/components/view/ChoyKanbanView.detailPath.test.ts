@@ -97,10 +97,12 @@ test('detailPath card click clears session and pushes when id not in window', as
     return Promise.resolve(to);
   };
 
+  const emptyGrouped = makeStore([{ kind: 'group', key: 'g1' }]);
+  emptyGrouped.state.result.kind = 'group';
   const mounted = mountApp(ChoyKanbanView as any, {
     props: {
       // Group rows only — snapshot ids empty.
-      store: makeStore([{ kind: 'group', key: 'g1' }]),
+      store: emptyGrouped,
       autoBootstrap: false,
       detailPath: '/sandbox/records/:id',
     },
@@ -137,9 +139,11 @@ test('detailPath seeds from lane cards when result.rows are groups only', async 
     return origPush(to);
   };
 
+  const grouped = makeStore([{ kind: 'group', key: 'todo' }]);
+  grouped.state.result.kind = 'group';
   const mounted = mountApp(ChoyKanbanView as any, {
     props: {
-      store: makeStore([{ kind: 'group', key: 'todo' }]),
+      store: grouped,
       autoBootstrap: false,
       detailPath: '/sandbox/records/:id',
     },
@@ -260,13 +264,13 @@ test('detailPath without router emits card-click; blank id / null path emit', as
   expect(clicks2.length).toBe(1);
   withRouter.unmount();
 
-  // detailPath set but blank id (no payload Id and empty card.id) → emit.
+  // Named-route factory can resolve without an id; blank id still emits.
   const clicks3: ChoyKanbanCard[] = [];
   const blankMount = mountApp(ChoyKanbanView as any, {
     props: {
       store: makeStore([{ Id: 'a' }]),
       autoBootstrap: false,
-      detailPath: '/sandbox/records/:id',
+      detailPath: () => ({ name: 'RecordDetail', params: {} }),
     },
     on: { onCardClick: (c: ChoyKanbanCard) => clicks3.push(c) },
     plugins: [pinia, router as any],
@@ -278,6 +282,47 @@ test('detailPath without router emits card-click; blank id / null path emit', as
   expect(pushes).toEqual([]);
   expect(clicks3).toEqual([blank]);
   blankMount.unmount();
+});
+
+test('detailPath flat board preserves Search offset (no pageIds override)', async () => {
+  const pinia = createPinia();
+  setActivePinia(pinia);
+  const { router } = createFeStubRouter({
+    route: { path: '/sandbox/records/kanban', fullPath: '/sandbox/records/kanban' },
+  });
+  const pushes: unknown[] = [];
+  router.push = (to: unknown) => {
+    pushes.push(to);
+    return Promise.resolve(to);
+  };
+  const store = makeStore([
+    { kind: 'record', payload: { Id: 'a' } },
+    { kind: 'record', payload: { Id: 'b' } },
+  ]);
+  store.state.queryState.pagination = { limit: 20, offset: 20 };
+  store.state.result.total = 40;
+
+  const mounted = mountApp(ChoyKanbanView as any, {
+    props: {
+      store,
+      autoBootstrap: false,
+      detailPath: '/sandbox/records/:id',
+    },
+    plugins: [pinia, router as any],
+  });
+  await flushPromises();
+  (mounted.setupState() as any).onCardClick({
+    id: 'b',
+    title: 'B',
+    laneKey: 'todo',
+    payload: { Id: 'b' },
+  });
+  await flushPromises();
+  expect(pushes).toEqual(['/sandbox/records/b']);
+  const entry = useRecordSetStore().getActiveForModel('sandbox.Record');
+  expect(entry?.windowStart).toBe(20);
+  expect(entry?.index).toBe(21);
+  mounted.unmount();
 });
 
 test('detailPath clear catches missing Pinia on mount', async () => {

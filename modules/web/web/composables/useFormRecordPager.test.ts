@@ -161,6 +161,53 @@ test('goNext restores recordSet when router.push fails', async () => {
   expect(recordSet.active?.ids).toEqual(['a', 'b']);
 });
 
+test('goNext restores recordSet on fulfilled NavigationFailure', async () => {
+  setActivePinia(createPinia());
+  const recordSet = useRecordSetStore();
+  recordSet.seed({
+    key: 'k',
+    model: 'base.Country',
+    condition: {},
+    total: 2,
+    index: 0,
+    ids: ['a', 'b'],
+    windowStart: 0,
+  });
+  const breadcrumb = useBreadcrumbStore();
+  const modes: unknown[] = [];
+  const original = breadcrumb.setPendingPageMode.bind(breadcrumb);
+  breadcrumb.setPendingPageMode = (mode: 'push' | 'replace' | null) => {
+    modes.push(mode);
+    original(mode);
+  };
+
+  const VueRouter = await import('vue-router');
+  const { router: stub } = (VueRouter as any).createFeStubRouter({
+    route: { path: '/base/countries/a', fullPath: '/base/countries/a' },
+  });
+  stub.beforeEach(() => false);
+  const navFailure = await stub.push('/base/countries/b');
+  expect((VueRouter as any).isNavigationFailure(navFailure)).toBe(true);
+
+  const pager = useFormRecordPager({
+    model: computed(() => 'base.Country'),
+    recordId: computed(() => 'a'),
+    isCreate: computed(() => false),
+    router: {
+      currentRoute: {
+        value: { path: '/base/countries/a', name: 'CountryDetail', params: { id: 'a' }, query: {} },
+      },
+      push: () => Promise.resolve(navFailure),
+    },
+    store: {},
+    confirmDiscardIfDirty: async () => true,
+  });
+
+  await pager.goNext();
+  expect(modes).toEqual(['replace', null]);
+  expect(recordSet.active?.index).toBe(0);
+});
+
 test('path siblingLocation preserves query and syncs index from recordId', async () => {
   setActivePinia(createPinia());
   const recordSet = useRecordSetStore();
