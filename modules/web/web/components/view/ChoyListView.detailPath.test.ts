@@ -111,6 +111,87 @@ test('detailPath row click seeds recordSet and pushes detail path', async () => 
   restoreSfc(ListInlineEditScope);
 });
 
+test('detailPath grouped visibleNodes seed via pageIds when result.rows are groups', async () => {
+  const pinia = createPinia();
+  setActivePinia(pinia);
+  const { router } = createFeStubRouter({
+    route: { path: '/base/countries', fullPath: '/base/countries' },
+  });
+  const pushes: unknown[] = [];
+  const origPush = router.push.bind(router);
+  router.push = (to: unknown) => {
+    pushes.push(to);
+    return origPush(to);
+  };
+
+  stubSfc(ChoyTableHost, {
+    name: 'ChoyTableHost',
+    emits: ['row-click'],
+    setup: () => () => h('div', { 'data-stub': 'ChoyTableHost' }),
+  });
+  stubSfc(ChoyTableColumn, { name: 'ChoyTableColumn', setup: () => () => null });
+  stubSfc(ChoyPagination, {
+    name: 'ChoyPagination',
+    setup: () => () => h('div', { 'data-stub': 'Pagination' }),
+  });
+  stubSfc(ListInlineEditScope, {
+    name: 'ListInlineEditScope',
+    setup: (_p: any, { slots }: any) => () => h('div', slots.default?.()),
+  });
+
+  const store = makeStore();
+  store.state.result = {
+    kind: 'group',
+    total: 40,
+    rows: [{ kind: 'group', key: 'g1' }],
+  };
+  store.state.queryState.appliedGroups = [{ field: 'Name' }];
+
+  const mounted = mountApp(ChoyListView as any, {
+    props: {
+      store,
+      detailPath: '/base/countries/:id',
+      showHeader: false,
+      showPaginate: false,
+    },
+    plugins: [pinia, router as any],
+  });
+  await flushPromises();
+
+  const ss = mounted.setupState() as any;
+  // Simulate expanded group visible nodes (controller would set these after expand).
+  ss.controller.vm.result = {
+    kind: 'group',
+    total: 40,
+    rows: [{ kind: 'group', key: 'g1' }],
+  };
+  ss.controller.vm.visibleNodes = [
+    { kind: 'group', key: 'g1' },
+    { kind: 'record', key: 'a', payload: { Id: 'a', Name: 'A' } },
+    { kind: 'record', key: 'b', payload: { Id: 'b', Name: 'B' } },
+  ];
+  ss.controller.vm.expandedKeys = new Set(['g1']);
+
+  await ss.onRowClick({
+    rowData: { kind: 'record', key: 'b', payload: { Id: 'b', Name: 'B' } },
+    rowIndex: 2,
+    rowKey: 'b',
+  });
+  await flushPromises();
+
+  expect(pushes).toEqual(['/base/countries/b']);
+  const entry = useRecordSetStore().getActiveForModel('base.Country');
+  expect(entry?.ids).toEqual(['a', 'b']);
+  expect(entry?.index).toBe(1);
+  expect(entry?.windowStart).toBe(0);
+
+  mounted.unmount();
+  restoreSfc(ChoyTableHost);
+  restoreSfc(ChoyTableColumn);
+  restoreSfc(ChoyPagination);
+  restoreSfc(ListInlineEditScope);
+});
+
 test('detailPath clears same-model session on mount and skips seed for missing id window', async () => {
   const pinia = createPinia();
   setActivePinia(pinia);

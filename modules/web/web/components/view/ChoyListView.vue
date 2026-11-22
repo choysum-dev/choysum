@@ -352,7 +352,10 @@ import {
   type DetailPathProp,
 } from '@/web/web/navigation/detailPath';
 import { openRecordFromCollection } from '@/web/web/navigation/openRecordFromCollection';
-import { snapshotFromListStore } from '@/web/web/navigation/snapshotFromListStore';
+import {
+  collectRecordIdsFromRows,
+  snapshotFromListStore,
+} from '@/web/web/navigation/snapshotFromListStore';
 import { useRecordSetStore } from '@/web/web/stores/recordSetStore';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
 import ChoyPageTitleActions from '@/web/web/components/layout/ChoyPageTitleActions.vue';
@@ -1124,11 +1127,17 @@ function openDetailOrEmitRowClick(payload: RowEventPayload<T>) {
     }
     let entry = null as ReturnType<typeof snapshotFromListStore>;
     try {
+      // Grouped List: result.rows are group headers; visibleNodes hold expanded records.
+      // Flat List keeps store pagination offset — do not override pageIds there.
+      const pageIds = isGroupMode.value
+        ? collectRecordIdsFromRows(controller.vm.visibleNodes as unknown[])
+        : undefined;
       entry = snapshotFromListStore(store as any, {
         model: model || 'unknown',
         key: `${model || 'unknown'}|${String(route?.path || 'list')}`,
         rowIndex: payload.rowIndex,
         recordId: id,
+        pageIds: pageIds && pageIds.length > 0 ? pageIds : undefined,
       });
     } catch {
       entry = null;

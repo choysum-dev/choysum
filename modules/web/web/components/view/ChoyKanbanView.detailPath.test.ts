@@ -6,7 +6,7 @@ import * as VueRouter from 'vue-router';
 import { flushPromises, mountApp } from '@/web/web/__tests__/mountApp';
 import ChoyKanbanView from './ChoyKanbanView.vue';
 import { useRecordSetStore } from '@/web/web/stores/recordSetStore';
-import type { ChoyKanbanCard } from './kanbanViewHelpers';
+import type { ChoyKanbanCard, ChoyKanbanLane } from './kanbanViewHelpers';
 
 const createFeStubRouter = (VueRouter as any).createFeStubRouter as (overrides?: object) => {
   router: {
@@ -121,6 +121,59 @@ test('detailPath card click clears session and pushes when id not in window', as
 
   expect(pushes).toEqual(['/sandbox/records/x']);
   expect(useRecordSetStore().active).toBeNull();
+  mounted.unmount();
+});
+
+test('detailPath seeds from lane cards when result.rows are groups only', async () => {
+  const pinia = createPinia();
+  setActivePinia(pinia);
+  const { router } = createFeStubRouter({
+    route: { path: '/sandbox/records/kanban', fullPath: '/sandbox/records/kanban' },
+  });
+  const pushes: unknown[] = [];
+  const origPush = router.push.bind(router);
+  router.push = (to: unknown) => {
+    pushes.push(to);
+    return origPush(to);
+  };
+
+  const mounted = mountApp(ChoyKanbanView as any, {
+    props: {
+      store: makeStore([{ kind: 'group', key: 'todo' }]),
+      autoBootstrap: false,
+      detailPath: '/sandbox/records/:id',
+    },
+    plugins: [pinia, router as any],
+  });
+  await flushPromises();
+
+  const state = mounted.setupState() as {
+    displayLanes: ChoyKanbanLane[];
+    onCardClick: (card: ChoyKanbanCard) => void;
+  };
+  state.displayLanes = [
+    {
+      key: 'todo',
+      label: 'Todo',
+      cards: [
+        { id: 'a', title: 'A', laneKey: 'todo', payload: { Id: 'a' } },
+        { id: 'b', title: 'B', laneKey: 'todo', payload: { Id: 'b' } },
+      ],
+    },
+  ];
+  state.onCardClick({
+    id: 'b',
+    title: 'B',
+    laneKey: 'todo',
+    payload: { Id: 'b' },
+  });
+  await flushPromises();
+
+  expect(pushes).toEqual(['/sandbox/records/b']);
+  const entry = useRecordSetStore().getActiveForModel('sandbox.Record');
+  expect(entry?.ids).toEqual(['a', 'b']);
+  expect(entry?.index).toBe(1);
+  expect(entry?.windowStart).toBe(0);
   mounted.unmount();
 });
 

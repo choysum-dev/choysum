@@ -621,14 +621,21 @@ function onCardClick(card: ChoyKanbanCard): void {
       emit('card-click', card);
       return;
     }
-    // snapshotFromListStore unwraps wrapped rows and corrects index via recordId.
+    // Grouped boards: result.rows are lane/group headers; use loaded lane cards as the window.
+    const laneIds = displayLanes.value.flatMap(lane =>
+      (lane.cards || []).map(c =>
+        String((c.payload as any)?.Id ?? (c.payload as any)?.id ?? c.id ?? '').trim()
+      )
+    ).filter(Boolean);
+    const pageIds = laneIds.length > 0 ? laneIds : undefined;
     const entry = snapshotFromListStore(boundStore as any, {
       model: model || 'unknown',
       key: `${model || 'unknown'}|${String(route?.path || 'kanban')}`,
       rowIndex: 0,
       recordId: id,
+      pageIds,
     });
-    // Grouped / empty windows: open the Form without a misleading pager session.
+    // Seed only when the opened id is in the known window (skip empty/unknown).
     if (entry && entry.ids.length > 0 && entry.ids.includes(id)) {
       openRecordFromCollection({ router, to, entry });
     } else {

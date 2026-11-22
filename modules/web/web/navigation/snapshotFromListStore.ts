@@ -38,7 +38,8 @@ function unwrapRowRecord(row: unknown): Record<string, unknown> | null {
   return null;
 }
 
-function collectPageIds(rows: unknown[] | undefined): string[] {
+/** Collect record Ids from List/Kanban row wrappers (skips group/more nodes). */
+export function collectRecordIdsFromRows(rows: unknown[] | undefined): string[] {
   const out: string[] = [];
   for (const row of rows || []) {
     const rec = unwrapRowRecord(row);
@@ -68,6 +69,11 @@ export type SnapshotFromListStoreOpts = {
   rowIndex: number;
   /** Preferred record id (find in page to correct index). */
   recordId?: string;
+  /**
+   * Optional id window (e.g. grouped List visibleNodes / Kanban lane cards).
+   * When set, replaces ids derived from store.result.rows and starts at window 0.
+   */
+  pageIds?: string[];
 };
 
 /**
@@ -82,8 +88,14 @@ export function snapshotFromListStore(
   if (!model) return null;
 
   const qs = store.state.queryState;
-  const offset = Math.max(0, Math.trunc(Number(qs?.pagination?.offset) || 0));
-  const ids = collectPageIds(store.state.result?.rows);
+  const overrideIds = Array.isArray(opts.pageIds)
+    ? opts.pageIds.map(id => String(id ?? '').trim()).filter(Boolean)
+    : null;
+  // Visible/lane windows are not Search page offsets — start at 0.
+  const offset = overrideIds
+    ? 0
+    : Math.max(0, Math.trunc(Number(qs?.pagination?.offset) || 0));
+  const ids = overrideIds ?? collectRecordIdsFromRows(store.state.result?.rows);
   const totalRaw = Number(store.state.result?.total);
   const pageSpan = ids.length ? offset + ids.length : offset;
   // Prefer Search total, but never under-count the known page span before clamping index.

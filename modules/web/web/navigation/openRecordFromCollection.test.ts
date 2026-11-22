@@ -158,6 +158,33 @@ test('openRecordFromCollection seeds store and pushes route', async () => {
   expect(useRecordSetStore().active).toBeNull();
 });
 
+test('snapshotFromListStore pageIds override ignores group-only result.rows', () => {
+  const entry = snapshotFromListStore(
+    {
+      modelName: 'base.Country',
+      state: {
+        queryState: { pagination: { offset: 100 }, orderBy: [{ field: 'Name', direction: 'asc' }] },
+        result: {
+          total: 40,
+          rows: [{ kind: 'group', key: 'g1' }],
+        },
+      },
+      metadata: { fields: {} },
+    },
+    {
+      model: 'base.Country',
+      key: 'k',
+      rowIndex: 0,
+      recordId: 'b',
+      pageIds: ['a', 'b', 'c'],
+    }
+  );
+  expect(entry?.ids).toEqual(['a', 'b', 'c']);
+  expect(entry?.windowStart).toBe(0);
+  expect(entry?.index).toBe(1);
+  expect(entry?.total).toBe(40);
+});
+
 test('snapshotFromListStore empty total and unmatched recordId', () => {
   const empty = snapshotFromListStore(
     {
