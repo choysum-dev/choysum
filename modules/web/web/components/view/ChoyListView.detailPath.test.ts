@@ -274,8 +274,35 @@ test('detailPath clears same-model session on mount and skips seed for missing i
   await flushPromises();
   expect(pushes).toEqual([]);
 
+  // Throwing canOpenDetail must not break the click handler.
+  pushes.length = 0;
+  const clicks: unknown[] = [];
+  const throwing = mountApp(ChoyListView as any, {
+    props: {
+      store: makeStore(),
+      detailPath: '/base/countries/:id',
+      canOpenDetail: () => {
+        throw new Error('acl boom');
+      },
+      showHeader: false,
+      showPaginate: false,
+    },
+    on: { onRowClick: (p: unknown) => clicks.push(p) },
+    plugins: [pinia, router as any],
+  });
+  await flushPromises();
+  await (throwing.setupState() as any).onRowClick({
+    rowData: { kind: 'record', key: 'a', payload: { Id: 'a' } },
+    rowIndex: 0,
+    rowKey: 'a',
+  });
+  await flushPromises();
+  expect(pushes).toEqual([]);
+  expect(clicks.length).toBe(1);
+
   mounted.unmount();
   blocked.unmount();
+  throwing.unmount();
   restoreSfc(ChoyTableHost);
   restoreSfc(ChoyTableColumn);
   restoreSfc(ChoyPagination);

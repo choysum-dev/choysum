@@ -123,10 +123,13 @@ export function useFormRecordPager(opts: UseFormRecordPagerOpts) {
     previous: RecordSetEntry | null,
     generation: number
   ): void {
-    const breadcrumb = useBreadcrumbStore();
-    // Failed / aborted navigations must not leave a sticky replace intent
-    // or an advanced pager index while the Form route stayed put.
-    breadcrumb.setPendingPageMode(null);
+    try {
+      // Failed / aborted navigations must not leave a sticky replace intent
+      // or an advanced pager index while the Form route stayed put.
+      useBreadcrumbStore().setPendingPageMode(null);
+    } catch {
+      // Pinia may be unavailable in unit mounts without an app shell.
+    }
     const cur = recordSet.active;
     // Skip if a newer collection open already replaced this session.
     if (
@@ -145,9 +148,12 @@ export function useFormRecordPager(opts: UseFormRecordPagerOpts) {
     generation: number
   ): Promise<void> {
     if (!moved) return;
-    const breadcrumb = useBreadcrumbStore();
-    // Sibling id under the same menu leaf: replace the current page crumb, do not deepen.
-    breadcrumb.setPendingPageMode('replace');
+    try {
+      // Sibling id under the same menu leaf: replace the current page crumb, do not deepen.
+      useBreadcrumbStore().setPendingPageMode('replace');
+    } catch {
+      // Pinia may be unavailable in unit mounts without an app shell.
+    }
     try {
       const result = await opts.router.push(
         siblingLocation(opts.router, moved.id, String(read(opts.recordId) || '').trim()) as any

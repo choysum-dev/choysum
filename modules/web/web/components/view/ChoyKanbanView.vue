@@ -606,11 +606,17 @@ function onCardClick(card: ChoyKanbanCard): void {
       return;
     }
     const row = (card.payload || {}) as Record<string, unknown>;
-    if (!canOpenDetailRow(props.canOpenDetail as any, row)) {
+    let to: ReturnType<typeof resolveDetailPath> = null;
+    try {
+      if (!canOpenDetailRow(props.canOpenDetail as any, row)) {
+        emit('card-click', card);
+        return;
+      }
+      to = resolveDetailPath(props.detailPath, row);
+    } catch {
       emit('card-click', card);
       return;
     }
-    const to = resolveDetailPath(props.detailPath, row);
     if (to == null) {
       emit('card-click', card);
       return;

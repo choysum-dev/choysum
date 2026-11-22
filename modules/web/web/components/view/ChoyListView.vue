@@ -1119,11 +1119,17 @@ function openDetailOrEmitRowClick(payload: RowEventPayload<T>) {
       return;
     }
     const row = (payload.row || {}) as Record<string, unknown>;
-    if (!canOpenDetailRow(props.canOpenDetail as any, row)) {
+    let to: ReturnType<typeof resolveDetailPath> = null;
+    try {
+      if (!canOpenDetailRow(props.canOpenDetail as any, row)) {
+        emit('row-click', payload);
+        return;
+      }
+      to = resolveDetailPath(props.detailPath, row);
+    } catch {
       emit('row-click', payload);
       return;
     }
-    const to = resolveDetailPath(props.detailPath, row);
     if (to == null) {
       emit('row-click', payload);
       return;
