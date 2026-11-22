@@ -22,9 +22,16 @@ export function openRecordFromCollection(args: OpenRecordFromCollectionArgs): vo
   store.seed(args.entry);
   store.installMenuClearWatch();
   const to = args.to;
-  if (typeof to === 'string') {
-    void args.router.push(to);
-    return;
-  }
-  void args.router.push(to as Record<string, unknown>);
+  const push =
+    typeof to === 'string'
+      ? args.router.push(to)
+      : args.router.push(to as Record<string, unknown>);
+  // Aborted / failed navigations must not leave a seeded pager session behind.
+  Promise.resolve(push).catch(() => {
+    try {
+      useRecordSetStore().clear();
+    } catch {
+      // Pinia may be unavailable in unit mounts without an app shell.
+    }
+  });
 }

@@ -126,3 +126,48 @@ test('ChoyFormPager busy blocks startEdit; idle buttons are present', async () =
   expect(busyMount.q('[data-testid="choy-form-pager-next"]')).not.toBeNull();
   busyMount.unmount();
 });
+
+test('ChoyFormPager keydown Enter/Escape and invalid draft paths', async () => {
+  const gotos: number[] = [];
+  const mounted = mountApp(ChoyFormPager as any, {
+    props: { current: 2, total: 5, canPrev: true, canNext: true },
+    on: { onGoto: (n: number) => gotos.push(n) },
+  });
+  await flushPromises();
+  const state = mounted.setupState() as {
+    startEditWith: (draft: string) => Promise<void>;
+    commitEdit: (opts?: { restoreFocus?: boolean }) => void;
+    onEditKeydown: (event: { key: string; preventDefault: () => void }) => void;
+  };
+  const keyEvent = (key: string) => ({ key, preventDefault: () => undefined });
+
+  await state.startEditWith('abc');
+  await flushPromises();
+  expect(mounted.q('[data-testid="choy-form-pager-current-input"]')).not.toBeNull();
+  state.onEditKeydown(keyEvent('Escape'));
+  await flushPromises();
+  expect(gotos).toEqual([]);
+  expect(mounted.q('[data-testid="choy-form-pager-current-input"]')).toBeNull();
+
+  await state.startEditWith('4');
+  await flushPromises();
+  state.onEditKeydown(keyEvent('Enter'));
+  await flushPromises();
+  expect(gotos).toEqual([4]);
+
+  gotos.length = 0;
+  await state.startEditWith('not-a-number');
+  await flushPromises();
+  state.commitEdit({ restoreFocus: true });
+  await flushPromises();
+  expect(gotos).toEqual([]);
+
+  // Double commit while suppressed is a no-op.
+  await state.startEditWith('3');
+  await flushPromises();
+  state.commitEdit({ restoreFocus: true });
+  state.commitEdit({ restoreFocus: true });
+  await flushPromises();
+  expect(gotos).toEqual([3]);
+  mounted.unmount();
+});

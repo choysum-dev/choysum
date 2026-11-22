@@ -157,3 +157,73 @@ test('detailPath respects canOpenDetail gate and emits card-click when blocked',
   expect(clicks).toEqual([card]);
   mounted.unmount();
 });
+
+test('detailPath without router emits card-click; blank id / null path emit', async () => {
+  const clicks: ChoyKanbanCard[] = [];
+  // No vue-router plugin → router stays null (chrome-style mount).
+  const mounted = mountApp(ChoyKanbanView as any, {
+    props: {
+      store: makeStore([{ Id: 'a' }]),
+      autoBootstrap: false,
+      detailPath: '/sandbox/records/:id',
+    },
+    on: { onCardClick: (c: ChoyKanbanCard) => clicks.push(c) },
+  });
+  await flushPromises();
+  const card = { id: 'a', title: 'A', laneKey: 'todo', payload: { Id: 'a' } };
+  (mounted.setupState() as any).onCardClick(card);
+  expect(clicks).toEqual([card]);
+  mounted.unmount();
+
+  const pinia = createPinia();
+  setActivePinia(pinia);
+  const { router } = createFeStubRouter({
+    route: { path: '/sandbox/records/kanban', fullPath: '/sandbox/records/kanban' },
+  });
+  const pushes: unknown[] = [];
+  router.push = (to: unknown) => {
+    pushes.push(to);
+    return Promise.resolve(to);
+  };
+  const clicks2: ChoyKanbanCard[] = [];
+  const withRouter = mountApp(ChoyKanbanView as any, {
+    props: {
+      store: makeStore([{ Id: 'a' }]),
+      autoBootstrap: false,
+      detailPath: () => null,
+    },
+    on: { onCardClick: (c: ChoyKanbanCard) => clicks2.push(c) },
+    plugins: [pinia, router as any],
+  });
+  await flushPromises();
+  const blank = { id: '', title: 'X', laneKey: 'todo', payload: {} };
+  (withRouter.setupState() as any).onCardClick(blank);
+  (withRouter.setupState() as any).onCardClick({
+    id: 'a',
+    title: 'A',
+    laneKey: 'todo',
+    payload: { Id: 'a' },
+  });
+  await flushPromises();
+  expect(pushes).toEqual([]);
+  expect(clicks2.length).toBe(2);
+  withRouter.unmount();
+});
+
+test('detailPath clear catches missing Pinia on mount', async () => {
+  const { router } = createFeStubRouter({
+    route: { path: '/sandbox/records/kanban', fullPath: '/sandbox/records/kanban' },
+  });
+  // detailPath set but no pinia → clearRecordSetSessionIfDetailHost catch path.
+  const mounted = mountApp(ChoyKanbanView as any, {
+    props: {
+      store: makeStore([]),
+      autoBootstrap: false,
+      detailPath: '/sandbox/records/:id',
+    },
+    plugins: [router as any],
+  });
+  await flushPromises();
+  expect(mounted.q('[data-anchor="choy.kanban-view"]') || mounted.el).toBeTruthy();
+  mounted.unmount();
+});

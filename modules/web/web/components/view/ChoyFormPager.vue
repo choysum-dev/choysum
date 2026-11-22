@@ -33,6 +33,7 @@ SPDX-License-Identifier: Apache-2.0
       />
       <button
         v-else
+        ref="currentIdleRef"
         type="button"
         class="choy-form-pager__current-idle inline-flex h-control w-auto shrink-0 items-center gap-1 rounded-md border border-transparent bg-transparent px-1 text-sm tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
         :disabled="busy || normalizedTotal <= 0"
@@ -120,6 +121,7 @@ const emit = defineEmits<{
 const editing = ref(false);
 const editDraft = ref('');
 const currentInputRef = ref<{ $el?: HTMLInputElement } | HTMLInputElement | null>(null);
+const currentIdleRef = ref<HTMLButtonElement | null>(null);
 const suppressBlurCommit = ref(false);
 
 function currentInputEl(): HTMLInputElement | null {
@@ -175,9 +177,7 @@ async function startEditWith(draft: string): Promise<void> {
 
 async function focusCurrentIdle(): Promise<void> {
   await nextTick();
-  const btn = document.querySelector(
-    '[data-testid="choy-form-pager-current"]'
-  ) as HTMLButtonElement | null;
+  const btn = currentIdleRef.value;
   if (btn && typeof btn.focus === 'function') btn.focus();
 }
 
@@ -225,5 +225,6 @@ defineExpose({
   startEditWith,
   commitEdit,
   cancelEdit,
+  onEditKeydown,
 });
 </script>

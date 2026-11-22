@@ -665,6 +665,13 @@ describe('breadcrumbStore L1+L2 trail', () => {
       '/base/currencies/d',
     ]);
 
+    // Same-leaf page without pageTitle consumes pending replace without pushing.
+    const before = store.breadcrumbStack.length;
+    store.setPendingPageMode('replace');
+    await router.push({ path: '/base/currencies/e', meta: {} });
+    await flushPromises();
+    expect(store.breadcrumbStack.length).toBe(before);
+
     mounted.unmount();
   });
 

@@ -278,3 +278,55 @@ test('goPrev and Search-backed moveTo cover buildSearchIds', async () => {
   expect(searches.length).toBeGreaterThan(0);
   expect(recordSet.active?.index).toBe(4);
 });
+
+test('visible requires current id in window; goTo guards and path sibling without query', async () => {
+  setActivePinia(createPinia());
+  const recordSet = useRecordSetStore();
+  recordSet.seed({
+    key: 'k',
+    model: 'base.Country',
+    condition: {},
+    total: 2,
+    index: 0,
+    ids: ['a', 'b'],
+    windowStart: 0,
+  });
+  const recordId = ref('z');
+  const pager = useFormRecordPager({
+    model: computed(() => 'base.Country'),
+    recordId,
+    isCreate: computed(() => false),
+    router: {
+      currentRoute: { value: { path: '/base/countries/a', query: {} } },
+      push: () => Promise.resolve(),
+    },
+    store: {},
+    confirmDiscardIfDirty: async () => true,
+  });
+  expect(pager.visible.value).toBe(false);
+  recordId.value = 'a';
+  await nextTick();
+  expect(pager.visible.value).toBe(true);
+
+  await pager.goTo(0);
+  await pager.goTo(-1);
+  expect(recordSet.active?.index).toBe(0);
+
+  const pushed: unknown[] = [];
+  const pathPager = useFormRecordPager({
+    model: computed(() => 'base.Country'),
+    recordId: computed(() => 'a'),
+    isCreate: computed(() => false),
+    router: {
+      currentRoute: { value: { path: '/base/countries/a', query: {} } },
+      push: (to: unknown) => {
+        pushed.push(to);
+        return Promise.resolve();
+      },
+    },
+    store: {},
+    confirmDiscardIfDirty: async () => true,
+  });
+  await pathPager.goNext();
+  expect(pushed).toEqual(['/base/countries/b']);
+});

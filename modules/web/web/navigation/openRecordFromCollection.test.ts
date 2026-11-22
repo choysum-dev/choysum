@@ -104,7 +104,7 @@ test('snapshotFromListStore builds global index and page ids', () => {
   expect(wrapped?.index).toBe(0);
 });
 
-test('openRecordFromCollection seeds store and pushes route', () => {
+test('openRecordFromCollection seeds store and pushes route', async () => {
   setActivePinia(createPinia());
   const pushed: unknown[] = [];
   openRecordFromCollection({
@@ -122,4 +122,69 @@ test('openRecordFromCollection seeds store and pushes route', () => {
   });
   expect(useRecordSetStore().active?.model).toBe('base.Country');
   expect(pushed).toEqual(['/base/countries/b']);
+
+  // Named route object target.
+  openRecordFromCollection({
+    router: { push: to => pushed.push(to) },
+    to: { name: 'CountryDetail', params: { id: 'c' } },
+    entry: {
+      key: 'k2',
+      model: 'base.Country',
+      condition: {},
+      total: 1,
+      index: 0,
+      ids: ['c'],
+      windowStart: 0,
+    },
+  });
+  expect(pushed[pushed.length - 1]).toEqual({ name: 'CountryDetail', params: { id: 'c' } });
+
+  // Failed push clears the seeded session.
+  openRecordFromCollection({
+    router: { push: () => Promise.reject(new Error('aborted')) },
+    to: '/base/countries/x',
+    entry: {
+      key: 'k3',
+      model: 'base.Country',
+      condition: {},
+      total: 1,
+      index: 0,
+      ids: ['x'],
+      windowStart: 0,
+    },
+  });
+  await Promise.resolve();
+  await Promise.resolve();
+  expect(useRecordSetStore().active).toBeNull();
+});
+
+test('snapshotFromListStore empty total and unmatched recordId', () => {
+  const empty = snapshotFromListStore(
+    {
+      modelName: 'base.Country',
+      state: {
+        queryState: { pagination: { offset: 5 } },
+        result: { total: 0, rows: [] },
+      },
+      metadata: { fields: {} },
+    },
+    { model: 'base.Country', key: 'k', rowIndex: 2, recordId: 'missing' }
+  );
+  expect(empty?.total).toBe(5);
+  // unmatched id keeps offset+rowIndex then clamps into [0, total-1]
+  expect(empty?.index).toBe(4);
+
+  const zero = snapshotFromListStore(
+    {
+      modelName: 'base.Country',
+      state: {
+        queryState: { pagination: { offset: 0 } },
+        result: { rows: [] },
+      },
+      metadata: { fields: {} },
+    },
+    { model: 'base.Country', key: 'k', rowIndex: 0 }
+  );
+  expect(zero?.total).toBe(0);
+  expect(zero?.index).toBe(0);
 });

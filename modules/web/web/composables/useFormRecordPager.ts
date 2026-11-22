@@ -83,7 +83,10 @@ export function useFormRecordPager(opts: UseFormRecordPagerOpts) {
 
   const visible = computed(() => {
     const e = entry.value;
-    return !!(e && e.total > 0 && e.ids.length >= 0);
+    if (!e || e.total <= 0 || e.ids.length <= 0) return false;
+    // Hide when the open id is outside the known window (stale / deep-link mismatch).
+    const id = String(read(opts.recordId) || '').trim();
+    return !!id && e.ids.includes(id);
   });
 
   const current = computed(() => (entry.value ? entry.value.index + 1 : 0));

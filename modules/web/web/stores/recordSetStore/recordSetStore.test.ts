@@ -130,6 +130,25 @@ test('useRecordSetStore seed / getActiveForModel / move / clear', async () => {
   expect(store.hasActive).toBe(false);
 });
 
+test('useRecordSetStore installMenuClearWatch is idempotent and clears on menu change', async () => {
+  setActivePinia(createPinia());
+  const { useMenuStore } = await import('@/web/web/stores/menuStore');
+  const menu = useMenuStore();
+  const store = useRecordSetStore();
+  store.installMenuClearWatch();
+  store.installMenuClearWatch(); // second call is a no-op
+  store.seed(sampleEntry());
+  expect(store.active).not.toBeNull();
+
+  // Changing activeMenuId clears the pager session.
+  menu.activeMenuId = 'menu-a';
+  await Promise.resolve();
+  menu.activeMenuId = 'menu-b';
+  await Promise.resolve();
+  await Promise.resolve();
+  expect(store.active).toBeNull();
+});
+
 test('useRecordSetStore move/moveTo drop result when session key changes during await', async () => {
   setActivePinia(createPinia());
   const store = useRecordSetStore();

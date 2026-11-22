@@ -247,3 +247,112 @@ test('detailPath clear preserves other-model recordSet session', async () => {
   restoreSfc(ChoyPagination);
   restoreSfc(ListInlineEditScope);
 });
+
+test('detailPath emits row-click for null path / blank id; snapshot throw still opens', async () => {
+  const pinia = createPinia();
+  setActivePinia(pinia);
+  const { router } = createFeStubRouter({
+    route: { path: '/base/countries', fullPath: '/base/countries' },
+  });
+  const pushes: unknown[] = [];
+  router.push = (to: unknown) => {
+    pushes.push(to);
+    return Promise.resolve(to);
+  };
+  stubSfc(ChoyTableHost, {
+    name: 'ChoyTableHost',
+    setup: () => () => h('div'),
+  });
+  stubSfc(ChoyTableColumn, { name: 'ChoyTableColumn', setup: () => () => null });
+  stubSfc(ChoyPagination, { name: 'ChoyPagination', setup: () => () => h('div') });
+  stubSfc(ListInlineEditScope, {
+    name: 'ListInlineEditScope',
+    setup: (_p: any, { slots }: any) => () => h('div', slots.default?.()),
+  });
+
+  const nullPath = mountApp(ChoyListView as any, {
+    props: {
+      store: makeStore(),
+      detailPath: () => null,
+      showHeader: false,
+      showPaginate: false,
+    },
+    plugins: [pinia, router as any],
+  });
+  await flushPromises();
+  await (nullPath.setupState() as any).onRowClick({
+    rowData: { kind: 'record', key: 'a', payload: { Id: 'a' } },
+    rowIndex: 0,
+    rowKey: 'a',
+  });
+  await flushPromises();
+  expect(pushes).toEqual([]);
+
+  await (nullPath.setupState() as any).onRowClick({
+    rowData: { kind: 'record', key: 'x', payload: {} },
+    rowIndex: 0,
+    rowKey: 'x',
+  });
+  await flushPromises();
+  expect(pushes).toEqual([]);
+  nullPath.unmount();
+
+  const boomStore = makeStore();
+  Object.defineProperty(boomStore, 'state', {
+    get() {
+      throw new Error('snapshot boom');
+    },
+  });
+  const boom = mountApp(ChoyListView as any, {
+    props: {
+      store: boomStore,
+      detailPath: '/base/countries/:id',
+      showHeader: false,
+      showPaginate: false,
+    },
+    plugins: [pinia, router as any],
+  });
+  await flushPromises();
+  await (boom.setupState() as any).onRowClick({
+    rowData: { kind: 'record', key: 'b', payload: { Id: 'b' } },
+    rowIndex: 0,
+    rowKey: 'b',
+  });
+  await flushPromises();
+  expect(pushes).toEqual(['/base/countries/b']);
+  boom.unmount();
+
+  restoreSfc(ChoyTableHost);
+  restoreSfc(ChoyTableColumn);
+  restoreSfc(ChoyPagination);
+  restoreSfc(ListInlineEditScope);
+});
+
+test('detailPath clear catches missing Pinia on mount', async () => {
+  const { router } = createFeStubRouter({
+    route: { path: '/base/countries', fullPath: '/base/countries' },
+  });
+  stubSfc(ChoyTableHost, { name: 'ChoyTableHost', setup: () => () => h('div') });
+  stubSfc(ChoyTableColumn, { name: 'ChoyTableColumn', setup: () => () => null });
+  stubSfc(ChoyPagination, { name: 'ChoyPagination', setup: () => () => h('div') });
+  stubSfc(ListInlineEditScope, {
+    name: 'ListInlineEditScope',
+    setup: (_p: any, { slots }: any) => () => h('div', slots.default?.()),
+  });
+  const mounted = mountApp(ChoyListView as any, {
+    props: {
+      store: makeStore(),
+      detailPath: '/base/countries/:id',
+      showHeader: false,
+      showPaginate: false,
+    },
+    plugins: [router as any],
+  });
+  await flushPromises();
+  expect(mounted.el != null).toBe(true);
+  mounted.unmount();
+  restoreSfc(ChoyTableHost);
+  restoreSfc(ChoyTableColumn);
+  restoreSfc(ChoyPagination);
+  restoreSfc(ListInlineEditScope);
+});
