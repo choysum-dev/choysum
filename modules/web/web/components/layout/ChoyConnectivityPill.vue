@@ -37,7 +37,9 @@ const { _t } = createTranslate('web', { scope: 'web/components/layout/ChoyConnec
 const store = useConnectivityStore();
 
 const ariaLabel = computed(() =>
-  store.probing ? _t('Checking…') : _t('Retry connection'),
+  store.probing
+    ? _t('Checking…')
+    : `${_t('Connection lost')}. ${_t('Retry connection')}`,
 );
 
 async function onRetry(): Promise<void> {

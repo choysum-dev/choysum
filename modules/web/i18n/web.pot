@@ -1494,33 +1494,22 @@ msgctxt "web/components/layout/ChoyCommandPalette"
 msgid "Type a command or search…"
 msgstr ""
 
-#: web/components/layout/ChoyConnectivityPill.vue:11
-msgctxt "web/components/layout/ChoyConnectivityPill"
-msgid "Cannot reach the server. Check your network, then retry."
-msgstr ""
-
-#: web/components/layout/ChoyConnectivityPill.vue:14
+#: web/components/layout/ChoyConnectivityPill.vue:15
 msgctxt "web/components/layout/ChoyConnectivityPill"
 msgid "Checking…"
 msgstr ""
 
-#: web/components/layout/ChoyConnectivityPill.vue:4
-#: web/components/layout/ChoyConnectivityPill.vue:6
+#: web/components/layout/ChoyConnectivityPill.vue:16
 msgctxt "web/components/layout/ChoyConnectivityPill"
 msgid "Connection lost"
 msgstr ""
 
-#: web/components/layout/ChoyConnectivityPill.vue:14
-msgctxt "web/components/layout/ChoyConnectivityPill"
-msgid "Retry"
-msgstr ""
-
-#: web/components/layout/AuthSidebarUserMenu.vue
+#: web/components/layout/ChoyConnectivityPill.vue:16
 msgctxt "web/components/layout/ChoyConnectivityPill"
 msgid "Retry connection"
 msgstr ""
 
-#: web/components/layout/ChoyGuestHeader.vue:69
+#: web/components/layout/ChoyGuestHeader.vue:67
 msgctxt "web/components/layout/ChoyGuestHeader"
 msgid "Home"
 msgstr ""
@@ -1606,17 +1595,17 @@ msgctxt "web/components/layout/ChoySidebarNav"
 msgid "No menus available"
 msgstr ""
 
-#: web/components/layout/ChoyViewLoadError.vue:21
+#: web/components/layout/ChoyViewLoadError.vue:25
 msgctxt "web/components/layout/ChoyViewLoadError"
 msgid "Cannot reach the server. Check your network, then retry."
 msgstr ""
 
-#: web/components/layout/ChoyViewLoadError.vue:17
+#: web/components/layout/ChoyViewLoadError.vue:21
 msgctxt "web/components/layout/ChoyViewLoadError"
 msgid "Connection lost"
 msgstr ""
 
-#: web/components/layout/ChoyViewLoadError.vue:17
+#: web/components/layout/ChoyViewLoadError.vue:21
 msgctxt "web/components/layout/ChoyViewLoadError"
 msgid "Failed to load this view"
 msgstr ""
@@ -1631,7 +1620,7 @@ msgctxt "web/components/layout/ChoyViewLoadError"
 msgid "Retry loading"
 msgstr ""
 
-#: web/components/layout/ChoyViewLoadError.vue:22
+#: web/components/layout/ChoyViewLoadError.vue:26
 msgctxt "web/components/layout/ChoyViewLoadError"
 msgid "The page resources could not be loaded. Retry or reload the page."
 msgstr ""
@@ -3185,7 +3174,7 @@ msgctxt "web/stores/breadcrumbStore"
 msgid "Page"
 msgstr ""
 
-#: web/stores/connectivityStore/recoveryToast.ts:29
+#: web/stores/connectivityStore/recoveryToast.ts:32
 msgctxt "web/stores/connectivityStore"
 msgid "Connection restored"
 msgstr ""

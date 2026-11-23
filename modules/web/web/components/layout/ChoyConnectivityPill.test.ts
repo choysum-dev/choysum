@@ -54,7 +54,9 @@ test('ChoyConnectivityPill: shows when unreachable and hides after recover', asy
   const pill = mounted.q('[data-testid=choy-connectivity-pill]') as HTMLElement | null;
   expect(pill).toBeTruthy();
   // Icon-only: accessible name via aria-label; no panel / visible text.
-  expect(pill?.getAttribute('aria-label') || '').toContain('Retry connection');
+  const aria = pill?.getAttribute('aria-label') || '';
+  expect(aria).toContain('Connection lost');
+  expect(aria).toContain('Retry connection');
   expect((pill?.textContent || '').trim()).toBe('');
   expect(pill?.querySelector('svg')).toBeTruthy();
   expect(mounted.q('[data-testid=choy-connectivity-pill-panel]')).toBeNull();

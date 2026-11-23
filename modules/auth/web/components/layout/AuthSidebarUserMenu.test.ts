@@ -336,6 +336,24 @@ test('AuthSidebarUserMenu: latin two-word label yields two-letter initials', asy
   mounted.unmount();
 });
 
+test('AuthSidebarUserMenu: mixed-script label uses first grapheme only', async () => {
+  const { mounted, ss } = await mountUserMenu({ sidebarMode: 'expanded' });
+  const auth = useAuthStore() as any;
+  auth.currentUser = {
+    Username: 'jane',
+    Email: 'jane@example.com',
+    DisplayName: 'Jane 王',
+    FirstName: 'Jane',
+    LastName: '王',
+  };
+  await flushPromises();
+  await nextTick();
+  expect(ss.userMenuLabel).toContain('Jane');
+  // Not "J王" — second token is non-ASCII, so fall back to first grapheme.
+  expect(ss.userInitials).toBe('J');
+  mounted.unmount();
+});
+
 test('AuthSidebarUserMenu: falls back to token identity then Account', async () => {
   const { mounted, ss } = await mountUserMenu({
     sidebarMode: 'expanded',

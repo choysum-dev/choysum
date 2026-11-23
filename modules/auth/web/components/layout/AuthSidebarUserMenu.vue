@@ -73,7 +73,7 @@ SPDX-License-Identifier: Apache-2.0
               >
                 <Link2Off class="size-4 text-warning" aria-hidden="true" />
                 {{
-                  connectivity.probing ? _tWeb('Checking…') : _tWeb('Retry connection')
+                  connectivity.probing ? _t('Checking…') : _t('Retry connection')
                 }}
               </ChoyDropdownMenuItem>
               <ChoyDropdownMenuSeparator />
@@ -135,9 +135,6 @@ import { resolveUserMenuDisplayName, resolveUserMenuMeta } from './user_menu_dis
 defineOptions({ name: 'AuthSidebarUserMenu' });
 
 const { _t } = createTranslate('auth', { scope: 'web/components/layout/ChoyAppShell' });
-const { _t: _tWeb } = createTranslate('web', {
-  scope: 'web/components/layout/ChoyConnectivityPill',
-});
 const router = useRouter();
 const authStore = useAuthStore();
 const i18nStore = useI18nStore();
@@ -203,7 +200,7 @@ const userMenuMeta = computed(() => {
 
 const userMenuAriaLabel = computed(() => {
   if (connectivity.isUnreachable) {
-    return `${_t('User menu')}. ${_tWeb('Connection lost')}`;
+    return `${_t('User menu')}. ${_t('Connection lost')}`;
   }
   return _t('User menu');
 });
@@ -211,7 +208,9 @@ const userMenuAriaLabel = computed(() => {
 const userInitials = computed(() => {
   const label = userMenuLabel.value;
   const parts = label.split(/\s+/).filter(Boolean);
-  if (parts.length >= 2 && /^[\x00-\x7F]+$/.test(parts[0] || '')) {
+  const isAscii = (part: string) => /^[\x00-\x7F]+$/.test(part);
+  // Two-letter initials only when both tokens are ASCII (avoid "Jane 王" → "J王").
+  if (parts.length >= 2 && isAscii(parts[0] || '') && isAscii(parts[1] || '')) {
     const a = firstGrapheme(parts[0] || '');
     const b = firstGrapheme(parts[1] || '');
     return `${a}${b}`.toUpperCase() || firstGrapheme(label);
