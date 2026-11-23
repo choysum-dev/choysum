@@ -71,6 +71,7 @@ test('client lifecycle: streaming RPCs do not own api loading or chrome', () => 
   provider.onFinish?.(context);
   expect(state.isLoading.value).toBe(false);
   expect(getLoadingRegistryDebugState().userBusyCount).toBe(0);
+  expect(getLoadingRegistryDebugState().barCount).toBe(0);
 });
 
 test('client lifecycle: streaming onError does not record api error state', () => {

@@ -66,6 +66,18 @@ test('lifecycle interceptor: marks stream context and still runs next', async ()
     expect(errored[0]?.stream).toBe(true);
     expect(finished).toHaveLength(3);
     expect(finished[2]?.stream).toBe(true);
+
+    let unaryCaught: unknown;
+    try {
+      await intercept(nextFail as any)(makeReq(false) as any);
+    } catch (err) {
+      unaryCaught = err;
+    }
+    expect(unaryCaught instanceof Error && unaryCaught.message === 'stream boom').toBe(true);
+    expect(errored).toHaveLength(2);
+    expect(errored[1]?.stream).toBe(false);
+    expect(finished).toHaveLength(4);
+    expect(finished[3]?.stream).toBe(false);
   } finally {
     setLifecycleProvider(null);
   }
