@@ -72,6 +72,7 @@ export const Layers = icon('Layers');
 export const LayoutGrid = icon('LayoutGrid');
 export const LineChart = icon('LineChart');
 export const Link2 = icon('Link2');
+export const Link2Off = icon('Link2Off');
 export const List = icon('List');
 export const ListOrdered = icon('ListOrdered');
 export const Loader2 = icon('Loader2');

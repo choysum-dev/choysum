@@ -4,17 +4,23 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
+  <!--
+    Header chrome: same ghost icon button as command palette / notification bell.
+    Warning is carried by icon color only — no chip border/fill (Odoo systray-like).
+  -->
   <Popover v-if="store.isUnreachable" v-model:open="open">
     <PopoverTrigger as-child>
-      <button
+      <ChoyButton
         type="button"
-        class="choy-connectivity-pill inline-flex h-8 items-center gap-1.5 rounded-md border border-amber-500/40 bg-amber-500/15 px-2.5 text-xs font-medium text-amber-900 dark:text-amber-100"
+        variant="ghost"
+        size="icon"
+        class="choy-connectivity-pill text-warning hover:bg-accent hover:text-warning"
         data-testid="choy-connectivity-pill"
         :aria-label="_t('Connection lost')"
+        :title="_t('Connection lost')"
       >
-        <CloudOff class="size-3.5 shrink-0" aria-hidden="true" />
-        <span class="max-w-[10rem] truncate">{{ _t('Connection lost') }}</span>
-      </button>
+        <Link2Off class="size-4 shrink-0" aria-hidden="true" />
+      </ChoyButton>
     </PopoverTrigger>
     <PopoverContent align="end" class="w-72 space-y-3 p-3" data-testid="choy-connectivity-pill-panel">
       <p class="text-sm text-foreground">
@@ -36,7 +42,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { ref } from 'vue';
-import { CloudOff } from 'lucide-vue-next';
+import { Link2Off } from 'lucide-vue-next';
 import { Popover, PopoverContent, PopoverTrigger } from '../vendor/ui/popover';
 import ChoyButton from './ChoyButton.vue';
 import { createTranslate } from '@/web/web/i18n';
