@@ -74,15 +74,17 @@ describe('createAppRouter', () => {
     clearViewLoadError();
     const router = createAppRouter('/');
     await router.isReady().catch(() => undefined);
+    await router.push('/__nav_b__').catch(() => undefined);
+    const current = String(router.currentRoute.value.fullPath || '');
     const anyRouter = router as {
       triggerError?: (err: Error, to?: { fullPath: string; meta?: Record<string, unknown> }) => void;
     };
-    // Omit ownership seq so the handler records even after prior navigations advanced the counter.
+    // Omit ownership seq: still record when the failed destination is the current route.
     anyRouter.triggerError?.(
       new Error('Failed to fetch dynamically imported module: /web/assets/Company-x.js'),
-      { fullPath: '/web/base/companies?q=1#top', meta: {} },
+      { fullPath: current, meta: {} },
     );
-    expect(viewLoadError.value?.fullPath).toBe('/web/base/companies?q=1#top');
+    expect(viewLoadError.value?.fullPath).toBe(current);
     clearViewLoadError();
   });
 
@@ -129,6 +131,38 @@ describe('createAppRouter', () => {
     );
     expect(viewLoadError.value).toBeNull();
     clearViewLoadError();
+  });
+
+  test('router onError ignores unowned chunk failures for a non-current destination', async () => {
+    const { clearViewLoadError, viewLoadError } = await import('./viewLoadError');
+    clearViewLoadError();
+    const router = createAppRouter('/');
+    await router.isReady().catch(() => undefined);
+    await router.push('/__nav_b__').catch(() => undefined);
+    const anyRouter = router as {
+      triggerError?: (err: Error, to?: { fullPath: string; meta?: Record<string, unknown> }) => void;
+    };
+    anyRouter.triggerError?.(
+      new Error('Failed to fetch dynamically imported module: /web/assets/Other.js'),
+      { fullPath: '/stale-unowned' },
+    );
+    expect(viewLoadError.value).toBeNull();
+    clearViewLoadError();
+  });
+
+  test('query-only navigation is not treated as duplicated', async () => {
+    const router = createAppRouter('/');
+    await router.isReady().catch(() => undefined);
+    await router.push({ path: '/__nav_b__', query: { page: '1' } } as any).catch(() => undefined);
+    let guards = 0;
+    const remove = router.beforeEach(() => {
+      guards += 1;
+      return true;
+    });
+    await router.push({ path: '/__nav_b__', query: { page: '2' } } as any).catch(() => undefined);
+    remove();
+    expect(guards).toBe(1);
+    expect(String((router.currentRoute.value.query as { page?: string })?.page || '')).toBe('2');
   });
 
   test('router onError ignores chunk failures from superseded navigations', async () => {

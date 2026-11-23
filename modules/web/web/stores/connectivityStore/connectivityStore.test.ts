@@ -294,6 +294,42 @@ test('connectivityStore: superseded probe finally does not clear newer probing',
   expect(store.probing).toBe(false);
 });
 
+test('connectivityStore: superseded probe catch does not reverse a newer recovery', async () => {
+  const store = useConnectivityStore();
+  store.markUnreachable();
+  const epoch = store.offlineEpoch;
+  let rejectA!: (e: Error) => void;
+  const pendingA = new Promise<Response>((_resolve, reject) => {
+    rejectA = reject;
+  });
+  const probeA = store.probeConnectivity(() => pendingA);
+  // Same epoch — token must still block A from flipping status after B recovers.
+  expect(store.offlineEpoch).toBe(epoch);
+  const okB = await store.probeConnectivity(async () => ({ ok: true } as Response));
+  expect(okB).toBe(true);
+  expect(store.status).toBe('reachable');
+  rejectA(new Error('Aborted'));
+  await probeA;
+  expect(store.status).toBe('reachable');
+});
+
+test('connectivityStore: probe times out without AbortController', async () => {
+  const store = useConnectivityStore();
+  const RealAC = globalThis.AbortController;
+  delete (globalThis as { AbortController?: typeof AbortController }).AbortController;
+  try {
+    const ok = await store.probeConnectivity(async () => {
+      await new Promise<void>(resolve => setTimeout(resolve, 80));
+      return { ok: true } as Response;
+    }, 10);
+    expect(ok).toBe(false);
+    expect(store.status).toBe('unreachable');
+    expect(store.probing).toBe(false);
+  } finally {
+    (globalThis as { AbortController?: typeof AbortController }).AbortController = RealAC;
+  }
+});
+
 test('connectivityStore: browser offline check tolerates navigator access errors', async () => {
   const store = useConnectivityStore();
   store.markUnreachable();

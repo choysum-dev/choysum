@@ -130,6 +130,10 @@ export function createAppRouter(base = '/', composer?: ComposerLike): Router {
     const failedSeq = Number((failed?.meta as { __navOwnershipSeq?: number } | undefined)?.__navOwnershipSeq) || 0;
     // A superseded navigation's late chunk reject must not blank the newer route.
     if (failedSeq && failedSeq !== navOwnershipSeq) return;
+    // Missing ownership: only blank when the failed destination is still current.
+    if (!failedSeq && String(failed.fullPath || '') !== String(router.currentRoute.value.fullPath || '')) {
+      return;
+    }
     const fullPath = String(failed?.fullPath || router.currentRoute.value.fullPath || '/');
     setViewLoadError({
       message: String((error as { message?: string })?.message || error || ''),

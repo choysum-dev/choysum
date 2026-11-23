@@ -100,6 +100,34 @@ test('ChoyViewLoadError: Retry loading clears error and replace-navigates', asyn
   mounted.unmount();
 });
 
+test('ChoyViewLoadError: same-path Retry uses history go(0) instead of replace', async () => {
+  setViewLoadError({
+    message: 'Failed to fetch dynamically imported module',
+    fullPath: '/web/base/countries',
+  });
+  const pinia = createPinia();
+  setActivePinia(pinia);
+  let goCalls = 0;
+  const { plugins } = buildPageMountGlobal({
+    route: { name: 'CountryList', path: '/web/base/countries', fullPath: '/web/base/countries' },
+    router: {
+      go: () => {
+        goCalls += 1;
+      },
+      replace: async () => {
+        throw new Error('replace must not run for same-path retry');
+      },
+    },
+  });
+  const mounted = mountApp(ChoyViewLoadError as any, { plugins: [pinia, ...plugins] });
+  await flushPromises();
+  mounted.click('[data-testid=choy-view-load-error-retry]');
+  await flushPromises();
+  expect(viewLoadError.value).toBeNull();
+  expect(goCalls).toBe(1);
+  mounted.unmount();
+});
+
 test('ChoyViewLoadError: Reload page calls location.reload', async () => {
   setViewLoadError({
     message: 'Failed to fetch dynamically imported module',

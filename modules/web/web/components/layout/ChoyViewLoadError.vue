@@ -49,6 +49,12 @@ const detail = computed(() =>
 async function onRetry(): Promise<void> {
   const fullPath = error.value?.fullPath || router.currentRoute.value.fullPath;
   clearViewLoadError();
+  // Same-path replace is a duplicated navigation and will not re-import a failed
+  // lazy chunk — soft history reload re-enters the route and retries the import.
+  if (String(fullPath) === String(router.currentRoute.value.fullPath || '')) {
+    router.go(0);
+    return;
+  }
   try {
     await router.replace(fullPath);
   } catch {

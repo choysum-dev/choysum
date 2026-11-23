@@ -11,20 +11,81 @@ import { inject, defineComponent, h, reactive } from 'vue';
 var ROUTER_KEY = 'choysumFeStubRouter';
 var ROUTE_KEY = 'choysumFeStubRoute';
 
+function stringifyQuery(query) {
+  if (!query || typeof query !== 'object') return '';
+  var keys = Object.keys(query);
+  if (!keys.length) return '';
+  var parts = [];
+  for (var i = 0; i < keys.length; i++) {
+    var k = keys[i];
+    var v = query[k];
+    if (v == null) continue;
+    if (Array.isArray(v)) {
+      for (var j = 0; j < v.length; j++) {
+        parts.push(encodeURIComponent(k) + '=' + encodeURIComponent(String(v[j])));
+      }
+    } else {
+      parts.push(encodeURIComponent(k) + '=' + encodeURIComponent(String(v)));
+    }
+  }
+  return parts.length ? '?' + parts.join('&') : '';
+}
+
+function parseQueryString(search) {
+  var query = {};
+  if (!search) return query;
+  var raw = String(search).charAt(0) === '?' ? String(search).slice(1) : String(search);
+  if (!raw) return query;
+  var pairs = raw.split('&');
+  for (var i = 0; i < pairs.length; i++) {
+    if (!pairs[i]) continue;
+    var eq = pairs[i].indexOf('=');
+    var k = decodeURIComponent(eq >= 0 ? pairs[i].slice(0, eq) : pairs[i]);
+    var v = decodeURIComponent(eq >= 0 ? pairs[i].slice(eq + 1) : '');
+    if (Object.prototype.hasOwnProperty.call(query, k)) {
+      var cur = query[k];
+      query[k] = Array.isArray(cur) ? cur.concat([v]) : [cur, v];
+    } else {
+      query[k] = v;
+    }
+  }
+  return query;
+}
+
 function normalizeTo(to) {
   if (to == null) return { path: '/', name: undefined, query: {}, params: {}, fullPath: '/' };
   if (typeof to === 'string') {
+    var qIdx = to.indexOf('?');
+    if (qIdx >= 0) {
+      var pathOnly = to.slice(0, qIdx) || '/';
+      var queryFromString = parseQueryString(to.slice(qIdx));
+      return {
+        path: pathOnly,
+        name: undefined,
+        query: queryFromString,
+        params: {},
+        fullPath: pathOnly + stringifyQuery(queryFromString),
+      };
+    }
     return { path: to, name: undefined, query: {}, params: {}, fullPath: to };
   }
   var path = to.path;
   if (!path && to.name) path = '/' + String(to.name);
   if (!path) path = '/';
+  // Strip any inline query from path; prefer explicit query object.
+  var pathQ = path.indexOf('?');
+  var query = to.query || {};
+  if (pathQ >= 0) {
+    if (!to.query) query = parseQueryString(path.slice(pathQ));
+    path = path.slice(0, pathQ) || '/';
+  }
+  var fullPath = typeof to.fullPath === 'string' && to.fullPath ? to.fullPath : path + stringifyQuery(query);
   return {
     path: path,
     name: to.name,
-    query: to.query || {},
+    query: query,
     params: to.params || {},
-    fullPath: path,
+    fullPath: fullPath,
     meta: to.meta || {},
     matched: to.matched || [],
   };
@@ -357,14 +418,16 @@ export function createRouter(options) {
         matched: [],
       };
     }
+    var resolvedPath = found.path || n.path;
     return {
-      path: found.path || n.path,
+      path: resolvedPath,
       name: found.name != null ? found.name : n.name,
       query: n.query,
       params: n.params,
-      fullPath: found.path || n.fullPath,
+      // Keep query in fullPath so query-only changes are not treated as duplicates.
+      fullPath: resolvedPath + stringifyQuery(n.query),
       meta: found.meta || {},
-      matched: [{ path: found.path || n.path, name: found.name, meta: found.meta || {} }],
+      matched: [{ path: resolvedPath, name: found.name, meta: found.meta || {} }],
     };
   }
 

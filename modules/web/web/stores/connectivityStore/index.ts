@@ -94,24 +94,33 @@ export const useConnectivityStore = defineStore('connectivity', () => {
     const abort =
       typeof AbortController !== 'undefined' ? new AbortController() : undefined;
     const delay = Math.max(1, Number(timeoutMs) || HEALTHZ_PROBE_TIMEOUT_MS);
-    const timer =
-      abort != null
-        ? setTimeout(() => {
-            try {
-              abort.abort();
-            } catch {
-              // AbortController.abort must never escape the timer.
-            }
-          }, delay)
-        : undefined;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let timeoutFallback: Promise<never> | undefined;
+    if (abort != null) {
+      timer = setTimeout(() => {
+        try {
+          abort.abort();
+        } catch {
+          // AbortController.abort must never escape the timer.
+        }
+      }, delay);
+    } else {
+      // No AbortController — race fetch against a timeout so probing cannot stick.
+      timeoutFallback = new Promise<never>((_resolve, reject) => {
+        timer = setTimeout(() => reject(new Error('probe timeout')), delay);
+      });
+    }
     try {
-      const res = await fetchImpl(HEALTHZ_PATH, {
+      const fetchPromise = fetchImpl(HEALTHZ_PATH, {
         method: 'GET',
         cache: 'no-store',
         signal: abort?.signal,
       });
-      if (epochAtStart !== offlineEpoch.value) {
-        // Superseded by a newer offline edge — leave whatever recovery already did.
+      const res = timeoutFallback
+        ? await Promise.race([fetchPromise, timeoutFallback])
+        : await fetchPromise;
+      // Superseded by a newer probe or offline edge — leave current status alone.
+      if (token !== probeToken || epochAtStart !== offlineEpoch.value) {
         return status.value === 'reachable';
       }
       if (res.ok && !isBrowserOffline(typeof window !== 'undefined' ? window : undefined)) {
@@ -121,7 +130,7 @@ export const useConnectivityStore = defineStore('connectivity', () => {
       markUnreachable();
       return false;
     } catch {
-      if (epochAtStart !== offlineEpoch.value) {
+      if (token !== probeToken || epochAtStart !== offlineEpoch.value) {
         return status.value === 'reachable';
       }
       markUnreachable();
