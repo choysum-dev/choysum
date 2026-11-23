@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { computed, inject, onScopeDispose, ref, type InjectionKey } from 'vue';
+import { runWithLoading } from '@/core/web/client/loadingRegistry';
 import { onTips as defaultOnTips, subscribeNotifications as defaultSubscribeNotifications } from '@/core/web/tip';
 import { getNotificationStore as defaultGetNotificationStore } from './chatterStores';
 import type { InboxNotificationRow } from './chatterTypes';
@@ -66,7 +67,10 @@ export function useNotificationInbox(enabled: () => boolean, deps?: UseNotificat
     loading.value = true;
     error.value = null;
     try {
-      const nextRows = await getStore().SearchInbox({ fields: [...INBOX_FIELDS], limit: 20 });
+      // Silent: background unread sync must not own global bar / slow-hint.
+      const nextRows = await runWithLoading({ silent: true }, () =>
+        getStore().SearchInbox({ fields: [...INBOX_FIELDS], limit: 20 }),
+      );
       if (generation !== refreshGeneration) return;
       rows.value = nextRows;
     } catch (err) {
@@ -82,7 +86,7 @@ export function useNotificationInbox(enabled: () => boolean, deps?: UseNotificat
     const id = String(notificationId || '').trim();
     if (!id || !enabled()) return;
     try {
-      await getStore().MarkRead([id]);
+      await runWithLoading({ silent: true }, () => getStore().MarkRead([id]));
       await refresh();
     } catch (err) {
       error.value = err instanceof Error ? err.message : String(err);
@@ -92,7 +96,7 @@ export function useNotificationInbox(enabled: () => boolean, deps?: UseNotificat
   async function markAllRead(): Promise<void> {
     if (!enabled()) return;
     try {
-      await getStore().MarkAllRead();
+      await runWithLoading({ silent: true }, () => getStore().MarkAllRead());
       await refresh();
     } catch (err) {
       error.value = err instanceof Error ? err.message : String(err);
@@ -125,9 +129,16 @@ export function useNotificationInbox(enabled: () => boolean, deps?: UseNotificat
     tipController = new AbortController();
     const signal = tipController.signal;
     try {
-      await onTips(subscribeNotifications(signal), async () => {
-        await refresh();
-      }, signal);
+      // Silent for the stream lifetime so tip onStart cannot race list settle chrome.
+      await runWithLoading({ silent: true }, () =>
+        onTips(
+          subscribeNotifications(signal),
+          async () => {
+            await refresh();
+          },
+          signal,
+        ),
+      );
     } catch {
       // Stream error; fall through to poll fallback when still subscribed.
     } finally {

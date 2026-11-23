@@ -3,6 +3,12 @@
 
 import { defineComponent, effectScope, h, onMounted } from 'vue';
 
+import {
+  getLoadingRegistryDebugState,
+  loadingRegistryOnRpcFinish,
+  loadingRegistryOnRpcStart,
+  resetLoadingRegistryForTests,
+} from '@/core/web/client/loadingRegistry';
 import { fnRecorder, flushPromises, mountApp } from '@/web/web/__tests__/mountApp';
 import { useNotificationInbox } from './useNotificationInbox';
 
@@ -10,6 +16,12 @@ const POLL_MS = 25;
 
 function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/** Simulate lifecycle RPC chrome tickets inside a store mock. */
+function bumpRegistryDuringCall(spanId: string): void {
+  loadingRegistryOnRpcStart(spanId);
+  loadingRegistryOnRpcFinish(spanId);
 }
 
 describe('useNotificationInbox', () => {
@@ -29,6 +41,7 @@ describe('useNotificationInbox', () => {
   }
 
   beforeEach(() => {
+    resetLoadingRegistryForTests();
     SearchInbox.mockReset();
     SearchInbox.mockImplementation(async () => []);
     MarkRead.mockReset();
@@ -50,6 +63,59 @@ describe('useNotificationInbox', () => {
     SearchInbox.mockClear();
     await sleep(POLL_MS + 20);
     expect(SearchInbox.calls.length).toBeGreaterThan(0);
+    scope.stop();
+  });
+
+  test('refresh does not raise global bar or userBusy (silent SearchInbox)', async () => {
+    SearchInbox.mockImplementation(async () => {
+      bumpRegistryDuringCall('inbox-refresh');
+      return [];
+    });
+    const scope = effectScope();
+    const inbox = scope.run(() => useNotificationInbox(() => true, tipDeps()));
+    if (!inbox) throw new Error('inbox missing');
+    await inbox.refresh();
+    const state = getLoadingRegistryDebugState();
+    expect(state.barCount).toBe(0);
+    expect(state.userBusyCount).toBe(0);
+    scope.stop();
+  });
+
+  test('markRead does not raise global bar or userBusy (silent MarkRead)', async () => {
+    MarkRead.mockImplementation(async () => {
+      bumpRegistryDuringCall('inbox-mark-read');
+      return 1;
+    });
+    SearchInbox.mockImplementation(async () => {
+      bumpRegistryDuringCall('inbox-refresh-after-mark');
+      return [];
+    });
+    const scope = effectScope();
+    const inbox = scope.run(() => useNotificationInbox(() => true, tipDeps()));
+    if (!inbox) throw new Error('inbox missing');
+    await inbox.markRead('n1');
+    const state = getLoadingRegistryDebugState();
+    expect(state.barCount).toBe(0);
+    expect(state.userBusyCount).toBe(0);
+    scope.stop();
+  });
+
+  test('poll fallback SearchInbox stays silent for global chrome', async () => {
+    const scope = effectScope();
+    const inbox = scope.run(() => useNotificationInbox(() => true, tipDeps()));
+    if (!inbox) throw new Error('inbox missing');
+    await inbox.activate();
+    await flushPromises();
+    SearchInbox.mockClear();
+    SearchInbox.mockImplementation(async () => {
+      bumpRegistryDuringCall('inbox-poll');
+      return [];
+    });
+    await sleep(POLL_MS + 20);
+    expect(SearchInbox.calls.length).toBeGreaterThan(0);
+    const state = getLoadingRegistryDebugState();
+    expect(state.barCount).toBe(0);
+    expect(state.userBusyCount).toBe(0);
     scope.stop();
   });
 

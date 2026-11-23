@@ -87,3 +87,6 @@ policy intent; the router does not schedule a zero-delay idle re-arm.
 
 - `modules/core/web/client/loadingRegistry.ts` — bar, userBusy, nav ticket, `runWithLoading`
 - Setup finish: `submitting` + `runWithLoading({ silent: true })` then `beginNavigationLoading` before `router.replace`
+- Notification inbox (`SearchInbox` / mark-read / tip-driven refresh / poll fallback) must use
+  `runWithLoading({ silent: true })` so background unread sync never owns the global bar or
+  slow-hint (bell UI keeps its local `loading` ref).
