@@ -87,6 +87,13 @@ test('client lifecycle: streaming onError does not record api error state', () =
   expect(state.errors['demo.Service.SubscribeNotifications']).toBeFalsy();
   expect(state.hasErrors()).toBe(false);
   expect(getLoadingRegistryDebugState().userBusyCount).toBe(0);
+
+  // Real tip lifetime: interceptor always runs onFinish after onError.
+  provider.onFinish?.(context);
+  expect(state.isLoading.value).toBe(false);
+  expect(state.hasErrors()).toBe(false);
+  expect(getLoadingRegistryDebugState().userBusyCount).toBe(0);
+  expect(getLoadingRegistryDebugState().barCount).toBe(0);
 });
 
 test('client lifecycle: accepts success callbacks without mutating state', () => {

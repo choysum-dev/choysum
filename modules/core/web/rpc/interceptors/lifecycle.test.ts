@@ -19,26 +19,53 @@ function makeReq(stream: boolean) {
 }
 
 test('lifecycle interceptor: marks stream context and still runs next', async () => {
-  const seen: RpcRequestContext[] = [];
+  const started: RpcRequestContext[] = [];
+  const finished: RpcRequestContext[] = [];
+  const errored: RpcRequestContext[] = [];
   const provider: RequestLifecycleProvider = {
     onStart(context) {
-      seen.push(context);
+      started.push(context);
+    },
+    onFinish(context) {
+      finished.push(context);
+    },
+    onError(context, error) {
+      errored.push(context);
+      return error;
     },
   };
   setLifecycleProvider(provider);
   try {
     const intercept = createLifecycleInterceptor();
-    const next = async (req: { stream: boolean }) => ({ stream: req.stream, body: 'ok' });
-    const unary = await intercept(next as any)(makeReq(false) as any);
-    const streamed = await intercept(next as any)(makeReq(true) as any);
+    const nextOk = async (req: { stream: boolean }) => ({ stream: req.stream, body: 'ok' });
+    const unary = await intercept(nextOk as any)(makeReq(false) as any);
+    const streamed = await intercept(nextOk as any)(makeReq(true) as any);
     expect(unary).toEqual({ stream: false, body: 'ok' });
     expect(streamed).toEqual({ stream: true, body: 'ok' });
-    expect(seen).toHaveLength(2);
-    expect(seen[0]?.stream).toBe(false);
-    expect(seen[0]?.methodName).toBe('Ping');
-    expect(seen[1]?.stream).toBe(true);
-    expect(seen[1]?.methodName).toBe('SubscribeNotifications');
-    expect(seen[1]?.serviceName).toBe('tip.TipHub');
+    expect(started).toHaveLength(2);
+    expect(finished).toHaveLength(2);
+    expect(started[0]?.stream).toBe(false);
+    expect(started[0]?.methodName).toBe('Ping');
+    expect(started[1]?.stream).toBe(true);
+    expect(started[1]?.methodName).toBe('SubscribeNotifications');
+    expect(started[1]?.serviceName).toBe('tip.TipHub');
+    expect(finished[0]?.stream).toBe(false);
+    expect(finished[1]?.stream).toBe(true);
+
+    const nextFail = async () => {
+      throw new Error('stream boom');
+    };
+    let caught: unknown;
+    try {
+      await intercept(nextFail as any)(makeReq(true) as any);
+    } catch (err) {
+      caught = err;
+    }
+    expect(caught instanceof Error && caught.message === 'stream boom').toBe(true);
+    expect(errored).toHaveLength(1);
+    expect(errored[0]?.stream).toBe(true);
+    expect(finished).toHaveLength(3);
+    expect(finished[2]?.stream).toBe(true);
   } finally {
     setLifecycleProvider(null);
   }

@@ -34,7 +34,7 @@ export function createLifecycleInterceptor(): Interceptor {
       spanId,
       args,
       // Server/client streams stay open for tips etc. — never own chrome loading.
-      stream: !!req.stream,
+      stream: req.stream,
     };
 
     if (!lifecycleProvider) {
