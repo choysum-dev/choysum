@@ -21,7 +21,7 @@ export function createLifecycleInterceptor(): Interceptor {
     const lifecycleProvider = getLifecycleProvider();
     const serviceName = req.service.typeName || req.service.constructor.name || 'unknown';
     const methodName = req.method.name;
-    const args = req.stream ? [req.message] : [req.message];
+    const args = [req.message];
 
     const traceId = idGen.generateTraceId();
     const spanId = idGen.generateSpanId();

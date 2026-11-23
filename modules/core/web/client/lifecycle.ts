@@ -42,6 +42,10 @@ export function createLifecycleProvider(apiState: ApiStateInternal): RequestLife
     },
 
     onError: (context: RpcRequestContext, error: unknown) => {
+      // Streams never called startRequest — do not invent unpaired error state.
+      // Tip subscribe errors are handled by the inbox (poll fallback), not apiState.
+      if (context.stream) return error;
+
       const { serviceName, methodName } = context;
       const stateKey = apiState._internal.createStateKey(serviceName, methodName);
 

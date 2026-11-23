@@ -73,6 +73,22 @@ test('client lifecycle: streaming RPCs do not own api loading or chrome', () => 
   expect(getLoadingRegistryDebugState().userBusyCount).toBe(0);
 });
 
+test('client lifecycle: streaming onError does not record api error state', () => {
+  resetLoadingRegistryForTests();
+  const state = createApiStateScope('lifecycle-stream-err') as ApiStateInternal;
+  const provider = createLifecycleProvider(state);
+  const context = makeContext('SubscribeNotifications', 'span-stream-err', { stream: true });
+
+  provider.onStart?.(context);
+  const err = new Error('stream dropped');
+  const returned = provider.onError?.(context, err);
+  expect(returned).toBe(err);
+  expect(state.isLoading.value).toBe(false);
+  expect(state.errors['demo.Service.SubscribeNotifications']).toBeFalsy();
+  expect(state.hasErrors()).toBe(false);
+  expect(getLoadingRegistryDebugState().userBusyCount).toBe(0);
+});
+
 test('client lifecycle: accepts success callbacks without mutating state', () => {
   const state = createApiStateScope('lifecycle-test') as ApiStateInternal;
   const provider = createLifecycleProvider(state);
