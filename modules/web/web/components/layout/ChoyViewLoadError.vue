@@ -93,8 +93,8 @@ function clearAutoRetryResetTimer() {
   }
 }
 
-function stillOnFailedView(errPath: string): boolean {
-  return String(router.currentRoute.value.fullPath || '') === String(errPath);
+function currentFullPath(): string {
+  return String(router.currentRoute.value.fullPath || '');
 }
 
 watch(error, (next) => {
@@ -115,9 +115,19 @@ watch(error, (next) => {
 
 const stopLeaveGuard = router.beforeEach((to) => {
   if (!error.value) return;
-  if (String(to.fullPath) === String(error.value.fullPath)) return;
+  if (String(to.fullPath) === String(error.value.fullPath)) {
+    navigatingAwayFromError = false;
+    return;
+  }
   navigatingAwayFromError = true;
   clearRecoveryRetryTimer();
+});
+
+// Release the leave flag once that navigation settles so a cancelled / ignored
+// leave does not permanently disable recovery soft-retry.
+const stopAfterEach = router.afterEach(() => {
+  if (!navigatingAwayFromError) return;
+  navigatingAwayFromError = false;
 });
 
 // Full-page load error has no editable draft — soft-retry after reconnect.
@@ -128,14 +138,16 @@ watch(
     if (!error.value || connectivity.status !== 'reachable') return;
     if (autoRetriedForCurrentError || navigatingAwayFromError) return;
     const errPath = error.value.fullPath;
-    if (!stillOnFailedView(errPath)) return;
+    // Chunk failures can leave currentRoute on the previous page while error.fullPath
+    // is the failed destination — capture current and require it unchanged at fire.
+    const routeAtSchedule = currentFullPath();
     clearRecoveryRetryTimer();
     recoveryRetryTimer = setTimeout(() => {
       recoveryRetryTimer = null;
       if (!error.value || connectivity.status !== 'reachable') return;
       if (autoRetriedForCurrentError || navigatingAwayFromError) return;
       if (String(error.value.fullPath) !== String(errPath)) return;
-      if (!stillOnFailedView(errPath)) return;
+      if (currentFullPath() !== routeAtSchedule) return;
       autoRetriedForCurrentError = true;
       void onRetry();
     }, VIEW_LOAD_RETRY_AFTER_RECOVERY_MS);
@@ -146,5 +158,6 @@ onBeforeUnmount(() => {
   clearRecoveryRetryTimer();
   clearAutoRetryResetTimer();
   stopLeaveGuard();
+  stopAfterEach();
 });
 </script>

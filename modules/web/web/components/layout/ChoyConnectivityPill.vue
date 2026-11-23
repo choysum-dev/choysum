@@ -19,7 +19,7 @@ SPDX-License-Identifier: Apache-2.0
         :aria-label="_t('Connection lost')"
         :title="_t('Connection lost')"
       >
-        <Link2Off class="size-4 shrink-0 text-warning" aria-hidden="true" />
+        <Link2Off class="size-4 shrink-0" aria-hidden="true" />
       </ChoyButton>
     </PopoverTrigger>
     <PopoverContent align="end" class="w-72 space-y-3 p-3" data-testid="choy-connectivity-pill-panel">
