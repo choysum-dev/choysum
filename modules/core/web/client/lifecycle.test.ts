@@ -63,6 +63,12 @@ test('client lifecycle: streaming RPCs do not own api loading or chrome', () => 
   const provider = createLifecycleProvider(state);
   const context = makeContext('SubscribeNotifications', 'span-stream', { stream: true });
 
+  // Unpaired finish must be a no-op for chrome/api state.
+  provider.onFinish?.(context);
+  expect(state.isLoading.value).toBe(false);
+  expect(getLoadingRegistryDebugState().userBusyCount).toBe(0);
+  expect(getLoadingRegistryDebugState().barCount).toBe(0);
+
   provider.onStart?.(context);
   expect(state.loading['demo.Service.SubscribeNotifications']).toBeFalsy();
   expect(state.isLoading.value).toBe(false);

@@ -44,6 +44,7 @@ export function createLifecycleProvider(apiState: ApiStateInternal): RequestLife
     onError: (context: RpcRequestContext, error: unknown) => {
       // Streams never called startRequest — do not invent unpaired error state.
       // Tip subscribe errors are handled by the inbox (poll fallback), not apiState.
+      // Tip stream death is also not connectivity-authoritative; unary/chrome RPCs own that.
       if (context.stream) return error;
 
       const { serviceName, methodName } = context;
