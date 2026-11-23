@@ -28,6 +28,11 @@ export interface RpcRequestContext {
   traceId: string;
   spanId: string;
   args: unknown[];
+  /**
+   * True for client / server / bidi streaming RPCs.
+   * Long-lived streams must not own global loading chrome (bar / slow-hint).
+   */
+  stream?: boolean;
 }
 
 /** @deprecated Prefer RpcRequestContext. Kept for compatibility. */

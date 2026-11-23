@@ -27,7 +27,15 @@ export function createLifecycleInterceptor(): Interceptor {
     const spanId = idGen.generateSpanId();
     req.header.set('traceparent', buildTraceparent(traceId, spanId, true));
 
-    const context: RpcRequestContext = { serviceName, methodName, traceId, spanId, args };
+    const context: RpcRequestContext = {
+      serviceName,
+      methodName,
+      traceId,
+      spanId,
+      args,
+      // Server/client streams stay open for tips etc. — never own chrome loading.
+      stream: !!req.stream,
+    };
 
     if (!lifecycleProvider) {
       return next(req);

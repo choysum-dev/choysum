@@ -5,18 +5,27 @@ import { Code, ConnectError } from '@connectrpc/connect';
 import type { RpcRequestContext } from '../../rpc/types';
 import { ensureHeaders } from '../testing/qjs_polyfills';
 import { resetConnectivityHooksForTests, setConnectivityHooks } from './connectivityHooks';
+import {
+  getLoadingRegistryDebugState,
+  resetLoadingRegistryForTests,
+} from './loadingRegistry';
 import { createLifecycleProvider, toPublicApiState } from './lifecycle';
 import { createApiStateScope, type ApiStateInternal } from './state';
 
 ensureHeaders();
 
-function makeContext(methodName: string, spanId: string): RpcRequestContext {
+function makeContext(
+  methodName: string,
+  spanId: string,
+  extras: Partial<RpcRequestContext> = {},
+): RpcRequestContext {
   return {
     serviceName: 'demo.Service',
     methodName,
     traceId: 'trace-1',
     spanId,
     args: [],
+    ...extras,
   };
 }
 
@@ -31,6 +40,7 @@ test('client lifecycle: exposes only public api state fields', () => {
 });
 
 test('client lifecycle: updates loading state on start and finish', () => {
+  resetLoadingRegistryForTests();
   const state = createApiStateScope('lifecycle-test') as ApiStateInternal;
   const provider = createLifecycleProvider(state);
   const context = makeContext('Fetch', 'span-1');
@@ -38,10 +48,29 @@ test('client lifecycle: updates loading state on start and finish', () => {
   provider.onStart?.(context);
   expect(state.loading['demo.Service.Fetch']).toBe(true);
   expect(state.isLoading.value).toBe(true);
+  expect(getLoadingRegistryDebugState().userBusyCount).toBe(1);
 
   provider.onFinish?.(context);
   expect(state.loading['demo.Service.Fetch']).toBe(false);
   expect(state.isLoading.value).toBe(false);
+  expect(getLoadingRegistryDebugState().userBusyCount).toBe(0);
+});
+
+test('client lifecycle: streaming RPCs do not own api loading or chrome', () => {
+  resetLoadingRegistryForTests();
+  const state = createApiStateScope('lifecycle-stream') as ApiStateInternal;
+  const provider = createLifecycleProvider(state);
+  const context = makeContext('SubscribeNotifications', 'span-stream', { stream: true });
+
+  provider.onStart?.(context);
+  expect(state.loading['demo.Service.SubscribeNotifications']).toBeFalsy();
+  expect(state.isLoading.value).toBe(false);
+  expect(getLoadingRegistryDebugState().userBusyCount).toBe(0);
+  expect(getLoadingRegistryDebugState().barCount).toBe(0);
+
+  provider.onFinish?.(context);
+  expect(state.isLoading.value).toBe(false);
+  expect(getLoadingRegistryDebugState().userBusyCount).toBe(0);
 });
 
 test('client lifecycle: accepts success callbacks without mutating state', () => {
