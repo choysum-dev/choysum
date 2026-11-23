@@ -43,9 +43,11 @@ export { default as ChoyCommandPalette } from './components/layout/ChoyCommandPa
 export { default as ChoySidebarNav } from './components/layout/ChoySidebarNav.vue';
 export { default as ChoyCollapsedIdentityTipHost } from './components/layout/ChoyCollapsedIdentityTipHost.vue';
 export {
+  SidebarProvider as ChoySidebarProvider,
   SidebarMenu as ChoySidebarMenu,
   SidebarMenuButton as ChoySidebarMenuButton,
   SidebarMenuItem as ChoySidebarMenuItem,
+  useSidebar as useChoySidebar,
 } from './components/vendor/ui/sidebar/index';
 export { resolveCompanyLogoUrl, productLogoUrl } from './utils/resolveCompanyLogoUrl';
 

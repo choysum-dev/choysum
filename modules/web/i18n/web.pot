@@ -1515,6 +1515,11 @@ msgctxt "web/components/layout/ChoyConnectivityPill"
 msgid "Retry"
 msgstr ""
 
+#: web/components/layout/AuthSidebarUserMenu.vue
+msgctxt "web/components/layout/ChoyConnectivityPill"
+msgid "Retry connection"
+msgstr ""
+
 #: web/components/layout/ChoyGuestHeader.vue:69
 msgctxt "web/components/layout/ChoyGuestHeader"
 msgid "Home"
