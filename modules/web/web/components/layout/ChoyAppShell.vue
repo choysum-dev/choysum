@@ -118,7 +118,7 @@ SPDX-License-Identifier: Apache-2.0
         <footer
           v-if="showFooter"
           class="choy-shell__footer flex shrink-0 items-center justify-center"
-          :style="{ height: 'var(--choy-layout-chrome-height)', boxSizing: 'border-box' }"
+          :style="{ height: 'var(--choy-layout-footer-height)', boxSizing: 'border-box' }"
           data-testid="choy-shell-footer"
         >
           <ChoyAppFooter />
@@ -236,6 +236,24 @@ const sidebarSide = computed<'left' | 'right'>(() => {
   --choy-shell-inset-margin-x: 0.5rem;
   --choy-shell-inset-radius: var(--radius-xl, 0.75rem);
   --choy-shell-inset-bg: oklch(1 0 0);
+  /*
+   * Inset chrome = control + chrome-padding (header top pad only; bottom is 0 —
+   * header↔canvas uses section-gap).
+   * Sidebar outer pad = inset-margin-y + chrome-padding so the company logo
+   * top aligns with menu-trigger (inset card margin + header pad).
+   */
+  --choy-layout-chrome-height: calc(
+    var(--choy-control-height) + var(--choy-layout-chrome-padding)
+  );
+  --choy-layout-header-height: var(--choy-layout-chrome-height);
+  --choy-layout-footer-height: var(--choy-layout-chrome-height);
+  /* Logo top = inset-margin-y + chrome-padding so it meets menu-trigger. */
+  --choy-layout-sidebar-header-pad-top: calc(
+    var(--choy-shell-inset-margin-y) + var(--choy-layout-chrome-padding)
+  );
+  --choy-layout-sidebar-header-height: calc(
+    var(--choy-control-height) + var(--choy-layout-sidebar-header-pad-top)
+  );
   /* Identity row hover/open on chrome — keep in sync with --choy-color-sidebar-accent. */
   --choy-shell-chrome-hover: var(--choy-color-sidebar-accent);
   min-height: 0 !important;
@@ -269,13 +287,15 @@ html.dark .choy-shell[data-shell-mode='app'],
 .choy-shell[data-shell-mode='app'] [data-slot='sidebar'] > .fixed {
   position: absolute !important;
   /*
-   * Same block inset as <main> so sidebar header/footer bands share a horizontal
-   * seam with the content header/footer (dashboard-01 inset rhythm).
+   * Flush to the shell body so company logo / user avatar measure equal air
+   * from the rail's top-left and bottom-left corners. Inset <main> keeps its
+   * own margin-y for the floating white card (dashboard-01).
    */
-  top: var(--choy-shell-inset-margin-y) !important;
-  bottom: var(--choy-shell-inset-margin-y) !important;
+  top: 0 !important;
+  bottom: 0 !important;
   height: auto !important;
   box-sizing: border-box !important;
+  background-color: var(--choy-shell-chrome) !important;
   /*
    * Kill kit content-edge hairlines on both sides. Desktop Sidebar uses
    * physical group-data-[side=left]:border-r / [side=right]:border-l; a single
@@ -380,8 +400,8 @@ html.dark .choy-shell[data-shell-mode='app'],
 }
 
 /*
- * Collapsed: hide labels / meta / chevrons only. Mark size + left inset stay
- * identical to expanded so width animation does not jump the glyphs.
+ * Collapsed: hide labels / meta / company chevrons only. Mark size + left inset
+ * stay identical to expanded so width animation does not jump the glyphs.
  */
 .choy-shell[data-shell-mode='app']
   [data-slot='sidebar'][data-collapsible='icon']
@@ -397,18 +417,21 @@ html.dark .choy-shell[data-shell-mode='app'],
   [data-testid='auth-user-menu-meta'],
 .choy-shell[data-shell-mode='app']
   [data-slot='sidebar'][data-collapsible='icon']
-  [data-testid='company-switch-chevrons'],
-.choy-shell[data-shell-mode='app']
-  [data-slot='sidebar'][data-collapsible='icon']
-  [data-testid='auth-user-menu-chevrons'] {
+  [data-testid='company-switch-chevrons'] {
   display: none !important;
 }
 
 /*
  * Chrome (L1 + spanning header/footer) = 0.965; nested L2 pane = 0.985.
  * Collapsed: whole panel is chrome (L2 hidden).
+ * Column gap = section-gap so header/footer breathe against nav-split
+ * (same 0.5rem rhythm as inset header↔canvas and nav-pane padding-block).
  */
-.choy-shell[data-shell-mode='app'] [data-sidebar='sidebar'],
+.choy-shell[data-shell-mode='app'] [data-sidebar='sidebar'] {
+  background-color: var(--choy-shell-chrome) !important;
+  gap: var(--choy-layout-section-gap) !important;
+}
+
 .choy-shell[data-shell-mode='app'] [data-testid='choy-shell-app-rail'] {
   background-color: var(--choy-shell-chrome) !important;
 }
@@ -447,9 +470,9 @@ html.dark .choy-shell[data-shell-mode='app'],
   box-shadow: var(--shadow-sm) !important;
   overflow: hidden !important;
   min-height: 0 !important;
-  /* Header ↔ canvas ↔ footer. Inline gutter stays the wider content pad. */
+  /* Header ↔ canvas ↔ footer. Inline gutters live on children (see below). */
   gap: var(--choy-layout-section-gap) !important;
-  padding-inline: var(--choy-layout-content-padding) !important;
+  padding-inline: 0 !important;
 }
 
 /*
@@ -463,14 +486,30 @@ html.dark .choy-shell[data-shell-mode='app'],
   margin-inline-start: 0 !important;
 }
 
+/*
+ * Header: chrome-padding on top + inline, no bottom (section-gap separates
+ * canvas). Footer mirrors with bottom pad. Canvas keeps content-padding.
+ */
+.choy-shell[data-shell-mode='app'] .choy-app-header {
+  padding: var(--choy-layout-chrome-padding) var(--choy-layout-chrome-padding) 0 !important;
+  box-sizing: border-box;
+}
+
+.choy-shell[data-shell-mode='app'] .choy-shell__footer {
+  padding: 0 var(--choy-layout-chrome-padding) var(--choy-layout-chrome-padding) !important;
+  box-sizing: border-box;
+}
+
 .choy-shell[data-shell-mode='app'] [data-testid='choy-shell-canvas'] {
   background-color: transparent !important;
+  padding-inline: var(--choy-layout-content-padding) !important;
+  box-sizing: border-box;
 }
 
 /*
- * Sidebar header/footer bands match inset header/footer via layout tokens
- * so left/right poles share one horizontal seam. Identity triggers fill the
- * band; inline pad 0.5rem keeps mark x stable in the icon rail (size-8 slot).
+ * Sidebar header: top 1rem (meets menu-trigger), left chrome-padding (8px).
+ * Footer: left/bottom chrome-padding (8px). End pad 0 so company chevrons
+ * and the connectivity pill share the nav-split trailing edge.
  */
 .choy-shell[data-shell-mode='app'] [data-slot='sidebar-header'],
 .choy-shell[data-shell-mode='app'] [data-slot='sidebar-footer'] {
@@ -480,24 +519,75 @@ html.dark .choy-shell[data-shell-mode='app'],
   align-items: center !important;
   justify-content: flex-start !important;
   gap: 0 !important;
-  height: var(--choy-layout-chrome-height) !important;
-  min-height: var(--choy-layout-chrome-height) !important;
-  max-height: var(--choy-layout-chrome-height) !important;
-  padding-block: 0.25rem !important;
-  padding-inline: 0.5rem !important;
+  padding-inline-start: var(--choy-layout-chrome-padding) !important;
+  padding-inline-end: 0 !important;
   border: 0 !important;
   background-color: var(--choy-shell-chrome) !important;
   background-image: none !important;
   box-shadow: none !important;
 }
 
+.choy-shell[data-shell-mode='app'] [data-slot='sidebar-header'] {
+  height: var(--choy-layout-sidebar-header-height) !important;
+  min-height: var(--choy-layout-sidebar-header-height) !important;
+  max-height: var(--choy-layout-sidebar-header-height) !important;
+  padding-block-start: var(--choy-layout-sidebar-header-pad-top) !important;
+  padding-block-end: 0 !important;
+}
+
+.choy-shell[data-shell-mode='app'] [data-slot='sidebar-footer'] {
+  height: var(--choy-layout-chrome-height) !important;
+  min-height: var(--choy-layout-chrome-height) !important;
+  max-height: var(--choy-layout-chrome-height) !important;
+  padding-block-start: 0 !important;
+  padding-block-end: var(--choy-layout-chrome-padding) !important;
+}
+
 .choy-shell[data-shell-mode='app'] [data-testid='choy-shell-sidebar-header'],
 .choy-shell[data-shell-mode='app'] [data-testid='choy-shell-sidebar-footer'] {
   height: 100%;
   min-height: 0;
+  width: 100%;
 }
 
-.choy-shell[data-shell-mode='app'] [data-testid='company-switch-trigger'],
+/* Tip/popover hosts must stretch so size-lg h-12 does not leave empty band air. */
+.choy-shell[data-shell-mode='app'] [data-testid='choy-shell-sidebar-header'] > *,
+.choy-shell[data-shell-mode='app'] [data-testid='choy-shell-sidebar-footer'] > *,
+.choy-shell[data-shell-mode='app'] [data-testid='choy-shell-sidebar-header'] [data-slot='tooltip-trigger'],
+.choy-shell[data-shell-mode='app'] [data-testid='choy-shell-sidebar-footer'] [data-slot='tooltip-trigger'],
+.choy-shell[data-shell-mode='app'] [data-testid='choy-shell-sidebar-header'] [data-slot='popover-trigger'],
+.choy-shell[data-shell-mode='app'] [data-testid='choy-shell-sidebar-header'] [data-slot='popover-anchor'] {
+  height: 100%;
+  min-height: 0;
+}
+
+/* Footer identity row: trigger flexes; connectivity pill keeps a trailing slot. */
+.choy-shell[data-shell-mode='app'] [data-testid='auth-sidebar-user-menu'] {
+  height: 100%;
+  min-height: 0;
+}
+
+.choy-shell[data-shell-mode='app'] [data-testid='auth-sidebar-user-menu'] > .auth-sidebar-user-menu__identity,
+.choy-shell[data-shell-mode='app'] [data-testid='auth-sidebar-user-menu'] > .auth-sidebar-user-menu__identity > * {
+  height: 100%;
+  min-height: 0;
+}
+
+.choy-shell[data-shell-mode='app'] [data-testid='company-switch-trigger'] {
+  justify-content: flex-start !important;
+  align-items: center !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  min-width: 0 !important;
+  padding-block: 0 !important;
+  padding-inline: 0 !important;
+  margin-inline: 0 !important;
+  border-radius: var(--radius-md, 0.375rem);
+  gap: 0.5rem !important;
+  overflow: hidden !important;
+}
+
 .choy-shell[data-shell-mode='app'] [data-testid='auth-user-menu-trigger'] {
   justify-content: flex-start !important;
   align-items: center !important;
@@ -514,7 +604,7 @@ html.dark .choy-shell[data-shell-mode='app'],
   overflow: hidden !important;
 }
 
-/* Chrome rows need an explicit hover fill; kit accent alone was ≈ chrome in light. */
+/* Company + user identity share the same chrome fill hover/open. */
 .choy-shell[data-shell-mode='app'] [data-testid='company-switch-trigger']:hover,
 .choy-shell[data-shell-mode='app'] [data-testid='company-switch-trigger']:active,
 .choy-shell[data-shell-mode='app'] [data-testid='company-switch-trigger'][data-state='open'],
@@ -524,21 +614,75 @@ html.dark .choy-shell[data-shell-mode='app'],
   background-color: var(--choy-shell-chrome-hover) !important;
 }
 
-/* Defeat kit icon-mode size-control shrink — fill the shared chrome band. */
+/*
+ * Collapsed icon rail: center the size-8 mark in a 2rem hit target so hover
+ * fill is a square around the glyph (start pad would leave empty air on the
+ * trailing side only). Footer pill is not mounted.
+ */
+.choy-shell[data-shell-mode='app']
+  [data-slot='sidebar'][data-collapsible='icon']
+  [data-slot='sidebar-header'],
+.choy-shell[data-shell-mode='app']
+  [data-slot='sidebar'][data-collapsible='icon']
+  [data-slot='sidebar-footer'] {
+  padding-inline: 0 !important;
+  justify-content: center !important;
+}
+
+.choy-shell[data-shell-mode='app']
+  [data-slot='sidebar'][data-collapsible='icon']
+  [data-testid='choy-shell-sidebar-header'],
+.choy-shell[data-shell-mode='app']
+  [data-slot='sidebar'][data-collapsible='icon']
+  [data-testid='choy-shell-sidebar-footer'],
+.choy-shell[data-shell-mode='app']
+  [data-slot='sidebar'][data-collapsible='icon']
+  [data-testid='auth-sidebar-user-menu'],
+.choy-shell[data-shell-mode='app']
+  [data-slot='sidebar'][data-collapsible='icon']
+  [data-testid='auth-sidebar-user-menu'] > .auth-sidebar-user-menu__identity {
+  width: auto !important;
+  max-width: 100%;
+  justify-content: center !important;
+}
+
+.choy-shell[data-shell-mode='app']
+  [data-slot='sidebar'][data-collapsible='icon']
+  [data-testid='choy-shell-sidebar-header']
+  [data-slot='tooltip-trigger'],
+.choy-shell[data-shell-mode='app']
+  [data-slot='sidebar'][data-collapsible='icon']
+  [data-testid='choy-shell-sidebar-footer']
+  [data-slot='tooltip-trigger'],
+.choy-shell[data-shell-mode='app']
+  [data-slot='sidebar'][data-collapsible='icon']
+  [data-testid='choy-shell-sidebar-header']
+  [data-slot='tooltip-trigger']
+  > div,
+.choy-shell[data-shell-mode='app']
+  [data-slot='sidebar'][data-collapsible='icon']
+  [data-testid='choy-shell-sidebar-footer']
+  [data-slot='tooltip-trigger']
+  > div {
+  width: auto !important;
+  height: auto !important;
+  min-height: 0 !important;
+  justify-content: center !important;
+}
+
 .choy-shell[data-shell-mode='app']
   [data-slot='sidebar'][data-collapsible='icon']
   [data-testid='company-switch-trigger'],
 .choy-shell[data-shell-mode='app']
   [data-slot='sidebar'][data-collapsible='icon']
   [data-testid='auth-user-menu-trigger'] {
-  width: 100% !important;
-  height: 100% !important;
-  min-height: 0 !important;
-  min-width: 0 !important;
-  padding-block: 0 !important;
-  padding-inline: 0 !important;
-  margin-inline: 0 !important;
-  justify-content: flex-start !important;
+  width: 2rem !important;
+  height: 2rem !important;
+  min-width: 2rem !important;
+  min-height: 2rem !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  justify-content: center !important;
 }
 
 .choy-shell[data-shell-mode='app'] [data-testid='company-switch-logo-wrap'],

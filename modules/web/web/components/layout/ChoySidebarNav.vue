@@ -100,7 +100,11 @@ function onLeafClick(item: MenuItem) {
     >
       {{ emptyText }}
     </p>
-    <div v-else class="choy-sidebar-nav__groups flex flex-col px-1">
+    <!--
+      No px on groups: sidebar-group already owns the inline gutter (0.5rem).
+      Stacking px-1 here made L/R air 12px while nav-pane block pad is 8px.
+    -->
+    <div v-else class="choy-sidebar-nav__groups flex flex-col">
       <SidebarGroup v-for="group in navGroups" :key="group.key">
         <SidebarGroupContent>
           <SidebarMenu>
@@ -124,9 +128,13 @@ function onLeafClick(item: MenuItem) {
 </template>
 
 <style scoped>
+/*
+ * Inline gutter matches choy-shell-nav-pane padding-block (section-gap /
+ * chrome-padding = 0.5rem) so the menu frame is even on all sides.
+ */
 .choy-sidebar-nav :deep([data-sidebar='group']) {
   padding-block: 0;
-  padding-inline: 0.5rem;
+  padding-inline: var(--choy-layout-chrome-padding, 0.5rem);
 }
 .choy-sidebar-nav :deep([data-sidebar='group-content']) {
   font-size: 0.875rem;

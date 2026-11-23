@@ -55,7 +55,7 @@ describe('ChoyAppShell', () => {
     );
     expect(
       (mounted.q('[data-testid=choy-shell-footer]') as HTMLElement | null)?.style?.height || '',
-    ).toContain('--choy-layout-chrome-height');
+    ).toContain('--choy-layout-footer-height');
     expect(mounted.q('[data-testid=choy-app-footer]')?.className || '').toContain('leading-snug');
     expect(mounted.q('[data-testid=choy-app-footer]')?.textContent || '').toContain('Powered by Choysum');
     expect(mounted.q('[data-testid=choy-shell-menu-trigger]')).not.toBeNull();
