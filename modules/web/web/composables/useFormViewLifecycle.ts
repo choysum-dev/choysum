@@ -3,18 +3,24 @@
 
 import { computed, nextTick, onBeforeUnmount, ref, toRaw, watch, type ComputedRef } from 'vue';
 import type { RouteLocationNormalizedLoaded, RouteLocationRaw, Router } from 'vue-router';
+import {
+  beginNavigationLoading,
+  settleNavigationIfActive,
+} from '@/core/web/client/loadingRegistry';
+import { deepClonePreserve } from '@/core/utils/clone';
+import type { ClientModel, BaseModel } from '@/core/rpc';
+import type { ViewMode } from '@/web/web/components/view/viewScopeKeys';
+import { createTranslate } from '@/web/web/i18n';
+import { resolveNavLoadingPolicy } from '@/web/web/router/navLoadingPolicy';
+import { useBreadcrumbStore } from '@/web/web/stores/breadcrumbStore';
+import { isConnectivityUnreachable } from '@/web/web/stores/connectivityStore';
+import type { createFormController } from '@/web/web/controllers/formController';
+import type { provideOnchange } from '@/web/web/composables/useOnchange';
+import type { useOnchangeAggregation } from '@/web/web/composables/useOnchangeAggregation';
 import { ChoyMessage } from './useChoyMessage';
 import { confirmChoyAction, resolveConfirmChoy } from './confirmChoyAction';
 import { shouldSkipFormDirtyLeavePrompt } from './formDirtyLeaveGuard';
 import { isRowDraftDirty } from './listRowEdit';
-import { deepClonePreserve } from '@/core/utils/clone';
-import type { ClientModel, BaseModel } from '@/core/rpc';
-import type { ViewMode } from '@/web/web/components/view/viewScopeKeys';
-import { useBreadcrumbStore } from '@/web/web/stores/breadcrumbStore';
-import type { createFormController } from '@/web/web/controllers/formController';
-import type { provideOnchange } from '@/web/web/composables/useOnchange';
-import type { useOnchangeAggregation } from '@/web/web/composables/useOnchangeAggregation';
-import { createTranslate } from '@/web/web/i18n';
 
 /** Matches zh_CN msgctxt for discard confirm (not FormView's toolbar scope). */
 const { _t: _tConfirmDiscard } = createTranslate('web', {
@@ -137,6 +143,11 @@ export function useFormViewLifecycle<T extends BaseModel>(opts: UseFormViewLifec
 
   // Skip when entering or leaving login/logout/register — credential shells are
   // not durable drafts, and a pending leave dialog must not overlay the auth page.
+  //
+  // App router registers beginNavigationLoading before this leave guard, so a
+  // dirty leave opens a nav ticket first. Settle that ticket while the discard
+  // dialog is open (avoids handoff spinner behind the confirm); re-arm after
+  // confirm when the session is still reachable.
   const removeLeaveGuard = opts.router.beforeEach?.((to, from) => {
     if (leaving) return true;
     if (shouldSkipFormDirtyLeavePrompt(to, from)) {
@@ -146,7 +157,17 @@ export function useFormViewLifecycle<T extends BaseModel>(opts: UseFormViewLifec
     // Settings Save (and similar control busy): do not leave or switch views mid-flight.
     if (opts.leaveBlocked?.()) return false;
     if (!isFormDirty()) return true;
-    return confirmDiscardIfDirty();
+    return (async () => {
+      settleNavigationIfActive();
+      if (!(await confirmDiscardIfDirty())) return false;
+      if (resolveNavLoadingPolicy(to) === 'none' || isConnectivityUnreachable()) {
+        delete (to.meta as { __navLoadingGen?: number }).__navLoadingGen;
+        return true;
+      }
+      const generation = beginNavigationLoading();
+      (to.meta as { __navLoadingGen?: number }).__navLoadingGen = generation;
+      return true;
+    })();
   });
   onBeforeUnmount(() => {
     removeLeaveGuard?.();
@@ -202,29 +223,23 @@ export function useFormViewLifecycle<T extends BaseModel>(opts: UseFormViewLifec
 
   /**
    * Keep `leaving` true across create-cancel back() so the dirty leave guard does
-   * not open a second confirm. Resolves when navigation finishes (afterEach), when
-   * back() is a no-op, or after a bounded fallback if popstate never commits.
+   * not open a second confirm. Resolves when navigation finishes (afterEach) or
+   * after a bounded fallback if back() is a no-op / never commits.
+   *
+   * Do not finish on a zero-delay "still on fromPath" check: real history.go(-1)
+   * often commits after that macrotask, and clearing `leaving` early lets the
+   * leave guard reopen the discard dialog (seen when Connection lost slows nav).
    */
   function awaitCreateCancelBack(): Promise<void> {
-    const fromPath = String(opts.router.currentRoute.value.fullPath ?? '');
     return new Promise((resolve) => {
       let done = false;
-      let popSeen = false;
       let fallbackTimer: ReturnType<typeof setTimeout> | undefined;
-      const g = globalThis as typeof globalThis & {
-        addEventListener?: (type: string, listener: EventListener) => void;
-        removeEventListener?: (type: string, listener: EventListener) => void;
-      };
       const finish = () => {
         if (done) return;
         done = true;
         if (fallbackTimer != null) clearTimeout(fallbackTimer);
         removeAfter?.();
-        g.removeEventListener?.('popstate', onPopState);
         resolve();
-      };
-      const onPopState = () => {
-        popSeen = true;
       };
       const removeAfter = opts.router.afterEach?.(() => {
         finish();
@@ -233,17 +248,7 @@ export function useFormViewLifecycle<T extends BaseModel>(opts: UseFormViewLifec
       fallbackTimer = setTimeout(() => {
         finish();
       }, 250);
-      g.addEventListener?.('popstate', onPopState);
       opts.router.back();
-      if (done) return;
-      // Fast no-op: next macrotask, no popstate, still on fromPath.
-      setTimeout(() => {
-        if (done) return;
-        if (popSeen) return;
-        if (String(opts.router.currentRoute.value.fullPath ?? '') === fromPath) {
-          finish();
-        }
-      }, 0);
     });
   }
 

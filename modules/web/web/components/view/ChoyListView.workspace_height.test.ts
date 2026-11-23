@@ -35,6 +35,7 @@ function makeStore() {
     getContext: () => ({}),
     withContext: async (_c: any, fn: any) => fn(),
     Search: async () => [{ Id: '1', Name: 'A' }],
+    Count: async () => 1,
   } as any;
 }
 

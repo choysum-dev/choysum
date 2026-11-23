@@ -4,6 +4,7 @@
 import { Code, ConnectError } from '@connectrpc/connect';
 import type { RpcRequestContext } from '../../rpc/types';
 import { ensureHeaders } from '../testing/qjs_polyfills';
+import { resetConnectivityHooksForTests, setConnectivityHooks } from './connectivityHooks';
 import { createLifecycleProvider, toPublicApiState } from './lifecycle';
 import { createApiStateScope, type ApiStateInternal } from './state';
 
@@ -51,6 +52,42 @@ test('client lifecycle: accepts success callbacks without mutating state', () =>
 
   expect(state.isLoading.value).toBe(false);
   expect(state.hasErrors()).toBe(false);
+});
+
+test('client lifecycle: notifies connectivity hooks on success and transport outage', () => {
+  resetConnectivityHooksForTests();
+  const successes: number[] = [];
+  const outages: number[] = [];
+  setConnectivityHooks({
+    onTransportSuccess: () => successes.push(1),
+    onTransportOutage: () => outages.push(1),
+  });
+  const state = createApiStateScope('lifecycle-test') as ApiStateInternal;
+  const provider = createLifecycleProvider(state);
+  provider.onSuccess?.(undefined as any, undefined);
+  expect(successes).toHaveLength(1);
+
+  const context = makeContext('Down', 'span-outage');
+  const unavailable = Object.assign(Object.create(ConnectError.prototype), {
+    code: Code.Unavailable,
+    rawMessage: 'unavailable',
+    message: 'unavailable',
+    metadata: new Headers(),
+    findDetails: () => [],
+  }) as ConnectError;
+  provider.onError?.(context, unavailable);
+  expect(outages).toHaveLength(1);
+
+  const business = Object.assign(Object.create(ConnectError.prototype), {
+    code: Code.InvalidArgument,
+    rawMessage: 'bad',
+    message: 'bad',
+    metadata: new Headers(),
+    findDetails: () => [],
+  }) as ConnectError;
+  provider.onError?.(makeContext('Biz', 'span-biz'), business);
+  expect(successes).toHaveLength(2);
+  resetConnectivityHooksForTests();
 });
 
 test('client lifecycle: ignores canceled and abort-like errors', () => {

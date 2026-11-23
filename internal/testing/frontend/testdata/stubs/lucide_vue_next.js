@@ -40,6 +40,7 @@ export const CircleCheck = icon('CircleCheck');
 export const CircleHelp = icon('CircleHelp');
 export const CircleOff = icon('CircleOff');
 export const Clock = icon('Clock');
+export const CloudOff = icon('CloudOff');
 export const Copy = icon('Copy');
 export const Database = icon('Database');
 export const Download = icon('Download');

@@ -38,7 +38,8 @@ function makeStore() {
     setContext: () => {},
     getContext: () => ({}),
     withContext: async (_c: any, fn: any) => fn(),
-    Search: async () => [],
+    Search: fnRecorder(async () => []),
+    Count: fnRecorder(async () => 0),
   } as any;
 }
 
@@ -290,6 +291,40 @@ describe('ListView create action', () => {
     expect(findNewButton(el)).toBeFalsy();
     expect(root).toBeTruthy();
     expect(push.calls.length).toBe(0);
+    unmount();
+  });
+
+  test('retrySurface reloads via loadData with forcedCondition', async () => {
+    const { plugins } = buildPageMountGlobal({
+      route: { name: 'PartnerList', path: '/partner/partners', fullPath: '/partner/partners' },
+      router: { push },
+    });
+    const store = makeStore();
+    const forcedCondition = ['ParentId', '=', 'p1'] as any;
+    const { unmount, root } = mountApp(ChoyListView as any, {
+      props: {
+        store,
+        createAction: '',
+        showHeader: true,
+        showActions: true,
+        refreshAction: false,
+        deleteAction: false,
+        showPaginate: false,
+        forcedCondition,
+      },
+      plugins,
+    });
+    await flushPromises();
+    const searchesBefore = store.Search.calls.length;
+    const exposed = root as { retrySurface?: () => Promise<void> };
+    expect(typeof exposed.retrySurface).toBe('function');
+    await exposed.retrySurface?.();
+    await flushPromises();
+    expect(store.Search.calls.length).toBeGreaterThan(searchesBefore);
+    const lastArgs = store.Search.calls[store.Search.calls.length - 1] || [];
+    const blob = JSON.stringify(lastArgs);
+    expect(blob).toContain('ParentId');
+    expect(blob).toContain('p1');
     unmount();
   });
 });

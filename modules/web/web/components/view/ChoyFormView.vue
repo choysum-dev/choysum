@@ -219,6 +219,11 @@ SPDX-License-Identifier: Apache-2.0
       :mode="formBusyMode"
       class="min-h-0 flex-1 overflow-y-auto"
       :data-anchor="isSettingsPresentation ? 'choy.settings.sheet' : 'choy.form-view'"
+      :error="formSurfaceError"
+      :has-frame="formHasFrame"
+      :has-settled="formHasSettled"
+      :error-fallback-title="_t('Failed to load')"
+      @retry="onFormSurfaceRetry"
     >
       <form
         ref="formRef"
@@ -483,6 +488,14 @@ const viewMode = computed<ViewMode>(() => {
   return controller.vm.mode as ViewMode;
 });
 const loading = computed<boolean>(() => !!controller.vm.loading);
+/** Display load failure for BusyHost; create/edit drafts are frames, not load errors. */
+const formSurfaceError = computed(() =>
+  viewMode.value === 'create' ? null : controller.vm.error ?? null,
+);
+const formHasFrame = computed(
+  () => !!(controller.vm.draft || controller.vm.original),
+);
+const formHasSettled = computed(() => !!controller.vm.hasAppliedOnce);
 useProvideViewScope({
   kind: computed(() => (isSettingsPresentation.value ? 'Settings' : 'Form')),
   mode: viewMode,
@@ -886,6 +899,18 @@ async function reloadDisplay(): Promise<void> {
   await controller.beginDisplay(id);
 }
 
+async function onFormSurfaceRetry(): Promise<void> {
+  const id = effectiveRecordId.value;
+  if (!id || viewMode.value === 'create') return;
+  // Soft-stale Retry after a failed save must not wipe the draft silently.
+  if (!(await confirmDiscardIfDirty())) return;
+  try {
+    await controller.beginDisplay(id);
+  } catch {
+    // beginDisplay sets vm.error; Host keeps surface failure UI.
+  }
+}
+
 defineExpose({
   submit: handleSubmit,
   validate,
@@ -894,6 +919,8 @@ defineExpose({
   refresh: handleRefresh,
   /** Silent beginDisplay — for post-action sheet sync (e.g. Activate). */
   reloadDisplay,
+  /** BusyHost surface Retry — reloads display after optional dirty discard. */
+  retrySurface: onFormSurfaceRetry,
   reset: handleReset,
   copy: handleCopy,
   getFormData: () => toRaw(exposedFormData.value) as any,

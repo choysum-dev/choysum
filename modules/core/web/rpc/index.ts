@@ -6,3 +6,4 @@ export { setTokenProvider, setCSRFProvider, setLifecycleProvider } from './provi
 // Client and service builders used by generated web grpc wrappers.
 export { CreateWebClient } from './client_factory';
 export { CreateWebApiService } from './api_service';
+export { isTransportOutage } from './transportOutage';

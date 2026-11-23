@@ -234,10 +234,15 @@ SPDX-License-Identifier: Apache-2.0
 
     <ChoyViewBusyHost
       ref="chartBodyRef"
-      :busy="boardBusy && !errorText"
+      :busy="boardBusy"
       :mode="chartBusyMode"
       class="relative flex min-h-0 min-w-0 w-full flex-1 flex-col"
       data-region="chart-body"
+      :error="chartSurfaceError"
+      :has-frame="!!spec"
+      :has-settled="chartHasSettled"
+      :error-fallback-title="_t('Failed to load')"
+      @retry="onRetry"
     >
       <ChartContainer
         v-if="spec"
@@ -428,21 +433,10 @@ SPDX-License-Identifier: Apache-2.0
       </ChartContainer>
 
       <ChoyEmpty
-        v-else-if="controller.vm.hasAppliedOnce && !boardBusy && !errorText"
+        v-else-if="controller.vm.hasAppliedOnce && !boardBusy && chartSurfaceError == null"
         class="min-h-[280px] w-full flex-1 border-none"
         :description="resolvedEmptyLabel"
       />
-
-      <div
-        v-if="errorText"
-        class="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-background/70 text-sm text-destructive"
-        role="alert"
-      >
-        <span>{{ errorText }}</span>
-        <ChoyButton size="sm" variant="outline" @click="onRetry">
-          {{ _t('Retry') }}
-        </ChoyButton>
-      </div>
     </ChoyViewBusyHost>
   </ChoyViewContainer>
 </template>
@@ -702,12 +696,11 @@ const chartBusyMode = computed<'stale' | 'block'>(() => {
   const rows = (controller.vm.result as { rows?: unknown[] } | null)?.rows;
   return rows && rows.length > 0 ? 'stale' : 'block';
 });
-const errorText = computed(() => {
-  const err = prepError.value ?? controller.vm.error;
-  if (err == null) return null;
-  if (err instanceof Error) return err.message || String(err);
-  return String(err);
-});
+/** Prep or apply failure for BusyHost surface error (replaces raw-message overlay). */
+const chartSurfaceError = computed(() => prepError.value ?? controller.vm.error ?? null);
+const chartHasSettled = computed(
+  () => !!controller.vm.hasAppliedOnce || prepError.value != null,
+);
 
 const resolvedMetrics = computed(() => {
   if (props.metrics.length) return props.metrics;

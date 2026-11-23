@@ -34,6 +34,7 @@ import {
   applyChoyThemePreference,
   readChoyThemePreference,
 } from './composables/applyChoyThemePreference';
+import { bindConnectivityLifecycle } from './stores/connectivityStore';
 
 /** Optional overrides for unit tests; production callers omit this. */
 export type SetupAppDeps = {
@@ -114,6 +115,11 @@ export function setupApp(app: ChoysumWebApp, deps: SetupAppDeps = {}): void {
 
   const pinia = makePinia().use(piniaPersist);
   app.usePlugin('pinia', pinia, {}, false);
+
+  // Session reachability: wire RPC lifecycle + navigator after Pinia is active.
+  if (hasWindow()) {
+    bindConnectivityLifecycle();
+  }
 
   const i18nStore = resolveI18nStore();
 

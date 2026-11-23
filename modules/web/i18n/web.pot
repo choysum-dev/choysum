@@ -245,12 +245,12 @@ msgctxt "web/components/field/ChoyDateField"
 msgid "Select date"
 msgstr ""
 
-#: web/components/field/ChoyDatetimeField.vue:168
+#: web/components/field/ChoyDatetimeField.vue:197
 msgctxt "web/components/field/ChoyDatetimeField"
 msgid "Invalid date time"
 msgstr ""
 
-#: web/components/field/ChoyDatetimeField.vue:221
+#: web/components/field/ChoyDatetimeField.vue:250
 msgctxt "web/components/field/ChoyDatetimeField"
 msgid "Select date and time"
 msgstr ""
@@ -280,22 +280,22 @@ msgctxt "web/components/field/ChoyDecimalField"
 msgid "Total digits must not exceed %s"
 msgstr ""
 
-#: web/components/field/ChoyFieldBase.vue:272
+#: web/components/field/ChoyFieldBase.vue:298
 msgctxt "web/components/field/ChoyFieldBase"
 msgid "Company values"
 msgstr ""
 
-#: web/components/field/ChoyFieldBase.vue:272
+#: web/components/field/ChoyFieldBase.vue:298
 msgctxt "web/components/field/ChoyFieldBase"
 msgid "Company values: %s"
 msgstr ""
 
-#: web/components/field/ChoyFieldBase.vue:265
+#: web/components/field/ChoyFieldBase.vue:291
 msgctxt "web/components/field/ChoyFieldBase"
 msgid "Translate field"
 msgstr ""
 
-#: web/components/field/ChoyFieldBase.vue:265
+#: web/components/field/ChoyFieldBase.vue:291
 msgctxt "web/components/field/ChoyFieldBase"
 msgid "Translate: %s"
 msgstr ""
@@ -541,7 +541,7 @@ msgctxt "web/components/field/ChoyManyToManyField"
 msgid "Add a line…"
 msgstr ""
 
-#: web/components/field/ChoyManyToManyField.vue:58
+#: web/components/field/ChoyManyToManyField.vue:60
 msgctxt "web/components/field/ChoyManyToManyField"
 msgid "Cancel"
 msgstr ""
@@ -551,7 +551,7 @@ msgctxt "web/components/field/ChoyManyToManyField"
 msgid "Delete"
 msgstr ""
 
-#: web/components/field/ChoyManyToManyField.vue:59
+#: web/components/field/ChoyManyToManyField.vue:61
 msgctxt "web/components/field/ChoyManyToManyField"
 msgid "OK"
 msgstr ""
@@ -561,7 +561,7 @@ msgctxt "web/components/field/ChoyManyToManyField"
 msgid "Picker is not configured"
 msgstr ""
 
-#: web/components/field/ChoyManyToManyField.vue:116
+#: web/components/field/ChoyManyToManyField.vue:122
 msgctxt "web/components/field/ChoyManyToManyField"
 msgid "Select related items"
 msgstr ""
@@ -586,7 +586,7 @@ msgctxt "web/components/field/ChoyManyToManyRefField"
 msgid "Add a line…"
 msgstr ""
 
-#: web/components/field/ChoyManyToManyRefField.vue:58
+#: web/components/field/ChoyManyToManyRefField.vue:60
 msgctxt "web/components/field/ChoyManyToManyRefField"
 msgid "Cancel"
 msgstr ""
@@ -596,7 +596,7 @@ msgctxt "web/components/field/ChoyManyToManyRefField"
 msgid "Delete"
 msgstr ""
 
-#: web/components/field/ChoyManyToManyRefField.vue:59
+#: web/components/field/ChoyManyToManyRefField.vue:61
 msgctxt "web/components/field/ChoyManyToManyRefField"
 msgid "OK"
 msgstr ""
@@ -606,32 +606,32 @@ msgctxt "web/components/field/ChoyManyToManyRefField"
 msgid "Picker is not configured"
 msgstr ""
 
-#: web/components/field/ChoyManyToManyRefField.vue:127
+#: web/components/field/ChoyManyToManyRefField.vue:133
 msgctxt "web/components/field/ChoyManyToManyRefField"
 msgid "Select related items"
 msgstr ""
 
-#: web/components/field/ChoyManyToManyRefTagsField.vue:67
+#: web/components/field/ChoyManyToManyRefTagsField.vue:69
 msgctxt "web/components/field/ChoyManyToManyRefTagsField"
 msgid "Cancel"
 msgstr ""
 
-#: web/components/field/ChoyManyToManyRefTagsField.vue:174
+#: web/components/field/ChoyManyToManyRefTagsField.vue:180
 msgctxt "web/components/field/ChoyManyToManyRefTagsField"
 msgid "Create \"%s\""
 msgstr ""
 
-#: web/components/field/ChoyManyToManyRefTagsField.vue:183
+#: web/components/field/ChoyManyToManyRefTagsField.vue:189
 msgctxt "web/components/field/ChoyManyToManyRefTagsField"
 msgid "Create failed"
 msgstr ""
 
-#: web/components/field/ChoyManyToManyRefTagsField.vue:68
+#: web/components/field/ChoyManyToManyRefTagsField.vue:70
 msgctxt "web/components/field/ChoyManyToManyRefTagsField"
 msgid "OK"
 msgstr ""
 
-#: web/components/field/ChoyManyToManyRefTagsField.vue:120
+#: web/components/field/ChoyManyToManyRefTagsField.vue:126
 msgctxt "web/components/field/ChoyManyToManyRefTagsField"
 msgid "Please select..."
 msgstr ""
@@ -641,7 +641,7 @@ msgctxt "web/components/field/ChoyManyToManyRefTagsField"
 msgid "Remove"
 msgstr ""
 
-#: web/components/field/ChoyManyToManyRefTagsField.vue:121
+#: web/components/field/ChoyManyToManyRefTagsField.vue:127
 msgctxt "web/components/field/ChoyManyToManyRefTagsField"
 msgid "Select related items"
 msgstr ""
@@ -651,27 +651,27 @@ msgctxt "web/components/field/ChoyManyToManyRefTreeField"
 msgid "No data"
 msgstr ""
 
-#: web/components/field/ChoyManyToManyTagsField.vue:67
+#: web/components/field/ChoyManyToManyTagsField.vue:69
 msgctxt "web/components/field/ChoyManyToManyTagsField"
 msgid "Cancel"
 msgstr ""
 
-#: web/components/field/ChoyManyToManyTagsField.vue:175
+#: web/components/field/ChoyManyToManyTagsField.vue:181
 msgctxt "web/components/field/ChoyManyToManyTagsField"
 msgid "Create \"%s\""
 msgstr ""
 
-#: web/components/field/ChoyManyToManyTagsField.vue:184
+#: web/components/field/ChoyManyToManyTagsField.vue:190
 msgctxt "web/components/field/ChoyManyToManyTagsField"
 msgid "Create failed"
 msgstr ""
 
-#: web/components/field/ChoyManyToManyTagsField.vue:68
+#: web/components/field/ChoyManyToManyTagsField.vue:70
 msgctxt "web/components/field/ChoyManyToManyTagsField"
 msgid "OK"
 msgstr ""
 
-#: web/components/field/ChoyManyToManyTagsField.vue:121
+#: web/components/field/ChoyManyToManyTagsField.vue:127
 msgctxt "web/components/field/ChoyManyToManyTagsField"
 msgid "Please select..."
 msgstr ""
@@ -681,7 +681,7 @@ msgctxt "web/components/field/ChoyManyToManyTagsField"
 msgid "Remove"
 msgstr ""
 
-#: web/components/field/ChoyManyToManyTagsField.vue:122
+#: web/components/field/ChoyManyToManyTagsField.vue:128
 msgctxt "web/components/field/ChoyManyToManyTagsField"
 msgid "Select related items"
 msgstr ""
@@ -691,62 +691,62 @@ msgctxt "web/components/field/ChoyManyToManyTreeField"
 msgid "No data"
 msgstr ""
 
-#: web/components/field/ChoyManyToOneField.vue:34
+#: web/components/field/ChoyManyToOneField.vue:36
 msgctxt "web/components/field/ChoyManyToOneField"
 msgid "Cancel"
 msgstr ""
 
-#: web/components/field/ChoyManyToOneField.vue:146
+#: web/components/field/ChoyManyToOneField.vue:152
 msgctxt "web/components/field/ChoyManyToOneField"
 msgid "Create \"%s\""
 msgstr ""
 
-#: web/components/field/ChoyManyToOneField.vue:155
+#: web/components/field/ChoyManyToOneField.vue:161
 msgctxt "web/components/field/ChoyManyToOneField"
 msgid "Create failed"
 msgstr ""
 
-#: web/components/field/ChoyManyToOneField.vue:35
+#: web/components/field/ChoyManyToOneField.vue:37
 msgctxt "web/components/field/ChoyManyToOneField"
 msgid "OK"
 msgstr ""
 
-#: web/components/field/ChoyManyToOneField.vue:116
+#: web/components/field/ChoyManyToOneField.vue:122
 msgctxt "web/components/field/ChoyManyToOneField"
 msgid "Please select..."
 msgstr ""
 
-#: web/components/field/ChoyManyToOneField.vue:117
+#: web/components/field/ChoyManyToOneField.vue:123
 msgctxt "web/components/field/ChoyManyToOneField"
 msgid "Select record"
 msgstr ""
 
-#: web/components/field/ChoyManyToOneRefField.vue:34
+#: web/components/field/ChoyManyToOneRefField.vue:36
 msgctxt "web/components/field/ChoyManyToOneRefField"
 msgid "Cancel"
 msgstr ""
 
-#: web/components/field/ChoyManyToOneRefField.vue:161
+#: web/components/field/ChoyManyToOneRefField.vue:167
 msgctxt "web/components/field/ChoyManyToOneRefField"
 msgid "Create \"%s\""
 msgstr ""
 
-#: web/components/field/ChoyManyToOneRefField.vue:170
+#: web/components/field/ChoyManyToOneRefField.vue:176
 msgctxt "web/components/field/ChoyManyToOneRefField"
 msgid "Create failed"
 msgstr ""
 
-#: web/components/field/ChoyManyToOneRefField.vue:35
+#: web/components/field/ChoyManyToOneRefField.vue:37
 msgctxt "web/components/field/ChoyManyToOneRefField"
 msgid "OK"
 msgstr ""
 
-#: web/components/field/ChoyManyToOneRefField.vue:117
+#: web/components/field/ChoyManyToOneRefField.vue:123
 msgctxt "web/components/field/ChoyManyToOneRefField"
 msgid "Please select..."
 msgstr ""
 
-#: web/components/field/ChoyManyToOneRefField.vue:118
+#: web/components/field/ChoyManyToOneRefField.vue:124
 msgctxt "web/components/field/ChoyManyToOneRefField"
 msgid "Select record"
 msgstr ""
@@ -802,50 +802,50 @@ msgctxt "web/components/field/ChoyOneToManyField"
 msgid "Delete"
 msgstr ""
 
-#: web/components/field/ChoyOneToManyKanbanField.vue:191
+#: web/components/field/ChoyOneToManyKanbanField.vue:197
 msgctxt "web/components/field/ChoyOneToManyKanbanField"
 msgid "Add a line…"
 msgstr ""
 
-#: web/components/field/ChoyOneToManyKanbanField.vue:440
+#: web/components/field/ChoyOneToManyKanbanField.vue:446
 msgctxt "web/components/field/ChoyOneToManyKanbanField"
 msgid "Are you sure you want to delete this record? This action cannot be undone."
 msgstr ""
 
-#: web/components/field/ChoyOneToManyKanbanField.vue:445
-#: web/components/field/ChoyOneToManyKanbanField.vue:93
+#: web/components/field/ChoyOneToManyKanbanField.vue:451
+#: web/components/field/ChoyOneToManyKanbanField.vue:95
 msgctxt "web/components/field/ChoyOneToManyKanbanField"
 msgid "Cancel"
 msgstr ""
 
-#: web/components/field/ChoyOneToManyKanbanField.vue:441
+#: web/components/field/ChoyOneToManyKanbanField.vue:447
 msgctxt "web/components/field/ChoyOneToManyKanbanField"
 msgid "Confirm delete"
 msgstr ""
 
 #: web/components/field/ChoyOneToManyKanbanField.vue:20
-#: web/components/field/ChoyOneToManyKanbanField.vue:444
-#: web/components/field/ChoyOneToManyKanbanField.vue:90
+#: web/components/field/ChoyOneToManyKanbanField.vue:450
+#: web/components/field/ChoyOneToManyKanbanField.vue:92
 msgctxt "web/components/field/ChoyOneToManyKanbanField"
 msgid "Delete"
 msgstr ""
 
-#: web/components/field/ChoyOneToManyKanbanField.vue:194
+#: web/components/field/ChoyOneToManyKanbanField.vue:200
 msgctxt "web/components/field/ChoyOneToManyKanbanField"
 msgid "Edit record"
 msgstr ""
 
-#: web/components/field/ChoyOneToManyKanbanField.vue:193
+#: web/components/field/ChoyOneToManyKanbanField.vue:199
 msgctxt "web/components/field/ChoyOneToManyKanbanField"
 msgid "New record"
 msgstr ""
 
-#: web/components/field/ChoyOneToManyKanbanField.vue:192
+#: web/components/field/ChoyOneToManyKanbanField.vue:198
 msgctxt "web/components/field/ChoyOneToManyKanbanField"
 msgid "No data"
 msgstr ""
 
-#: web/components/field/ChoyOneToManyKanbanField.vue:86
+#: web/components/field/ChoyOneToManyKanbanField.vue:88
 msgctxt "web/components/field/ChoyOneToManyKanbanField"
 msgid "Provide a child record editor via the formView prop."
 msgstr ""
@@ -855,17 +855,17 @@ msgctxt "web/components/field/ChoyOneToManyKanbanField"
 msgid "Reorder"
 msgstr ""
 
-#: web/components/field/ChoyOneToManyKanbanField.vue:94
+#: web/components/field/ChoyOneToManyKanbanField.vue:96
 msgctxt "web/components/field/ChoyOneToManyKanbanField"
 msgid "Save"
 msgstr ""
 
-#: web/components/field/ChoyOneToManyKanbanField.vue:379
+#: web/components/field/ChoyOneToManyKanbanField.vue:385
 msgctxt "web/components/field/ChoyOneToManyKanbanField"
 msgid "Untitled"
 msgstr ""
 
-#: web/components/field/ChoyOneToManyKanbanField.vue:195
+#: web/components/field/ChoyOneToManyKanbanField.vue:201
 msgctxt "web/components/field/ChoyOneToManyKanbanField"
 msgid "View record"
 msgstr ""
@@ -933,127 +933,127 @@ msgctxt "web/components/field/ChoyPropertiesDefinitionField"
 msgid "Type"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:79
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:81
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Apply"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:268
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:76
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:274
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:78
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Cancel"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:71
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:70
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Close"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:42
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:44
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Constraints"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:163
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:169
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Default"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:267
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:273
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Discard"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:68
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:73
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Edit"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:101
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:107
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Edit property: %s"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:162
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:202
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:168
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:208
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Help"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:16
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:18
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Identity"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:161
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:191
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:214
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:167
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:197
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:220
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Label"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:154
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:160
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Name"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:333
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:339
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Name is required"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:101
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:107
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "New property"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:24
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:26
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Presentation"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:99
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:105
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Property"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:99
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:105
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Property: %s"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:164
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:46
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:170
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:48
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Readonly"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:52
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:54
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Selection"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:34
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:36
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Translate help"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:28
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:30
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Translate label"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:157
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:163
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Type"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:266
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:272
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Unsaved changes"
 msgstr ""
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:266
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:272
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "You have unsaved changes. Discard them?"
 msgstr ""
@@ -1219,107 +1219,107 @@ msgctxt "web/components/field/ChoyVarcharField"
 msgid "Value must be a string"
 msgstr ""
 
-#: web/components/field/ChoyFieldCompanyValuesDialog.vue:16
+#: web/components/field/ChoyFieldCompanyValuesDialog.vue:18
 msgctxt "web/components/field/FieldCompanyValuesDialog"
 msgid "Cancel"
 msgstr ""
 
-#: web/components/field/ChoyFieldCompanyValuesDialog.vue:55
+#: web/components/field/ChoyFieldCompanyValuesDialog.vue:61
 msgctxt "web/components/field/FieldCompanyValuesDialog"
 msgid "Company values"
 msgstr ""
 
-#: web/components/field/ChoyFieldCompanyValuesDialog.vue:262
+#: web/components/field/ChoyFieldCompanyValuesDialog.vue:268
 msgctxt "web/components/field/FieldCompanyValuesDialog"
 msgid "Company values saved"
 msgstr ""
 
-#: web/components/field/ChoyFieldCompanyValuesDialog.vue:55
+#: web/components/field/ChoyFieldCompanyValuesDialog.vue:61
 msgctxt "web/components/field/FieldCompanyValuesDialog"
 msgid "Company values: %s"
 msgstr ""
 
-#: web/components/field/ChoyFieldCompanyValuesDialog.vue:186
+#: web/components/field/ChoyFieldCompanyValuesDialog.vue:192
 msgctxt "web/components/field/FieldCompanyValuesDialog"
 msgid "Failed to load company values"
 msgstr ""
 
-#: web/components/field/ChoyFieldCompanyValuesDialog.vue:265
+#: web/components/field/ChoyFieldCompanyValuesDialog.vue:271
 msgctxt "web/components/field/FieldCompanyValuesDialog"
 msgid "Failed to save company values"
 msgstr ""
 
-#: web/components/field/ChoyFieldCompanyValuesDialog.vue:18
+#: web/components/field/ChoyFieldCompanyValuesDialog.vue:20
 msgctxt "web/components/field/FieldCompanyValuesDialog"
 msgid "Save company values"
 msgstr ""
 
-#: web/components/field/ChoyFieldTranslationsDialog.vue:12
+#: web/components/field/ChoyFieldTranslationsDialog.vue:14
 msgctxt "web/components/field/FieldTranslationsDialog"
 msgid "Base language (cannot be deleted)"
-msgstr ""
-
-#: web/components/field/ChoyFieldTranslationsDialog.vue:19
-msgctxt "web/components/field/FieldTranslationsDialog"
-msgid "Cancel"
-msgstr ""
-
-#: web/components/field/ChoyFieldTranslationsDialog.vue:135
-msgctxt "web/components/field/FieldTranslationsDialog"
-msgid "Failed to load translations"
-msgstr ""
-
-#: web/components/field/ChoyFieldTranslationsDialog.vue:186
-msgctxt "web/components/field/FieldTranslationsDialog"
-msgid "Failed to save translations"
 msgstr ""
 
 #: web/components/field/ChoyFieldTranslationsDialog.vue:21
 msgctxt "web/components/field/FieldTranslationsDialog"
+msgid "Cancel"
+msgstr ""
+
+#: web/components/field/ChoyFieldTranslationsDialog.vue:141
+msgctxt "web/components/field/FieldTranslationsDialog"
+msgid "Failed to load translations"
+msgstr ""
+
+#: web/components/field/ChoyFieldTranslationsDialog.vue:192
+msgctxt "web/components/field/FieldTranslationsDialog"
+msgid "Failed to save translations"
+msgstr ""
+
+#: web/components/field/ChoyFieldTranslationsDialog.vue:23
+msgctxt "web/components/field/FieldTranslationsDialog"
 msgid "Save translations"
 msgstr ""
 
-#: web/components/field/ChoyFieldTranslationsDialog.vue:53
+#: web/components/field/ChoyFieldTranslationsDialog.vue:59
 msgctxt "web/components/field/FieldTranslationsDialog"
 msgid "Translate field"
 msgstr ""
 
-#: web/components/field/ChoyFieldTranslationsDialog.vue:53
+#: web/components/field/ChoyFieldTranslationsDialog.vue:59
 msgctxt "web/components/field/FieldTranslationsDialog"
 msgid "Translate: %s"
 msgstr ""
 
-#: web/components/field/ChoyFieldTranslationsDialog.vue:183
+#: web/components/field/ChoyFieldTranslationsDialog.vue:189
 msgctxt "web/components/field/FieldTranslationsDialog"
 msgid "Translations saved"
 msgstr ""
 
-#: web/components/field/ChoyPropertyLabelTranslationsDialog.vue:12
+#: web/components/field/ChoyPropertyLabelTranslationsDialog.vue:14
 msgctxt "web/components/field/PropertyLabelTranslationsDialog"
 msgid "Base language (cannot be deleted)"
 msgstr ""
 
-#: web/components/field/ChoyPropertyLabelTranslationsDialog.vue:19
+#: web/components/field/ChoyPropertyLabelTranslationsDialog.vue:21
 msgctxt "web/components/field/PropertyLabelTranslationsDialog"
 msgid "Cancel"
 msgstr ""
 
-#: web/components/field/ChoyPropertyLabelTranslationsDialog.vue:101
+#: web/components/field/ChoyPropertyLabelTranslationsDialog.vue:107
 msgctxt "web/components/field/PropertyLabelTranslationsDialog"
 msgid "Failed to load translations"
 msgstr ""
 
-#: web/components/field/ChoyPropertyLabelTranslationsDialog.vue:21
+#: web/components/field/ChoyPropertyLabelTranslationsDialog.vue:23
 msgctxt "web/components/field/PropertyLabelTranslationsDialog"
 msgid "Save translations"
 msgstr ""
 
-#: web/components/field/ChoyPropertyLabelTranslationsDialog.vue:42
+#: web/components/field/ChoyPropertyLabelTranslationsDialog.vue:48
 msgctxt "web/components/field/PropertyLabelTranslationsDialog"
 msgid "Translate label"
 msgstr ""
 
-#: web/components/field/ChoyPropertyLabelTranslationsDialog.vue:42
+#: web/components/field/ChoyPropertyLabelTranslationsDialog.vue:48
 msgctxt "web/components/field/PropertyLabelTranslationsDialog"
 msgid "Translate: %s"
 msgstr ""
@@ -1494,6 +1494,27 @@ msgctxt "web/components/layout/ChoyCommandPalette"
 msgid "Type a command or search…"
 msgstr ""
 
+#: web/components/layout/ChoyConnectivityPill.vue:11
+msgctxt "web/components/layout/ChoyConnectivityPill"
+msgid "Cannot reach the server. Check your network, then retry."
+msgstr ""
+
+#: web/components/layout/ChoyConnectivityPill.vue:14
+msgctxt "web/components/layout/ChoyConnectivityPill"
+msgid "Checking…"
+msgstr ""
+
+#: web/components/layout/ChoyConnectivityPill.vue:4
+#: web/components/layout/ChoyConnectivityPill.vue:6
+msgctxt "web/components/layout/ChoyConnectivityPill"
+msgid "Connection lost"
+msgstr ""
+
+#: web/components/layout/ChoyConnectivityPill.vue:14
+msgctxt "web/components/layout/ChoyConnectivityPill"
+msgid "Retry"
+msgstr ""
+
 #: web/components/layout/ChoyGuestHeader.vue:69
 msgctxt "web/components/layout/ChoyGuestHeader"
 msgid "Home"
@@ -1580,6 +1601,36 @@ msgctxt "web/components/layout/ChoySidebarNav"
 msgid "No menus available"
 msgstr ""
 
+#: web/components/layout/ChoyViewLoadError.vue:21
+msgctxt "web/components/layout/ChoyViewLoadError"
+msgid "Cannot reach the server. Check your network, then retry."
+msgstr ""
+
+#: web/components/layout/ChoyViewLoadError.vue:17
+msgctxt "web/components/layout/ChoyViewLoadError"
+msgid "Connection lost"
+msgstr ""
+
+#: web/components/layout/ChoyViewLoadError.vue:17
+msgctxt "web/components/layout/ChoyViewLoadError"
+msgid "Failed to load this view"
+msgstr ""
+
+#: web/components/layout/ChoyViewLoadError.vue:10
+msgctxt "web/components/layout/ChoyViewLoadError"
+msgid "Reload page"
+msgstr ""
+
+#: web/components/layout/ChoyViewLoadError.vue:7
+msgctxt "web/components/layout/ChoyViewLoadError"
+msgid "Retry loading"
+msgstr ""
+
+#: web/components/layout/ChoyViewLoadError.vue:22
+msgctxt "web/components/layout/ChoyViewLoadError"
+msgid "The page resources could not be loaded. Retry or reload the page."
+msgstr ""
+
 #: web/components/layout/ChoyLoadingSlowHint.vue:93
 msgctxt "web/components/layout/LoadingSlowHint"
 msgid "Don't leave yet,<br />it's still loading..."
@@ -1615,12 +1666,12 @@ msgctxt "web/components/layout/LoadingSlowHint"
 msgid "You may not believe it,<br />but the application is actually loading..."
 msgstr ""
 
-#: web/components/layout/ChoyNavigationHandoff.vue:11
+#: web/components/layout/ChoyNavigationHandoff.vue:13
 msgctxt "web/components/layout/NavigationHandoff"
 msgid "Loading..."
 msgstr ""
 
-#: web/components/layout/ChoyPage.vue:88
+#: web/components/layout/ChoyPage.vue:93
 msgctxt "web/components/layout/Page"
 msgid "Loading..."
 msgstr ""
@@ -1661,7 +1712,7 @@ msgctxt "web/components/terminology/TerminologyExportMenu"
 msgid "PO download failed"
 msgstr ""
 
-#: web/components/view/ChoyChartView.vue:668
+#: web/components/view/ChoyChartView.vue:667
 msgctxt "web/components/view/ChartView"
 msgid "Bar"
 msgstr ""
@@ -1671,7 +1722,7 @@ msgctxt "web/components/view/ChartView"
 msgid "Chart type"
 msgstr ""
 
-#: web/components/view/ChoyChartView.vue:287
+#: web/components/view/ChoyChartView.vue:286
 msgctxt "web/components/view/ChartView"
 msgid "Count"
 msgstr ""
@@ -1682,12 +1733,17 @@ msgctxt "web/components/view/ChartView"
 msgid "Cumulative"
 msgstr ""
 
-#: web/components/view/ChoyChartView.vue:669
+#: web/components/view/ChoyChartView.vue:117
+msgctxt "web/components/view/ChartView"
+msgid "Failed to load"
+msgstr ""
+
+#: web/components/view/ChoyChartView.vue:668
 msgctxt "web/components/view/ChartView"
 msgid "Line"
 msgstr ""
 
-#: web/components/view/ChoyChartView.vue:271
+#: web/components/view/ChoyChartView.vue:270
 #: web/components/view/ChoyChartView.vue:53
 msgctxt "web/components/view/ChartView"
 msgid "Metric"
@@ -1708,12 +1764,12 @@ msgctxt "web/components/view/ChartView"
 msgid "No data or grouping not configured"
 msgstr ""
 
-#: web/components/view/ChoyChartView.vue:674
+#: web/components/view/ChoyChartView.vue:673
 msgctxt "web/components/view/ChartView"
 msgid "No sort"
 msgstr ""
 
-#: web/components/view/ChoyChartView.vue:670
+#: web/components/view/ChoyChartView.vue:669
 msgctxt "web/components/view/ChartView"
 msgid "Pie"
 msgstr ""
@@ -1723,22 +1779,17 @@ msgctxt "web/components/view/ChartView"
 msgid "Refresh"
 msgstr ""
 
-#: web/components/view/ChoyChartView.vue:182
-msgctxt "web/components/view/ChartView"
-msgid "Retry"
-msgstr ""
-
 #: web/components/view/ChoyChartView.vue:85
 msgctxt "web/components/view/ChartView"
 msgid "Sort"
 msgstr ""
 
-#: web/components/view/ChoyChartView.vue:675
+#: web/components/view/ChoyChartView.vue:674
 msgctxt "web/components/view/ChartView"
 msgid "Sort ascending"
 msgstr ""
 
-#: web/components/view/ChoyChartView.vue:676
+#: web/components/view/ChoyChartView.vue:675
 msgctxt "web/components/view/ChartView"
 msgid "Sort descending"
 msgstr ""
@@ -1754,7 +1805,7 @@ msgctxt "web/components/view/ChartView"
 msgid "System actions"
 msgstr ""
 
-#: web/components/view/ChoyChartView.vue:1234
+#: web/components/view/ChoyChartView.vue:1233
 msgctxt "web/components/view/ChartView"
 msgid "Total"
 msgstr ""
@@ -1762,6 +1813,21 @@ msgstr ""
 #: web/components/view/ChoyChartView.vue:5
 msgctxt "web/components/view/ChartView"
 msgid "User actions"
+msgstr ""
+
+#: web/components/view/ChoyFormPager.vue:71
+msgctxt "web/components/view/ChoyFormPager"
+msgid "Go to record"
+msgstr ""
+
+#: web/components/view/ChoyFormPager.vue:76
+msgctxt "web/components/view/ChoyFormPager"
+msgid "Next record"
+msgstr ""
+
+#: web/components/view/ChoyFormPager.vue:75
+msgctxt "web/components/view/ChoyFormPager"
+msgid "Previous record"
 msgstr ""
 
 #: web/components/view/ChoySearchFit.vue:32
@@ -1784,8 +1850,8 @@ msgctxt "web/components/view/FormView"
 msgid "Copy"
 msgstr ""
 
-#: web/composables/useFormViewSubmit.ts:178
-#: web/composables/useFormViewSubmit.ts:224
+#: web/composables/useFormViewSubmit.ts:177
+#: web/composables/useFormViewSubmit.ts:223
 msgctxt "web/components/view/FormView"
 msgid "Created successfully"
 msgstr ""
@@ -1795,12 +1861,12 @@ msgctxt "web/components/view/FormView"
 msgid "Delete"
 msgstr ""
 
-#: web/components/view/ChoyFormView.vue:57
+#: web/components/view/ChoyFormView.vue:59
 msgctxt "web/components/view/FormView"
 msgid "Details"
 msgstr ""
 
-#: web/components/view/ChoyFormView.vue:492
+#: web/components/view/ChoyFormView.vue:510
 msgctxt "web/components/view/FormView"
 msgid "Discard"
 msgstr ""
@@ -1810,18 +1876,23 @@ msgctxt "web/components/view/FormView"
 msgid "Edit"
 msgstr ""
 
+#: web/components/view/ChoyFormView.vue:106
+msgctxt "web/components/view/FormView"
+msgid "Failed to load"
+msgstr ""
+
 #: web/components/view/ChoyFormView.vue:39
 msgctxt "web/components/view/FormView"
 msgid "New"
 msgstr ""
 
-#: web/composables/useFormViewSubmit.ts:245
+#: web/composables/useFormViewSubmit.ts:244
 msgctxt "web/components/view/FormView"
 msgid "Operation failed"
 msgstr ""
 
-#: web/composables/useFormViewSubmit.ts:71
-#: web/composables/useFormViewSubmit.ts:77
+#: web/composables/useFormViewSubmit.ts:70
+#: web/composables/useFormViewSubmit.ts:76
 msgctxt "web/components/view/FormView"
 msgid "Please fix the errors in the form first"
 msgstr ""
@@ -1836,20 +1907,20 @@ msgctxt "web/components/view/FormView"
 msgid "Reset"
 msgstr ""
 
-#: web/components/view/ChoyFormView.vue:485
-#: web/components/view/ChoyFormView.vue:490
+#: web/components/view/ChoyFormView.vue:503
+#: web/components/view/ChoyFormView.vue:508
 msgctxt "web/components/view/FormView"
 msgid "Save"
 msgstr ""
 
-#: web/composables/useFormViewSubmit.ts:179
-#: web/composables/useFormViewSubmit.ts:224
+#: web/composables/useFormViewSubmit.ts:178
+#: web/composables/useFormViewSubmit.ts:223
 msgctxt "web/components/view/FormView"
 msgid "Saved successfully"
 msgstr ""
 
-#: web/components/view/ChoyFormView.vue:485
-#: web/components/view/ChoyFormView.vue:490
+#: web/components/view/ChoyFormView.vue:503
+#: web/components/view/ChoyFormView.vue:508
 msgctxt "web/components/view/FormView"
 msgid "Saving..."
 msgstr ""
@@ -1875,7 +1946,12 @@ msgctxt "web/components/view/KanbanView"
 msgid "%s more"
 msgstr ""
 
-#: web/components/view/ChoyKanbanView.vue:159
+#: web/components/view/ChoyKanbanView.vue:64
+msgctxt "web/components/view/KanbanView"
+msgid "Failed to load"
+msgstr ""
+
+#: web/components/view/ChoyKanbanView.vue:203
 msgctxt "web/components/view/KanbanView"
 msgid "Failed to move card"
 msgstr ""
@@ -1896,7 +1972,7 @@ msgctxt "web/components/view/KanbanView"
 msgid "Move to lane"
 msgstr ""
 
-#: web/components/view/ChoyKanbanView.vue:231
+#: web/components/view/ChoyKanbanView.vue:291
 msgctxt "web/components/view/KanbanView"
 msgid "New"
 msgstr ""
@@ -1943,7 +2019,7 @@ msgctxt "web/components/view/ListView"
 msgid "Clear selection"
 msgstr ""
 
-#: web/components/view/ChoyListView.vue:103
+#: web/components/view/ChoyListView.vue:104
 msgctxt "web/components/view/ListView"
 msgid "Click to load more (%s remaining)"
 msgstr ""
@@ -1958,33 +2034,34 @@ msgctxt "web/components/view/ListView"
 msgid "Discard"
 msgstr ""
 
-#: web/components/view/ChoyListView.vue:303
+#: web/components/view/ChoyListView.vue:373
 msgctxt "web/components/view/ListView"
 msgid "Editing was discarded because the row is no longer visible."
 msgstr ""
 
-#: web/components/view/ChoyListView.vue:633
+#: web/components/view/ChoyListView.vue:698
+#: web/components/view/ChoyListView.vue:87
 msgctxt "web/components/view/ListView"
 msgid "Failed to load list"
 msgstr ""
 
-#: web/components/view/ChoyListView.vue:372
+#: web/components/view/ChoyListView.vue:439
 msgctxt "web/components/view/ListView"
 msgid "Failed to refresh after reorder"
 msgstr ""
 
-#: web/components/view/ChoyListView.vue:372
+#: web/components/view/ChoyListView.vue:439
 msgctxt "web/components/view/ListView"
 msgid "Failed to reorder rows"
 msgstr ""
 
-#: web/components/view/ChoyListView.vue:117
+#: web/components/view/ChoyListView.vue:118
 #: web/components/view/ChoyListView.vue:21
 msgctxt "web/components/view/ListView"
 msgid "New"
 msgstr ""
 
-#: web/components/view/ChoyListView.vue:112
+#: web/components/view/ChoyListView.vue:113
 msgctxt "web/components/view/ListView"
 msgid "No data"
 msgstr ""
@@ -2039,18 +2116,28 @@ msgctxt "web/components/view/SearchView"
 msgid "Search..."
 msgstr ""
 
-#: web/components/view/ChoyViewBusyHost.vue:27
+#: web/components/view/ChoyViewBusyHost.vue:46
 msgctxt "web/components/view/ViewBusyHost"
 msgid "Loading"
 msgstr ""
 
-#: web/components/view/search/Search.vue:689
+#: web/components/view/ChoyViewBusyHost.vue:47
+msgctxt "web/components/view/ViewBusyHost"
+msgid "Retry"
+msgstr ""
+
+#: web/components/view/ChoyViewSurfaceError.vue:19
+msgctxt "web/components/view/ViewSurfaceError"
+msgid "Retry"
+msgstr ""
+
+#: web/components/view/search/Search.vue:695
 msgctxt "web/components/view/search/Search"
 msgid "Add at least one complete condition before confirming"
 msgstr ""
 
-#: web/components/view/search/Search.vue:184
-#: web/components/view/search/Search.vue:352
+#: web/components/view/search/Search.vue:188
+#: web/components/view/search/Search.vue:358
 msgctxt "web/components/view/search/Search"
 msgid "Cancel"
 msgstr ""
@@ -2070,12 +2157,12 @@ msgctxt "web/components/view/search/Search"
 msgid "Clear grouping"
 msgstr ""
 
-#: web/components/view/search/Search.vue:348
+#: web/components/view/search/Search.vue:354
 msgctxt "web/components/view/search/Search"
 msgid "Confirm delete"
 msgstr ""
 
-#: web/components/view/search/Search.vue:132
+#: web/components/view/search/Search.vue:138
 msgctxt "web/components/view/search/Search"
 msgid "Custom filter"
 msgstr ""
@@ -2090,17 +2177,17 @@ msgctxt "web/components/view/search/Search"
 msgid "Custom group by"
 msgstr ""
 
-#: web/components/view/search/Search.vue:97
+#: web/components/view/search/Search.vue:103
 msgctxt "web/components/view/search/Search"
 msgid "Day"
 msgstr ""
 
-#: web/components/view/search/Search.vue:351
+#: web/components/view/search/Search.vue:357
 msgctxt "web/components/view/search/Search"
 msgid "Delete"
 msgstr ""
 
-#: web/components/view/search/Search.vue:347
+#: web/components/view/search/Search.vue:353
 msgctxt "web/components/view/search/Search"
 msgid "Delete favorite \"%s\"? This cannot be undone."
 msgstr ""
@@ -2110,7 +2197,7 @@ msgctxt "web/components/view/search/Search"
 msgid "Delete favorite %s"
 msgstr ""
 
-#: web/components/view/search/Search.vue:286
+#: web/components/view/search/Search.vue:292
 msgctxt "web/components/view/search/Search"
 msgid "Edit favorite"
 msgstr ""
@@ -2120,12 +2207,12 @@ msgctxt "web/components/view/search/Search"
 msgid "Edit favorite %s"
 msgstr ""
 
-#: web/components/view/search/Search.vue:132
+#: web/components/view/search/Search.vue:138
 msgctxt "web/components/view/search/Search"
 msgid "Edit filter"
 msgstr ""
 
-#: web/components/view/search/Search.vue:399
+#: web/components/view/search/Search.vue:405
 msgctxt "web/components/view/search/Search"
 msgid "Enter a favorite name"
 msgstr ""
@@ -2135,22 +2222,22 @@ msgctxt "web/components/view/search/Search"
 msgid "Failed to load favorites"
 msgstr ""
 
-#: web/components/view/search/Search.vue:364
+#: web/components/view/search/Search.vue:370
 msgctxt "web/components/view/search/Search"
 msgid "Favorite deleted"
 msgstr ""
 
-#: web/components/view/search/Search.vue:172
+#: web/components/view/search/Search.vue:176
 msgctxt "web/components/view/search/Search"
 msgid "Favorite name"
 msgstr ""
 
-#: web/components/view/search/Search.vue:418
+#: web/components/view/search/Search.vue:424
 msgctxt "web/components/view/search/Search"
 msgid "Favorite saved"
 msgstr ""
 
-#: web/components/view/search/Search.vue:411
+#: web/components/view/search/Search.vue:417
 msgctxt "web/components/view/search/Search"
 msgid "Favorite updated"
 msgstr ""
@@ -2170,12 +2257,12 @@ msgctxt "web/components/view/search/Search"
 msgid "Group by"
 msgstr ""
 
-#: web/components/view/search/Search.vue:95
+#: web/components/view/search/Search.vue:101
 msgctxt "web/components/view/search/Search"
 msgid "Month"
 msgstr ""
 
-#: web/components/view/search/Search.vue:171
+#: web/components/view/search/Search.vue:175
 msgctxt "web/components/view/search/Search"
 msgid "Name"
 msgstr ""
@@ -2200,7 +2287,7 @@ msgctxt "web/components/view/search/Search"
 msgid "Not set"
 msgstr ""
 
-#: web/components/view/search/Search.vue:94
+#: web/components/view/search/Search.vue:100
 msgctxt "web/components/view/search/Search"
 msgid "Quarter"
 msgstr ""
@@ -2220,12 +2307,12 @@ msgctxt "web/components/view/search/Search"
 msgid "Run search"
 msgstr ""
 
-#: web/components/view/search/Search.vue:185
+#: web/components/view/search/Search.vue:189
 msgctxt "web/components/view/search/Search"
 msgid "Save"
 msgstr ""
 
-#: web/components/view/search/Search.vue:286
+#: web/components/view/search/Search.vue:292
 msgctxt "web/components/view/search/Search"
 msgid "Save current filters"
 msgstr ""
@@ -2235,7 +2322,7 @@ msgctxt "web/components/view/search/Search"
 msgid "Save current filters…"
 msgstr ""
 
-#: web/components/view/search/Search.vue:230
+#: web/components/view/search/Search.vue:236
 msgctxt "web/components/view/search/Search"
 msgid "Search..."
 msgstr ""
@@ -2245,7 +2332,7 @@ msgctxt "web/components/view/search/Search"
 msgid "Select a field…"
 msgstr ""
 
-#: web/components/view/search/Search.vue:180
+#: web/components/view/search/Search.vue:184
 msgctxt "web/components/view/search/Search"
 msgid "Share with all users"
 msgstr ""
@@ -2260,27 +2347,27 @@ msgctxt "web/components/view/search/Search"
 msgid "Toggle search menu"
 msgstr ""
 
-#: web/components/view/search/Search.vue:176
+#: web/components/view/search/Search.vue:180
 msgctxt "web/components/view/search/Search"
 msgid "Use by default"
 msgstr ""
 
-#: web/components/view/search/Search.vue:96
+#: web/components/view/search/Search.vue:102
 msgctxt "web/components/view/search/Search"
 msgid "Week"
 msgstr ""
 
-#: web/components/view/search/Search.vue:93
+#: web/components/view/search/Search.vue:99
 msgctxt "web/components/view/search/Search"
 msgid "Year"
 msgstr ""
 
-#: web/components/view/search/SearchFilter.vue:92
+#: web/components/view/search/SearchFilter.vue:107
 msgctxt "web/components/view/search/SearchFilter"
 msgid "(empty)"
 msgstr ""
 
-#: web/components/view/search/SearchFilter.vue:98
+#: web/components/view/search/SearchFilter.vue:113
 msgctxt "web/components/view/search/SearchFilter"
 msgid "(incomplete)"
 msgstr ""
@@ -2310,7 +2397,7 @@ msgctxt "web/components/view/search/SearchFilterCondition"
 msgid "Add values"
 msgstr ""
 
-#: web/components/view/search/SearchFilterCondition.vue:163
+#: web/components/view/search/SearchFilterCondition.vue:164
 msgctxt "web/components/view/search/SearchFilterCondition"
 msgid "Enter JSON"
 msgstr ""
@@ -2330,7 +2417,7 @@ msgctxt "web/components/view/search/SearchFilterCondition"
 msgid "Operator"
 msgstr ""
 
-#: web/components/view/search/SearchFilterCondition.vue:165
+#: web/components/view/search/SearchFilterCondition.vue:166
 msgctxt "web/components/view/search/SearchFilterCondition"
 msgid "Please select..."
 msgstr ""
@@ -2345,27 +2432,27 @@ msgctxt "web/components/view/search/SearchFilterCondition"
 msgid "Select a field"
 msgstr ""
 
-#: web/components/view/search/SearchFilterCondition.vue:155
+#: web/components/view/search/SearchFilterCondition.vue:156
 msgctxt "web/components/view/search/SearchFilterCondition"
 msgid "Select a record"
 msgstr ""
 
-#: web/components/view/search/SearchFilterCondition.vue:157
+#: web/components/view/search/SearchFilterCondition.vue:158
 msgctxt "web/components/view/search/SearchFilterCondition"
 msgid "Select date"
 msgstr ""
 
-#: web/components/view/search/SearchFilterCondition.vue:159
+#: web/components/view/search/SearchFilterCondition.vue:160
 msgctxt "web/components/view/search/SearchFilterCondition"
 msgid "Select date and time"
 msgstr ""
 
-#: web/components/view/search/SearchFilterCondition.vue:161
+#: web/components/view/search/SearchFilterCondition.vue:162
 msgctxt "web/components/view/search/SearchFilterCondition"
 msgid "Select time"
 msgstr ""
 
-#: web/components/view/search/SearchFilterCondition.vue:167
+#: web/components/view/search/SearchFilterCondition.vue:168
 msgctxt "web/components/view/search/SearchFilterCondition"
 msgid "Value"
 msgstr ""
@@ -2396,6 +2483,31 @@ msgstr ""
 #: web/components/view/search/SearchFilterGroup.vue:44
 msgctxt "web/components/view/search/SearchFilterGroup"
 msgid "Remove group"
+msgstr ""
+
+#: web/composables/resolveViewSurfaceErrorCopy.ts:58
+msgctxt "web/composables/resolveViewSurfaceErrorCopy@resolveViewSurfaceErrorCopy"
+msgid "Connection lost"
+msgstr ""
+
+#: web/composables/resolveViewSurfaceErrorCopy.ts:59
+msgctxt "web/composables/resolveViewSurfaceErrorCopy@resolveViewSurfaceErrorCopy"
+msgid "Could not load this data. Check your network, then retry."
+msgstr ""
+
+#: web/composables/resolveViewSurfaceErrorCopy.ts:70
+msgctxt "web/composables/resolveViewSurfaceErrorCopy@resolveViewSurfaceErrorCopy"
+msgid "Could not refresh."
+msgstr ""
+
+#: web/composables/resolveViewSurfaceErrorCopy.ts:62
+msgctxt "web/composables/resolveViewSurfaceErrorCopy@resolveViewSurfaceErrorCopy"
+msgid "Failed to load"
+msgstr ""
+
+#: web/composables/resolveViewSurfaceErrorCopy.ts:64
+msgctxt "web/composables/resolveViewSurfaceErrorCopy@resolveViewSurfaceErrorCopy"
+msgid "Something went wrong. Retry to try again."
 msgstr ""
 
 #: web/composables/search/useGroupingOptions.ts:17
@@ -2440,42 +2552,42 @@ msgctxt "web/composables/search/useSearch"
 msgid "Not configured"
 msgstr ""
 
-#: web/composables/useChoyMessage.ts:25
+#: web/composables/useChoyMessage.ts:33
 msgctxt "web/composables/useChoyMessage"
 msgid "Error"
 msgstr ""
 
-#: web/composables/useChoyMessage.ts:27
+#: web/composables/useChoyMessage.ts:35
 msgctxt "web/composables/useChoyMessage"
 msgid "Info"
 msgstr ""
 
-#: web/composables/useChoyMessage.ts:21
+#: web/composables/useChoyMessage.ts:29
 msgctxt "web/composables/useChoyMessage"
 msgid "Success"
 msgstr ""
 
-#: web/composables/useChoyMessage.ts:23
+#: web/composables/useChoyMessage.ts:31
 msgctxt "web/composables/useChoyMessage"
 msgid "Warning"
 msgstr ""
 
-#: web/composables/useFormViewLifecycle.ts:111
+#: web/composables/useFormViewLifecycle.ts:126
 msgctxt "web/composables/useFormViewLifecycle@confirmDiscardIfDirty"
 msgid "Cancel"
 msgstr ""
 
-#: web/composables/useFormViewLifecycle.ts:110
+#: web/composables/useFormViewLifecycle.ts:125
 msgctxt "web/composables/useFormViewLifecycle@confirmDiscardIfDirty"
 msgid "Discard"
 msgstr ""
 
-#: web/composables/useFormViewLifecycle.ts:109
+#: web/composables/useFormViewLifecycle.ts:122
 msgctxt "web/composables/useFormViewLifecycle@confirmDiscardIfDirty"
 msgid "Unsaved changes"
 msgstr ""
 
-#: web/composables/useFormViewLifecycle.ts:109
+#: web/composables/useFormViewLifecycle.ts:121
 msgctxt "web/composables/useFormViewLifecycle@confirmDiscardIfDirty"
 msgid "You have unsaved changes. Discard them?"
 msgstr ""
@@ -2541,190 +2653,190 @@ msgctxt "web/composables/useRecordIoMenu"
 msgid "Import"
 msgstr ""
 
-#: web/export/ExportPanel.vue:34
+#: web/export/ExportPanel.vue:40
 msgctxt "web/export/ExportPanel"
 msgid "CSV stored as document %ref."
 msgstr ""
 
-#: web/export/ExportPanel.vue:29
+#: web/export/ExportPanel.vue:35
 msgctxt "web/export/ExportPanel"
 msgid "Cancel"
 msgstr ""
 
-#: web/export/ExportPanel.vue:28
+#: web/export/ExportPanel.vue:34
 msgctxt "web/export/ExportPanel"
 msgid "Customize fields…"
 msgstr ""
 
-#: web/export/ExportPanel.vue:40
+#: web/export/ExportPanel.vue:46
 msgctxt "web/export/ExportPanel"
 msgid "Delete"
 msgstr ""
 
-#: web/export/ExportPanel.vue:32
+#: web/export/ExportPanel.vue:38
 msgctxt "web/export/ExportPanel"
 msgid "Done"
-msgstr ""
-
-#: web/export/ExportPanel.vue:27
-msgctxt "web/export/ExportPanel"
-msgid "Export"
-msgstr ""
-
-#: web/export/ExportPanel.vue:44
-msgctxt "web/export/ExportPanel"
-msgid "Export %count row(s) matching the current filters."
-msgstr ""
-
-#: web/export/ExportPanel.vue:43
-msgctxt "web/export/ExportPanel"
-msgid "Export %count selected row(s)."
-msgstr ""
-
-#: web/export/ExportPanel.vue:31
-msgctxt "web/export/ExportPanel"
-msgid "Export CSV"
 msgstr ""
 
 #: web/export/ExportPanel.vue:33
 msgctxt "web/export/ExportPanel"
-msgid "Export completed"
+msgid "Export"
 msgstr ""
 
-#: web/export/ExportPanel.vue:45
+#: web/export/ExportPanel.vue:50
 msgctxt "web/export/ExportPanel"
-msgid "Export rows matching the current filters."
+msgid "Export %count row(s) matching the current filters."
 msgstr ""
 
-#: web/export/ExportPanel.vue:38
+#: web/export/ExportPanel.vue:49
 msgctxt "web/export/ExportPanel"
-msgid "Load template"
-msgstr ""
-
-#: web/export/ExportPanel.vue:35
-msgctxt "web/export/ExportPanel"
-msgid "Loading fields…"
-msgstr ""
-
-#: web/export/ExportPanel.vue:36
-msgctxt "web/export/ExportPanel"
-msgid "No exportable fields were returned."
-msgstr ""
-
-#: web/export/ExportPanel.vue:30
-msgctxt "web/export/ExportPanel"
-msgid "Preview"
-msgstr ""
-
-#: web/export/ExportPanel.vue:39
-msgctxt "web/export/ExportPanel"
-msgid "Save template"
+msgid "Export %count selected row(s)."
 msgstr ""
 
 #: web/export/ExportPanel.vue:37
 msgctxt "web/export/ExportPanel"
-msgid "Saved templates"
+msgid "Export CSV"
 msgstr ""
 
-#: web/export/ExportPanel.vue:42
+#: web/export/ExportPanel.vue:39
 msgctxt "web/export/ExportPanel"
-msgid "Shared"
+msgid "Export completed"
+msgstr ""
+
+#: web/export/ExportPanel.vue:51
+msgctxt "web/export/ExportPanel"
+msgid "Export rows matching the current filters."
+msgstr ""
+
+#: web/export/ExportPanel.vue:44
+msgctxt "web/export/ExportPanel"
+msgid "Load template"
 msgstr ""
 
 #: web/export/ExportPanel.vue:41
 msgctxt "web/export/ExportPanel"
+msgid "Loading fields…"
+msgstr ""
+
+#: web/export/ExportPanel.vue:42
+msgctxt "web/export/ExportPanel"
+msgid "No exportable fields were returned."
+msgstr ""
+
+#: web/export/ExportPanel.vue:36
+msgctxt "web/export/ExportPanel"
+msgid "Preview"
+msgstr ""
+
+#: web/export/ExportPanel.vue:45
+msgctxt "web/export/ExportPanel"
+msgid "Save template"
+msgstr ""
+
+#: web/export/ExportPanel.vue:43
+msgctxt "web/export/ExportPanel"
+msgid "Saved templates"
+msgstr ""
+
+#: web/export/ExportPanel.vue:48
+msgctxt "web/export/ExportPanel"
+msgid "Shared"
+msgstr ""
+
+#: web/export/ExportPanel.vue:47
+msgctxt "web/export/ExportPanel"
 msgid "Template name"
-msgstr ""
-
-#: web/import/ImportPanel.vue:42
-msgctxt "web/import/ImportPanel"
-msgid "CSV column"
-msgstr ""
-
-#: web/import/ImportPanel.vue:49
-msgctxt "web/import/ImportPanel"
-msgid "Cancel"
-msgstr ""
-
-#: web/import/ImportPanel.vue:47
-msgctxt "web/import/ImportPanel"
-msgid "Code"
-msgstr ""
-
-#: web/import/ImportPanel.vue:52
-msgctxt "web/import/ImportPanel"
-msgid "Done"
-msgstr ""
-
-#: web/import/ImportPanel.vue:39
-msgctxt "web/import/ImportPanel"
-msgid "Drop CSV here or click to browse"
-msgstr ""
-
-#: web/import/ImportPanel.vue:46
-msgctxt "web/import/ImportPanel"
-msgid "Field"
-msgstr ""
-
-#: web/import/ImportPanel.vue:37
-#: web/import/ImportPanel.vue:51
-#: web/import/ImportPanel.vue:63
-msgctxt "web/import/ImportPanel"
-msgid "Import"
-msgstr ""
-
-#: web/import/ImportPanel.vue:53
-msgctxt "web/import/ImportPanel"
-msgid "Import completed"
-msgstr ""
-
-#: web/import/ImportPanel.vue:43
-msgctxt "web/import/ImportPanel"
-msgid "Import field"
-msgstr ""
-
-#: web/import/ImportPanel.vue:41
-msgctxt "web/import/ImportPanel"
-msgid "Map each CSV column to an importable field. Leave blank to use the header as the field path."
 msgstr ""
 
 #: web/import/ImportPanel.vue:48
 msgctxt "web/import/ImportPanel"
-msgid "Message"
+msgid "CSV column"
 msgstr ""
 
-#: web/import/ImportPanel.vue:50
-#: web/import/ImportPanel.vue:62
+#: web/import/ImportPanel.vue:55
 msgctxt "web/import/ImportPanel"
-msgid "Preview"
+msgid "Cancel"
+msgstr ""
+
+#: web/import/ImportPanel.vue:53
+msgctxt "web/import/ImportPanel"
+msgid "Code"
+msgstr ""
+
+#: web/import/ImportPanel.vue:58
+msgctxt "web/import/ImportPanel"
+msgid "Done"
 msgstr ""
 
 #: web/import/ImportPanel.vue:45
 msgctxt "web/import/ImportPanel"
-msgid "Row"
+msgid "Drop CSV here or click to browse"
+msgstr ""
+
+#: web/import/ImportPanel.vue:52
+msgctxt "web/import/ImportPanel"
+msgid "Field"
+msgstr ""
+
+#: web/import/ImportPanel.vue:43
+#: web/import/ImportPanel.vue:57
+#: web/import/ImportPanel.vue:69
+msgctxt "web/import/ImportPanel"
+msgid "Import"
+msgstr ""
+
+#: web/import/ImportPanel.vue:59
+msgctxt "web/import/ImportPanel"
+msgid "Import completed"
+msgstr ""
+
+#: web/import/ImportPanel.vue:49
+msgctxt "web/import/ImportPanel"
+msgid "Import field"
+msgstr ""
+
+#: web/import/ImportPanel.vue:47
+msgctxt "web/import/ImportPanel"
+msgid "Map each CSV column to an importable field. Leave blank to use the header as the field path."
 msgstr ""
 
 #: web/import/ImportPanel.vue:54
 msgctxt "web/import/ImportPanel"
+msgid "Message"
+msgstr ""
+
+#: web/import/ImportPanel.vue:56
+#: web/import/ImportPanel.vue:68
+msgctxt "web/import/ImportPanel"
+msgid "Preview"
+msgstr ""
+
+#: web/import/ImportPanel.vue:51
+msgctxt "web/import/ImportPanel"
+msgid "Row"
+msgstr ""
+
+#: web/import/ImportPanel.vue:60
+msgctxt "web/import/ImportPanel"
 msgid "Rows were imported successfully."
 msgstr ""
 
-#: web/import/ImportPanel.vue:44
+#: web/import/ImportPanel.vue:50
 msgctxt "web/import/ImportPanel"
 msgid "Same as header"
 msgstr ""
 
-#: web/import/ImportPanel.vue:40
+#: web/import/ImportPanel.vue:46
 msgctxt "web/import/ImportPanel"
 msgid "Suggested columns"
 msgstr ""
 
-#: web/import/ImportPanel.vue:61
+#: web/import/ImportPanel.vue:67
 msgctxt "web/import/ImportPanel"
 msgid "Upload CSV"
 msgstr ""
 
-#: web/import/ImportPanel.vue:38
+#: web/import/ImportPanel.vue:44
 msgctxt "web/import/ImportPanel"
 msgid "Upload a UTF-8 CSV. Map columns to importable fields from the catalog."
 msgstr ""
@@ -3068,6 +3180,11 @@ msgctxt "web/stores/breadcrumbStore"
 msgid "Page"
 msgstr ""
 
+#: web/stores/connectivityStore/recoveryToast.ts:29
+msgctxt "web/stores/connectivityStore"
+msgid "Connection restored"
+msgstr ""
+
 #: web/views/app_setting_actions.ts:14
 msgctxt "web/views/AppSettingFormView"
 msgid "Copy Parameter"
@@ -3114,12 +3231,12 @@ msgctxt "web/views/AppSettingListView"
 msgid "Key"
 msgstr ""
 
-#: web/views/AppSettingListView.vue:50
+#: web/views/AppSettingListView.vue:48
 msgctxt "web/views/AppSettingListView"
 msgid "Parameters View"
 msgstr ""
 
-#: web/views/AppSettingListView.vue:49
+#: web/views/AppSettingListView.vue:47
 msgctxt "web/views/AppSettingListView"
 msgid "Settings View"
 msgstr ""

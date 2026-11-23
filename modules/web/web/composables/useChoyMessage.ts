@@ -2,7 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { toast } from 'vue-sonner';
+import { getActivePinia } from 'pinia';
+import { isTransportOutage } from '@/core/web/rpc/transportOutage';
 import { createTranslate } from '@/web/web/i18n';
+import { useConnectivityStore } from '../stores/connectivityStore';
 
 export type ChoyMessageLevel = 'success' | 'warning' | 'error' | 'info';
 
@@ -11,6 +14,11 @@ export type ChoyMessageOptions = {
   description?: string;
   /** Milliseconds; 0 means stay until dismissed. */
   duration?: number;
+  /**
+   * When true, treat this error as a transport outage for toast dedupe while
+   * the session is unreachable (default: infer from title/description text).
+   */
+  transportOutage?: boolean;
 };
 
 const { _t } = createTranslate('web', { scope: 'web/composables/useChoyMessage' });
@@ -42,7 +50,28 @@ function normalizeDuration(duration: number | undefined): number | undefined {
   return undefined;
 }
 
+function looksLikeTransportMessage(title: string, description?: string): boolean {
+  const blob = `${title}\n${description || ''}`;
+  return isTransportOutage(new Error(blob));
+}
+
+function shouldSuppressTransportError(title: string, options?: ChoyMessageOptions): boolean {
+  try {
+    if (!getActivePinia()) return false;
+    const store = useConnectivityStore();
+    if (store.status !== 'unreachable') return false;
+    if (options?.transportOutage === true) return true;
+    if (options?.transportOutage === false) return false;
+    return looksLikeTransportMessage(title, options?.description);
+  } catch {
+    return false;
+  }
+}
+
 function show(level: ChoyMessageLevel, title: string, options?: ChoyMessageOptions): number {
+  if (level === 'error' && shouldSuppressTransportError(title, options)) {
+    return 0;
+  }
   const text = String(title ?? '').trim();
   const payload: { description?: string; duration?: number } = {};
   if (options?.description !== undefined) {
