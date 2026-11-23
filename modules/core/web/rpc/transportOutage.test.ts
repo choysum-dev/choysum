@@ -64,3 +64,15 @@ test('isTransportOutage: null and AbortError variants', () => {
   expect(isTransportOutage({ name: 'AbortError', code: 'ABORT_ERR', message: 'aborted' })).toBe(false);
   expect(isTransportOutage('Failed to fetch')).toBe(true);
 });
+
+test('isTransportOutage: findDetails throwing is treated as no ErrorInfo', () => {
+  const err = Object.assign(Object.create(ConnectError.prototype), {
+    code: Code.Unknown,
+    message: 'Failed to fetch',
+    metadata: new Headers(),
+    findDetails: () => {
+      throw new Error('detail boom');
+    },
+  }) as ConnectError;
+  expect(isTransportOutage(err)).toBe(true);
+});

@@ -3,7 +3,12 @@
 
 import { useTitle } from '@vueuse/core';
 import { computed, shallowRef } from 'vue';
-import { createRouter, createWebHistory } from 'vue-router';
+import {
+  createRouter,
+  createWebHistory,
+  isNavigationFailure,
+  NavigationFailureType,
+} from 'vue-router';
 import type { RouteLocationNormalized, Router } from 'vue-router';
 import routes from './routes';
 import 'nprogress/nprogress.css';
@@ -89,6 +94,11 @@ export function createAppRouter(base = '/', composer?: ComposerLike): Router {
     const generation = Number((to.meta as { __navLoadingGen?: number }).__navLoadingGen) || 0;
     if (failure) {
       if (generation) settleNavigationIfActive({ generation });
+      // Duplicate nav to the current route skips beforeEach, so ownership would
+      // not advance — bump it so a still-pending foreign chunk failure cannot blank.
+      if (isNavigationFailure(failure, NavigationFailureType.duplicated)) {
+        navOwnershipSeq += 1;
+      }
       return;
     }
     // Successful navigation clears a prior chunk-load blank.

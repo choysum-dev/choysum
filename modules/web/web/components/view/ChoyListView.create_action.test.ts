@@ -38,8 +38,8 @@ function makeStore() {
     setContext: () => {},
     getContext: () => ({}),
     withContext: async (_c: any, fn: any) => fn(),
-    Search: async () => [],
-    Count: async () => 0,
+    Search: fnRecorder(async () => []),
+    Count: fnRecorder(async () => 0),
   } as any;
 }
 
@@ -294,12 +294,13 @@ describe('ListView create action', () => {
     unmount();
   });
 
-  test('retrySurface reloads via loadData', async () => {
+  test('retrySurface reloads via loadData with forcedCondition', async () => {
     const { plugins } = buildPageMountGlobal({
       route: { name: 'PartnerList', path: '/partner/partners', fullPath: '/partner/partners' },
       router: { push },
     });
     const store = makeStore();
+    const forcedCondition = ['ParentId', '=', 'p1'] as any;
     const { unmount, root } = mountApp(ChoyListView as any, {
       props: {
         store,
@@ -309,18 +310,21 @@ describe('ListView create action', () => {
         refreshAction: false,
         deleteAction: false,
         showPaginate: false,
+        forcedCondition,
       },
       plugins,
     });
     await flushPromises();
-    const searchesBefore = (store.Search as any).calls?.length ?? 0;
+    const searchesBefore = store.Search.calls.length;
     const exposed = root as { retrySurface?: () => Promise<void> };
     expect(typeof exposed.retrySurface).toBe('function');
     await exposed.retrySurface?.();
     await flushPromises();
-    // Search may be wrapped; at least retrySurface resolves without throwing.
-    expect(typeof store.Search).toBe('function');
-    void searchesBefore;
+    expect(store.Search.calls.length).toBeGreaterThan(searchesBefore);
+    const lastArgs = store.Search.calls[store.Search.calls.length - 1] || [];
+    const blob = JSON.stringify(lastArgs);
+    expect(blob).toContain('ParentId');
+    expect(blob).toContain('p1');
     unmount();
   });
 });

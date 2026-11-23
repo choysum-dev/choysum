@@ -52,3 +52,25 @@ test('recovery toast catches a recovery that happened before bind', async () => 
   expect(infos.length).toBe(1);
   ChoyMessage.info = origInfo;
 });
+
+test('recovery toast skips announce when session is unreachable again before bind', async () => {
+  const infos: string[] = [];
+  const origInfo = ChoyMessage.info;
+  ChoyMessage.info = (title: string) => {
+    infos.push(title);
+    return 1;
+  };
+  const store = useConnectivityStore();
+  store.markUnreachable();
+  store.markReachable();
+  store.markUnreachable();
+  expect(store.recoveryGeneration).toBe(1);
+  expect(store.status).toBe('unreachable');
+  bindConnectivityRecoveryToast();
+  await nextTick();
+  expect(infos.length).toBe(0);
+  store.markReachable();
+  await nextTick();
+  expect(infos.length).toBe(1);
+  ChoyMessage.info = origInfo;
+});

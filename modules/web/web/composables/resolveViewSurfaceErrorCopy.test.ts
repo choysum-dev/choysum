@@ -76,3 +76,24 @@ test('resolveViewSurfaceErrorCopy: works without Pinia', () => {
   expect(copy.detail).toBe('offline-ish');
   setActivePinia(createPinia());
 });
+
+test('resolveViewSurfaceErrorCopy: uses fallbackDetail and truncates long details', () => {
+  const withFallback = resolveViewSurfaceErrorCopy(new Error('ignored'), {
+    fallbackDetail: 'host detail',
+  });
+  expect(withFallback.detail).toBe('host detail');
+  const longError = resolveViewSurfaceErrorCopy(new Error('e'.repeat(300)));
+  expect(longError.detail.length).toBeLessThanOrEqual(240);
+  expect(longError.detail.endsWith('…')).toBe(true);
+  const longRaw = resolveViewSurfaceErrorCopy('z'.repeat(300));
+  expect(longRaw.detail.length).toBeLessThanOrEqual(240);
+  expect(longRaw.detail.endsWith('…')).toBe(true);
+});
+
+test('resolveViewSurfaceErrorCopy: Pinia present but store access fails', () => {
+  setActivePinia({} as any);
+  const copy = resolveViewSurfaceErrorCopy(new Error('x'));
+  expect(copy.title).toBe('Failed to load');
+  expect(copy.detail).toBe('x');
+  setActivePinia(createPinia());
+});

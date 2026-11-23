@@ -134,4 +134,13 @@ describe('useChoyMessage', () => {
     expect(entries().length).toBe(1);
     clearToasts();
   });
+
+  test('error suppress path tolerates a broken active Pinia', () => {
+    clearToasts();
+    setActivePinia({} as any);
+    expect(ChoyMessage.error('Failed to fetch')).not.toBe(0);
+    expect(entries().length).toBe(1);
+    clearToasts();
+    setActivePinia(createPinia());
+  });
 });

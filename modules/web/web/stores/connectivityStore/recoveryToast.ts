@@ -26,6 +26,8 @@ export function bindConnectivityRecoveryToast(): void {
     gen => {
       // gen 0 is the idle baseline — never toast it.
       if (gen <= 0 || gen <= lastNotifiedGen) return;
+      // Session may have flipped unreachable again before this watcher bound.
+      if (store.status !== 'reachable') return;
       lastNotifiedGen = gen;
       ChoyMessage.info(_t('Connection restored'));
     },

@@ -13,6 +13,9 @@ export type ConnectivityStatus = 'reachable' | 'unreachable';
 /** Consecutive transport outages required before flipping to unreachable. */
 export const TRANSPORT_OUTAGE_THRESHOLD = 2;
 
+/** Bound hung /healthz probes so the pill Retry cannot stick on probing. */
+export const HEALTHZ_PROBE_TIMEOUT_MS = 8000;
+
 /**
  * Server-root liveness path (see internal/server/server_base_routes.go).
  * Not joined with SPA BASE_URL — `/web/` mounts still probe `/healthz`.
@@ -29,7 +32,7 @@ export const useConnectivityStore = defineStore('connectivity', () => {
   const probing = ref(false);
   /** Fires once per unreachable → reachable edge (for toast consumers). */
   const recoveryGeneration = ref(0);
-  /** Bumped on each offline mark so in-flight probes cannot stale-recover. */
+  /** Bumped on reachable→unreachable so in-flight probes cannot stale-recover. */
   const offlineEpoch = ref(0);
 
   let navigatorBound = false;
@@ -49,8 +52,10 @@ export const useConnectivityStore = defineStore('connectivity', () => {
   }
 
   function markUnreachable(): void {
+    if (status.value !== 'unreachable') {
+      offlineEpoch.value += 1;
+    }
     status.value = 'unreachable';
-    offlineEpoch.value += 1;
   }
 
   function noteTransportSuccess(): void {
@@ -75,27 +80,51 @@ export const useConnectivityStore = defineStore('connectivity', () => {
   /**
    * Probe server liveness via HTTP /healthz (no business Ping RPC).
    * 2xx → reachable; otherwise stay unreachable.
-   * Ignores OK results that race after a newer offline event or navigator offline.
+   * Stale probes (epoch advanced while in flight) return without changing status.
    */
-  async function probeConnectivity(fetchImpl: typeof fetch = fetch): Promise<boolean> {
+  async function probeConnectivity(
+    fetchImpl: typeof fetch = fetch,
+    timeoutMs: number = HEALTHZ_PROBE_TIMEOUT_MS,
+  ): Promise<boolean> {
     probing.value = true;
     const epochAtStart = offlineEpoch.value;
+    const abort =
+      typeof AbortController !== 'undefined' ? new AbortController() : undefined;
+    const delay = Math.max(1, Number(timeoutMs) || HEALTHZ_PROBE_TIMEOUT_MS);
+    const timer =
+      abort != null
+        ? setTimeout(() => {
+            try {
+              abort.abort();
+            } catch {
+              // AbortController.abort must never escape the timer.
+            }
+          }, delay)
+        : undefined;
     try {
-      const res = await fetchImpl(HEALTHZ_PATH, { method: 'GET', cache: 'no-store' });
-      if (
-        res.ok &&
-        epochAtStart === offlineEpoch.value &&
-        !isBrowserOffline(typeof window !== 'undefined' ? window : undefined)
-      ) {
+      const res = await fetchImpl(HEALTHZ_PATH, {
+        method: 'GET',
+        cache: 'no-store',
+        signal: abort?.signal,
+      });
+      if (epochAtStart !== offlineEpoch.value) {
+        // Superseded by a newer offline edge — leave whatever recovery already did.
+        return status.value === 'reachable';
+      }
+      if (res.ok && !isBrowserOffline(typeof window !== 'undefined' ? window : undefined)) {
         markReachable();
         return true;
       }
       markUnreachable();
       return false;
     } catch {
+      if (epochAtStart !== offlineEpoch.value) {
+        return status.value === 'reachable';
+      }
       markUnreachable();
       return false;
     } finally {
+      if (timer != null) clearTimeout(timer);
       probing.value = false;
     }
   }
@@ -169,7 +198,7 @@ export function isConnectivityUnreachable(): boolean {
 
 /**
  * Wire RPC lifecycle transport hooks to this Pinia store and bind navigator.
- * Call once after Pinia is installed (appSetup).
+ * Call once after Pinia is installed (appSetup). Idempotent for HMR / re-setup.
  */
 export function bindConnectivityLifecycle(): void {
   if (!getActivePinia()) return;
@@ -178,6 +207,7 @@ export function bindConnectivityLifecycle(): void {
     onTransportSuccess: () => store.noteTransportSuccess(),
     onTransportOutage: () => store.noteTransportOutage(),
   });
+  store.unbindNavigator();
   store.bindNavigator();
   // Lazy import avoids circular init with useChoyMessage ↔ store.
   void import('./recoveryToast')

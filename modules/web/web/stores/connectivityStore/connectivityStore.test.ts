@@ -88,11 +88,54 @@ test('connectivityStore: probeConnectivity ignores OK after a newer offline epoc
   expect(store.status).toBe('unreachable');
 });
 
+test('connectivityStore: stale probe OK does not reverse a newer recovery', async () => {
+  const store = useConnectivityStore();
+  let resolveA!: (v: Response) => void;
+  const pendingA = new Promise<Response>(resolve => {
+    resolveA = resolve;
+  });
+  const probeA = store.probeConnectivity(() => pendingA);
+  store.markUnreachable();
+  const okB = await store.probeConnectivity(async () => ({ ok: true } as Response));
+  expect(okB).toBe(true);
+  expect(store.status).toBe('reachable');
+  resolveA({ ok: true } as Response);
+  await probeA;
+  expect(store.status).toBe('reachable');
+});
+
+test('connectivityStore: repeated markUnreachable does not bump offline epoch', () => {
+  const store = useConnectivityStore();
+  store.markUnreachable();
+  const epoch = store.offlineEpoch;
+  store.markUnreachable();
+  expect(store.offlineEpoch).toBe(epoch);
+});
+
 test('connectivityStore: probeConnectivity non-OK response marks unreachable', async () => {
   const store = useConnectivityStore();
   const ok = await store.probeConnectivity(async () => ({ ok: false } as Response));
   expect(ok).toBe(false);
   expect(store.status).toBe('unreachable');
+});
+
+test('connectivityStore: probeConnectivity timeout aborts hung fetch', async () => {
+  const store = useConnectivityStore();
+  const ok = await store.probeConnectivity(async (_url, init) => {
+    return await new Promise<Response>((_resolve, reject) => {
+      const signal = init && (init as RequestInit).signal;
+      if (!signal) {
+        reject(new Error('missing signal'));
+        return;
+      }
+      signal.addEventListener('abort', () => {
+        reject(Object.assign(new Error('Aborted'), { name: 'AbortError' }));
+      });
+    });
+  }, 20);
+  expect(ok).toBe(false);
+  expect(store.status).toBe('unreachable');
+  expect(store.probing).toBe(false);
 });
 
 test('connectivityStore: navigator offline marks unreachable', () => {
@@ -168,4 +211,62 @@ test('bindConnectivityLifecycle: hooks drive the store', () => {
   expect(store.status).toBe('unreachable');
   hooks.onTransportSuccess?.();
   expect(store.status).toBe('reachable');
+});
+
+test('bindConnectivityLifecycle: rebind is idempotent', () => {
+  bindConnectivityLifecycle();
+  bindConnectivityLifecycle();
+  const hooks = getConnectivityHooks();
+  expect(typeof hooks.onTransportOutage).toBe('function');
+});
+
+test('isConnectivityUnreachable: broken Pinia is treated as reachable', () => {
+  setActivePinia({} as any);
+  expect(isConnectivityUnreachable()).toBe(false);
+  setActivePinia(createPinia());
+});
+
+test('unbindConnectivityLifecycleForTests: tolerates broken Pinia', () => {
+  setActivePinia({} as any);
+  unbindConnectivityLifecycleForTests();
+  setActivePinia(createPinia());
+});
+
+test('connectivityStore: stale probe catch does not reverse a newer recovery', async () => {
+  const store = useConnectivityStore();
+  let rejectA!: (e: Error) => void;
+  const pendingA = new Promise<Response>((_resolve, reject) => {
+    rejectA = reject;
+  });
+  const probeA = store.probeConnectivity(() => pendingA);
+  store.markUnreachable();
+  const okB = await store.probeConnectivity(async () => ({ ok: true } as Response));
+  expect(okB).toBe(true);
+  expect(store.status).toBe('reachable');
+  rejectA(new Error('Failed to fetch'));
+  await probeA;
+  expect(store.status).toBe('reachable');
+});
+
+test('connectivityStore: probeConnectivity abort timer swallows abort errors', async () => {
+  const store = useConnectivityStore();
+  const RealAC = globalThis.AbortController;
+  class ThrowingAbortController {
+    signal = { aborted: false, addEventListener() {}, removeEventListener() {} };
+    abort() {
+      throw new Error('abort boom');
+    }
+  }
+  (globalThis as { AbortController?: typeof AbortController }).AbortController =
+    ThrowingAbortController as unknown as typeof AbortController;
+  try {
+    const ok = await store.probeConnectivity(async () => {
+      await new Promise<void>(resolve => setTimeout(resolve, 40));
+      return { ok: false } as Response;
+    }, 5);
+    expect(ok).toBe(false);
+    expect(store.probing).toBe(false);
+  } finally {
+    (globalThis as { AbortController?: typeof AbortController }).AbortController = RealAC;
+  }
 });

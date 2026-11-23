@@ -74,6 +74,24 @@ export function createFeStubRouter(overrides) {
           matched: route.matched,
         };
         var next = normalizeTo(to);
+        // Mirror vue-router: navigating to the current location is duplicated —
+        // beforeEach does not run, afterEach receives NavigationFailureType.duplicated.
+        if (String(next.fullPath || next.path) === String(route.fullPath || route.path)) {
+          var dupFailure = Object.assign(new Error('Avoided redundant navigation'), {
+            type: 16,
+            from: fromSnapshot,
+            to: next,
+          });
+          var dupChain = Promise.resolve();
+          afterHooks.forEach(function (fn) {
+            dupChain = dupChain.then(function () {
+              return fn(route, fromSnapshot, dupFailure);
+            });
+          });
+          return dupChain.then(function () {
+            return dupFailure;
+          });
+        }
         applyRoute(route, next);
         router.currentRoute.value = route;
         var chain = Promise.resolve();
