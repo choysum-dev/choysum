@@ -73,6 +73,11 @@ function onReload(): void {
 }
 
 let recoveryRetryTimer: ReturnType<typeof setTimeout> | null = null;
+let autoRetryResetTimer: ReturnType<typeof setTimeout> | null = null;
+/** One auto soft-retry per error path until a clear sticks (avoids flapping storms). */
+let autoRetriedForCurrentError = false;
+/** User started navigating to a different route while the failed view error remains. */
+let navigatingAwayFromError = false;
 
 function clearRecoveryRetryTimer() {
   if (recoveryRetryTimer) {
@@ -81,20 +86,65 @@ function clearRecoveryRetryTimer() {
   }
 }
 
+function clearAutoRetryResetTimer() {
+  if (autoRetryResetTimer) {
+    clearTimeout(autoRetryResetTimer);
+    autoRetryResetTimer = null;
+  }
+}
+
+function stillOnFailedView(errPath: string): boolean {
+  return String(router.currentRoute.value.fullPath || '') === String(errPath);
+}
+
+watch(error, (next) => {
+  if (next) {
+    // Soft-retry clears then may re-set the same path — keep the one-shot flag.
+    clearAutoRetryResetTimer();
+    return;
+  }
+  clearRecoveryRetryTimer();
+  navigatingAwayFromError = false;
+  // Only reset the one-shot after a clear that sticks (failed soft-retry re-sets sooner).
+  clearAutoRetryResetTimer();
+  autoRetryResetTimer = setTimeout(() => {
+    autoRetryResetTimer = null;
+    if (!error.value) autoRetriedForCurrentError = false;
+  }, VIEW_LOAD_RETRY_AFTER_RECOVERY_MS + 100);
+});
+
+const stopLeaveGuard = router.beforeEach((to) => {
+  if (!error.value) return;
+  if (String(to.fullPath) === String(error.value.fullPath)) return;
+  navigatingAwayFromError = true;
+  clearRecoveryRetryTimer();
+});
+
 // Full-page load error has no editable draft — soft-retry after reconnect.
 watch(
   () => connectivity.recoveryGeneration,
   (gen, prev) => {
     if (gen <= 0 || (prev != null && gen <= prev)) return;
     if (!error.value || connectivity.status !== 'reachable') return;
+    if (autoRetriedForCurrentError || navigatingAwayFromError) return;
+    const errPath = error.value.fullPath;
+    if (!stillOnFailedView(errPath)) return;
     clearRecoveryRetryTimer();
     recoveryRetryTimer = setTimeout(() => {
       recoveryRetryTimer = null;
       if (!error.value || connectivity.status !== 'reachable') return;
+      if (autoRetriedForCurrentError || navigatingAwayFromError) return;
+      if (String(error.value.fullPath) !== String(errPath)) return;
+      if (!stillOnFailedView(errPath)) return;
+      autoRetriedForCurrentError = true;
       void onRetry();
     }, VIEW_LOAD_RETRY_AFTER_RECOVERY_MS);
   },
 );
 
-onBeforeUnmount(clearRecoveryRetryTimer);
+onBeforeUnmount(() => {
+  clearRecoveryRetryTimer();
+  clearAutoRetryResetTimer();
+  stopLeaveGuard();
+});
 </script>

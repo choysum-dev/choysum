@@ -159,15 +159,11 @@ test('ChoyViewLoadError: Reload page calls location.reload', async () => {
   mounted.unmount();
 });
 
-test('ChoyViewLoadError: soft-retries after connectivity recovery while error surface is shown', async () => {
-  setViewLoadError({
-    message: 'Failed to fetch dynamically imported module',
-    fullPath: '/web/base/countries',
-  });
+function mountLoadErrorWithGo() {
   const pinia = createPinia();
   setActivePinia(pinia);
   let goCalls = 0;
-  const { plugins } = buildPageMountGlobal({
+  const { plugins, router } = buildPageMountGlobal({
     route: { name: 'CountryList', path: '/web/base/countries', fullPath: '/web/base/countries' },
     router: {
       go: () => {
@@ -179,14 +175,161 @@ test('ChoyViewLoadError: soft-retries after connectivity recovery while error su
     },
   });
   const mounted = mountApp(ChoyViewLoadError as any, { plugins: [pinia, ...plugins] });
+  return { mounted, goCalls: () => goCalls, router, store: useConnectivityStore() };
+}
+
+test('ChoyViewLoadError: soft-retries after connectivity recovery while error surface is shown', async () => {
+  setViewLoadError({
+    message: 'Failed to fetch dynamically imported module',
+    fullPath: '/web/base/countries',
+  });
+  const { mounted, goCalls, store } = mountLoadErrorWithGo();
   await flushPromises();
-  const store = useConnectivityStore();
   store.markUnreachable();
   await flushPromises();
   store.markReachable();
   await new Promise((r) => setTimeout(r, VIEW_LOAD_RETRY_AFTER_RECOVERY_MS + 50));
   await flushPromises();
   expect(viewLoadError.value).toBeNull();
-  expect(goCalls).toBe(1);
+  expect(goCalls()).toBe(1);
   mounted.unmount();
+});
+
+test('ChoyViewLoadError: clears pending recovery timer on unmount', async () => {
+  setViewLoadError({
+    message: 'Failed to fetch dynamically imported module',
+    fullPath: '/web/base/countries',
+  });
+  const { mounted, goCalls, store } = mountLoadErrorWithGo();
+  await flushPromises();
+  store.markUnreachable();
+  store.markReachable();
+  await flushPromises(); // recovery watch must schedule the timer before unmount
+  // Unmount before settle elapses so clearRecoveryRetryTimer cancels a live timer.
+  mounted.unmount();
+  await new Promise((r) => setTimeout(r, VIEW_LOAD_RETRY_AFTER_RECOVERY_MS + 50));
+  expect(goCalls()).toBe(0);
+  expect(viewLoadError.value).not.toBeNull();
+  clearViewLoadError();
+});
+
+test('ChoyViewLoadError: flapping recovery before settle soft-retries once', async () => {
+  setViewLoadError({
+    message: 'Failed to fetch dynamically imported module',
+    fullPath: '/web/base/countries',
+  });
+  const { mounted, goCalls, store } = mountLoadErrorWithGo();
+  await flushPromises();
+  store.markUnreachable();
+  store.markReachable();
+  await flushPromises(); // first timer live
+  store.markUnreachable();
+  store.markReachable();
+  await flushPromises(); // cancels first timer, reschedules once
+  await new Promise((r) => setTimeout(r, VIEW_LOAD_RETRY_AFTER_RECOVERY_MS + 50));
+  await flushPromises();
+  expect(goCalls()).toBe(1);
+  expect(viewLoadError.value).toBeNull();
+  mounted.unmount();
+});
+
+test('ChoyViewLoadError: does not auto-retry again when soft-retry re-sets the same path', async () => {
+  setViewLoadError({
+    message: 'Failed to fetch dynamically imported module',
+    fullPath: '/web/base/countries',
+  });
+  const { mounted, goCalls, store } = mountLoadErrorWithGo();
+  await flushPromises();
+  store.markUnreachable();
+  store.markReachable();
+  await flushPromises();
+  await new Promise((r) => setTimeout(r, VIEW_LOAD_RETRY_AFTER_RECOVERY_MS + 50));
+  await flushPromises();
+  expect(goCalls()).toBe(1);
+  // Soft-retry cleared then the load failed again on the same path.
+  setViewLoadError({
+    message: 'Failed to fetch dynamically imported module',
+    fullPath: '/web/base/countries',
+  });
+  store.markUnreachable();
+  store.markReachable();
+  await flushPromises();
+  await new Promise((r) => setTimeout(r, VIEW_LOAD_RETRY_AFTER_RECOVERY_MS + 50));
+  await flushPromises();
+  expect(goCalls()).toBe(1);
+  mounted.unmount();
+  clearViewLoadError();
+});
+
+test('ChoyViewLoadError: allows another auto-retry after a clear sticks', async () => {
+  setViewLoadError({
+    message: 'Failed to fetch dynamically imported module',
+    fullPath: '/web/base/countries',
+  });
+  const { mounted, goCalls, store } = mountLoadErrorWithGo();
+  await flushPromises();
+  store.markUnreachable();
+  store.markReachable();
+  await flushPromises();
+  await new Promise((r) => setTimeout(r, VIEW_LOAD_RETRY_AFTER_RECOVERY_MS + 50));
+  await flushPromises();
+  expect(goCalls()).toBe(1);
+  expect(viewLoadError.value).toBeNull();
+  // One-shot flag resets only after the clear settles.
+  await new Promise((r) => setTimeout(r, VIEW_LOAD_RETRY_AFTER_RECOVERY_MS + 150));
+  await flushPromises();
+  setViewLoadError({
+    message: 'Failed to fetch dynamically imported module',
+    fullPath: '/web/base/countries',
+  });
+  store.markUnreachable();
+  store.markReachable();
+  await flushPromises();
+  await new Promise((r) => setTimeout(r, VIEW_LOAD_RETRY_AFTER_RECOVERY_MS + 50));
+  await flushPromises();
+  expect(goCalls()).toBe(2);
+  mounted.unmount();
+});
+
+test('ChoyViewLoadError: skips auto-retry when navigating away from the failed view', async () => {
+  setViewLoadError({
+    message: 'Failed to fetch dynamically imported module',
+    fullPath: '/web/base/countries',
+  });
+  const pinia = createPinia();
+  setActivePinia(pinia);
+  let goCalls = 0;
+  const guards: Array<(to: { fullPath: string }) => void> = [];
+  const { plugins } = buildPageMountGlobal({
+    route: { name: 'CountryList', path: '/web/base/countries', fullPath: '/web/base/countries' },
+    router: {
+      go: () => {
+        goCalls += 1;
+      },
+      replace: async () => {
+        throw new Error('replace must not run');
+      },
+      beforeEach: (fn: (to: { fullPath: string }) => void) => {
+        guards.push(fn);
+        return () => {
+          const i = guards.indexOf(fn);
+          if (i >= 0) guards.splice(i, 1);
+        };
+      },
+    },
+  });
+  const mounted = mountApp(ChoyViewLoadError as any, { plugins: [pinia, ...plugins] });
+  await flushPromises();
+  const store = useConnectivityStore();
+  store.markUnreachable();
+  store.markReachable();
+  await flushPromises(); // timer scheduled
+  // Leave for another route before settle — cancel timer and skip soft-retry.
+  for (const g of guards) g({ fullPath: '/web/base/banks' });
+  await new Promise((r) => setTimeout(r, VIEW_LOAD_RETRY_AFTER_RECOVERY_MS + 50));
+  await flushPromises();
+  expect(goCalls).toBe(0);
+  expect(viewLoadError.value).not.toBeNull();
+  mounted.unmount();
+  clearViewLoadError();
 });
