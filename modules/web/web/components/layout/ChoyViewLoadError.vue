@@ -23,12 +23,16 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, onBeforeUnmount, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import ChoyButton from './ChoyButton.vue';
 import { createTranslate } from '@/web/web/i18n';
 import { useConnectivityStore } from '../../stores/connectivityStore';
-import { clearViewLoadError, viewLoadError as viewLoadErrorRef } from '../../router/viewLoadError';
+import {
+  clearViewLoadError,
+  VIEW_LOAD_RETRY_AFTER_RECOVERY_MS,
+  viewLoadError as viewLoadErrorRef,
+} from '../../router/viewLoadError';
 
 defineOptions({ name: 'ChoyViewLoadError' });
 
@@ -67,4 +71,30 @@ function onReload(): void {
     window.location.reload();
   }
 }
+
+let recoveryRetryTimer: ReturnType<typeof setTimeout> | null = null;
+
+function clearRecoveryRetryTimer() {
+  if (recoveryRetryTimer) {
+    clearTimeout(recoveryRetryTimer);
+    recoveryRetryTimer = null;
+  }
+}
+
+// Full-page load error has no editable draft — soft-retry after reconnect.
+watch(
+  () => connectivity.recoveryGeneration,
+  (gen, prev) => {
+    if (gen <= 0 || (prev != null && gen <= prev)) return;
+    if (!error.value || connectivity.status !== 'reachable') return;
+    clearRecoveryRetryTimer();
+    recoveryRetryTimer = setTimeout(() => {
+      recoveryRetryTimer = null;
+      if (!error.value || connectivity.status !== 'reachable') return;
+      void onRetry();
+    }, VIEW_LOAD_RETRY_AFTER_RECOVERY_MS);
+  },
+);
+
+onBeforeUnmount(clearRecoveryRetryTimer);
 </script>

@@ -7,7 +7,12 @@ import { flushPromises, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests_
 import { h } from 'vue';
 import ChoyButton from './ChoyButton.vue';
 import ChoyViewLoadError from './ChoyViewLoadError.vue';
-import { clearViewLoadError, setViewLoadError, viewLoadError } from '../../router/viewLoadError';
+import {
+  clearViewLoadError,
+  setViewLoadError,
+  VIEW_LOAD_RETRY_AFTER_RECOVERY_MS,
+  viewLoadError,
+} from '../../router/viewLoadError';
 import { useConnectivityStore } from '../../stores/connectivityStore';
 
 beforeEach(() => {
@@ -151,5 +156,37 @@ test('ChoyViewLoadError: Reload page calls location.reload', async () => {
       loc.reload = orig;
     }
   }
+  mounted.unmount();
+});
+
+test('ChoyViewLoadError: soft-retries after connectivity recovery while error surface is shown', async () => {
+  setViewLoadError({
+    message: 'Failed to fetch dynamically imported module',
+    fullPath: '/web/base/countries',
+  });
+  const pinia = createPinia();
+  setActivePinia(pinia);
+  let goCalls = 0;
+  const { plugins } = buildPageMountGlobal({
+    route: { name: 'CountryList', path: '/web/base/countries', fullPath: '/web/base/countries' },
+    router: {
+      go: () => {
+        goCalls += 1;
+      },
+      replace: async () => {
+        throw new Error('replace must not run for same-path recovery retry');
+      },
+    },
+  });
+  const mounted = mountApp(ChoyViewLoadError as any, { plugins: [pinia, ...plugins] });
+  await flushPromises();
+  const store = useConnectivityStore();
+  store.markUnreachable();
+  await flushPromises();
+  store.markReachable();
+  await new Promise((r) => setTimeout(r, VIEW_LOAD_RETRY_AFTER_RECOVERY_MS + 50));
+  await flushPromises();
+  expect(viewLoadError.value).toBeNull();
+  expect(goCalls).toBe(1);
   mounted.unmount();
 });
