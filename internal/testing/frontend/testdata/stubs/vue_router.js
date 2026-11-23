@@ -11,6 +11,14 @@ import { inject, defineComponent, h, reactive } from 'vue';
 var ROUTER_KEY = 'choysumFeStubRouter';
 var ROUTE_KEY = 'choysumFeStubRoute';
 
+function stringifyQueryValue(k, v) {
+  var key = encodeURIComponent(k);
+  // Mirror vue-router: null → bare key; undefined → omit.
+  if (v === undefined) return null;
+  if (v === null) return key;
+  return key + '=' + encodeURIComponent(String(v));
+}
+
 function stringifyQuery(query) {
   if (!query || typeof query !== 'object') return '';
   var keys = Object.keys(query);
@@ -19,13 +27,14 @@ function stringifyQuery(query) {
   for (var i = 0; i < keys.length; i++) {
     var k = keys[i];
     var v = query[k];
-    if (v == null) continue;
     if (Array.isArray(v)) {
       for (var j = 0; j < v.length; j++) {
-        parts.push(encodeURIComponent(k) + '=' + encodeURIComponent(String(v[j])));
+        var arrPart = stringifyQueryValue(k, v[j]);
+        if (arrPart != null) parts.push(arrPart);
       }
     } else {
-      parts.push(encodeURIComponent(k) + '=' + encodeURIComponent(String(v)));
+      var part = stringifyQueryValue(k, v);
+      if (part != null) parts.push(part);
     }
   }
   return parts.length ? '?' + parts.join('&') : '';
@@ -41,7 +50,8 @@ function parseQueryString(search) {
     if (!pairs[i]) continue;
     var eq = pairs[i].indexOf('=');
     var k = decodeURIComponent(eq >= 0 ? pairs[i].slice(0, eq) : pairs[i]);
-    var v = decodeURIComponent(eq >= 0 ? pairs[i].slice(eq + 1) : '');
+    // Bare `?flag` → null (vue-router); `?flag=` → empty string.
+    var v = eq < 0 ? null : decodeURIComponent(pairs[i].slice(eq + 1));
     if (Object.prototype.hasOwnProperty.call(query, k)) {
       var cur = query[k];
       query[k] = Array.isArray(cur) ? cur.concat([v]) : [cur, v];
@@ -52,26 +62,59 @@ function parseQueryString(search) {
   return query;
 }
 
+function splitHash(raw) {
+  var text = String(raw || '');
+  var hIdx = text.indexOf('#');
+  if (hIdx < 0) return { base: text, hash: '' };
+  return { base: text.slice(0, hIdx), hash: text.slice(hIdx) };
+}
+
+function normalizeHash(hash) {
+  if (hash == null || hash === '') return '';
+  var text = String(hash);
+  return text.charAt(0) === '#' ? text : '#' + text;
+}
+
 function normalizeTo(to) {
-  if (to == null) return { path: '/', name: undefined, query: {}, params: {}, fullPath: '/' };
+  if (to == null) {
+    return { path: '/', name: undefined, query: {}, params: {}, hash: '', fullPath: '/' };
+  }
   if (typeof to === 'string') {
-    var qIdx = to.indexOf('?');
+    var hashParts = splitHash(to);
+    var hash = hashParts.hash;
+    var withoutHash = hashParts.base;
+    var qIdx = withoutHash.indexOf('?');
     if (qIdx >= 0) {
-      var pathOnly = to.slice(0, qIdx) || '/';
-      var queryFromString = parseQueryString(to.slice(qIdx));
+      var pathOnly = withoutHash.slice(0, qIdx) || '/';
+      var queryFromString = parseQueryString(withoutHash.slice(qIdx));
       return {
         path: pathOnly,
         name: undefined,
         query: queryFromString,
         params: {},
-        fullPath: pathOnly + stringifyQuery(queryFromString),
+        hash: hash,
+        fullPath: pathOnly + stringifyQuery(queryFromString) + hash,
       };
     }
-    return { path: to, name: undefined, query: {}, params: {}, fullPath: to };
+    var pathNoQuery = withoutHash || '/';
+    return {
+      path: pathNoQuery,
+      name: undefined,
+      query: {},
+      params: {},
+      hash: hash,
+      fullPath: pathNoQuery + hash,
+    };
   }
   var path = to.path;
   if (!path && to.name) path = '/' + String(to.name);
   if (!path) path = '/';
+  var hash = normalizeHash(to.hash);
+  var pathHash = splitHash(path);
+  if (pathHash.hash) {
+    if (!to.hash) hash = pathHash.hash;
+    path = pathHash.base || '/';
+  }
   // Strip any inline query from path; prefer explicit query object.
   var pathQ = path.indexOf('?');
   var query = to.query || {};
@@ -79,12 +122,16 @@ function normalizeTo(to) {
     if (!to.query) query = parseQueryString(path.slice(pathQ));
     path = path.slice(0, pathQ) || '/';
   }
-  var fullPath = typeof to.fullPath === 'string' && to.fullPath ? to.fullPath : path + stringifyQuery(query);
+  var fullPath =
+    typeof to.fullPath === 'string' && to.fullPath
+      ? to.fullPath
+      : path + stringifyQuery(query) + hash;
   return {
     path: path,
     name: to.name,
     query: query,
     params: to.params || {},
+    hash: hash,
     fullPath: fullPath,
     meta: to.meta || {},
     matched: to.matched || [],
@@ -97,6 +144,7 @@ function applyRoute(route, next) {
   route.name = next.name;
   route.query = next.query || {};
   route.params = next.params || {};
+  route.hash = next.hash || '';
   route.meta = next.meta || {};
   route.matched = next.matched || route.matched || [];
 }
@@ -110,6 +158,7 @@ export function createFeStubRouter(overrides) {
         fullPath: '/',
         query: {},
         params: {},
+        hash: '',
         name: undefined,
         meta: {},
         matched: [],
@@ -131,6 +180,7 @@ export function createFeStubRouter(overrides) {
           name: route.name,
           query: route.query,
           params: route.params,
+          hash: route.hash,
           meta: route.meta,
           matched: route.matched,
         };
@@ -273,6 +323,7 @@ export function createFeStubRouter(overrides) {
         name: route.name,
         query: route.query,
         params: route.params,
+        hash: route.hash,
         meta: route.meta,
         matched: route.matched,
       };
@@ -413,19 +464,22 @@ export function createRouter(options) {
         name: n.name,
         query: n.query,
         params: n.params,
+        hash: n.hash || '',
         fullPath: n.fullPath,
         meta: n.meta || {},
         matched: [],
       };
     }
     var resolvedPath = found.path || n.path;
+    var hash = n.hash || '';
     return {
       path: resolvedPath,
       name: found.name != null ? found.name : n.name,
       query: n.query,
       params: n.params,
-      // Keep query in fullPath so query-only changes are not treated as duplicates.
-      fullPath: resolvedPath + stringifyQuery(n.query),
+      hash: hash,
+      // Keep query+hash in fullPath so query/hash-only changes are not duplicates.
+      fullPath: resolvedPath + stringifyQuery(n.query) + hash,
       meta: found.meta || {},
       matched: [{ path: resolvedPath, name: found.name, meta: found.meta || {} }],
     };

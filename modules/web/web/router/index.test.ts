@@ -165,6 +165,31 @@ describe('createAppRouter', () => {
     expect(String((router.currentRoute.value.query as { page?: string })?.page || '')).toBe('2');
   });
 
+  test('null query flag is not treated as duplicated against bare path', async () => {
+    const router = createAppRouter('/');
+    await router.isReady().catch(() => undefined);
+    await router.push('/__nav_b__').catch(() => undefined);
+    let guards = 0;
+    const remove = router.beforeEach(() => {
+      guards += 1;
+      return true;
+    });
+    await router.push({ path: '/__nav_b__', query: { preview: null } } as any).catch(() => undefined);
+    remove();
+    expect(guards).toBe(1);
+    expect(String(router.currentRoute.value.fullPath || '')).toContain('preview');
+    expect((router.currentRoute.value.query as { preview?: unknown }).preview).toBeNull();
+  });
+
+  test('string destination keeps hash out of query values', async () => {
+    const router = createAppRouter('/');
+    await router.isReady().catch(() => undefined);
+    await router.push('/__nav_b__?page=1#details').catch(() => undefined);
+    expect(String((router.currentRoute.value.query as { page?: string })?.page || '')).toBe('1');
+    expect(String(router.currentRoute.value.hash || '')).toBe('#details');
+    expect(String(router.currentRoute.value.fullPath || '')).toBe('/__nav_b__?page=1#details');
+  });
+
   test('router onError ignores chunk failures from superseded navigations', async () => {
     const { clearViewLoadError, viewLoadError } = await import('./viewLoadError');
     clearViewLoadError();
