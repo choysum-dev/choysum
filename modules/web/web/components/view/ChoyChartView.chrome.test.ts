@@ -2,13 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { flushPromises, mountApp } from '@/web/web/__tests__/mountApp';
-import { loadingTiming } from '@/core/web/client/loadingRegistry';
 import { h, nextTick } from 'vue';
 import ChoyChartView from './ChoyChartView.vue';
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
 
 function makeStore() {
   return {
@@ -71,8 +66,17 @@ describe('ChoyChartView chrome', () => {
       controller: { vm: { loading: boolean; error: unknown }; apply: () => Promise<unknown> };
       onRetry: () => Promise<void>;
     };
-    exposed.controller.vm.error = new Error('chart failed');
+    const ctrlForError = exposed.controller.vm as {
+      loading: boolean;
+      error: unknown;
+      hasAppliedOnce?: boolean;
+    };
+    ctrlForError.error = new Error('chart failed');
+    ctrlForError.hasAppliedOnce = true;
     await nextTick();
+    // BusyHost surface error: generic title + Error.message detail (not raw-only overlay).
+    expect(mounted.q('[data-testid=choy-view-surface-error]')).not.toBeNull();
+    expect(mounted.text()).toContain('Failed to load');
     expect(mounted.text()).toContain('chart failed');
     expect(mounted.text()).toContain('Retry');
     // prepError is null here → onRetry falls through to onRefresh.
@@ -100,11 +104,8 @@ describe('ChoyChartView chrome', () => {
     ctrlVm.hasAppliedOnce = false;
     ctrlVm.loading = true;
     await nextTick();
-    // Empty chart first frame → block Loader2 (overlay delayed; host locks immediately).
+    // Empty chart first frame → block Loader2; no-frame busy paints overlay immediately.
     expect(mounted.q('[data-slot=view-body-host]')?.getAttribute('aria-busy')).toBe('true');
-    expect(mounted.q('[data-slot=view-busy-overlay]')).toBeNull();
-    await sleep(loadingTiming.SURFACE_BUSY_DELAY_MS + 30);
-    await flushPromises();
     expect(mounted.q('[data-slot=view-busy-overlay]')?.getAttribute('data-mode')).toBe('block');
     expect(mounted.q('[data-testid=choy-empty]')).toBeNull();
 

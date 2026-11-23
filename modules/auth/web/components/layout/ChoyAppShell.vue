@@ -5,6 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <Xpath expr="//*[@data-anchor='choy.shell.header-actions']" position="inside">
+    <ChoyConnectivityPill />
     <ChoyNotificationBell v-if="collaborationCaps.message" />
   </Xpath>
   <Xpath expr="//*[@data-anchor='choy.shell.sidebar-header']" position="inside">
@@ -96,6 +97,7 @@ import {
   ChoyDropdownMenuSeparator,
   ChoyDropdownMenuTrigger,
   ChoyCollapsedIdentityTipHost,
+  ChoyConnectivityPill,
   ChoyNotificationBell,
   ChoySidebarMenuButton,
   closeAllDialogs,
@@ -127,6 +129,7 @@ export default defineComponent({
     ChevronsUpDown,
     LogOut,
     Settings,
+    ChoyConnectivityPill,
     ChoyNotificationBell,
     SwitchCompany,
     ChoyCollapsedIdentityTipHost,

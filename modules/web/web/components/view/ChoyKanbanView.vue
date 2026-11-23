@@ -107,6 +107,11 @@ SPDX-License-Identifier: Apache-2.0
       :busy="boardBusy"
       :mode="boardBusyMode"
       class="choy-kanban-view__body flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-hidden"
+      :error="boardSurfaceError"
+      :has-frame="boardHasFrame"
+      :has-settled="boardHasSettled"
+      :error-fallback-title="_t('Failed to load')"
+      @retry="onSurfaceRetry"
     >
       <div v-if="laneCount > 0 && !isFlatBoard" class="md:hidden">
         <Select :model-value="mobileLaneKey" @update:model-value="onMobileLaneChange">
@@ -551,6 +556,22 @@ const boardBusyMode = computed<'stale' | 'block'>(() => {
   if (Array.isArray(lanes) && lanes.length > 0) return 'stale';
   return 'block';
 });
+const boardSurfaceError = computed(() => engine.controller.vm.error);
+const boardHasSettled = computed(() => !!engine.controller.vm.hasAppliedOnce);
+const boardHasFrame = computed(() => {
+  const lanes = engine.lanes.value;
+  if (Array.isArray(lanes) && lanes.length > 0) return true;
+  const rows = (engine.controller.vm.result as { rows?: unknown[] } | null)?.rows;
+  return Array.isArray(rows) && rows.length > 0;
+});
+
+async function onSurfaceRetry(): Promise<void> {
+  try {
+    await engine.refresh();
+  } catch {
+    // refresh surfaces onSearchError; Host keeps failure UI while error remains.
+  }
+}
 /** Any lane append in flight (blocks drops board-wide so pages are not overwritten). */
 const loadMoreBusy = computed(() => engine.loadMorePending.value);
 /** Lane key currently appending; busy chrome is scoped to this lane only. */
@@ -757,6 +778,8 @@ function onLaneDrop(event: DragEvent, lane: ChoyKanbanLane): void {
 defineExpose({
   bootstrap: () => engine.bootstrap(),
   refresh: () => engine.refresh(),
+  /** BusyHost surface Retry. */
+  retrySurface: onSurfaceRetry,
   applySearch: engine.applySearch,
   syncLanes: () => engine.syncLanesFromController(),
   boardBusy,

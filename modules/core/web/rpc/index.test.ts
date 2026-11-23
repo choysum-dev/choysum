@@ -4,7 +4,14 @@
 import * as rpcApi from './index';
 
 test('core/web rpc entrypoint export surface: keeps the rpc facade limited to stable providers and grpc builders', () => {
-  expect(Object.keys(rpcApi).sort()).toEqual(['CreateWebApiService', 'CreateWebClient', 'setCSRFProvider', 'setLifecycleProvider', 'setTokenProvider']);
+  expect(Object.keys(rpcApi).sort()).toEqual([
+    'CreateWebApiService',
+    'CreateWebClient',
+    'isTransportOutage',
+    'setCSRFProvider',
+    'setLifecycleProvider',
+    'setTokenProvider',
+  ]);
 });
 
 test('core/web rpc entrypoint export surface: exposes live runtime bindings', () => {

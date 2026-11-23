@@ -9,7 +9,45 @@ SPDX-License-Identifier: Apache-2.0
     :class="hostClass"
     v-bind="hostAttrs"
   >
-    <slot />
+    <!-- Soft-stale: keep prior frame; tell the user refresh failed. -->
+    <div
+      v-if="showStaleBanner"
+      data-testid="choy-view-surface-stale-banner"
+      role="status"
+      class="flex shrink-0 items-center justify-between gap-3 border-b border-border/60 bg-muted/40 px-3 py-2 text-sm text-foreground"
+    >
+      <span class="min-w-0 leading-5">{{ staleBannerCopy }}</span>
+      <ChoyButton
+        type="button"
+        size="sm"
+        variant="outline"
+        data-testid="choy-view-surface-stale-retry"
+        @click="emit('retry')"
+      >
+        {{ retryLabel }}
+      </ChoyButton>
+    </div>
+    <!--
+      Always keep the slot mounted so Action chrome under the host (table headers,
+      board columns) does not unmount on no-frame failure / Retry.
+    -->
+    <div
+      class="flex min-h-0 min-w-0 flex-1 flex-col"
+      :inert="slotInert || undefined"
+    >
+      <slot />
+    </div>
+    <!--
+      No-frame Action failure: overlay on top of chrome, do not replace the slot.
+      Asset blank pages stay on ChoyViewLoadError (not this host).
+    -->
+    <ChoyViewSurfaceError
+      v-if="showSurfaceError"
+      class="absolute inset-0 z-20 bg-background/90"
+      :title="surfaceCopy.title"
+      :detail="surfaceCopy.detail"
+      @retry="emit('retry')"
+    />
     <!-- Live region must stay outside the inert host subtree so AT can announce it. -->
     <Teleport to="body">
       <div
@@ -50,12 +88,18 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { computed } from 'vue';
+import ChoyButton from '../layout/ChoyButton.vue';
 import ChoySkeleton from '../layout/ChoySkeleton.vue';
 import ChoySpinner from '../layout/ChoySpinner.vue';
 import type { ClassValue } from '../../lib/utils';
 import { createTranslate } from '@/web/web/i18n';
 import { useDelayedVisualBusy } from '@/web/web/composables/useDelayedVisualBusy';
+import {
+  resolveViewSurfaceErrorCopy,
+  resolveViewSurfaceStaleBannerCopy,
+} from '@/web/web/composables/resolveViewSurfaceErrorCopy';
 import { viewBusyHostAttrs, viewBusyHostClass, type ViewBusyMode } from './viewBusy';
+import ChoyViewSurfaceError from './ChoyViewSurfaceError.vue';
 
 defineOptions({ name: 'ChoyViewBusyHost' });
 
@@ -69,16 +113,57 @@ const props = withDefaults(
     class?: ClassValue;
     /** Polite live-region text announced while busy (overlay stays aria-hidden). */
     busyLabel?: string;
+    /** Controller/surface load error; with hasSettled and !hasFrame → surface failure UI. */
+    error?: unknown;
+    /** True when the surface already has a successful content frame. */
+    hasFrame?: boolean;
+    /** True after at least one load attempt finished (success or failure). */
+    hasSettled?: boolean;
+    /** Optional non-outage title override for resolveViewSurfaceErrorCopy. */
+    errorFallbackTitle?: string;
   }>(),
-  { busy: false, mode: 'block' },
+  { busy: false, mode: 'block', hasFrame: false, hasSettled: false },
 );
+
+const emit = defineEmits<{
+  retry: [];
+}>();
 
 const busy = computed(() => !!props.busy);
 const mode = computed<ViewBusyMode>(() => props.mode || 'block');
 const busyLabel = computed(() => props.busyLabel || _t('Loading'));
+const retryLabel = computed(() => _t('Retry'));
 /** Overlay only — aria-busy / inert stay on logical `busy`. Stale never uses an overlay. */
 const overlayCandidate = computed(() => busy.value && mode.value !== 'stale');
-const showOverlay = useDelayedVisualBusy(overlayCandidate);
+const delayedOverlay = useDelayedVisualBusy(overlayCandidate);
+/**
+ * No-frame Retry clears error before the delayed busy overlay paints — show the
+ * busy cover immediately so table chrome never flashes between error and spinner.
+ */
+const showOverlay = computed(
+  () => overlayCandidate.value && (!props.hasFrame || delayedOverlay.value),
+);
 const hostClass = computed(() => viewBusyHostClass(busy.value, mode.value, props.class));
 const hostAttrs = computed(() => viewBusyHostAttrs(busy.value, mode.value));
+
+const showSurfaceError = computed(
+  () => !!props.hasSettled && props.error != null && !props.hasFrame && !busy.value,
+);
+
+const showStaleBanner = computed(
+  () => !!props.hasSettled && props.error != null && !!props.hasFrame && !busy.value,
+);
+
+/** Block pointer/keyboard into the slot while a cover (error or block busy) is up. */
+const slotInert = computed(
+  () => showSurfaceError.value || (busy.value && mode.value !== 'stale'),
+);
+
+const surfaceCopy = computed(() =>
+  resolveViewSurfaceErrorCopy(props.error, {
+    fallbackTitle: props.errorFallbackTitle,
+  }),
+);
+
+const staleBannerCopy = computed(() => resolveViewSurfaceStaleBannerCopy());
 </script>

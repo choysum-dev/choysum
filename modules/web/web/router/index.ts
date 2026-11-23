@@ -3,7 +3,12 @@
 
 import { useTitle } from '@vueuse/core';
 import { computed, shallowRef } from 'vue';
-import { createRouter, createWebHistory } from 'vue-router';
+import {
+  createRouter,
+  createWebHistory,
+  isNavigationFailure,
+  NavigationFailureType,
+} from 'vue-router';
 import type { RouteLocationNormalized, Router } from 'vue-router';
 import routes from './routes';
 import 'nprogress/nprogress.css';
@@ -14,8 +19,10 @@ import {
   settleNavigationIfActive,
 } from '@/core/web/client/loadingRegistry';
 import type { ComposerLike } from '../i18n';
+import { isConnectivityUnreachable } from '../stores/connectivityStore';
 import { resolveDocumentTitle } from './documentTitle';
 import { resolveNavLoadingPolicy } from './navLoadingPolicy';
+import { clearViewLoadError, isRouteChunkLoadError, setViewLoadError } from './viewLoadError';
 
 export { resolveDocumentTitle, resolveRoutePageTitle } from './documentTitle';
 export { resolveNavLoadingPolicy } from './navLoadingPolicy';
@@ -59,11 +66,17 @@ export function createAppRouter(base = '/', composer?: ComposerLike): Router {
   const titleRoute = shallowRef<RouteLocationNormalized | null>(router.currentRoute.value);
   const appName = defaultAppName();
   useTitle(computed(() => resolveDocumentTitle(titleRoute.value as any, composer, appName)));
+  /** Latest navigation ownership token — stale chunk errors must not blank a newer page. */
+  let navOwnershipSeq = 0;
 
   router.beforeEach(async to => {
     titleRoute.value = to;
+    const ownership = ++navOwnershipSeq;
+    (to.meta as { __navOwnershipSeq?: number }).__navOwnershipSeq = ownership;
     // none: do not open a nav ticket; drop any stale generation marker on meta.
-    if (resolveNavLoadingPolicy(to) === 'none') {
+    // Unreachable: Connection lost pill already owns session truth — do not open a
+    // 15s handoff that waits on chunks/RPC that will not complete.
+    if (resolveNavLoadingPolicy(to) === 'none' || isConnectivityUnreachable()) {
       delete (to.meta as { __navLoadingGen?: number }).__navLoadingGen;
       return true;
     }
@@ -81,8 +94,15 @@ export function createAppRouter(base = '/', composer?: ComposerLike): Router {
     const generation = Number((to.meta as { __navLoadingGen?: number }).__navLoadingGen) || 0;
     if (failure) {
       if (generation) settleNavigationIfActive({ generation });
+      // Duplicate nav to the current route skips beforeEach, so ownership would
+      // not advance — bump it so a still-pending foreign chunk failure cannot blank.
+      if (isNavigationFailure(failure, NavigationFailureType.duplicated)) {
+        navOwnershipSeq += 1;
+      }
       return;
     }
+    // Successful navigation clears a prior chunk-load blank.
+    clearViewLoadError();
     const policy = resolveNavLoadingPolicy(to);
     if (policy === 'none') {
       settleNavigationIfActive();
@@ -98,9 +118,27 @@ export function createAppRouter(base = '/', composer?: ComposerLike): Router {
     scheduleNavigationSettleIfIdle(loadingTiming.NAV_IDLE_SETTLE_MS);
   });
 
-  router.onError(error => {
+  router.onError((error, to) => {
     console.error('Router error:', error);
     settleNavigationIfActive();
+    if (!isRouteChunkLoadError(error)) return;
+    const failed = (to ||
+      (error as { to?: RouteLocationNormalized })?.to ||
+      null) as RouteLocationNormalized | null;
+    // No destination cannot be attributed to the current page — ignore it.
+    if (!failed) return;
+    const failedSeq = Number((failed?.meta as { __navOwnershipSeq?: number } | undefined)?.__navOwnershipSeq) || 0;
+    // A superseded navigation's late chunk reject must not blank the newer route.
+    if (failedSeq && failedSeq !== navOwnershipSeq) return;
+    // Missing ownership: only blank when the failed destination is still current.
+    if (!failedSeq && String(failed.fullPath || '') !== String(router.currentRoute.value.fullPath || '')) {
+      return;
+    }
+    const fullPath = String(failed?.fullPath || router.currentRoute.value.fullPath || '/');
+    setViewLoadError({
+      message: String((error as { message?: string })?.message || error || ''),
+      fullPath,
+    });
   });
 
   return router;

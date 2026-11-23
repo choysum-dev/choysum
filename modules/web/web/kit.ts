@@ -38,6 +38,7 @@ export {
   FieldLabel as ChoyFieldLabel,
 } from './components/vendor/ui/field';
 export { default as ChoyNotificationBell } from './components/layout/ChoyNotificationBell.vue';
+export { default as ChoyConnectivityPill } from './components/layout/ChoyConnectivityPill.vue';
 export { default as ChoyCommandPalette } from './components/layout/ChoyCommandPalette.vue';
 export { default as ChoySidebarNav } from './components/layout/ChoySidebarNav.vue';
 export { default as ChoyCollapsedIdentityTipHost } from './components/layout/ChoyCollapsedIdentityTipHost.vue';

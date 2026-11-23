@@ -3,6 +3,7 @@
 
 import { computed } from 'vue';
 import { createI18n } from 'vue-i18n';
+import { createPinia, setActivePinia } from 'pinia';
 import { createTermReference } from '@/core/service/i18n';
 import {
   beginNavigationLoading,
@@ -12,6 +13,7 @@ import {
   settleNavigationIfActive,
 } from '@/core/web/client/loadingRegistry';
 import { projectTerminologyMessages } from '../i18n/terminology';
+import { useConnectivityStore } from '../stores/connectivityStore';
 import { resolveDocumentTitle, resolveRoutePageTitle } from './documentTitle';
 import { createAppRouter, defaultAppName } from './index';
 
@@ -65,6 +67,154 @@ describe('createAppRouter', () => {
     anyRouter.triggerError?.(new Error('nav-boom'));
     expect(getLoadingRegistryDebugState().navTicketActive).toBe(false);
     resetLoadingRegistryForTests();
+  });
+
+  test('router onError records chunk load failures for shell retry UI', async () => {
+    const { clearViewLoadError, viewLoadError } = await import('./viewLoadError');
+    clearViewLoadError();
+    const router = createAppRouter('/');
+    await router.isReady().catch(() => undefined);
+    await router.push('/__nav_b__').catch(() => undefined);
+    const current = String(router.currentRoute.value.fullPath || '');
+    const anyRouter = router as {
+      triggerError?: (err: Error, to?: { fullPath: string; meta?: Record<string, unknown> }) => void;
+    };
+    // Omit ownership seq: still record when the failed destination is the current route.
+    anyRouter.triggerError?.(
+      new Error('Failed to fetch dynamically imported module: /web/assets/Company-x.js'),
+      { fullPath: current, meta: {} },
+    );
+    expect(viewLoadError.value?.fullPath).toBe(current);
+    clearViewLoadError();
+  });
+
+  test('duplicate navigation failure advances ownership so stale chunks cannot blank', async () => {
+    const { clearViewLoadError, viewLoadError } = await import('./viewLoadError');
+    clearViewLoadError();
+    const router = createAppRouter('/');
+    await router.isReady().catch(() => undefined);
+    await router.push('/__nav_b__').catch(() => undefined);
+    const staleSeq = Number(
+      (router.currentRoute.value.meta as { __navOwnershipSeq?: number }).__navOwnershipSeq,
+    );
+    expect(staleSeq).toBeGreaterThan(0);
+    let duplicateBeforeEach = 0;
+    const remove = router.beforeEach(() => {
+      duplicateBeforeEach += 1;
+      return true;
+    });
+    // Same-path push is duplicated: beforeEach skipped, afterEach bumps ownership.
+    await router.push('/__nav_b__').catch(() => undefined);
+    remove();
+    expect(duplicateBeforeEach).toBe(0);
+    const anyRouter = router as {
+      triggerError?: (err: Error, to?: { fullPath: string; meta?: Record<string, unknown> }) => void;
+    };
+    anyRouter.triggerError?.(
+      new Error('Failed to fetch dynamically imported module: /web/assets/Stale-x.js'),
+      { fullPath: '/stale-dup', meta: { __navOwnershipSeq: staleSeq } },
+    );
+    expect(viewLoadError.value).toBeNull();
+    clearViewLoadError();
+  });
+
+  test('router onError ignores chunk failures without a destination', async () => {
+    const { clearViewLoadError, viewLoadError } = await import('./viewLoadError');
+    clearViewLoadError();
+    const router = createAppRouter('/');
+    await router.isReady().catch(() => undefined);
+    const anyRouter = router as {
+      triggerError?: (err: Error, to?: { fullPath: string; meta?: Record<string, unknown> }) => void;
+    };
+    anyRouter.triggerError?.(
+      new Error('Failed to fetch dynamically imported module: /web/assets/Orphan.js'),
+    );
+    expect(viewLoadError.value).toBeNull();
+    clearViewLoadError();
+  });
+
+  test('router onError ignores unowned chunk failures for a non-current destination', async () => {
+    const { clearViewLoadError, viewLoadError } = await import('./viewLoadError');
+    clearViewLoadError();
+    const router = createAppRouter('/');
+    await router.isReady().catch(() => undefined);
+    await router.push('/__nav_b__').catch(() => undefined);
+    const anyRouter = router as {
+      triggerError?: (err: Error, to?: { fullPath: string; meta?: Record<string, unknown> }) => void;
+    };
+    anyRouter.triggerError?.(
+      new Error('Failed to fetch dynamically imported module: /web/assets/Other.js'),
+      { fullPath: '/stale-unowned' },
+    );
+    expect(viewLoadError.value).toBeNull();
+    clearViewLoadError();
+  });
+
+  test('query-only navigation is not treated as duplicated', async () => {
+    const router = createAppRouter('/');
+    await router.isReady().catch(() => undefined);
+    await router.push({ path: '/__nav_b__', query: { page: '1' } } as any).catch(() => undefined);
+    let guards = 0;
+    const remove = router.beforeEach(() => {
+      guards += 1;
+      return true;
+    });
+    await router.push({ path: '/__nav_b__', query: { page: '2' } } as any).catch(() => undefined);
+    remove();
+    expect(guards).toBe(1);
+    expect(String((router.currentRoute.value.query as { page?: string })?.page || '')).toBe('2');
+  });
+
+  test('null query flag is not treated as duplicated against bare path', async () => {
+    const router = createAppRouter('/');
+    await router.isReady().catch(() => undefined);
+    await router.push('/__nav_b__').catch(() => undefined);
+    let guards = 0;
+    const remove = router.beforeEach(() => {
+      guards += 1;
+      return true;
+    });
+    await router.push({ path: '/__nav_b__', query: { preview: null } } as any).catch(() => undefined);
+    remove();
+    expect(guards).toBe(1);
+    expect(String(router.currentRoute.value.fullPath || '')).toContain('preview');
+    expect((router.currentRoute.value.query as { preview?: unknown }).preview).toBeNull();
+  });
+
+  test('string destination keeps hash out of query values', async () => {
+    const router = createAppRouter('/');
+    await router.isReady().catch(() => undefined);
+    await router.push('/__nav_b__?page=1#details').catch(() => undefined);
+    expect(String((router.currentRoute.value.query as { page?: string })?.page || '')).toBe('1');
+    expect(String(router.currentRoute.value.hash || '')).toBe('#details');
+    expect(String(router.currentRoute.value.fullPath || '')).toBe('/__nav_b__?page=1#details');
+  });
+
+  test('router onError ignores chunk failures from superseded navigations', async () => {
+    const { clearViewLoadError, viewLoadError } = await import('./viewLoadError');
+    clearViewLoadError();
+    const router = createAppRouter('/');
+    await router.isReady().catch(() => undefined);
+    let staleSeq = 0;
+    const remove = router.beforeEach(to => {
+      if (to.path === '/__nav_b__') {
+        staleSeq = Number((to.meta as { __navOwnershipSeq?: number }).__navOwnershipSeq) || 0;
+      }
+      return true;
+    });
+    await router.push('/__nav_b__').catch(() => undefined);
+    await router.push('/__nav_content_policy__').catch(() => undefined);
+    remove();
+    expect(staleSeq).toBeGreaterThan(0);
+    const anyRouter = router as {
+      triggerError?: (err: Error, to?: { fullPath: string; meta?: Record<string, unknown> }) => void;
+    };
+    anyRouter.triggerError?.(
+      new Error('Failed to fetch dynamically imported module: /web/assets/Stale-x.js'),
+      { fullPath: '/stale', meta: { __navOwnershipSeq: staleSeq } },
+    );
+    expect(viewLoadError.value).toBeNull();
+    clearViewLoadError();
   });
 
   test('older cancelled navigation settlement does not clear a newer ticket', async () => {
@@ -164,6 +314,22 @@ describe('createAppRouter', () => {
     expect(getLoadingRegistryDebugState().navTicketActive).toBe(true);
     expect(getLoadingRegistryDebugState().navTicketGeneration).toBe(newerGen);
     removeGuard();
+    resetLoadingRegistryForTests();
+  });
+
+  test('unreachable session does not open a navigation ticket', async () => {
+    resetLoadingRegistryForTests();
+    setActivePinia(createPinia());
+    useConnectivityStore().markUnreachable();
+    const router = createAppRouter('/');
+    await router.isReady().catch(() => undefined);
+
+    await router
+      .push({ path: '/__nav_unreachable__', meta: { navLoading: 'content' } } as any)
+      .catch(() => undefined);
+    expect(getLoadingRegistryDebugState().navTicketActive).toBe(false);
+
+    useConnectivityStore().resetForTests();
     resetLoadingRegistryForTests();
   });
 });
