@@ -55,3 +55,24 @@ test('resolveViewSurfaceErrorCopy: generic Error without fallback title', () => 
   expect(copy.title).toBe('Failed to load');
   expect(copy.detail).toBe('boom');
 });
+
+test('resolveViewSurfaceErrorCopy: empty error uses generic detail', () => {
+  const copy = resolveViewSurfaceErrorCopy(null);
+  expect(copy.title).toBe('Failed to load');
+  expect(copy.detail).toContain('Something went wrong');
+});
+
+test('resolveViewSurfaceErrorCopy: truncates very long messages', () => {
+  const long = 'x'.repeat(300);
+  const copy = resolveViewSurfaceErrorCopy(new Error(long));
+  expect(copy.detail.length).toBeLessThanOrEqual(240);
+  expect(copy.detail.endsWith('…')).toBe(true);
+});
+
+test('resolveViewSurfaceErrorCopy: works without Pinia', () => {
+  setActivePinia(undefined as any);
+  const copy = resolveViewSurfaceErrorCopy(new Error('offline-ish'));
+  expect(copy.title).toBe('Failed to load');
+  expect(copy.detail).toBe('offline-ish');
+  setActivePinia(createPinia());
+});

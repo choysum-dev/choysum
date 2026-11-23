@@ -778,6 +778,8 @@ function onLaneDrop(event: DragEvent, lane: ChoyKanbanLane): void {
 defineExpose({
   bootstrap: () => engine.bootstrap(),
   refresh: () => engine.refresh(),
+  /** BusyHost surface Retry. */
+  retrySurface: onSurfaceRetry,
   applySearch: engine.applySearch,
   syncLanes: () => engine.syncLanesFromController(),
   boardBusy,

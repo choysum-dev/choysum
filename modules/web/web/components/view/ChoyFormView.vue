@@ -902,6 +902,8 @@ async function reloadDisplay(): Promise<void> {
 async function onFormSurfaceRetry(): Promise<void> {
   const id = effectiveRecordId.value;
   if (!id || viewMode.value === 'create') return;
+  // Soft-stale Retry after a failed save must not wipe the draft silently.
+  if (!(await confirmDiscardIfDirty())) return;
   try {
     await controller.beginDisplay(id);
   } catch {
@@ -917,6 +919,8 @@ defineExpose({
   refresh: handleRefresh,
   /** Silent beginDisplay — for post-action sheet sync (e.g. Activate). */
   reloadDisplay,
+  /** BusyHost surface Retry — reloads display after optional dirty discard. */
+  retrySurface: onFormSurfaceRetry,
   reset: handleReset,
   copy: handleCopy,
   getFormData: () => toRaw(exposedFormData.value) as any,

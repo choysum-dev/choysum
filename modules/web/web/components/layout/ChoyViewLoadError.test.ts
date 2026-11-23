@@ -7,7 +7,7 @@ import { flushPromises, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests_
 import { h } from 'vue';
 import ChoyButton from './ChoyButton.vue';
 import ChoyViewLoadError from './ChoyViewLoadError.vue';
-import { clearViewLoadError, setViewLoadError } from '../../router/viewLoadError';
+import { clearViewLoadError, setViewLoadError, viewLoadError } from '../../router/viewLoadError';
 import { useConnectivityStore } from '../../stores/connectivityStore';
 
 beforeEach(() => {
@@ -49,18 +49,21 @@ afterEach(() => {
   }
 });
 
-test('ChoyViewLoadError: Asset primary is Retry loading; unreachable copy kept', async () => {
-  setViewLoadError({
-    message: 'Failed to fetch dynamically imported module',
-    fullPath: '/web/base/countries',
-  });
+function mountLoadError() {
   const pinia = createPinia();
   setActivePinia(pinia);
   const { plugins } = buildPageMountGlobal({
     route: { name: 'CountryList', path: '/web/base/countries', fullPath: '/web/base/countries' },
   });
-  // Prefer our Pinia so markUnreachable matches the store LoadError reads.
-  const mounted = mountApp(ChoyViewLoadError as any, { plugins: [pinia, ...plugins] });
+  return mountApp(ChoyViewLoadError as any, { plugins: [pinia, ...plugins] });
+}
+
+test('ChoyViewLoadError: Asset primary is Retry loading; unreachable copy kept', async () => {
+  setViewLoadError({
+    message: 'Failed to fetch dynamically imported module',
+    fullPath: '/web/base/countries',
+  });
+  const mounted = mountLoadError();
   useConnectivityStore().markUnreachable();
   await flushPromises();
   expect(mounted.q('[data-testid=choy-view-load-error]')).not.toBeNull();
@@ -69,5 +72,56 @@ test('ChoyViewLoadError: Asset primary is Retry loading; unreachable copy kept',
   expect(mounted.text()).toContain('Retry loading');
   expect(mounted.text()).toContain('Reload page');
   expect(mounted.text()).not.toContain('Could not load this data');
+  mounted.unmount();
+});
+
+test('ChoyViewLoadError: reachable session uses Failed to load this view copy', async () => {
+  setViewLoadError({
+    message: 'Loading chunk failed',
+    fullPath: '/web/base/banks',
+  });
+  const mounted = mountLoadError();
+  await flushPromises();
+  expect(mounted.text()).toContain('Failed to load this view');
+  expect(mounted.text()).toContain('page resources could not be loaded');
+  mounted.unmount();
+});
+
+test('ChoyViewLoadError: Retry loading clears error and replace-navigates', async () => {
+  setViewLoadError({
+    message: 'Failed to fetch dynamically imported module',
+    fullPath: '/web/base/countries?retry=1',
+  });
+  const mounted = mountLoadError();
+  await flushPromises();
+  mounted.click('[data-testid=choy-view-load-error-retry]');
+  await flushPromises();
+  expect(viewLoadError.value).toBeNull();
+  mounted.unmount();
+});
+
+test('ChoyViewLoadError: Reload page calls location.reload', async () => {
+  setViewLoadError({
+    message: 'Failed to fetch dynamically imported module',
+    fullPath: '/web/base/countries',
+  });
+  const mounted = mountLoadError();
+  await flushPromises();
+  const g = globalThis as { window?: { location?: { reload?: () => void } } };
+  const loc = g.window?.location;
+  let reloads = 0;
+  if (loc) {
+    const orig = loc.reload;
+    loc.reload = () => {
+      reloads += 1;
+    };
+    try {
+      mounted.click('[data-testid=choy-view-load-error-reload]');
+      await flushPromises();
+      expect(reloads).toBe(1);
+    } finally {
+      loc.reload = orig;
+    }
+  }
   mounted.unmount();
 });

@@ -117,4 +117,21 @@ describe('useChoyMessage', () => {
     expect(entries().length).toBe(1);
     clearToasts();
   });
+
+  test('keeps ambiguous Load failed visible while unreachable', () => {
+    clearToasts();
+    useConnectivityStore().markUnreachable();
+    expect(ChoyMessage.error('Load failed', { description: 'Invalid file format' })).not.toBe(0);
+    expect(entries().length).toBe(1);
+    clearToasts();
+  });
+
+  test('transportOutage option forces suppress or keep while unreachable', () => {
+    clearToasts();
+    useConnectivityStore().markUnreachable();
+    expect(ChoyMessage.error('Business boom', { transportOutage: true })).toBe(0);
+    expect(ChoyMessage.error('Failed to fetch', { transportOutage: false })).not.toBe(0);
+    expect(entries().length).toBe(1);
+    clearToasts();
+  });
 });

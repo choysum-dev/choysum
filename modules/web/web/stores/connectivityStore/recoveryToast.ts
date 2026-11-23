@@ -10,7 +10,8 @@ import { useConnectivityStore } from './index';
 const { _t } = createTranslate('web', { scope: 'web/stores/connectivityStore' });
 
 let stopWatch: (() => void) | undefined;
-let lastRecoveryGen = 0;
+/** Last generation that already produced a toast (−1 = none yet). */
+let lastNotifiedGen = -1;
 
 /**
  * Once per unreachable→reachable edge, show a single recovery info toast.
@@ -20,19 +21,21 @@ export function bindConnectivityRecoveryToast(): void {
   if (!getActivePinia()) return;
   stopWatch?.();
   const store = useConnectivityStore();
-  lastRecoveryGen = store.recoveryGeneration;
   stopWatch = watch(
     () => store.recoveryGeneration,
     gen => {
-      if (gen <= lastRecoveryGen) return;
-      lastRecoveryGen = gen;
+      // gen 0 is the idle baseline — never toast it.
+      if (gen <= 0 || gen <= lastNotifiedGen) return;
+      lastNotifiedGen = gen;
       ChoyMessage.info(_t('Connection restored'));
-    }
+    },
+    // Catch a recovery that landed before this watcher bound.
+    { immediate: true },
   );
 }
 
 export function unbindConnectivityRecoveryToastForTests(): void {
   stopWatch?.();
   stopWatch = undefined;
-  lastRecoveryGen = 0;
+  lastNotifiedGen = -1;
 }

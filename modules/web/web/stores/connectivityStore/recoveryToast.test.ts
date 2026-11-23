@@ -35,3 +35,20 @@ test('recovery toast fires once on unreachable to reachable edge', async () => {
   expect(infos.length).toBe(1);
   ChoyMessage.info = origInfo;
 });
+
+test('recovery toast catches a recovery that happened before bind', async () => {
+  const infos: string[] = [];
+  const origInfo = ChoyMessage.info;
+  ChoyMessage.info = (title: string) => {
+    infos.push(title);
+    return 1;
+  };
+  const store = useConnectivityStore();
+  store.markUnreachable();
+  store.markReachable();
+  expect(store.recoveryGeneration).toBe(1);
+  bindConnectivityRecoveryToast();
+  await nextTick();
+  expect(infos.length).toBe(1);
+  ChoyMessage.info = origInfo;
+});

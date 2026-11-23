@@ -957,7 +957,7 @@ async function loadData() {
   selectedItems.value = [];
   try {
     const totalBefore = Number(((store.state as any).result?.total ?? 0) as any);
-    await controller.apply();
+    await controller.apply({ forcedCondition: props.forcedCondition as any });
     const totalAfter = Number(((store.state as any).result?.total ?? 0) as any);
     emit('load-success', { items: (items.value as any) || [], total: totalAfter || totalBefore || 0 });
     afterLayoutRecompute();
@@ -1215,6 +1215,7 @@ const onToggleGroup = async (key: string) => {
 defineExpose<
   SelectionExpose<ClientModel<T>> & {
     load: () => Promise<void>;
+    retrySurface: () => Promise<void>;
     inlineEdit: typeof inlineEdit;
     flatRows: typeof flatRows;
     listPageModel: typeof listPageModel;
@@ -1227,6 +1228,8 @@ defineExpose<
   selectedItems: selectedItems as any,
   selectedItem: selectedItem as any,
   load: loadData,
+  /** BusyHost surface Retry — same entry as load (keeps forcedCondition). */
+  retrySurface: onSurfaceRetry,
   inlineEdit,
   flatRows,
   listPageModel,

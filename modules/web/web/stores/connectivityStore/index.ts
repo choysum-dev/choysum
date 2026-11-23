@@ -13,6 +13,10 @@ export type ConnectivityStatus = 'reachable' | 'unreachable';
 /** Consecutive transport outages required before flipping to unreachable. */
 export const TRANSPORT_OUTAGE_THRESHOLD = 2;
 
+/**
+ * Server-root liveness path (see internal/server/server_base_routes.go).
+ * Not joined with SPA BASE_URL — `/web/` mounts still probe `/healthz`.
+ */
 const HEALTHZ_PATH = '/healthz';
 
 /**
@@ -25,6 +29,8 @@ export const useConnectivityStore = defineStore('connectivity', () => {
   const probing = ref(false);
   /** Fires once per unreachable → reachable edge (for toast consumers). */
   const recoveryGeneration = ref(0);
+  /** Bumped on each offline mark so in-flight probes cannot stale-recover. */
+  const offlineEpoch = ref(0);
 
   let navigatorBound = false;
   let onOnline: (() => void) | undefined;
@@ -44,6 +50,7 @@ export const useConnectivityStore = defineStore('connectivity', () => {
 
   function markUnreachable(): void {
     status.value = 'unreachable';
+    offlineEpoch.value += 1;
   }
 
   function noteTransportSuccess(): void {
@@ -57,15 +64,29 @@ export const useConnectivityStore = defineStore('connectivity', () => {
     }
   }
 
+  function isBrowserOffline(target: Window | undefined): boolean {
+    try {
+      return target?.navigator?.onLine === false;
+    } catch {
+      return false;
+    }
+  }
+
   /**
    * Probe server liveness via HTTP /healthz (no business Ping RPC).
    * 2xx → reachable; otherwise stay unreachable.
+   * Ignores OK results that race after a newer offline event or navigator offline.
    */
   async function probeConnectivity(fetchImpl: typeof fetch = fetch): Promise<boolean> {
     probing.value = true;
+    const epochAtStart = offlineEpoch.value;
     try {
       const res = await fetchImpl(HEALTHZ_PATH, { method: 'GET', cache: 'no-store' });
-      if (res.ok) {
+      if (
+        res.ok &&
+        epochAtStart === offlineEpoch.value &&
+        !isBrowserOffline(typeof window !== 'undefined' ? window : undefined)
+      ) {
         markReachable();
         return true;
       }
@@ -85,8 +106,9 @@ export const useConnectivityStore = defineStore('connectivity', () => {
       markUnreachable();
     };
     onOnline = () => {
-      // Online is optimistic but unproven — wait for transport success or probe.
+      // Online is unproven — clear streak and re-probe; do not mark reachable yet.
       transportFailureStreak.value = 0;
+      void probeConnectivity();
     };
     target.addEventListener('offline', onOffline);
     target.addEventListener('online', onOnline);
@@ -111,6 +133,7 @@ export const useConnectivityStore = defineStore('connectivity', () => {
     transportFailureStreak.value = 0;
     probing.value = false;
     recoveryGeneration.value = 0;
+    offlineEpoch.value = 0;
   }
 
   return {
@@ -119,6 +142,7 @@ export const useConnectivityStore = defineStore('connectivity', () => {
     transportFailureStreak,
     probing,
     recoveryGeneration,
+    offlineEpoch,
     markReachable,
     markUnreachable,
     noteTransportSuccess,
@@ -156,9 +180,14 @@ export function bindConnectivityLifecycle(): void {
   });
   store.bindNavigator();
   // Lazy import avoids circular init with useChoyMessage ↔ store.
-  void import('./recoveryToast').then(mod => {
-    mod.bindConnectivityRecoveryToast();
-  });
+  void import('./recoveryToast')
+    .then(mod => {
+      if (!getActivePinia()) return;
+      mod.bindConnectivityRecoveryToast();
+    })
+    .catch(() => {
+      // Recovery toast is best-effort; never leave an unhandled rejection.
+    });
 }
 
 /** Test helper: drop hooks registered by bindConnectivityLifecycle. */

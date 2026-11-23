@@ -74,6 +74,27 @@ test('connectivityStore: probeConnectivity stays unreachable on failure', async 
   expect(store.status).toBe('unreachable');
 });
 
+test('connectivityStore: probeConnectivity ignores OK after a newer offline epoch', async () => {
+  const store = useConnectivityStore();
+  let resolveFetch!: (v: Response) => void;
+  const pending = new Promise<Response>(resolve => {
+    resolveFetch = resolve;
+  });
+  const probe = store.probeConnectivity(() => pending);
+  store.markUnreachable();
+  resolveFetch({ ok: true } as Response);
+  const ok = await probe;
+  expect(ok).toBe(false);
+  expect(store.status).toBe('unreachable');
+});
+
+test('connectivityStore: probeConnectivity non-OK response marks unreachable', async () => {
+  const store = useConnectivityStore();
+  const ok = await store.probeConnectivity(async () => ({ ok: false } as Response));
+  expect(ok).toBe(false);
+  expect(store.status).toBe('unreachable');
+});
+
 test('connectivityStore: navigator offline marks unreachable', () => {
   const store = useConnectivityStore();
   const listeners: Record<string, Array<() => void>> = {};
@@ -88,6 +109,50 @@ test('connectivityStore: navigator offline marks unreachable', () => {
   } as unknown as Window;
   store.bindNavigator(fakeWindow);
   listeners.offline?.[0]?.();
+  expect(store.status).toBe('unreachable');
+  store.unbindNavigator(fakeWindow);
+});
+
+test('connectivityStore: navigator online re-probes', async () => {
+  const store = useConnectivityStore();
+  const listeners: Record<string, Array<() => void>> = {};
+  const fakeWindow = {
+    navigator: { onLine: true },
+    addEventListener(type: string, fn: () => void) {
+      (listeners[type] ||= []).push(fn);
+    },
+    removeEventListener(type: string, fn: () => void) {
+      listeners[type] = (listeners[type] || []).filter(x => x !== fn);
+    },
+  } as unknown as Window;
+  store.bindNavigator(fakeWindow);
+  store.markUnreachable();
+  const g = globalThis as { fetch?: typeof fetch };
+  const origFetch = g.fetch;
+  let probed = 0;
+  g.fetch = (async () => {
+    probed += 1;
+    return { ok: true } as Response;
+  }) as typeof fetch;
+  try {
+    listeners.online?.[0]?.();
+    await new Promise<void>(resolve => setTimeout(resolve, 0));
+    expect(probed).toBe(1);
+    expect(store.status).toBe('reachable');
+  } finally {
+    g.fetch = origFetch;
+    store.unbindNavigator(fakeWindow);
+  }
+});
+
+test('connectivityStore: bindNavigator starts unreachable when already offline', () => {
+  const store = useConnectivityStore();
+  const fakeWindow = {
+    navigator: { onLine: false },
+    addEventListener() {},
+    removeEventListener() {},
+  } as unknown as Window;
+  store.bindNavigator(fakeWindow);
   expect(store.status).toBe('unreachable');
   store.unbindNavigator(fakeWindow);
 });

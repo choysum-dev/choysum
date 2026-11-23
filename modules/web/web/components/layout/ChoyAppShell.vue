@@ -88,7 +88,7 @@ SPDX-License-Identifier: Apache-2.0
             data-testid="choy-shell-content"
           >
             <slot>
-              <ChoyViewLoadError />
+              <ChoyViewLoadError v-if="hasViewLoadError" />
               <router-view v-slot="{ Component, route: viewRoute }">
                 <!-- Remount KeepAlive when company or leaf menu changes. -->
                 <div
@@ -145,9 +145,6 @@ import ChoyNavigationHandoff from './ChoyNavigationHandoff.vue'
 import ChoySidebarNav from './ChoySidebarNav.vue'
 import ChoySidebarBridge from './ChoySidebarBridge.vue'
 import ChoyViewLoadError from './ChoyViewLoadError.vue'
-
-/** Local binding so the template unwraps the imported computed. */
-const hasViewLoadError = computed(() => viewLoadErrorRef.value != null)
 import {
   Sidebar,
   SidebarFooter,
@@ -159,6 +156,9 @@ import {
 import { useLayoutStore } from '../../stores/layoutStore'
 import { useI18nStore } from '../../stores/i18nStore'
 import { shellMenuTriggerLabel } from './choyWebShellChrome'
+
+/** Local binding so the template unwraps the imported computed. */
+const hasViewLoadError = computed(() => viewLoadErrorRef.value != null)
 
 /**
  * App shell: full-height sidebar (company header / L1+L2 / user footer)

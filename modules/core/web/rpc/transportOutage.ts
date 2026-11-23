@@ -21,7 +21,6 @@ const FETCH_HINTS = [
   'Failed to fetch',
   'NetworkError',
   'ERR_CONNECTION_REFUSED',
-  'Load failed',
   'Network request failed',
   'fetch failed',
 ];
@@ -55,8 +54,7 @@ export function isTransportOutage(error: unknown): boolean {
     if (error.code === Code.Unknown && messageLooksLikeFetchFailure(error.message || '')) {
       return true;
     }
-    // Some runtimes surface refused connections as Unknown without a clear hint.
-    if (error.code === Code.DeadlineExceeded) return true;
+    // DeadlineExceeded is latency/back-pressure, not a connectivity outage.
     return messageLooksLikeFetchFailure(error.message || '');
   }
 

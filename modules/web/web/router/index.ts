@@ -61,9 +61,13 @@ export function createAppRouter(base = '/', composer?: ComposerLike): Router {
   const titleRoute = shallowRef<RouteLocationNormalized | null>(router.currentRoute.value);
   const appName = defaultAppName();
   useTitle(computed(() => resolveDocumentTitle(titleRoute.value as any, composer, appName)));
+  /** Latest navigation ownership token — stale chunk errors must not blank a newer page. */
+  let navOwnershipSeq = 0;
 
   router.beforeEach(async to => {
     titleRoute.value = to;
+    const ownership = ++navOwnershipSeq;
+    (to.meta as { __navOwnershipSeq?: number }).__navOwnershipSeq = ownership;
     // none: do not open a nav ticket; drop any stale generation marker on meta.
     // Unreachable: Connection lost pill already owns session truth — do not open a
     // 15s handoff that waits on chunks/RPC that will not complete.
@@ -104,16 +108,21 @@ export function createAppRouter(base = '/', composer?: ComposerLike): Router {
     scheduleNavigationSettleIfIdle(loadingTiming.NAV_IDLE_SETTLE_MS);
   });
 
-  router.onError(error => {
+  router.onError((error, to) => {
     console.error('Router error:', error);
     settleNavigationIfActive();
-    if (isRouteChunkLoadError(error)) {
-      const fullPath = String(router.currentRoute.value.fullPath || '/');
-      setViewLoadError({
-        message: String((error as { message?: string })?.message || error || ''),
-        fullPath,
-      });
-    }
+    if (!isRouteChunkLoadError(error)) return;
+    const failed = (to ||
+      (error as { to?: RouteLocationNormalized })?.to ||
+      null) as RouteLocationNormalized | null;
+    const failedSeq = Number((failed?.meta as { __navOwnershipSeq?: number } | undefined)?.__navOwnershipSeq) || 0;
+    // A superseded navigation's late chunk reject must not blank the newer route.
+    if (failedSeq && failedSeq !== navOwnershipSeq) return;
+    const fullPath = String(failed?.fullPath || router.currentRoute.value.fullPath || '/');
+    setViewLoadError({
+      message: String((error as { message?: string })?.message || error || ''),
+      fullPath,
+    });
   });
 
   return router;

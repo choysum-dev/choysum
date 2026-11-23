@@ -77,6 +77,16 @@ test('client lifecycle: notifies connectivity hooks on success and transport out
   }) as ConnectError;
   provider.onError?.(context, unavailable);
   expect(outages).toHaveLength(1);
+
+  const business = Object.assign(Object.create(ConnectError.prototype), {
+    code: Code.InvalidArgument,
+    rawMessage: 'bad',
+    message: 'bad',
+    metadata: new Headers(),
+    findDetails: () => [],
+  }) as ConnectError;
+  provider.onError?.(makeContext('Biz', 'span-biz'), business);
+  expect(successes).toHaveLength(2);
   resetConnectivityHooksForTests();
 });
 

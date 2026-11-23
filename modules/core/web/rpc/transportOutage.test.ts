@@ -49,3 +49,18 @@ test('isTransportOutage: ConnectError with ErrorInfo is business', () => {
 test('isTransportOutage: TypeError Failed to fetch is an outage', () => {
   expect(isTransportOutage(new TypeError('Failed to fetch'))).toBe(true);
 });
+
+test('isTransportOutage: DeadlineExceeded is not an outage', () => {
+  expect(isTransportOutage(connectError(Code.DeadlineExceeded, 'deadline'))).toBe(false);
+});
+
+test('isTransportOutage: ambiguous Load failed alone is not an outage', () => {
+  expect(isTransportOutage(new Error('Load failed'))).toBe(false);
+  expect(isTransportOutage(new Error('Load failed: Invalid file format'))).toBe(false);
+});
+
+test('isTransportOutage: null and AbortError variants', () => {
+  expect(isTransportOutage(null)).toBe(false);
+  expect(isTransportOutage({ name: 'AbortError', code: 'ABORT_ERR', message: 'aborted' })).toBe(false);
+  expect(isTransportOutage('Failed to fetch')).toBe(true);
+});

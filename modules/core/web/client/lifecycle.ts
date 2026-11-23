@@ -55,6 +55,9 @@ export function createLifecycleProvider(apiState: ApiStateInternal): RequestLife
       try {
         if (isTransportOutage(error)) {
           getConnectivityHooks().onTransportOutage?.();
+        } else if (error instanceof ConnectError) {
+          // Server answered with a non-transport outcome — streak is not consecutive.
+          getConnectivityHooks().onTransportSuccess?.();
         }
       } catch {
         // Connectivity hooks must never break RPC error propagation.

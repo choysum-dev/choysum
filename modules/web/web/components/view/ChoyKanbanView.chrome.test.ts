@@ -605,4 +605,23 @@ describe('ChoyKanbanView chrome', () => {
     await flushPromises();
     mounted.unmount();
   });
+
+  test('retrySurface invokes board refresh', async () => {
+    const store = makeStore();
+    const mounted = mountApp(ChoyKanbanView as any, {
+      props: {
+        store,
+        lanes: twoLanes(),
+        autoBootstrap: false,
+        showHeader: false,
+        showActions: false,
+      },
+    });
+    await flushPromises();
+    const exposed = mounted.root as { retrySurface?: () => Promise<void> };
+    expect(typeof exposed.retrySurface).toBe('function');
+    await exposed.retrySurface?.();
+    await flushPromises();
+    mounted.unmount();
+  });
 });

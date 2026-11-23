@@ -74,11 +74,42 @@ describe('createAppRouter', () => {
     clearViewLoadError();
     const router = createAppRouter('/');
     await router.isReady().catch(() => undefined);
-    const anyRouter = router as { triggerError?: (err: Error) => void };
+    const anyRouter = router as {
+      triggerError?: (err: Error, to?: { fullPath: string; meta?: Record<string, unknown> }) => void;
+    };
+    // Omit ownership seq so the handler records even after prior navigations advanced the counter.
     anyRouter.triggerError?.(
-      new Error('Failed to fetch dynamically imported module: /web/assets/Company-x.js')
+      new Error('Failed to fetch dynamically imported module: /web/assets/Company-x.js'),
+      { fullPath: '/web/base/companies?q=1#top', meta: {} },
     );
-    expect(viewLoadError.value?.fullPath).toBeTruthy();
+    expect(viewLoadError.value?.fullPath).toBe('/web/base/companies?q=1#top');
+    clearViewLoadError();
+  });
+
+  test('router onError ignores chunk failures from superseded navigations', async () => {
+    const { clearViewLoadError, viewLoadError } = await import('./viewLoadError');
+    clearViewLoadError();
+    const router = createAppRouter('/');
+    await router.isReady().catch(() => undefined);
+    let staleSeq = 0;
+    const remove = router.beforeEach(to => {
+      if (to.path === '/__nav_b__') {
+        staleSeq = Number((to.meta as { __navOwnershipSeq?: number }).__navOwnershipSeq) || 0;
+      }
+      return true;
+    });
+    await router.push('/__nav_b__').catch(() => undefined);
+    await router.push('/__nav_content_policy__').catch(() => undefined);
+    remove();
+    expect(staleSeq).toBeGreaterThan(0);
+    const anyRouter = router as {
+      triggerError?: (err: Error, to?: { fullPath: string; meta?: Record<string, unknown> }) => void;
+    };
+    anyRouter.triggerError?.(
+      new Error('Failed to fetch dynamically imported module: /web/assets/Stale-x.js'),
+      { fullPath: '/stale', meta: { __navOwnershipSeq: staleSeq } },
+    );
+    expect(viewLoadError.value).toBeNull();
     clearViewLoadError();
   });
 

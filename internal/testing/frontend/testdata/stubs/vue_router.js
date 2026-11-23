@@ -166,10 +166,10 @@ export function createFeStubRouter(overrides) {
           if (i >= 0) errorHandlers.splice(i, 1);
         };
       },
-      /** Test helper: fire registered onError listeners. */
-      triggerError: function (err) {
+      /** Test helper: fire registered onError listeners (optional failed `to`). */
+      triggerError: function (err, to) {
         errorHandlers.forEach(function (fn) {
-          fn(err);
+          fn(err, to);
         });
       },
       install: function (app) {

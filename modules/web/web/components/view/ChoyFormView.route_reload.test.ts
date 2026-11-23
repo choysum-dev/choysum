@@ -100,6 +100,18 @@ describe('FormView reloads when route identity changes', () => {
     wrapper.unmount();
   });
 
+  test('retrySurface reloads display for the current record', async () => {
+    const { wrapper, store } = mountForm();
+    await flushPromises();
+    const before = store.Browse.calls.length;
+    const exposed = wrapper.root as { retrySurface?: () => Promise<void> };
+    expect(typeof exposed.retrySurface).toBe('function');
+    await exposed.retrySurface?.();
+    await flushPromises();
+    expect(store.Browse.calls.length).toBeGreaterThan(before);
+    wrapper.unmount();
+  });
+
   test('does not follow route when resolveRecordIdFromRoute is false', async () => {
     const store = fakeStore();
     const { wrapper, route } = mountForm({

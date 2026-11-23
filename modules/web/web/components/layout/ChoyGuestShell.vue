@@ -35,7 +35,7 @@ SPDX-License-Identifier: Apache-2.0
           data-testid="choy-shell-content"
         >
           <slot>
-            <ChoyViewLoadError />
+            <ChoyViewLoadError v-if="hasViewLoadError" />
             <!-- Guest never KeepAlive (login/setup/register must not revive instance state). -->
             <router-view v-slot="{ Component, route: viewRoute }">
               <component
