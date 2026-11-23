@@ -22,22 +22,29 @@ test('lifecycle interceptor: marks stream context and still runs next', async ()
   const started: RpcRequestContext[] = [];
   const finished: RpcRequestContext[] = [];
   const errored: RpcRequestContext[] = [];
+  const sequence: string[] = [];
   const provider: RequestLifecycleProvider = {
     onStart(context) {
       started.push(context);
+      sequence.push(`start:${context.methodName}`);
     },
     onFinish(context) {
       finished.push(context);
+      sequence.push(`finish:${context.methodName}`);
     },
     onError(context, error) {
       errored.push(context);
+      sequence.push(`error:${context.methodName}`);
       return error;
     },
   };
   setLifecycleProvider(provider);
   try {
     const intercept = createLifecycleInterceptor();
-    const nextOk = async (req: { stream?: boolean }) => ({ stream: req.stream, body: 'ok' });
+    const nextOk = async (req: { stream?: boolean; method: { name: string } }) => {
+      sequence.push(`next:${req.method.name}`);
+      return { stream: req.stream, body: 'ok' };
+    };
     const unary = await intercept(nextOk as any)(makeReq(false) as any);
     const streamed = await intercept(nextOk as any)(makeReq(true) as any);
     const undefinedStreamReq = { ...makeReq(false), stream: undefined };
@@ -46,6 +53,17 @@ test('lifecycle interceptor: marks stream context and still runs next', async ()
     expect(streamed).toEqual({ stream: true, body: 'ok' });
     expect(started).toHaveLength(3);
     expect(finished).toHaveLength(3);
+    expect(sequence.slice(0, 9)).toEqual([
+      'start:Ping',
+      'next:Ping',
+      'finish:Ping',
+      'start:SubscribeNotifications',
+      'next:SubscribeNotifications',
+      'finish:SubscribeNotifications',
+      'start:Ping',
+      'next:Ping',
+      'finish:Ping',
+    ]);
     expect(started[0]?.stream).toBe(false);
     expect(started[0]?.methodName).toBe('Ping');
     expect(started[1]?.stream).toBe(true);

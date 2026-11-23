@@ -83,18 +83,34 @@ test('client lifecycle: streaming RPCs do not own api loading or chrome', () => 
 
 test('client lifecycle: streaming onError does not record api error state', () => {
   resetLoadingRegistryForTests();
+  resetConnectivityHooksForTests();
+  const successes: number[] = [];
+  const outages: number[] = [];
+  setConnectivityHooks({
+    onTransportSuccess: () => successes.push(1),
+    onTransportOutage: () => outages.push(1),
+  });
   const state = createApiStateScope('lifecycle-stream-err') as ApiStateInternal;
   const provider = createLifecycleProvider(state);
   const context = makeContext('SubscribeNotifications', 'span-stream-err', { stream: true });
 
   provider.onStart?.(context);
-  const err = new Error('stream dropped');
+  // Would be an outage for unary; streams must not drive connectivity.
+  const err = Object.assign(Object.create(ConnectError.prototype), {
+    code: Code.Unavailable,
+    rawMessage: 'unavailable',
+    message: 'unavailable',
+    metadata: new Headers(),
+    findDetails: () => [],
+  }) as ConnectError;
   const returned = provider.onError?.(context, err);
   expect(returned).toBe(err);
   expect(state.isLoading.value).toBe(false);
   expect(state.errors['demo.Service.SubscribeNotifications']).toBeFalsy();
   expect(state.hasErrors()).toBe(false);
   expect(getLoadingRegistryDebugState().userBusyCount).toBe(0);
+  expect(outages).toHaveLength(0);
+  expect(successes).toHaveLength(0);
 
   // Real tip lifetime: interceptor always runs onFinish after onError.
   provider.onFinish?.(context);
@@ -102,6 +118,9 @@ test('client lifecycle: streaming onError does not record api error state', () =
   expect(state.hasErrors()).toBe(false);
   expect(getLoadingRegistryDebugState().userBusyCount).toBe(0);
   expect(getLoadingRegistryDebugState().barCount).toBe(0);
+  expect(outages).toHaveLength(0);
+  expect(successes).toHaveLength(0);
+  resetConnectivityHooksForTests();
 });
 
 test('client lifecycle: accepts success callbacks without mutating state', () => {
