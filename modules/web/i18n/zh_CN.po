@@ -1451,27 +1451,22 @@ msgctxt "web/components/layout/ChoyCommandPalette"
 msgid "Type a command or search…"
 msgstr "输入命令或搜索…"
 
-#: web/components/layout/ChoyConnectivityPill.vue:11
-msgctxt "web/components/layout/ChoyConnectivityPill"
-msgid "Cannot reach the server. Check your network, then retry."
-msgstr "无法连接服务器。请检查网络后重试。"
-
-#: web/components/layout/ChoyConnectivityPill.vue:14
+#: web/components/layout/ChoyConnectivityPill.vue:15
 msgctxt "web/components/layout/ChoyConnectivityPill"
 msgid "Checking…"
 msgstr "检查中…"
 
-#: web/components/layout/ChoyConnectivityPill.vue:4 web/components/layout/ChoyConnectivityPill.vue:6
+#: web/components/layout/ChoyConnectivityPill.vue:16
 msgctxt "web/components/layout/ChoyConnectivityPill"
 msgid "Connection lost"
 msgstr "连接已断开"
 
-#: web/components/layout/ChoyConnectivityPill.vue:14
+#: web/components/layout/ChoyConnectivityPill.vue:16
 msgctxt "web/components/layout/ChoyConnectivityPill"
-msgid "Retry"
-msgstr "重试"
+msgid "Retry connection"
+msgstr "重试连接"
 
-#: web/components/layout/ChoyGuestHeader.vue:69
+#: web/components/layout/ChoyGuestHeader.vue:67
 msgctxt "web/components/layout/ChoyGuestHeader"
 msgid "Home"
 msgstr "首页"
@@ -1556,17 +1551,17 @@ msgctxt "web/components/layout/ChoySidebarNav"
 msgid "No menus available"
 msgstr "暂无可用菜单"
 
-#: web/components/layout/ChoyViewLoadError.vue:21
+#: web/components/layout/ChoyViewLoadError.vue:25
 msgctxt "web/components/layout/ChoyViewLoadError"
 msgid "Cannot reach the server. Check your network, then retry."
 msgstr "无法连接服务器。请检查网络后重试。"
 
-#: web/components/layout/ChoyViewLoadError.vue:17
+#: web/components/layout/ChoyViewLoadError.vue:21
 msgctxt "web/components/layout/ChoyViewLoadError"
 msgid "Connection lost"
 msgstr "连接已断开"
 
-#: web/components/layout/ChoyViewLoadError.vue:17
+#: web/components/layout/ChoyViewLoadError.vue:21
 msgctxt "web/components/layout/ChoyViewLoadError"
 msgid "Failed to load this view"
 msgstr "无法加载此视图"
@@ -1581,7 +1576,7 @@ msgctxt "web/components/layout/ChoyViewLoadError"
 msgid "Retry loading"
 msgstr "重试加载"
 
-#: web/components/layout/ChoyViewLoadError.vue:22
+#: web/components/layout/ChoyViewLoadError.vue:26
 msgctxt "web/components/layout/ChoyViewLoadError"
 msgid "The page resources could not be loaded. Retry or reload the page."
 msgstr "页面资源未能加载。请重试或刷新页面。"
@@ -3086,7 +3081,7 @@ msgctxt "web/stores/breadcrumbStore"
 msgid "Page"
 msgstr "页面"
 
-#: web/stores/connectivityStore/recoveryToast.ts:29
+#: web/stores/connectivityStore/recoveryToast.ts:32
 msgctxt "web/stores/connectivityStore"
 msgid "Connection restored"
 msgstr "连接已恢复"
@@ -3915,6 +3910,14 @@ msgstr "用户"
 #~ msgctxt "web/components/field/TimeField"
 #~ msgid "Invalid time value"
 #~ msgstr "时间无效"
+
+#~ msgctxt "web/components/layout/ChoyConnectivityPill"
+#~ msgid "Cannot reach the server. Check your network, then retry."
+#~ msgstr "无法连接服务器。请检查网络后重试。"
+
+#~ msgctxt "web/components/layout/ChoyConnectivityPill"
+#~ msgid "Retry"
+#~ msgstr "重试"
 
 #~ msgctxt "web/components/layout/ChoyShellLocaleMenu"
 #~ msgid "Languages"

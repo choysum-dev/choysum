@@ -51,7 +51,7 @@ SPDX-License-Identifier: Apache-2.0
       <footer
         v-if="showFooter"
         class="choy-shell__footer flex shrink-0 items-center justify-center"
-        :style="{ height: 'var(--choy-layout-chrome-height)', boxSizing: 'border-box' }"
+        :style="{ height: 'var(--choy-layout-footer-height)', boxSizing: 'border-box' }"
         data-testid="choy-shell-footer"
       >
         <ChoyAppFooter />

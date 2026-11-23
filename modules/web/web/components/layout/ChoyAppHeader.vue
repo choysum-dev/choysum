@@ -11,11 +11,9 @@ SPDX-License-Identifier: Apache-2.0
   >
     <!--
       Trigger + sep + breadcrumb share one items-center row.
-      size=icon is size-control (32px) with a size-4 (16px) glyph, so the
-      hit-box has 8px inset on each side. -ms-2 / -me-2 pull the button so
-      the glyph optically aligns with the page gutter and sits gap-2 from
-      the separator (matching separator→breadcrumb), instead of looking
-      wider because of the transparent hit padding.
+      Header T/L/R pad is chrome-padding (shell CSS); bottom is 0. No -ms on
+      the trigger: size-4 glyph sits chrome-padding + 8px from the inset corner
+      on both top and left (equal air measured on the icon).
     -->
     <div
       v-if="showSidebarChrome"
@@ -26,7 +24,7 @@ SPDX-License-Identifier: Apache-2.0
         variant="ghost"
         size="icon"
         type="button"
-        class="-ms-2 -me-2 shrink-0 leading-none"
+        class="shrink-0 leading-none"
         data-testid="choy-shell-menu-trigger"
         data-sidebar="trigger"
         data-slot="sidebar-trigger"
@@ -90,11 +88,9 @@ function onMenuTriggerClick() {
   runShellMenuToggle(layoutStore, toggleSidebar)
 }
 
-/** Height only — shared shell top chrome is translucent + blur with no hairline border. */
+/** Height from chrome token; block/inline pad comes from shell product CSS. */
 const headerStyle = {
   height: 'var(--choy-layout-chrome-height)',
-  paddingTop: '0',
-  paddingBottom: '0',
   boxSizing: 'border-box' as const,
 }
 

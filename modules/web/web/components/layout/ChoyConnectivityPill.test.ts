@@ -53,24 +53,24 @@ test('ChoyConnectivityPill: shows when unreachable and hides after recover', asy
   await nextTick();
   const pill = mounted.q('[data-testid=choy-connectivity-pill]') as HTMLElement | null;
   expect(pill).toBeTruthy();
-  // Icon-only trigger: accessible name via aria-label, no visible text label.
-  expect(pill?.getAttribute('aria-label') || '').toBeTruthy();
+  // Icon-only: accessible name via aria-label; no panel / visible text.
+  const aria = pill?.getAttribute('aria-label') || '';
+  expect(aria).toContain('Connection lost');
+  expect(aria).toContain('Retry connection');
   expect((pill?.textContent || '').trim()).toBe('');
   expect(pill?.querySelector('svg')).toBeTruthy();
+  expect(mounted.q('[data-testid=choy-connectivity-pill-panel]')).toBeNull();
   store.markReachable();
   await nextTick();
   expect(mounted.q('[data-testid=choy-connectivity-pill]')).toBeNull();
   mounted.unmount();
 });
 
-test('ChoyConnectivityPill: Retry probes and closes popover on success', async () => {
+test('ChoyConnectivityPill: click probes connectivity directly', async () => {
   const store = useConnectivityStore();
   store.markUnreachable();
   const mounted = mountApp(ChoyConnectivityPill as any);
   await nextTick();
-  mounted.click('[data-testid=choy-connectivity-pill]');
-  await nextTick();
-  expect(mounted.q('[data-testid=choy-connectivity-pill-panel]')).toBeTruthy();
 
   let probed = 0;
   const orig = store.probeConnectivity.bind(store);
@@ -81,10 +81,11 @@ test('ChoyConnectivityPill: Retry probes and closes popover on success', async (
   }) as typeof store.probeConnectivity;
 
   try {
-    mounted.click('[data-testid=choy-connectivity-pill-retry]');
+    mounted.click('[data-testid=choy-connectivity-pill]');
     await flushPromises();
     expect(probed).toBe(1);
     expect(store.status).toBe('reachable');
+    expect(mounted.q('[data-testid=choy-connectivity-pill]')).toBeNull();
   } finally {
     store.probeConnectivity = orig;
   }

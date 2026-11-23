@@ -49,6 +49,9 @@ describe('ChoyGuestShell', () => {
     expect(
       (mounted.q('.choy-guest-header') as HTMLElement | null)?.style?.height || '',
     ).toContain('--choy-layout-chrome-height');
+    expect(
+      (mounted.q('[data-testid=choy-shell-footer]') as HTMLElement | null)?.style?.height || '',
+    ).toContain('--choy-layout-footer-height');
     expect(mounted.q('[data-test=router-view]')).not.toBeNull();
     // Header, canvas, and footer are siblings on the guest frame.
     const frame = mounted.q('[data-testid=choy-shell-scroll]');

@@ -11,7 +11,7 @@ SPDX-License-Identifier: Apache-2.0
   -->
   <Tooltip>
     <TooltipTrigger as-child>
-      <div class="w-full min-w-0">
+      <div class="flex h-full w-full min-h-0 min-w-0 items-center">
         <slot />
       </div>
     </TooltipTrigger>

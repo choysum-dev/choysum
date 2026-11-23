@@ -1029,22 +1029,38 @@ msgctxt "service/models/user@Register"
 msgid "User registration failed"
 msgstr ""
 
-#: web/components/layout/ChoyAppShell.vue:99
+#: web/components/layout/AuthSidebarUserMenu.vue:81
 msgctxt "web/components/layout/ChoyAppShell"
 msgid "Account"
 msgstr ""
 
-#: web/components/layout/ChoyAppShell.vue:40
+#: web/components/layout/AuthSidebarUserMenu.vue:34
+msgctxt "web/components/layout/ChoyAppShell"
+msgid "Checking…"
+msgstr ""
+
+#: web/components/layout/AuthSidebarUserMenu.vue:100
+msgctxt "web/components/layout/ChoyAppShell"
+msgid "Connection lost"
+msgstr ""
+
+#: web/components/layout/AuthSidebarUserMenu.vue:46
 msgctxt "web/components/layout/ChoyAppShell"
 msgid "Log Out"
 msgstr ""
 
-#: web/components/layout/ChoyAppShell.vue:35
+#: web/components/layout/AuthSidebarUserMenu.vue:41
 msgctxt "web/components/layout/ChoyAppShell"
 msgid "Preferences"
 msgstr ""
 
-#: web/components/layout/ChoyAppShell.vue:13
+#: web/components/layout/AuthSidebarUserMenu.vue:34
+msgctxt "web/components/layout/ChoyAppShell"
+msgid "Retry connection"
+msgstr ""
+
+#: web/components/layout/AuthSidebarUserMenu.vue:100
+#: web/components/layout/AuthSidebarUserMenu.vue:102
 msgctxt "web/components/layout/ChoyAppShell"
 msgid "User menu"
 msgstr ""
@@ -1074,8 +1090,8 @@ msgctxt "web/components/layout/SwitchCompany"
 msgid "Companies"
 msgstr ""
 
-#: web/components/layout/SwitchCompany.vue:334
-#: web/components/layout/SwitchCompany.vue:337
+#: web/components/layout/SwitchCompany.vue:335
+#: web/components/layout/SwitchCompany.vue:338
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Company"
 msgstr ""
@@ -1111,7 +1127,7 @@ msgctxt "web/components/layout/SwitchCompany"
 msgid "Toggle company"
 msgstr ""
 
-#: web/components/layout/SwitchCompany.vue:351
+#: web/components/layout/SwitchCompany.vue:352
 msgctxt "web/components/layout/SwitchCompany"
 msgid "Workspace"
 msgstr ""
@@ -1192,73 +1208,73 @@ msgctxt "web/dialogs/change-password/ChangePasswordDialog"
 msgid "Update if compromised or rotating credentials."
 msgstr ""
 
-#: web/dialogs/preferences/PreferencesDialog.vue:41
+#: web/dialogs/preferences/PreferencesDialog.vue:40
 msgctxt "web/dialogs/preferences/PreferencesDialog"
 msgid "Appearance"
 msgstr ""
 
 #: web/dialogs/preferences/PreferencesDialog.vue:10
-#: web/dialogs/preferences/PreferencesDialog.vue:84
+#: web/dialogs/preferences/PreferencesDialog.vue:83
 msgctxt "web/dialogs/preferences/PreferencesDialog"
 msgid "Cancel"
 msgstr ""
 
-#: web/dialogs/preferences/PreferencesDialog.vue:214
+#: web/dialogs/preferences/PreferencesDialog.vue:225
 msgctxt "web/dialogs/preferences/PreferencesDialog"
 msgid "Cannot update preferences: missing user id"
 msgstr ""
 
-#: web/dialogs/preferences/PreferencesDialog.vue:74
+#: web/dialogs/preferences/PreferencesDialog.vue:73
 msgctxt "web/dialogs/preferences/PreferencesDialog"
 msgid "Change password"
 msgstr ""
 
-#: web/dialogs/preferences/PreferencesDialog.vue:46
+#: web/dialogs/preferences/PreferencesDialog.vue:45
 msgctxt "web/dialogs/preferences/PreferencesDialog"
 msgid "Density"
 msgstr ""
 
-#: web/dialogs/preferences/PreferencesDialog.vue:59
+#: web/dialogs/preferences/PreferencesDialog.vue:58
 msgctxt "web/dialogs/preferences/PreferencesDialog"
 msgid "Display timezone; empty uses browser timezone on first login."
 msgstr ""
 
-#: web/dialogs/preferences/PreferencesDialog.vue:276
+#: web/dialogs/preferences/PreferencesDialog.vue:287
 msgctxt "web/dialogs/preferences/PreferencesDialog"
 msgid "Failed to update preferences"
 msgstr ""
 
-#: web/dialogs/preferences/PreferencesDialog.vue:27
+#: web/dialogs/preferences/PreferencesDialog.vue:118
 msgctxt "web/dialogs/preferences/PreferencesDialog"
 msgid "First name"
 msgstr ""
 
-#: web/dialogs/preferences/PreferencesDialog.vue:37
+#: web/dialogs/preferences/PreferencesDialog.vue:36
 msgctxt "web/dialogs/preferences/PreferencesDialog"
 msgid "General"
 msgstr ""
 
-#: web/dialogs/preferences/PreferencesDialog.vue:53
+#: web/dialogs/preferences/PreferencesDialog.vue:52
 msgctxt "web/dialogs/preferences/PreferencesDialog"
 msgid "Language"
 msgstr ""
 
-#: web/dialogs/preferences/PreferencesDialog.vue:53
+#: web/dialogs/preferences/PreferencesDialog.vue:52
 msgctxt "web/dialogs/preferences/PreferencesDialog"
 msgid "Language for the UI and terminology."
 msgstr ""
 
-#: web/dialogs/preferences/PreferencesDialog.vue:28
+#: web/dialogs/preferences/PreferencesDialog.vue:119
 msgctxt "web/dialogs/preferences/PreferencesDialog"
 msgid "Last name"
 msgstr ""
 
-#: web/dialogs/preferences/PreferencesDialog.vue:51
+#: web/dialogs/preferences/PreferencesDialog.vue:50
 msgctxt "web/dialogs/preferences/PreferencesDialog"
 msgid "Locale"
 msgstr ""
 
-#: web/dialogs/preferences/PreferencesDialog.vue:72
+#: web/dialogs/preferences/PreferencesDialog.vue:71
 msgctxt "web/dialogs/preferences/PreferencesDialog"
 msgid "Password"
 msgstr ""
@@ -1268,58 +1284,58 @@ msgctxt "web/dialogs/preferences/PreferencesDialog"
 msgid "Preferences"
 msgstr ""
 
-#: web/dialogs/preferences/PreferencesDialog.vue:270
+#: web/dialogs/preferences/PreferencesDialog.vue:281
 msgctxt "web/dialogs/preferences/PreferencesDialog"
 msgid "Preferences updated"
 msgstr ""
 
 #: web/dialogs/preferences/PreferencesDialog.vue:11
-#: web/dialogs/preferences/PreferencesDialog.vue:86
+#: web/dialogs/preferences/PreferencesDialog.vue:85
 msgctxt "web/dialogs/preferences/PreferencesDialog"
 msgid "Save"
 msgstr ""
 
-#: web/dialogs/preferences/PreferencesDialog.vue:69
+#: web/dialogs/preferences/PreferencesDialog.vue:68
 msgctxt "web/dialogs/preferences/PreferencesDialog"
 msgid "Security"
 msgstr ""
 
-#: web/dialogs/preferences/PreferencesDialog.vue:59
+#: web/dialogs/preferences/PreferencesDialog.vue:58
 msgctxt "web/dialogs/preferences/PreferencesDialog"
 msgid "Select timezone"
 msgstr ""
 
-#: web/dialogs/preferences/PreferencesDialog.vue:46
+#: web/dialogs/preferences/PreferencesDialog.vue:45
 msgctxt "web/dialogs/preferences/PreferencesDialog"
 msgid "Spacing density for lists and the app shell."
 msgstr ""
 
-#: web/dialogs/preferences/PreferencesDialog.vue:61
+#: web/dialogs/preferences/PreferencesDialog.vue:60
 msgctxt "web/dialogs/preferences/PreferencesDialog"
 msgid "Suggested from your browser"
 msgstr ""
 
-#: web/dialogs/preferences/PreferencesDialog.vue:43
+#: web/dialogs/preferences/PreferencesDialog.vue:42
 msgctxt "web/dialogs/preferences/PreferencesDialog"
 msgid "Theme"
 msgstr ""
 
-#: web/dialogs/preferences/PreferencesDialog.vue:59
+#: web/dialogs/preferences/PreferencesDialog.vue:58
 msgctxt "web/dialogs/preferences/PreferencesDialog"
 msgid "Timezone"
 msgstr ""
 
-#: web/dialogs/preferences/PreferencesDialog.vue:43
+#: web/dialogs/preferences/PreferencesDialog.vue:42
 msgctxt "web/dialogs/preferences/PreferencesDialog"
 msgid "UI color theme (light, dark, or follow the system)."
 msgstr ""
 
-#: web/dialogs/preferences/PreferencesDialog.vue:72
+#: web/dialogs/preferences/PreferencesDialog.vue:71
 msgctxt "web/dialogs/preferences/PreferencesDialog"
 msgid "Update if compromised or rotating credentials."
 msgstr ""
 
-#: web/dialogs/preferences/PreferencesDialog.vue:55
+#: web/dialogs/preferences/PreferencesDialog.vue:54
 msgctxt "web/dialogs/preferences/PreferencesDialog"
 msgid "Using current session language"
 msgstr ""
@@ -1994,62 +2010,62 @@ msgctxt "web/pages/setup/SetupReviewStep"
 msgid "Username"
 msgstr ""
 
-#: web/route/routes.ts:285
+#: web/route/routes.ts:288
 msgctxt "web/route/routes"
 msgid "Create Field Rule"
 msgstr ""
 
-#: web/route/routes.ts:328
+#: web/route/routes.ts:331
 msgctxt "web/route/routes"
 msgid "Create Method Access"
 msgstr ""
 
-#: web/route/routes.ts:242
+#: web/route/routes.ts:245
 msgctxt "web/route/routes"
 msgid "Create Record Rule"
 msgstr ""
 
-#: web/route/routes.ts:114
+#: web/route/routes.ts:117
 msgctxt "web/route/routes"
 msgid "Create Role"
 msgstr ""
 
-#: web/route/routes.ts:141
+#: web/route/routes.ts:144
 msgctxt "web/route/routes"
 msgid "Create Session"
 msgstr ""
 
-#: web/route/routes.ts:175
+#: web/route/routes.ts:178
 msgctxt "web/route/routes"
 msgid "Create Token"
 msgstr ""
 
-#: web/route/routes.ts:371
+#: web/route/routes.ts:374
 msgctxt "web/route/routes"
 msgid "Create UI Resource Grant"
 msgstr ""
 
-#: web/route/routes.ts:85
+#: web/route/routes.ts:88
 msgctxt "web/route/routes"
 msgid "Create User"
 msgstr ""
 
-#: web/route/routes.ts:404
+#: web/route/routes.ts:407
 msgctxt "web/route/routes"
 msgid "Field Defaults"
 msgstr ""
 
-#: web/route/routes.ts:271
+#: web/route/routes.ts:274
 msgctxt "web/route/routes"
 msgid "Field Rule Details"
 msgstr ""
 
-#: web/route/routes.ts:257
+#: web/route/routes.ts:260
 msgctxt "web/route/routes"
 msgid "Field Rule List"
 msgstr ""
 
-#: web/route/routes.ts:40
+#: web/route/routes.ts:41
 msgctxt "web/route/routes"
 msgid "Initial Setup"
 msgstr ""
@@ -2059,107 +2075,107 @@ msgctxt "web/route/routes"
 msgid "Login"
 msgstr ""
 
-#: web/route/routes.ts:51
+#: web/route/routes.ts:53
 msgctxt "web/route/routes"
 msgid "Logout"
 msgstr ""
 
-#: web/route/routes.ts:314
+#: web/route/routes.ts:317
 msgctxt "web/route/routes"
 msgid "Method Access Details"
 msgstr ""
 
-#: web/route/routes.ts:300
+#: web/route/routes.ts:303
 msgctxt "web/route/routes"
 msgid "Method Access List"
 msgstr ""
 
-#: web/route/routes.ts:413
+#: web/route/routes.ts:416
 msgctxt "web/route/routes"
 msgid "Parameters"
 msgstr ""
 
-#: web/route/routes.ts:395
+#: web/route/routes.ts:398
 msgctxt "web/route/routes"
 msgid "Property Definitions"
 msgstr ""
 
-#: web/route/routes.ts:228
+#: web/route/routes.ts:231
 msgctxt "web/route/routes"
 msgid "Record Rule Details"
 msgstr ""
 
-#: web/route/routes.ts:214
+#: web/route/routes.ts:217
 msgctxt "web/route/routes"
 msgid "Record Rule List"
 msgstr ""
 
-#: web/route/routes.ts:430
+#: web/route/routes.ts:433
 msgctxt "web/route/routes"
 msgid "Register"
 msgstr ""
 
-#: web/route/routes.ts:105
+#: web/route/routes.ts:108
 msgctxt "web/route/routes"
 msgid "Role Details"
 msgstr ""
 
-#: web/route/routes.ts:96
+#: web/route/routes.ts:99
 msgctxt "web/route/routes"
 msgid "Role Management"
 msgstr ""
 
-#: web/route/routes.ts:132
+#: web/route/routes.ts:135
 msgctxt "web/route/routes"
 msgid "Session Details"
 msgstr ""
 
-#: web/route/routes.ts:123
+#: web/route/routes.ts:126
 msgctxt "web/route/routes"
 msgid "Session Management"
 msgstr ""
 
-#: web/route/routes.ts:184
+#: web/route/routes.ts:187
 msgctxt "web/route/routes"
 msgid "Token Board"
 msgstr ""
 
-#: web/route/routes.ts:198
+#: web/route/routes.ts:201
 msgctxt "web/route/routes"
 msgid "Token Chart"
 msgstr ""
 
-#: web/route/routes.ts:166
+#: web/route/routes.ts:169
 msgctxt "web/route/routes"
 msgid "Token Details"
 msgstr ""
 
-#: web/route/routes.ts:152
+#: web/route/routes.ts:155
 msgctxt "web/route/routes"
 msgid "Token Management"
 msgstr ""
 
-#: web/route/routes.ts:386
+#: web/route/routes.ts:389
 msgctxt "web/route/routes"
 msgid "Translations"
 msgstr ""
 
-#: web/route/routes.ts:357
+#: web/route/routes.ts:360
 msgctxt "web/route/routes"
 msgid "UI Resource Grant Details"
 msgstr ""
 
-#: web/route/routes.ts:343
+#: web/route/routes.ts:346
 msgctxt "web/route/routes"
 msgid "UI Resource Grant List"
 msgstr ""
 
-#: web/route/routes.ts:76
+#: web/route/routes.ts:79
 msgctxt "web/route/routes"
 msgid "User Details"
 msgstr ""
 
-#: web/route/routes.ts:67
+#: web/route/routes.ts:70
 msgctxt "web/route/routes"
 msgid "User List"
 msgstr ""
@@ -2269,12 +2285,12 @@ msgctxt "web/stores/auth/actions"
 msgid "SwitchCompanyScope returned an invalid response"
 msgstr ""
 
-#: web/views/RoleFieldRuleFormView.vue:36
+#: web/views/RoleFieldRuleFormView.vue:37
 msgctxt "web/views/RoleFieldRuleFormView"
 msgid "Copy Field Rule"
 msgstr ""
 
-#: web/views/RoleFieldRuleFormView.vue:36
+#: web/views/RoleFieldRuleFormView.vue:37
 msgctxt "web/views/RoleFieldRuleFormView"
 msgid "Create Field Rule"
 msgstr ""
@@ -2284,17 +2300,17 @@ msgctxt "web/views/RoleFieldRuleFormView"
 msgid "Cross-role field rule editor"
 msgstr ""
 
-#: web/views/RoleFieldRuleFormView.vue:36
+#: web/views/RoleFieldRuleFormView.vue:37
 msgctxt "web/views/RoleFieldRuleFormView"
 msgid "Delete Field Rule"
 msgstr ""
 
-#: web/views/RoleFieldRuleFormView.vue:36
+#: web/views/RoleFieldRuleFormView.vue:37
 msgctxt "web/views/RoleFieldRuleFormView"
 msgid "Edit Field Rule"
 msgstr ""
 
-#: web/views/RoleFieldRuleFormView.vue:36
+#: web/views/RoleFieldRuleFormView.vue:37
 #: web/views/RoleFieldRuleFormView.vue:8
 msgctxt "web/views/RoleFieldRuleFormView"
 msgid "Field Rule"
@@ -2315,27 +2331,27 @@ msgctxt "web/views/RoleFieldRuleFormView"
 msgid "System Information"
 msgstr ""
 
-#: web/views/RoleFieldRuleListView.vue:31
+#: web/views/RoleFieldRuleListView.vue:28
 msgctxt "web/views/RoleFieldRuleListView"
 msgid "Copy Field Rule"
 msgstr ""
 
-#: web/views/RoleFieldRuleListView.vue:31
+#: web/views/RoleFieldRuleListView.vue:28
 msgctxt "web/views/RoleFieldRuleListView"
 msgid "Create Field Rule"
 msgstr ""
 
-#: web/views/RoleFieldRuleListView.vue:31
+#: web/views/RoleFieldRuleListView.vue:28
 msgctxt "web/views/RoleFieldRuleListView"
 msgid "Delete Field Rule"
 msgstr ""
 
-#: web/views/RoleFieldRuleListView.vue:31
+#: web/views/RoleFieldRuleListView.vue:28
 msgctxt "web/views/RoleFieldRuleListView"
 msgid "Edit Field Rule"
 msgstr ""
 
-#: web/views/RoleFieldRuleListView.vue:31
+#: web/views/RoleFieldRuleListView.vue:28
 msgctxt "web/views/RoleFieldRuleListView"
 msgid "Field Rule"
 msgstr ""
@@ -2508,37 +2524,37 @@ msgctxt "web/views/RoleFormView"
 msgid "Without a matching grant, records are invisible or not writable (deny-default)."
 msgstr ""
 
-#: web/views/RoleListView.vue:31
+#: web/views/RoleListView.vue:28
 msgctxt "web/views/RoleListView"
 msgid "Copy Role"
 msgstr ""
 
-#: web/views/RoleListView.vue:31
+#: web/views/RoleListView.vue:28
 msgctxt "web/views/RoleListView"
 msgid "Create Role"
 msgstr ""
 
-#: web/views/RoleListView.vue:31
+#: web/views/RoleListView.vue:28
 msgctxt "web/views/RoleListView"
 msgid "Delete Role"
 msgstr ""
 
-#: web/views/RoleListView.vue:31
+#: web/views/RoleListView.vue:28
 msgctxt "web/views/RoleListView"
 msgid "Edit Role"
 msgstr ""
 
-#: web/views/RoleListView.vue:31
+#: web/views/RoleListView.vue:28
 msgctxt "web/views/RoleListView"
 msgid "Role"
 msgstr ""
 
-#: web/views/RoleMethodAccessFormView.vue:36
+#: web/views/RoleMethodAccessFormView.vue:37
 msgctxt "web/views/RoleMethodAccessFormView"
 msgid "Copy Method Access"
 msgstr ""
 
-#: web/views/RoleMethodAccessFormView.vue:36
+#: web/views/RoleMethodAccessFormView.vue:37
 msgctxt "web/views/RoleMethodAccessFormView"
 msgid "Create Method Access"
 msgstr ""
@@ -2548,17 +2564,17 @@ msgctxt "web/views/RoleMethodAccessFormView"
 msgid "Cross-role method access editor"
 msgstr ""
 
-#: web/views/RoleMethodAccessFormView.vue:36
+#: web/views/RoleMethodAccessFormView.vue:37
 msgctxt "web/views/RoleMethodAccessFormView"
 msgid "Delete Method Access"
 msgstr ""
 
-#: web/views/RoleMethodAccessFormView.vue:36
+#: web/views/RoleMethodAccessFormView.vue:37
 msgctxt "web/views/RoleMethodAccessFormView"
 msgid "Edit Method Access"
 msgstr ""
 
-#: web/views/RoleMethodAccessFormView.vue:36
+#: web/views/RoleMethodAccessFormView.vue:37
 #: web/views/RoleMethodAccessFormView.vue:8
 msgctxt "web/views/RoleMethodAccessFormView"
 msgid "Method Access"
@@ -2579,27 +2595,27 @@ msgctxt "web/views/RoleMethodAccessFormView"
 msgid "System Information"
 msgstr ""
 
-#: web/views/RoleMethodAccessListView.vue:31
+#: web/views/RoleMethodAccessListView.vue:28
 msgctxt "web/views/RoleMethodAccessListView"
 msgid "Copy Method Access"
 msgstr ""
 
-#: web/views/RoleMethodAccessListView.vue:31
+#: web/views/RoleMethodAccessListView.vue:28
 msgctxt "web/views/RoleMethodAccessListView"
 msgid "Create Method Access"
 msgstr ""
 
-#: web/views/RoleMethodAccessListView.vue:31
+#: web/views/RoleMethodAccessListView.vue:28
 msgctxt "web/views/RoleMethodAccessListView"
 msgid "Delete Method Access"
 msgstr ""
 
-#: web/views/RoleMethodAccessListView.vue:31
+#: web/views/RoleMethodAccessListView.vue:28
 msgctxt "web/views/RoleMethodAccessListView"
 msgid "Edit Method Access"
 msgstr ""
 
-#: web/views/RoleMethodAccessListView.vue:31
+#: web/views/RoleMethodAccessListView.vue:28
 msgctxt "web/views/RoleMethodAccessListView"
 msgid "Method Access"
 msgstr ""
@@ -2624,27 +2640,27 @@ msgctxt "web/views/RoleRecordRuleAudienceHints"
 msgid "Wide-open grant for all users"
 msgstr ""
 
-#: web/views/RoleRecordRuleFormView.vue:38
+#: web/views/RoleRecordRuleFormView.vue:39
 msgctxt "web/views/RoleRecordRuleFormView"
 msgid "Copy Record Rule"
 msgstr ""
 
-#: web/views/RoleRecordRuleFormView.vue:38
+#: web/views/RoleRecordRuleFormView.vue:39
 msgctxt "web/views/RoleRecordRuleFormView"
 msgid "Create Record Rule"
 msgstr ""
 
-#: web/views/RoleRecordRuleFormView.vue:38
+#: web/views/RoleRecordRuleFormView.vue:39
 msgctxt "web/views/RoleRecordRuleFormView"
 msgid "Delete Record Rule"
 msgstr ""
 
-#: web/views/RoleRecordRuleFormView.vue:38
+#: web/views/RoleRecordRuleFormView.vue:39
 msgctxt "web/views/RoleRecordRuleFormView"
 msgid "Edit Record Rule"
 msgstr ""
 
-#: web/views/RoleRecordRuleFormView.vue:38
+#: web/views/RoleRecordRuleFormView.vue:39
 #: web/views/RoleRecordRuleFormView.vue:8
 msgctxt "web/views/RoleRecordRuleFormView"
 msgid "Record Rule"
@@ -2660,37 +2676,37 @@ msgctxt "web/views/RoleRecordRuleFormView"
 msgid "System Information"
 msgstr ""
 
-#: web/views/RoleRecordRuleListView.vue:31
+#: web/views/RoleRecordRuleListView.vue:28
 msgctxt "web/views/RoleRecordRuleListView"
 msgid "Copy Record Rule"
 msgstr ""
 
-#: web/views/RoleRecordRuleListView.vue:31
+#: web/views/RoleRecordRuleListView.vue:28
 msgctxt "web/views/RoleRecordRuleListView"
 msgid "Create Record Rule"
 msgstr ""
 
-#: web/views/RoleRecordRuleListView.vue:31
+#: web/views/RoleRecordRuleListView.vue:28
 msgctxt "web/views/RoleRecordRuleListView"
 msgid "Delete Record Rule"
 msgstr ""
 
-#: web/views/RoleRecordRuleListView.vue:31
+#: web/views/RoleRecordRuleListView.vue:28
 msgctxt "web/views/RoleRecordRuleListView"
 msgid "Edit Record Rule"
 msgstr ""
 
-#: web/views/RoleRecordRuleListView.vue:31
+#: web/views/RoleRecordRuleListView.vue:28
 msgctxt "web/views/RoleRecordRuleListView"
 msgid "Record Rule"
 msgstr ""
 
-#: web/views/RoleUiResourceFormView.vue:36
+#: web/views/RoleUiResourceFormView.vue:37
 msgctxt "web/views/RoleUiResourceFormView"
 msgid "Copy UI Resource Grant"
 msgstr ""
 
-#: web/views/RoleUiResourceFormView.vue:36
+#: web/views/RoleUiResourceFormView.vue:37
 msgctxt "web/views/RoleUiResourceFormView"
 msgid "Create UI Resource Grant"
 msgstr ""
@@ -2700,12 +2716,12 @@ msgctxt "web/views/RoleUiResourceFormView"
 msgid "Cross-role UI resource grant editor"
 msgstr ""
 
-#: web/views/RoleUiResourceFormView.vue:36
+#: web/views/RoleUiResourceFormView.vue:37
 msgctxt "web/views/RoleUiResourceFormView"
 msgid "Delete UI Resource Grant"
 msgstr ""
 
-#: web/views/RoleUiResourceFormView.vue:36
+#: web/views/RoleUiResourceFormView.vue:37
 msgctxt "web/views/RoleUiResourceFormView"
 msgid "Edit UI Resource Grant"
 msgstr ""
@@ -2725,53 +2741,53 @@ msgctxt "web/views/RoleUiResourceFormView"
 msgid "System Information"
 msgstr ""
 
-#: web/views/RoleUiResourceFormView.vue:36
+#: web/views/RoleUiResourceFormView.vue:37
 #: web/views/RoleUiResourceFormView.vue:8
 msgctxt "web/views/RoleUiResourceFormView"
 msgid "UI Resource Grant"
 msgstr ""
 
-#: web/views/RoleUiResourceListView.vue:31
+#: web/views/RoleUiResourceListView.vue:28
 msgctxt "web/views/RoleUiResourceListView"
 msgid "Copy UI Resource Grant"
 msgstr ""
 
-#: web/views/RoleUiResourceListView.vue:31
+#: web/views/RoleUiResourceListView.vue:28
 msgctxt "web/views/RoleUiResourceListView"
 msgid "Create UI Resource Grant"
 msgstr ""
 
-#: web/views/RoleUiResourceListView.vue:31
+#: web/views/RoleUiResourceListView.vue:28
 msgctxt "web/views/RoleUiResourceListView"
 msgid "Delete UI Resource Grant"
 msgstr ""
 
-#: web/views/RoleUiResourceListView.vue:31
+#: web/views/RoleUiResourceListView.vue:28
 msgctxt "web/views/RoleUiResourceListView"
 msgid "Edit UI Resource Grant"
 msgstr ""
 
-#: web/views/RoleUiResourceListView.vue:31
+#: web/views/RoleUiResourceListView.vue:28
 msgctxt "web/views/RoleUiResourceListView"
 msgid "UI Resource Grant"
 msgstr ""
 
-#: web/views/SessionFormView.vue:36
+#: web/views/SessionFormView.vue:37
 msgctxt "web/views/SessionFormView"
 msgid "Copy Session"
 msgstr ""
 
-#: web/views/SessionFormView.vue:36
+#: web/views/SessionFormView.vue:37
 msgctxt "web/views/SessionFormView"
 msgid "Create Session"
 msgstr ""
 
-#: web/views/SessionFormView.vue:36
+#: web/views/SessionFormView.vue:37
 msgctxt "web/views/SessionFormView"
 msgid "Delete Session"
 msgstr ""
 
-#: web/views/SessionFormView.vue:36
+#: web/views/SessionFormView.vue:37
 msgctxt "web/views/SessionFormView"
 msgid "Edit Session"
 msgstr ""
@@ -2781,7 +2797,7 @@ msgctxt "web/views/SessionFormView"
 msgid "Select User"
 msgstr ""
 
-#: web/views/SessionFormView.vue:36
+#: web/views/SessionFormView.vue:37
 msgctxt "web/views/SessionFormView"
 msgid "Session"
 msgstr ""
@@ -2796,27 +2812,27 @@ msgctxt "web/views/SessionFormView"
 msgid "System Information"
 msgstr ""
 
-#: web/views/SessionListView.vue:31
+#: web/views/SessionListView.vue:28
 msgctxt "web/views/SessionListView"
 msgid "Copy Session"
 msgstr ""
 
-#: web/views/SessionListView.vue:31
+#: web/views/SessionListView.vue:28
 msgctxt "web/views/SessionListView"
 msgid "Create Session"
 msgstr ""
 
-#: web/views/SessionListView.vue:31
+#: web/views/SessionListView.vue:28
 msgctxt "web/views/SessionListView"
 msgid "Delete Session"
 msgstr ""
 
-#: web/views/SessionListView.vue:31
+#: web/views/SessionListView.vue:28
 msgctxt "web/views/SessionListView"
 msgid "Edit Session"
 msgstr ""
 
-#: web/views/SessionListView.vue:31
+#: web/views/SessionListView.vue:28
 msgctxt "web/views/SessionListView"
 msgid "Session"
 msgstr ""
@@ -2867,22 +2883,22 @@ msgctxt "web/views/TokenChartView"
 msgid "View switcher"
 msgstr ""
 
-#: web/views/TokenFormView.vue:37
+#: web/views/TokenFormView.vue:38
 msgctxt "web/views/TokenFormView"
 msgid "Copy Token"
 msgstr ""
 
-#: web/views/TokenFormView.vue:37
+#: web/views/TokenFormView.vue:38
 msgctxt "web/views/TokenFormView"
 msgid "Create Token"
 msgstr ""
 
-#: web/views/TokenFormView.vue:37
+#: web/views/TokenFormView.vue:38
 msgctxt "web/views/TokenFormView"
 msgid "Delete Token"
 msgstr ""
 
-#: web/views/TokenFormView.vue:37
+#: web/views/TokenFormView.vue:38
 msgctxt "web/views/TokenFormView"
 msgid "Edit Token"
 msgstr ""
@@ -2897,7 +2913,7 @@ msgctxt "web/views/TokenFormView"
 msgid "System Information"
 msgstr ""
 
-#: web/views/TokenFormView.vue:37
+#: web/views/TokenFormView.vue:38
 msgctxt "web/views/TokenFormView"
 msgid "Token"
 msgstr ""
@@ -2985,42 +3001,42 @@ msgctxt "web/views/TokenKanbanView"
 msgid "View switcher"
 msgstr ""
 
-#: web/views/TokenListView.vue:48
+#: web/views/TokenListView.vue:45
 msgctxt "web/views/TokenListView"
 msgid "Chart View"
 msgstr ""
 
-#: web/views/TokenListView.vue:42
+#: web/views/TokenListView.vue:39
 msgctxt "web/views/TokenListView"
 msgid "Copy Token"
 msgstr ""
 
-#: web/views/TokenListView.vue:42
+#: web/views/TokenListView.vue:39
 msgctxt "web/views/TokenListView"
 msgid "Create Token"
 msgstr ""
 
-#: web/views/TokenListView.vue:42
+#: web/views/TokenListView.vue:39
 msgctxt "web/views/TokenListView"
 msgid "Delete Token"
 msgstr ""
 
-#: web/views/TokenListView.vue:42
+#: web/views/TokenListView.vue:39
 msgctxt "web/views/TokenListView"
 msgid "Edit Token"
 msgstr ""
 
-#: web/views/TokenListView.vue:47
+#: web/views/TokenListView.vue:44
 msgctxt "web/views/TokenListView"
 msgid "Kanban View"
 msgstr ""
 
-#: web/views/TokenListView.vue:46
+#: web/views/TokenListView.vue:43
 msgctxt "web/views/TokenListView"
 msgid "List View"
 msgstr ""
 
-#: web/views/TokenListView.vue:42
+#: web/views/TokenListView.vue:39
 msgctxt "web/views/TokenListView"
 msgid "Token"
 msgstr ""
@@ -3040,22 +3056,22 @@ msgctxt "web/views/UserFormView"
 msgid "Account Information"
 msgstr ""
 
-#: web/views/UserFormView.vue:65
+#: web/views/UserFormView.vue:66
 msgctxt "web/views/UserFormView"
 msgid "Copy User"
 msgstr ""
 
-#: web/views/UserFormView.vue:65
+#: web/views/UserFormView.vue:66
 msgctxt "web/views/UserFormView"
 msgid "Create User"
 msgstr ""
 
-#: web/views/UserFormView.vue:65
+#: web/views/UserFormView.vue:66
 msgctxt "web/views/UserFormView"
 msgid "Delete User"
 msgstr ""
 
-#: web/views/UserFormView.vue:65
+#: web/views/UserFormView.vue:66
 msgctxt "web/views/UserFormView"
 msgid "Edit User"
 msgstr ""
@@ -3065,7 +3081,7 @@ msgctxt "web/views/UserFormView"
 msgid "Enabled Companies"
 msgstr ""
 
-#: web/views/UserFormView.vue:47
+#: web/views/UserFormView.vue:48
 msgctxt "web/views/UserFormView"
 msgid "Required"
 msgstr ""
@@ -3101,37 +3117,37 @@ msgctxt "web/views/UserFormView"
 msgid "Tokens"
 msgstr ""
 
-#: web/views/UserFormView.vue:28
+#: web/views/UserFormView.vue:29
 msgctxt "web/views/UserFormView"
 msgid "Unable to load picker. Close and reopen to retry."
 msgstr ""
 
-#: web/views/UserFormView.vue:65
+#: web/views/UserFormView.vue:66
 msgctxt "web/views/UserFormView"
 msgid "User"
 msgstr ""
 
-#: web/views/UserListView.vue:31
+#: web/views/UserListView.vue:28
 msgctxt "web/views/UserListView"
 msgid "Copy User"
 msgstr ""
 
-#: web/views/UserListView.vue:31
+#: web/views/UserListView.vue:28
 msgctxt "web/views/UserListView"
 msgid "Create User"
 msgstr ""
 
-#: web/views/UserListView.vue:31
+#: web/views/UserListView.vue:28
 msgctxt "web/views/UserListView"
 msgid "Delete User"
 msgstr ""
 
-#: web/views/UserListView.vue:31
+#: web/views/UserListView.vue:28
 msgctxt "web/views/UserListView"
 msgid "Edit User"
 msgstr ""
 
-#: web/views/UserListView.vue:31
+#: web/views/UserListView.vue:28
 msgctxt "web/views/UserListView"
 msgid "User"
 msgstr ""

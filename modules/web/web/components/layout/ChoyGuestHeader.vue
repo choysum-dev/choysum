@@ -74,8 +74,6 @@ const { _t } = createTranslate('web', { scope: 'web/components/layout/ChoyGuestH
 /** Same chrome band height as AppShell poles (header / footer). */
 const headerStyle = {
   height: 'var(--choy-layout-chrome-height)',
-  paddingTop: '0',
-  paddingBottom: '0',
   boxSizing: 'border-box' as const,
 }
 
