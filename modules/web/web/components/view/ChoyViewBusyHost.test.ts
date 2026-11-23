@@ -12,6 +12,7 @@ import {
 } from '@/web/web/__tests__/mountApp';
 import { loadingTiming } from '@/core/web/client/loadingRegistry';
 import ChoyButton from '../layout/ChoyButton.vue';
+import { VIEW_LOAD_RETRY_AFTER_RECOVERY_MS } from '../../router/viewLoadError';
 import { useConnectivityStore } from '../../stores/connectivityStore';
 import ChoyViewBusyHost from './ChoyViewBusyHost.vue';
 
@@ -256,6 +257,128 @@ describe('ChoyViewBusyHost', () => {
       mounted.unmount();
     } finally {
       restoreSfc(ChoyButton as any);
+    }
+  });
+
+  test('soft-retries surface error after connectivity recovery', async () => {
+    setActivePinia(createPinia());
+    stubSfc(ChoyButton as any, {
+      name: 'ChoyButton',
+      inheritAttrs: false,
+      props: {
+        type: { type: String, default: 'button' },
+        disabled: { type: Boolean, default: false },
+      },
+      emits: ['click'],
+      setup(props: any, { slots, emit, attrs }: any) {
+        return () =>
+          h(
+            'button',
+            {
+              type: props.type || 'button',
+              ...attrs,
+              disabled: props.disabled || undefined,
+              onClick: (e: Event) => emit('click', e),
+            },
+            slots.default?.(),
+          );
+      },
+    });
+    const onRetry = fnRecorder(() => {});
+    const store = useConnectivityStore();
+    store.resetForTests();
+    try {
+      const mounted = mountApp(ChoyViewBusyHost as any, {
+        props: {
+          busy: false,
+          error: new Error('Failed to fetch'),
+          hasFrame: false,
+          hasSettled: true,
+        },
+        on: { onRetry: () => onRetry() },
+        slots: {
+          default: () => h('div', { 'data-testid': 'body' }, 'table chrome'),
+        },
+      });
+      await flushPromises();
+      expect(mounted.q('[data-testid=choy-view-surface-error]')).not.toBeNull();
+      store.markUnreachable();
+      await flushPromises();
+      store.markReachable();
+      await flushPromises();
+      expect(onRetry.calls.length).toBe(0);
+      await sleep(VIEW_LOAD_RETRY_AFTER_RECOVERY_MS + 30);
+      await flushPromises();
+      expect(onRetry.calls.length).toBe(1);
+      // One-shot: another recovery edge without clearing error must not storm.
+      store.markUnreachable();
+      store.markReachable();
+      await flushPromises();
+      await sleep(VIEW_LOAD_RETRY_AFTER_RECOVERY_MS + 30);
+      await flushPromises();
+      expect(onRetry.calls.length).toBe(1);
+      mounted.unmount();
+    } finally {
+      restoreSfc(ChoyButton as any);
+      store.resetForTests();
+    }
+  });
+
+  test('soft-retries stale banner after connectivity recovery', async () => {
+    setActivePinia(createPinia());
+    stubSfc(ChoyButton as any, {
+      name: 'ChoyButton',
+      inheritAttrs: false,
+      props: {
+        type: { type: String, default: 'button' },
+        size: { type: String, default: 'default' },
+        variant: { type: String, default: 'default' },
+        disabled: { type: Boolean, default: false },
+      },
+      emits: ['click'],
+      setup(props: any, { slots, emit, attrs }: any) {
+        return () =>
+          h(
+            'button',
+            {
+              type: props.type || 'button',
+              ...attrs,
+              disabled: props.disabled || undefined,
+              onClick: (e: Event) => emit('click', e),
+            },
+            slots.default?.(),
+          );
+      },
+    });
+    const onRetry = fnRecorder(() => {});
+    const store = useConnectivityStore();
+    store.resetForTests();
+    try {
+      const mounted = mountApp(ChoyViewBusyHost as any, {
+        props: {
+          busy: false,
+          error: new Error('Failed to fetch'),
+          hasFrame: true,
+          hasSettled: true,
+        },
+        on: { onRetry: () => onRetry() },
+        slots: {
+          default: () => h('div', { 'data-testid': 'body' }, 'cached rows'),
+        },
+      });
+      await flushPromises();
+      expect(mounted.q('[data-testid=choy-view-surface-stale-banner]')).not.toBeNull();
+      store.markUnreachable();
+      await flushPromises();
+      store.markReachable();
+      await flushPromises();
+      await sleep(VIEW_LOAD_RETRY_AFTER_RECOVERY_MS + 30);
+      await flushPromises();
+      expect(onRetry.calls.length).toBe(1);
+      mounted.unmount();
+    } finally {
+      restoreSfc(ChoyButton as any);
+      store.resetForTests();
     }
   });
 });
