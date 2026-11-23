@@ -21,13 +21,22 @@ export function createLifecycleInterceptor(): Interceptor {
     const lifecycleProvider = getLifecycleProvider();
     const serviceName = req.service.typeName || req.service.constructor.name || 'unknown';
     const methodName = req.method.name;
-    const args = req.stream ? [req.message] : [req.message];
+    const args = [req.message];
 
     const traceId = idGen.generateTraceId();
     const spanId = idGen.generateSpanId();
     req.header.set('traceparent', buildTraceparent(traceId, spanId, true));
 
-    const context: RpcRequestContext = { serviceName, methodName, traceId, spanId, args };
+    const context: RpcRequestContext = {
+      serviceName,
+      methodName,
+      traceId,
+      spanId,
+      args,
+      // Server/client streams stay open for tips etc. — never own chrome loading.
+      // Normalize so unary is always false (never undefined) for provider checks/tests.
+      stream: req.stream === true,
+    };
 
     if (!lifecycleProvider) {
       return next(req);

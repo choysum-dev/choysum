@@ -24,6 +24,9 @@ export function toPublicApiState(apiState: ApiStateInternal): ApiState {
 export function createLifecycleProvider(apiState: ApiStateInternal): RequestLifecycleProvider {
   return {
     onStart: (context: RpcRequestContext) => {
+      // Tip/subscribe streams stay pending for the session; they must not keep the
+      // top bar or bottom slow-hint spinning after page data has already loaded.
+      if (context.stream) return;
       const { serviceName, methodName, spanId } = context;
       const stateKey = apiState._internal.createStateKey(serviceName, methodName);
       apiState._internal.startRequest(spanId, stateKey);
@@ -39,6 +42,11 @@ export function createLifecycleProvider(apiState: ApiStateInternal): RequestLife
     },
 
     onError: (context: RpcRequestContext, error: unknown) => {
+      // Streams never called startRequest — do not invent unpaired error state.
+      // Tip subscribe errors are handled by the inbox (poll fallback), not apiState.
+      // Tip stream death is also not connectivity-authoritative; unary/chrome RPCs own that.
+      if (context.stream) return error;
+
       const { serviceName, methodName } = context;
       const stateKey = apiState._internal.createStateKey(serviceName, methodName);
 
@@ -67,6 +75,7 @@ export function createLifecycleProvider(apiState: ApiStateInternal): RequestLife
     },
 
     onFinish: (context: RpcRequestContext) => {
+      if (context.stream) return;
       try {
         loadingRegistryOnRpcFinish(context.spanId);
       } finally {

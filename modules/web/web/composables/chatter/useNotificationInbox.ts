@@ -130,7 +130,8 @@ export function useNotificationInbox(enabled: () => boolean, deps?: UseNotificat
     const signal = tipController.signal;
     try {
       // Do not wrap the stream wait in silent runWithLoading — that would mute
-      // unrelated RPCs for the whole tip lifetime. refresh() itself is silent.
+      // unrelated RPCs for the whole tip lifetime. Streaming RPCs skip chrome at
+      // the lifecycle layer; refresh() itself is silent.
       await onTips(
         subscribeNotifications(signal),
         async () => {

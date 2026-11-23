@@ -5,18 +5,28 @@ import { Code, ConnectError } from '@connectrpc/connect';
 import type { RpcRequestContext } from '../../rpc/types';
 import { ensureHeaders } from '../testing/qjs_polyfills';
 import { resetConnectivityHooksForTests, setConnectivityHooks } from './connectivityHooks';
+import {
+  getLoadingRegistryDebugState,
+  resetLoadingRegistryForTests,
+} from './loadingRegistry';
 import { createLifecycleProvider, toPublicApiState } from './lifecycle';
 import { createApiStateScope, type ApiStateInternal } from './state';
 
 ensureHeaders();
 
-function makeContext(methodName: string, spanId: string): RpcRequestContext {
+function makeContext(
+  methodName: string,
+  spanId: string,
+  extras: Partial<RpcRequestContext> = {},
+): RpcRequestContext {
   return {
     serviceName: 'demo.Service',
     methodName,
     traceId: 'trace-1',
     spanId,
     args: [],
+    stream: false,
+    ...extras,
   };
 }
 
@@ -31,6 +41,7 @@ test('client lifecycle: exposes only public api state fields', () => {
 });
 
 test('client lifecycle: updates loading state on start and finish', () => {
+  resetLoadingRegistryForTests();
   const state = createApiStateScope('lifecycle-test') as ApiStateInternal;
   const provider = createLifecycleProvider(state);
   const context = makeContext('Fetch', 'span-1');
@@ -38,10 +49,78 @@ test('client lifecycle: updates loading state on start and finish', () => {
   provider.onStart?.(context);
   expect(state.loading['demo.Service.Fetch']).toBe(true);
   expect(state.isLoading.value).toBe(true);
+  expect(getLoadingRegistryDebugState().userBusyCount).toBe(1);
 
   provider.onFinish?.(context);
   expect(state.loading['demo.Service.Fetch']).toBe(false);
   expect(state.isLoading.value).toBe(false);
+  expect(getLoadingRegistryDebugState().userBusyCount).toBe(0);
+});
+
+test('client lifecycle: streaming RPCs do not own api loading or chrome', () => {
+  resetLoadingRegistryForTests();
+  const state = createApiStateScope('lifecycle-stream') as ApiStateInternal;
+  const provider = createLifecycleProvider(state);
+  const context = makeContext('SubscribeNotifications', 'span-stream', { stream: true });
+
+  // Unpaired finish must be a no-op for chrome/api state.
+  provider.onFinish?.(context);
+  expect(state.isLoading.value).toBe(false);
+  expect(getLoadingRegistryDebugState().userBusyCount).toBe(0);
+  expect(getLoadingRegistryDebugState().barCount).toBe(0);
+
+  provider.onStart?.(context);
+  expect(state.loading['demo.Service.SubscribeNotifications']).toBeFalsy();
+  expect(state.isLoading.value).toBe(false);
+  expect(getLoadingRegistryDebugState().userBusyCount).toBe(0);
+  expect(getLoadingRegistryDebugState().barCount).toBe(0);
+
+  provider.onFinish?.(context);
+  expect(state.isLoading.value).toBe(false);
+  expect(getLoadingRegistryDebugState().userBusyCount).toBe(0);
+  expect(getLoadingRegistryDebugState().barCount).toBe(0);
+});
+
+test('client lifecycle: streaming onError does not record api error state', () => {
+  resetLoadingRegistryForTests();
+  resetConnectivityHooksForTests();
+  const successes: number[] = [];
+  const outages: number[] = [];
+  setConnectivityHooks({
+    onTransportSuccess: () => successes.push(1),
+    onTransportOutage: () => outages.push(1),
+  });
+  const state = createApiStateScope('lifecycle-stream-err') as ApiStateInternal;
+  const provider = createLifecycleProvider(state);
+  const context = makeContext('SubscribeNotifications', 'span-stream-err', { stream: true });
+
+  provider.onStart?.(context);
+  // Would be an outage for unary; streams must not drive connectivity.
+  const err = Object.assign(Object.create(ConnectError.prototype), {
+    code: Code.Unavailable,
+    rawMessage: 'unavailable',
+    message: 'unavailable',
+    metadata: new Headers(),
+    findDetails: () => [],
+  }) as ConnectError;
+  const returned = provider.onError?.(context, err);
+  expect(returned).toBe(err);
+  expect(state.isLoading.value).toBe(false);
+  expect(state.errors['demo.Service.SubscribeNotifications']).toBeFalsy();
+  expect(state.hasErrors()).toBe(false);
+  expect(getLoadingRegistryDebugState().userBusyCount).toBe(0);
+  expect(outages).toHaveLength(0);
+  expect(successes).toHaveLength(0);
+
+  // Real tip lifetime: interceptor always runs onFinish after onError.
+  provider.onFinish?.(context);
+  expect(state.isLoading.value).toBe(false);
+  expect(state.hasErrors()).toBe(false);
+  expect(getLoadingRegistryDebugState().userBusyCount).toBe(0);
+  expect(getLoadingRegistryDebugState().barCount).toBe(0);
+  expect(outages).toHaveLength(0);
+  expect(successes).toHaveLength(0);
+  resetConnectivityHooksForTests();
 });
 
 test('client lifecycle: accepts success callbacks without mutating state', () => {
