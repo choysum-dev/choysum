@@ -216,6 +216,34 @@ export function createFeStubRouter(overrides) {
         matched: route.matched,
       };
       return Promise.resolve(overridePush.call(self, to)).then(function (result) {
+        // createRouter's override applies the destination before hooks. Same-path
+        // navigations are duplicated: skip beforeEach and report NAVIGATION_DUPLICATED.
+        var samePlace =
+          String(route.fullPath || route.path) === String(fromSnapshot.fullPath || fromSnapshot.path);
+        if (samePlace) {
+          var dupFailure = Object.assign(new Error('Avoided redundant navigation'), {
+            type: 16,
+            from: fromSnapshot,
+            to: {
+              path: route.path,
+              fullPath: route.fullPath,
+              name: route.name,
+              query: route.query,
+              params: route.params,
+              meta: route.meta,
+              matched: route.matched,
+            },
+          });
+          var dupChain = Promise.resolve();
+          afterHooks.forEach(function (fn) {
+            dupChain = dupChain.then(function () {
+              return fn(route, fromSnapshot, dupFailure);
+            });
+          });
+          return dupChain.then(function () {
+            return dupFailure;
+          });
+        }
         var chain = Promise.resolve();
         var aborted = false;
         var failure = undefined;
@@ -226,7 +254,11 @@ export function createFeStubRouter(overrides) {
             return Promise.resolve(fn(route, fromSnapshot)).then(function (guardResult) {
               if (guardResult === false) {
                 aborted = true;
-                failure = { type: 'aborted' };
+                failure = Object.assign(new Error('Navigation aborted'), {
+                  type: 4,
+                  from: fromSnapshot,
+                  to: null,
+                });
                 failedTo = {
                   path: route.path,
                   fullPath: route.fullPath,

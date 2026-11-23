@@ -270,3 +270,47 @@ test('connectivityStore: probeConnectivity abort timer swallows abort errors', a
     (globalThis as { AbortController?: typeof AbortController }).AbortController = RealAC;
   }
 });
+
+test('connectivityStore: superseded probe finally does not clear newer probing', async () => {
+  const store = useConnectivityStore();
+  let resolveA!: (v: Response) => void;
+  const pendingA = new Promise<Response>(resolve => {
+    resolveA = resolve;
+  });
+  const probeA = store.probeConnectivity(() => pendingA);
+  expect(store.probing).toBe(true);
+  let resolveB!: (v: Response) => void;
+  const pendingB = new Promise<Response>(resolve => {
+    resolveB = resolve;
+  });
+  const probeB = store.probeConnectivity(() => pendingB);
+  expect(store.probing).toBe(true);
+  resolveA({ ok: false } as Response);
+  await probeA;
+  // A finished first but B is still in flight — probing must stay true.
+  expect(store.probing).toBe(true);
+  resolveB({ ok: true } as Response);
+  await probeB;
+  expect(store.probing).toBe(false);
+});
+
+test('connectivityStore: browser offline check tolerates navigator access errors', async () => {
+  const store = useConnectivityStore();
+  store.markUnreachable();
+  const desc = Object.getOwnPropertyDescriptor(window, 'navigator');
+  Object.defineProperty(window, 'navigator', {
+    configurable: true,
+    get() {
+      throw new Error('navigator boom');
+    },
+  });
+  try {
+    const ok = await store.probeConnectivity(async () => ({ ok: true } as Response));
+    // Throwing navigator is treated as not-offline, so OK probe recovers.
+    expect(ok).toBe(true);
+    expect(store.status).toBe('reachable');
+  } finally {
+    if (desc) Object.defineProperty(window, 'navigator', desc);
+    else delete (window as { navigator?: Navigator }).navigator;
+  }
+});

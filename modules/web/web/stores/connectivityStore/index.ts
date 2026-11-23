@@ -38,6 +38,8 @@ export const useConnectivityStore = defineStore('connectivity', () => {
   let navigatorBound = false;
   let onOnline: (() => void) | undefined;
   let onOffline: (() => void) | undefined;
+  /** Monotonic token so a superseded probe's finally cannot clear probing early. */
+  let probeToken = 0;
 
   const isUnreachable = computed(() => status.value === 'unreachable');
 
@@ -86,6 +88,7 @@ export const useConnectivityStore = defineStore('connectivity', () => {
     fetchImpl: typeof fetch = fetch,
     timeoutMs: number = HEALTHZ_PROBE_TIMEOUT_MS,
   ): Promise<boolean> {
+    const token = ++probeToken;
     probing.value = true;
     const epochAtStart = offlineEpoch.value;
     const abort =
@@ -125,7 +128,8 @@ export const useConnectivityStore = defineStore('connectivity', () => {
       return false;
     } finally {
       if (timer != null) clearTimeout(timer);
-      probing.value = false;
+      // Only the latest in-flight probe may clear the shared probing flag.
+      if (token === probeToken) probing.value = false;
     }
   }
 

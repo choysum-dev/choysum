@@ -96,14 +96,36 @@ describe('createAppRouter', () => {
       (router.currentRoute.value.meta as { __navOwnershipSeq?: number }).__navOwnershipSeq,
     );
     expect(staleSeq).toBeGreaterThan(0);
+    let duplicateBeforeEach = 0;
+    const remove = router.beforeEach(() => {
+      duplicateBeforeEach += 1;
+      return true;
+    });
     // Same-path push is duplicated: beforeEach skipped, afterEach bumps ownership.
     await router.push('/__nav_b__').catch(() => undefined);
+    remove();
+    expect(duplicateBeforeEach).toBe(0);
     const anyRouter = router as {
       triggerError?: (err: Error, to?: { fullPath: string; meta?: Record<string, unknown> }) => void;
     };
     anyRouter.triggerError?.(
       new Error('Failed to fetch dynamically imported module: /web/assets/Stale-x.js'),
       { fullPath: '/stale-dup', meta: { __navOwnershipSeq: staleSeq } },
+    );
+    expect(viewLoadError.value).toBeNull();
+    clearViewLoadError();
+  });
+
+  test('router onError ignores chunk failures without a destination', async () => {
+    const { clearViewLoadError, viewLoadError } = await import('./viewLoadError');
+    clearViewLoadError();
+    const router = createAppRouter('/');
+    await router.isReady().catch(() => undefined);
+    const anyRouter = router as {
+      triggerError?: (err: Error, to?: { fullPath: string; meta?: Record<string, unknown> }) => void;
+    };
+    anyRouter.triggerError?.(
+      new Error('Failed to fetch dynamically imported module: /web/assets/Orphan.js'),
     );
     expect(viewLoadError.value).toBeNull();
     clearViewLoadError();

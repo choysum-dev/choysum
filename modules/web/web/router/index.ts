@@ -125,6 +125,8 @@ export function createAppRouter(base = '/', composer?: ComposerLike): Router {
     const failed = (to ||
       (error as { to?: RouteLocationNormalized })?.to ||
       null) as RouteLocationNormalized | null;
+    // No destination cannot be attributed to the current page — ignore it.
+    if (!failed) return;
     const failedSeq = Number((failed?.meta as { __navOwnershipSeq?: number } | undefined)?.__navOwnershipSeq) || 0;
     // A superseded navigation's late chunk reject must not blank the newer route.
     if (failedSeq && failedSeq !== navOwnershipSeq) return;
