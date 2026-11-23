@@ -25,6 +25,7 @@ function makeContext(
     traceId: 'trace-1',
     spanId,
     args: [],
+    stream: false,
     ...extras,
   };
 }

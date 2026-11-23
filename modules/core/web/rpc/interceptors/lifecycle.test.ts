@@ -37,20 +37,24 @@ test('lifecycle interceptor: marks stream context and still runs next', async ()
   setLifecycleProvider(provider);
   try {
     const intercept = createLifecycleInterceptor();
-    const nextOk = async (req: { stream: boolean }) => ({ stream: req.stream, body: 'ok' });
+    const nextOk = async (req: { stream?: boolean }) => ({ stream: req.stream, body: 'ok' });
     const unary = await intercept(nextOk as any)(makeReq(false) as any);
     const streamed = await intercept(nextOk as any)(makeReq(true) as any);
+    const undefinedStreamReq = { ...makeReq(false), stream: undefined };
+    await intercept(nextOk as any)(undefinedStreamReq as any);
     expect(unary).toEqual({ stream: false, body: 'ok' });
     expect(streamed).toEqual({ stream: true, body: 'ok' });
-    expect(started).toHaveLength(2);
-    expect(finished).toHaveLength(2);
+    expect(started).toHaveLength(3);
+    expect(finished).toHaveLength(3);
     expect(started[0]?.stream).toBe(false);
     expect(started[0]?.methodName).toBe('Ping');
     expect(started[1]?.stream).toBe(true);
     expect(started[1]?.methodName).toBe('SubscribeNotifications');
     expect(started[1]?.serviceName).toBe('tip.TipHub');
+    expect(started[2]?.stream).toBe(false);
     expect(finished[0]?.stream).toBe(false);
     expect(finished[1]?.stream).toBe(true);
+    expect(finished[2]?.stream).toBe(false);
 
     const nextFail = async () => {
       throw new Error('stream boom');
@@ -64,8 +68,8 @@ test('lifecycle interceptor: marks stream context and still runs next', async ()
     expect(caught instanceof Error && caught.message === 'stream boom').toBe(true);
     expect(errored).toHaveLength(1);
     expect(errored[0]?.stream).toBe(true);
-    expect(finished).toHaveLength(3);
-    expect(finished[2]?.stream).toBe(true);
+    expect(finished).toHaveLength(4);
+    expect(finished[3]?.stream).toBe(true);
 
     let unaryCaught: unknown;
     try {
@@ -76,8 +80,8 @@ test('lifecycle interceptor: marks stream context and still runs next', async ()
     expect(unaryCaught instanceof Error && unaryCaught.message === 'stream boom').toBe(true);
     expect(errored).toHaveLength(2);
     expect(errored[1]?.stream).toBe(false);
-    expect(finished).toHaveLength(4);
-    expect(finished[3]?.stream).toBe(false);
+    expect(finished).toHaveLength(5);
+    expect(finished[4]?.stream).toBe(false);
   } finally {
     setLifecycleProvider(null);
   }

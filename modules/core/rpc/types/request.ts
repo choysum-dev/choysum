@@ -31,8 +31,9 @@ export interface RpcRequestContext {
   /**
    * True for client / server / bidi streaming RPCs.
    * Long-lived streams must not own global loading chrome (bar / slow-hint).
+   * Always set by the lifecycle interceptor (`req.stream === true`); never undefined.
    */
-  stream?: boolean;
+  stream: boolean;
 }
 
 /** @deprecated Prefer RpcRequestContext. Kept for compatibility. */
