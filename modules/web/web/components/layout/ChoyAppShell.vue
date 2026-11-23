@@ -242,8 +242,9 @@ const sidebarSide = computed<'left' | 'right'>(() => {
    * Sidebar outer pad = inset-margin-y + chrome-padding so the company logo
    * top aligns with menu-trigger (inset card margin + header pad).
    */
+  /* max(2rem, control): compact control can be <2rem; marks stay size-8. */
   --choy-layout-chrome-height: calc(
-    var(--choy-control-height) + var(--choy-layout-chrome-padding)
+    max(2rem, var(--choy-control-height)) + var(--choy-layout-chrome-padding)
   );
   --choy-layout-header-height: var(--choy-layout-chrome-height);
   --choy-layout-footer-height: var(--choy-layout-chrome-height);
@@ -252,7 +253,7 @@ const sidebarSide = computed<'left' | 'right'>(() => {
     var(--choy-shell-inset-margin-y) + var(--choy-layout-chrome-padding)
   );
   --choy-layout-sidebar-header-height: calc(
-    var(--choy-control-height) + var(--choy-layout-sidebar-header-pad-top)
+    max(2rem, var(--choy-control-height)) + var(--choy-layout-sidebar-header-pad-top)
   );
   /* Identity row hover/open on chrome — keep in sync with --choy-color-sidebar-accent. */
   --choy-shell-chrome-hover: var(--choy-color-sidebar-accent);

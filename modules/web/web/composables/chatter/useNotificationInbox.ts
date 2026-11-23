@@ -129,15 +129,14 @@ export function useNotificationInbox(enabled: () => boolean, deps?: UseNotificat
     tipController = new AbortController();
     const signal = tipController.signal;
     try {
-      // Silent for the stream lifetime so tip onStart cannot race list settle chrome.
-      await runWithLoading({ silent: true }, () =>
-        onTips(
-          subscribeNotifications(signal),
-          async () => {
-            await refresh();
-          },
-          signal,
-        ),
+      // Do not wrap the stream wait in silent runWithLoading — that would mute
+      // unrelated RPCs for the whole tip lifetime. refresh() itself is silent.
+      await onTips(
+        subscribeNotifications(signal),
+        async () => {
+          await refresh();
+        },
+        signal,
       );
     } catch {
       // Stream error; fall through to poll fallback when still subscribed.

@@ -80,8 +80,12 @@ html {
    * Band height = control + one chrome-pad (border-box).
    */
   --choy-layout-chrome-padding: 0.5rem;
+  /*
+   * Identity marks (logo/avatar) stay 2rem; compact control can be shorter, so
+   * chrome bands use max(2rem, control) for content height to avoid clipping.
+   */
   --choy-layout-chrome-height: calc(
-    var(--choy-control-height) + var(--choy-layout-chrome-padding)
+    max(2rem, var(--choy-control-height)) + var(--choy-layout-chrome-padding)
   );
   --choy-layout-header-height: var(--choy-layout-chrome-height);
   --choy-layout-footer-height: var(--choy-layout-chrome-height);
@@ -291,7 +295,7 @@ html[data-density='compact'] {
   --choy-list-row-height: 36px;
   --choy-list-header-height: 36px;
   --choy-layout-chrome-height: calc(
-    var(--choy-control-height) + var(--choy-layout-chrome-padding)
+    max(2rem, var(--choy-control-height)) + var(--choy-layout-chrome-padding)
   );
   --choy-field-stack-gap: 0.25rem;
   --choy-field-group-gap: 0.375rem;

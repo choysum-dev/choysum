@@ -221,12 +221,14 @@ const userInitials = computed(() => {
 
 const userAvatarSrc = ref('');
 let avatarResolveGen = 0;
+/** Mutable so tests can inject a rejecting resolver for the catch path. */
+let resolveAvatarSrc = resolveUserMenuAvatarDisplaySrc;
 watch(
   () => (authStore.currentUser as any)?.Avatar,
   (avatar) => {
     const gen = ++avatarResolveGen;
     userAvatarSrc.value = '';
-    void resolveUserMenuAvatarDisplaySrc(avatar)
+    void resolveAvatarSrc(avatar)
       .then((src) => {
         if (gen !== avatarResolveGen) return;
         userAvatarSrc.value = src || '';
@@ -272,7 +274,9 @@ function onMenuLogout() {
   handleLogout();
 }
 
-async function onMenuConnectivityRetry() {
+async function onMenuConnectivityRetry(event?: Event) {
+  // Keep the menu open while probing so Checking… / failure stay visible.
+  event?.preventDefault?.();
   const ok = await connectivity.probeConnectivity();
   if (ok) closeUserMenu();
 }
