@@ -51,7 +51,12 @@ test('ChoyConnectivityPill: shows when unreachable and hides after recover', asy
   store.markUnreachable();
   const mounted = mountApp(ChoyConnectivityPill as any);
   await nextTick();
-  expect(mounted.q('[data-testid=choy-connectivity-pill]')).toBeTruthy();
+  const pill = mounted.q('[data-testid=choy-connectivity-pill]') as HTMLElement | null;
+  expect(pill).toBeTruthy();
+  // Icon-only trigger: accessible name via aria-label, no visible text label.
+  expect(pill?.getAttribute('aria-label') || '').toBeTruthy();
+  expect((pill?.textContent || '').trim()).toBe('');
+  expect(pill?.querySelector('svg')).toBeTruthy();
   store.markReachable();
   await nextTick();
   expect(mounted.q('[data-testid=choy-connectivity-pill]')).toBeNull();

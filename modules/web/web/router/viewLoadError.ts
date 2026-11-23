@@ -21,6 +21,9 @@ export function clearViewLoadError(): void {
   current.value = null;
 }
 
+/** Brief settle after connectivity recovery before soft-retrying a failed view. */
+export const VIEW_LOAD_RETRY_AFTER_RECOVERY_MS = 400;
+
 /**
  * True for dynamic-import / chunk load failures (browser wording varies).
  */
