@@ -236,12 +236,12 @@ msgctxt "web/components/field/ChoyDateField"
 msgid "Select date"
 msgstr "选择日期"
 
-#: web/components/field/ChoyDatetimeField.vue:168
+#: web/components/field/ChoyDatetimeField.vue:197
 msgctxt "web/components/field/ChoyDatetimeField"
 msgid "Invalid date time"
 msgstr "日期时间无效"
 
-#: web/components/field/ChoyDatetimeField.vue:221
+#: web/components/field/ChoyDatetimeField.vue:250
 msgctxt "web/components/field/ChoyDatetimeField"
 msgid "Select date and time"
 msgstr "选择日期和时间"
@@ -271,22 +271,22 @@ msgctxt "web/components/field/ChoyDecimalField"
 msgid "Total digits must not exceed %s"
 msgstr "总位数不得超过 %s"
 
-#: web/components/field/ChoyFieldBase.vue:272
+#: web/components/field/ChoyFieldBase.vue:298
 msgctxt "web/components/field/ChoyFieldBase"
 msgid "Company values"
 msgstr "公司值"
 
-#: web/components/field/ChoyFieldBase.vue:272
+#: web/components/field/ChoyFieldBase.vue:298
 msgctxt "web/components/field/ChoyFieldBase"
 msgid "Company values: %s"
 msgstr "公司值：%s"
 
-#: web/components/field/ChoyFieldBase.vue:265
+#: web/components/field/ChoyFieldBase.vue:291
 msgctxt "web/components/field/ChoyFieldBase"
 msgid "Translate field"
 msgstr "翻译字段"
 
-#: web/components/field/ChoyFieldBase.vue:265
+#: web/components/field/ChoyFieldBase.vue:291
 msgctxt "web/components/field/ChoyFieldBase"
 msgid "Translate: %s"
 msgstr "翻译：%s"
@@ -521,7 +521,7 @@ msgctxt "web/components/field/ChoyManyToManyField"
 msgid "Add a line…"
 msgstr "添加一行…"
 
-#: web/components/field/ChoyManyToManyField.vue:58
+#: web/components/field/ChoyManyToManyField.vue:60
 msgctxt "web/components/field/ChoyManyToManyField"
 msgid "Cancel"
 msgstr "取消"
@@ -531,7 +531,7 @@ msgctxt "web/components/field/ChoyManyToManyField"
 msgid "Delete"
 msgstr "删除"
 
-#: web/components/field/ChoyManyToManyField.vue:59
+#: web/components/field/ChoyManyToManyField.vue:61
 msgctxt "web/components/field/ChoyManyToManyField"
 msgid "OK"
 msgstr "确定"
@@ -541,7 +541,7 @@ msgctxt "web/components/field/ChoyManyToManyField"
 msgid "Picker is not configured"
 msgstr "未配置选择器"
 
-#: web/components/field/ChoyManyToManyField.vue:116
+#: web/components/field/ChoyManyToManyField.vue:122
 msgctxt "web/components/field/ChoyManyToManyField"
 msgid "Select related items"
 msgstr "选择关联项"
@@ -566,7 +566,7 @@ msgctxt "web/components/field/ChoyManyToManyRefField"
 msgid "Add a line…"
 msgstr "添加一行…"
 
-#: web/components/field/ChoyManyToManyRefField.vue:58
+#: web/components/field/ChoyManyToManyRefField.vue:60
 msgctxt "web/components/field/ChoyManyToManyRefField"
 msgid "Cancel"
 msgstr "取消"
@@ -576,7 +576,7 @@ msgctxt "web/components/field/ChoyManyToManyRefField"
 msgid "Delete"
 msgstr "删除"
 
-#: web/components/field/ChoyManyToManyRefField.vue:59
+#: web/components/field/ChoyManyToManyRefField.vue:61
 msgctxt "web/components/field/ChoyManyToManyRefField"
 msgid "OK"
 msgstr "确定"
@@ -586,32 +586,32 @@ msgctxt "web/components/field/ChoyManyToManyRefField"
 msgid "Picker is not configured"
 msgstr "未配置选择器"
 
-#: web/components/field/ChoyManyToManyRefField.vue:127
+#: web/components/field/ChoyManyToManyRefField.vue:133
 msgctxt "web/components/field/ChoyManyToManyRefField"
 msgid "Select related items"
 msgstr "选择关联项"
 
-#: web/components/field/ChoyManyToManyRefTagsField.vue:67
+#: web/components/field/ChoyManyToManyRefTagsField.vue:69
 msgctxt "web/components/field/ChoyManyToManyRefTagsField"
 msgid "Cancel"
 msgstr "取消"
 
-#: web/components/field/ChoyManyToManyRefTagsField.vue:174
+#: web/components/field/ChoyManyToManyRefTagsField.vue:180
 msgctxt "web/components/field/ChoyManyToManyRefTagsField"
 msgid "Create \"%s\""
 msgstr "创建“%s”"
 
-#: web/components/field/ChoyManyToManyRefTagsField.vue:183
+#: web/components/field/ChoyManyToManyRefTagsField.vue:189
 msgctxt "web/components/field/ChoyManyToManyRefTagsField"
 msgid "Create failed"
 msgstr "创建失败"
 
-#: web/components/field/ChoyManyToManyRefTagsField.vue:68
+#: web/components/field/ChoyManyToManyRefTagsField.vue:70
 msgctxt "web/components/field/ChoyManyToManyRefTagsField"
 msgid "OK"
 msgstr "确定"
 
-#: web/components/field/ChoyManyToManyRefTagsField.vue:120
+#: web/components/field/ChoyManyToManyRefTagsField.vue:126
 msgctxt "web/components/field/ChoyManyToManyRefTagsField"
 msgid "Please select..."
 msgstr "请选择…"
@@ -621,7 +621,7 @@ msgctxt "web/components/field/ChoyManyToManyRefTagsField"
 msgid "Remove"
 msgstr "移除"
 
-#: web/components/field/ChoyManyToManyRefTagsField.vue:121
+#: web/components/field/ChoyManyToManyRefTagsField.vue:127
 msgctxt "web/components/field/ChoyManyToManyRefTagsField"
 msgid "Select related items"
 msgstr "选择关联项"
@@ -631,27 +631,27 @@ msgctxt "web/components/field/ChoyManyToManyRefTreeField"
 msgid "No data"
 msgstr "暂无数据"
 
-#: web/components/field/ChoyManyToManyTagsField.vue:67
+#: web/components/field/ChoyManyToManyTagsField.vue:69
 msgctxt "web/components/field/ChoyManyToManyTagsField"
 msgid "Cancel"
 msgstr "取消"
 
-#: web/components/field/ChoyManyToManyTagsField.vue:175
+#: web/components/field/ChoyManyToManyTagsField.vue:181
 msgctxt "web/components/field/ChoyManyToManyTagsField"
 msgid "Create \"%s\""
 msgstr "创建“%s”"
 
-#: web/components/field/ChoyManyToManyTagsField.vue:184
+#: web/components/field/ChoyManyToManyTagsField.vue:190
 msgctxt "web/components/field/ChoyManyToManyTagsField"
 msgid "Create failed"
 msgstr "创建失败"
 
-#: web/components/field/ChoyManyToManyTagsField.vue:68
+#: web/components/field/ChoyManyToManyTagsField.vue:70
 msgctxt "web/components/field/ChoyManyToManyTagsField"
 msgid "OK"
 msgstr "确定"
 
-#: web/components/field/ChoyManyToManyTagsField.vue:121
+#: web/components/field/ChoyManyToManyTagsField.vue:127
 msgctxt "web/components/field/ChoyManyToManyTagsField"
 msgid "Please select..."
 msgstr "请选择…"
@@ -661,7 +661,7 @@ msgctxt "web/components/field/ChoyManyToManyTagsField"
 msgid "Remove"
 msgstr "移除"
 
-#: web/components/field/ChoyManyToManyTagsField.vue:122
+#: web/components/field/ChoyManyToManyTagsField.vue:128
 msgctxt "web/components/field/ChoyManyToManyTagsField"
 msgid "Select related items"
 msgstr "选择关联项"
@@ -671,62 +671,62 @@ msgctxt "web/components/field/ChoyManyToManyTreeField"
 msgid "No data"
 msgstr "暂无数据"
 
-#: web/components/field/ChoyManyToOneField.vue:34
+#: web/components/field/ChoyManyToOneField.vue:36
 msgctxt "web/components/field/ChoyManyToOneField"
 msgid "Cancel"
 msgstr "取消"
 
-#: web/components/field/ChoyManyToOneField.vue:146
+#: web/components/field/ChoyManyToOneField.vue:152
 msgctxt "web/components/field/ChoyManyToOneField"
 msgid "Create \"%s\""
 msgstr "创建“%s”"
 
-#: web/components/field/ChoyManyToOneField.vue:155
+#: web/components/field/ChoyManyToOneField.vue:161
 msgctxt "web/components/field/ChoyManyToOneField"
 msgid "Create failed"
 msgstr "创建失败"
 
-#: web/components/field/ChoyManyToOneField.vue:35
+#: web/components/field/ChoyManyToOneField.vue:37
 msgctxt "web/components/field/ChoyManyToOneField"
 msgid "OK"
 msgstr "确定"
 
-#: web/components/field/ChoyManyToOneField.vue:116
+#: web/components/field/ChoyManyToOneField.vue:122
 msgctxt "web/components/field/ChoyManyToOneField"
 msgid "Please select..."
 msgstr "请选择…"
 
-#: web/components/field/ChoyManyToOneField.vue:117
+#: web/components/field/ChoyManyToOneField.vue:123
 msgctxt "web/components/field/ChoyManyToOneField"
 msgid "Select record"
 msgstr "选择记录"
 
-#: web/components/field/ChoyManyToOneRefField.vue:34
+#: web/components/field/ChoyManyToOneRefField.vue:36
 msgctxt "web/components/field/ChoyManyToOneRefField"
 msgid "Cancel"
 msgstr "取消"
 
-#: web/components/field/ChoyManyToOneRefField.vue:161
+#: web/components/field/ChoyManyToOneRefField.vue:167
 msgctxt "web/components/field/ChoyManyToOneRefField"
 msgid "Create \"%s\""
 msgstr "创建“%s”"
 
-#: web/components/field/ChoyManyToOneRefField.vue:170
+#: web/components/field/ChoyManyToOneRefField.vue:176
 msgctxt "web/components/field/ChoyManyToOneRefField"
 msgid "Create failed"
 msgstr "创建失败"
 
-#: web/components/field/ChoyManyToOneRefField.vue:35
+#: web/components/field/ChoyManyToOneRefField.vue:37
 msgctxt "web/components/field/ChoyManyToOneRefField"
 msgid "OK"
 msgstr "确定"
 
-#: web/components/field/ChoyManyToOneRefField.vue:117
+#: web/components/field/ChoyManyToOneRefField.vue:123
 msgctxt "web/components/field/ChoyManyToOneRefField"
 msgid "Please select..."
 msgstr "请选择…"
 
-#: web/components/field/ChoyManyToOneRefField.vue:118
+#: web/components/field/ChoyManyToOneRefField.vue:124
 msgctxt "web/components/field/ChoyManyToOneRefField"
 msgid "Select record"
 msgstr "选择记录"
@@ -781,47 +781,47 @@ msgctxt "web/components/field/ChoyOneToManyField"
 msgid "Delete"
 msgstr "删除"
 
-#: web/components/field/ChoyOneToManyKanbanField.vue:191
+#: web/components/field/ChoyOneToManyKanbanField.vue:197
 msgctxt "web/components/field/ChoyOneToManyKanbanField"
 msgid "Add a line…"
 msgstr "添加一行…"
 
-#: web/components/field/ChoyOneToManyKanbanField.vue:440
+#: web/components/field/ChoyOneToManyKanbanField.vue:446
 msgctxt "web/components/field/ChoyOneToManyKanbanField"
 msgid "Are you sure you want to delete this record? This action cannot be undone."
 msgstr "确定要删除此记录吗？此操作无法撤销。"
 
-#: web/components/field/ChoyOneToManyKanbanField.vue:445 web/components/field/ChoyOneToManyKanbanField.vue:93
+#: web/components/field/ChoyOneToManyKanbanField.vue:451 web/components/field/ChoyOneToManyKanbanField.vue:95
 msgctxt "web/components/field/ChoyOneToManyKanbanField"
 msgid "Cancel"
 msgstr "取消"
 
-#: web/components/field/ChoyOneToManyKanbanField.vue:441
+#: web/components/field/ChoyOneToManyKanbanField.vue:447
 msgctxt "web/components/field/ChoyOneToManyKanbanField"
 msgid "Confirm delete"
 msgstr "确认删除"
 
-#: web/components/field/ChoyOneToManyKanbanField.vue:20 web/components/field/ChoyOneToManyKanbanField.vue:444 web/components/field/ChoyOneToManyKanbanField.vue:90
+#: web/components/field/ChoyOneToManyKanbanField.vue:20 web/components/field/ChoyOneToManyKanbanField.vue:450 web/components/field/ChoyOneToManyKanbanField.vue:92
 msgctxt "web/components/field/ChoyOneToManyKanbanField"
 msgid "Delete"
 msgstr "删除"
 
-#: web/components/field/ChoyOneToManyKanbanField.vue:194
+#: web/components/field/ChoyOneToManyKanbanField.vue:200
 msgctxt "web/components/field/ChoyOneToManyKanbanField"
 msgid "Edit record"
 msgstr "编辑记录"
 
-#: web/components/field/ChoyOneToManyKanbanField.vue:193
+#: web/components/field/ChoyOneToManyKanbanField.vue:199
 msgctxt "web/components/field/ChoyOneToManyKanbanField"
 msgid "New record"
 msgstr "新建记录"
 
-#: web/components/field/ChoyOneToManyKanbanField.vue:192
+#: web/components/field/ChoyOneToManyKanbanField.vue:198
 msgctxt "web/components/field/ChoyOneToManyKanbanField"
 msgid "No data"
 msgstr "暂无数据"
 
-#: web/components/field/ChoyOneToManyKanbanField.vue:86
+#: web/components/field/ChoyOneToManyKanbanField.vue:88
 msgctxt "web/components/field/ChoyOneToManyKanbanField"
 msgid "Provide a child record editor via the formView prop."
 msgstr "请通过 formView 属性提供子记录编辑器。"
@@ -831,17 +831,17 @@ msgctxt "web/components/field/ChoyOneToManyKanbanField"
 msgid "Reorder"
 msgstr "调整顺序"
 
-#: web/components/field/ChoyOneToManyKanbanField.vue:94
+#: web/components/field/ChoyOneToManyKanbanField.vue:96
 msgctxt "web/components/field/ChoyOneToManyKanbanField"
 msgid "Save"
 msgstr "保存"
 
-#: web/components/field/ChoyOneToManyKanbanField.vue:379
+#: web/components/field/ChoyOneToManyKanbanField.vue:385
 msgctxt "web/components/field/ChoyOneToManyKanbanField"
 msgid "Untitled"
 msgstr "未命名"
 
-#: web/components/field/ChoyOneToManyKanbanField.vue:195
+#: web/components/field/ChoyOneToManyKanbanField.vue:201
 msgctxt "web/components/field/ChoyOneToManyKanbanField"
 msgid "View record"
 msgstr "查看记录"
@@ -901,122 +901,122 @@ msgctxt "web/components/field/ChoyPropertiesDefinitionField"
 msgid "Type"
 msgstr "类型"
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:79
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:81
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Apply"
 msgstr "应用"
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:268 web/components/field/ChoyPropertiesDefinitionItemDialog.vue:76
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:274 web/components/field/ChoyPropertiesDefinitionItemDialog.vue:78
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Cancel"
 msgstr "取消"
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:71
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:70
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Close"
 msgstr "关闭"
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:42
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:44
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Constraints"
 msgstr "约束"
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:163
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:169
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Default"
 msgstr "默认值"
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:267
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:273
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Discard"
 msgstr "放弃"
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:68
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:73
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Edit"
 msgstr "编辑"
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:101
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:107
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Edit property: %s"
 msgstr "编辑属性：%s"
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:162 web/components/field/ChoyPropertiesDefinitionItemDialog.vue:202
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:168 web/components/field/ChoyPropertiesDefinitionItemDialog.vue:208
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Help"
 msgstr "帮助"
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:16
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:18
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Identity"
 msgstr "标识"
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:161 web/components/field/ChoyPropertiesDefinitionItemDialog.vue:191 web/components/field/ChoyPropertiesDefinitionItemDialog.vue:214
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:167 web/components/field/ChoyPropertiesDefinitionItemDialog.vue:197 web/components/field/ChoyPropertiesDefinitionItemDialog.vue:220
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Label"
 msgstr "标签"
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:154
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:160
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Name"
 msgstr "名称"
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:333
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:339
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Name is required"
 msgstr "名称为必填项"
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:101
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:107
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "New property"
 msgstr "新建属性"
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:24
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:26
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Presentation"
 msgstr "展示"
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:99
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:105
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Property"
 msgstr "属性"
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:99
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:105
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Property: %s"
 msgstr "属性：%s"
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:164 web/components/field/ChoyPropertiesDefinitionItemDialog.vue:46
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:170 web/components/field/ChoyPropertiesDefinitionItemDialog.vue:48
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Readonly"
 msgstr "只读"
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:52
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:54
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Selection"
 msgstr "选项"
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:34
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:36
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Translate help"
 msgstr "翻译帮助"
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:28
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:30
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Translate label"
 msgstr "翻译标签"
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:157
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:163
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Type"
 msgstr "类型"
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:266
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:272
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "Unsaved changes"
 msgstr "未保存的更改"
 
-#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:266
+#: web/components/field/ChoyPropertiesDefinitionItemDialog.vue:272
 msgctxt "web/components/field/ChoyPropertiesDefinitionItemDialog"
 msgid "You have unsaved changes. Discard them?"
 msgstr "有未保存的更改。要放弃吗？"
@@ -1181,107 +1181,107 @@ msgctxt "web/components/field/ChoyVarcharField"
 msgid "Value must be a string"
 msgstr "值必须为字符串"
 
-#: web/components/field/ChoyFieldCompanyValuesDialog.vue:16
+#: web/components/field/ChoyFieldCompanyValuesDialog.vue:18
 msgctxt "web/components/field/FieldCompanyValuesDialog"
 msgid "Cancel"
 msgstr "取消"
 
-#: web/components/field/ChoyFieldCompanyValuesDialog.vue:55
+#: web/components/field/ChoyFieldCompanyValuesDialog.vue:61
 msgctxt "web/components/field/FieldCompanyValuesDialog"
 msgid "Company values"
 msgstr "公司值"
 
-#: web/components/field/ChoyFieldCompanyValuesDialog.vue:262
+#: web/components/field/ChoyFieldCompanyValuesDialog.vue:268
 msgctxt "web/components/field/FieldCompanyValuesDialog"
 msgid "Company values saved"
 msgstr "公司值已保存"
 
-#: web/components/field/ChoyFieldCompanyValuesDialog.vue:55
+#: web/components/field/ChoyFieldCompanyValuesDialog.vue:61
 msgctxt "web/components/field/FieldCompanyValuesDialog"
 msgid "Company values: %s"
 msgstr "公司值：%s"
 
-#: web/components/field/ChoyFieldCompanyValuesDialog.vue:186
+#: web/components/field/ChoyFieldCompanyValuesDialog.vue:192
 msgctxt "web/components/field/FieldCompanyValuesDialog"
 msgid "Failed to load company values"
 msgstr "加载公司值失败"
 
-#: web/components/field/ChoyFieldCompanyValuesDialog.vue:265
+#: web/components/field/ChoyFieldCompanyValuesDialog.vue:271
 msgctxt "web/components/field/FieldCompanyValuesDialog"
 msgid "Failed to save company values"
 msgstr "保存公司值失败"
 
-#: web/components/field/ChoyFieldCompanyValuesDialog.vue:18
+#: web/components/field/ChoyFieldCompanyValuesDialog.vue:20
 msgctxt "web/components/field/FieldCompanyValuesDialog"
 msgid "Save company values"
 msgstr "保存公司值"
 
-#: web/components/field/ChoyFieldTranslationsDialog.vue:12
+#: web/components/field/ChoyFieldTranslationsDialog.vue:14
 msgctxt "web/components/field/FieldTranslationsDialog"
 msgid "Base language (cannot be deleted)"
 msgstr "基础语言（不可删除）"
 
-#: web/components/field/ChoyFieldTranslationsDialog.vue:19
+#: web/components/field/ChoyFieldTranslationsDialog.vue:21
 msgctxt "web/components/field/FieldTranslationsDialog"
 msgid "Cancel"
 msgstr "取消"
 
-#: web/components/field/ChoyFieldTranslationsDialog.vue:135
+#: web/components/field/ChoyFieldTranslationsDialog.vue:141
 msgctxt "web/components/field/FieldTranslationsDialog"
 msgid "Failed to load translations"
 msgstr "加载翻译失败"
 
-#: web/components/field/ChoyFieldTranslationsDialog.vue:186
+#: web/components/field/ChoyFieldTranslationsDialog.vue:192
 msgctxt "web/components/field/FieldTranslationsDialog"
 msgid "Failed to save translations"
 msgstr "保存翻译失败"
 
-#: web/components/field/ChoyFieldTranslationsDialog.vue:21
+#: web/components/field/ChoyFieldTranslationsDialog.vue:23
 msgctxt "web/components/field/FieldTranslationsDialog"
 msgid "Save translations"
 msgstr "保存翻译"
 
-#: web/components/field/ChoyFieldTranslationsDialog.vue:53
+#: web/components/field/ChoyFieldTranslationsDialog.vue:59
 msgctxt "web/components/field/FieldTranslationsDialog"
 msgid "Translate field"
 msgstr "翻译字段"
 
-#: web/components/field/ChoyFieldTranslationsDialog.vue:53
+#: web/components/field/ChoyFieldTranslationsDialog.vue:59
 msgctxt "web/components/field/FieldTranslationsDialog"
 msgid "Translate: %s"
 msgstr "翻译：%s"
 
-#: web/components/field/ChoyFieldTranslationsDialog.vue:183
+#: web/components/field/ChoyFieldTranslationsDialog.vue:189
 msgctxt "web/components/field/FieldTranslationsDialog"
 msgid "Translations saved"
 msgstr "翻译已保存"
 
-#: web/components/field/ChoyPropertyLabelTranslationsDialog.vue:12
+#: web/components/field/ChoyPropertyLabelTranslationsDialog.vue:14
 msgctxt "web/components/field/PropertyLabelTranslationsDialog"
 msgid "Base language (cannot be deleted)"
 msgstr "基础语言（不可删除）"
 
-#: web/components/field/ChoyPropertyLabelTranslationsDialog.vue:19
+#: web/components/field/ChoyPropertyLabelTranslationsDialog.vue:21
 msgctxt "web/components/field/PropertyLabelTranslationsDialog"
 msgid "Cancel"
 msgstr "取消"
 
-#: web/components/field/ChoyPropertyLabelTranslationsDialog.vue:101
+#: web/components/field/ChoyPropertyLabelTranslationsDialog.vue:107
 msgctxt "web/components/field/PropertyLabelTranslationsDialog"
 msgid "Failed to load translations"
 msgstr "加载翻译失败"
 
-#: web/components/field/ChoyPropertyLabelTranslationsDialog.vue:21
+#: web/components/field/ChoyPropertyLabelTranslationsDialog.vue:23
 msgctxt "web/components/field/PropertyLabelTranslationsDialog"
 msgid "Save translations"
 msgstr "保存翻译"
 
-#: web/components/field/ChoyPropertyLabelTranslationsDialog.vue:42
+#: web/components/field/ChoyPropertyLabelTranslationsDialog.vue:48
 msgctxt "web/components/field/PropertyLabelTranslationsDialog"
 msgid "Translate label"
 msgstr "翻译标签"
 
-#: web/components/field/ChoyPropertyLabelTranslationsDialog.vue:42
+#: web/components/field/ChoyPropertyLabelTranslationsDialog.vue:48
 msgctxt "web/components/field/PropertyLabelTranslationsDialog"
 msgid "Translate: %s"
 msgstr "翻译：%s"
@@ -1451,6 +1451,26 @@ msgctxt "web/components/layout/ChoyCommandPalette"
 msgid "Type a command or search…"
 msgstr "输入命令或搜索…"
 
+#: web/components/layout/ChoyConnectivityPill.vue:11
+msgctxt "web/components/layout/ChoyConnectivityPill"
+msgid "Cannot reach the server. Check your network, then retry."
+msgstr "无法连接服务器。请检查网络后重试。"
+
+#: web/components/layout/ChoyConnectivityPill.vue:14
+msgctxt "web/components/layout/ChoyConnectivityPill"
+msgid "Checking…"
+msgstr "检查中…"
+
+#: web/components/layout/ChoyConnectivityPill.vue:4 web/components/layout/ChoyConnectivityPill.vue:6
+msgctxt "web/components/layout/ChoyConnectivityPill"
+msgid "Connection lost"
+msgstr "连接已断开"
+
+#: web/components/layout/ChoyConnectivityPill.vue:14
+msgctxt "web/components/layout/ChoyConnectivityPill"
+msgid "Retry"
+msgstr "重试"
+
 #: web/components/layout/ChoyGuestHeader.vue:69
 msgctxt "web/components/layout/ChoyGuestHeader"
 msgid "Home"
@@ -1536,6 +1556,36 @@ msgctxt "web/components/layout/ChoySidebarNav"
 msgid "No menus available"
 msgstr "暂无可用菜单"
 
+#: web/components/layout/ChoyViewLoadError.vue:21
+msgctxt "web/components/layout/ChoyViewLoadError"
+msgid "Cannot reach the server. Check your network, then retry."
+msgstr "无法连接服务器。请检查网络后重试。"
+
+#: web/components/layout/ChoyViewLoadError.vue:17
+msgctxt "web/components/layout/ChoyViewLoadError"
+msgid "Connection lost"
+msgstr "连接已断开"
+
+#: web/components/layout/ChoyViewLoadError.vue:17
+msgctxt "web/components/layout/ChoyViewLoadError"
+msgid "Failed to load this view"
+msgstr "无法加载此视图"
+
+#: web/components/layout/ChoyViewLoadError.vue:10
+msgctxt "web/components/layout/ChoyViewLoadError"
+msgid "Reload page"
+msgstr "刷新页面"
+
+#: web/components/layout/ChoyViewLoadError.vue:7
+msgctxt "web/components/layout/ChoyViewLoadError"
+msgid "Retry loading"
+msgstr "重试加载"
+
+#: web/components/layout/ChoyViewLoadError.vue:22
+msgctxt "web/components/layout/ChoyViewLoadError"
+msgid "The page resources could not be loaded. Retry or reload the page."
+msgstr "页面资源未能加载。请重试或刷新页面。"
+
 #: web/components/layout/ChoyLoadingSlowHint.vue:93
 msgctxt "web/components/layout/LoadingSlowHint"
 msgid "Don't leave yet,<br />it's still loading..."
@@ -1571,12 +1621,12 @@ msgctxt "web/components/layout/LoadingSlowHint"
 msgid "You may not believe it,<br />but the application is actually loading..."
 msgstr "也许你不相信，但是真的还在加载...."
 
-#: web/components/layout/ChoyNavigationHandoff.vue:11
+#: web/components/layout/ChoyNavigationHandoff.vue:13
 msgctxt "web/components/layout/NavigationHandoff"
 msgid "Loading..."
 msgstr "加载中..."
 
-#: web/components/layout/ChoyPage.vue:88
+#: web/components/layout/ChoyPage.vue:93
 msgctxt "web/components/layout/Page"
 msgid "Loading..."
 msgstr "加载中..."
@@ -1616,7 +1666,7 @@ msgctxt "web/components/terminology/TerminologyExportMenu"
 msgid "PO download failed"
 msgstr "PO 下载失败"
 
-#: web/components/view/ChoyChartView.vue:668
+#: web/components/view/ChoyChartView.vue:667
 msgctxt "web/components/view/ChartView"
 msgid "Bar"
 msgstr "柱状图"
@@ -1626,7 +1676,7 @@ msgctxt "web/components/view/ChartView"
 msgid "Chart type"
 msgstr "图表类型"
 
-#: web/components/view/ChoyChartView.vue:287
+#: web/components/view/ChoyChartView.vue:286
 msgctxt "web/components/view/ChartView"
 msgid "Count"
 msgstr "计数"
@@ -1636,12 +1686,17 @@ msgctxt "web/components/view/ChartView"
 msgid "Cumulative"
 msgstr "累计"
 
-#: web/components/view/ChoyChartView.vue:669
+#: web/components/view/ChoyChartView.vue:117
+msgctxt "web/components/view/ChartView"
+msgid "Failed to load"
+msgstr "加载失败"
+
+#: web/components/view/ChoyChartView.vue:668
 msgctxt "web/components/view/ChartView"
 msgid "Line"
 msgstr "折线图"
 
-#: web/components/view/ChoyChartView.vue:271 web/components/view/ChoyChartView.vue:53
+#: web/components/view/ChoyChartView.vue:270 web/components/view/ChoyChartView.vue:53
 msgctxt "web/components/view/ChartView"
 msgid "Metric"
 msgstr "度量"
@@ -1661,12 +1716,12 @@ msgctxt "web/components/view/ChartView"
 msgid "No data or grouping not configured"
 msgstr "暂无数据或未配置分组"
 
-#: web/components/view/ChoyChartView.vue:674
+#: web/components/view/ChoyChartView.vue:673
 msgctxt "web/components/view/ChartView"
 msgid "No sort"
 msgstr "不排序"
 
-#: web/components/view/ChoyChartView.vue:670
+#: web/components/view/ChoyChartView.vue:669
 msgctxt "web/components/view/ChartView"
 msgid "Pie"
 msgstr "饼图"
@@ -1676,22 +1731,17 @@ msgctxt "web/components/view/ChartView"
 msgid "Refresh"
 msgstr "刷新"
 
-#: web/components/view/ChoyChartView.vue:182
-msgctxt "web/components/view/ChartView"
-msgid "Retry"
-msgstr "重试"
-
 #: web/components/view/ChoyChartView.vue:85
 msgctxt "web/components/view/ChartView"
 msgid "Sort"
 msgstr "排序"
 
-#: web/components/view/ChoyChartView.vue:675
+#: web/components/view/ChoyChartView.vue:674
 msgctxt "web/components/view/ChartView"
 msgid "Sort ascending"
 msgstr "升序"
 
-#: web/components/view/ChoyChartView.vue:676
+#: web/components/view/ChoyChartView.vue:675
 msgctxt "web/components/view/ChartView"
 msgid "Sort descending"
 msgstr "降序"
@@ -1706,7 +1756,7 @@ msgctxt "web/components/view/ChartView"
 msgid "System actions"
 msgstr "系统操作"
 
-#: web/components/view/ChoyChartView.vue:1234
+#: web/components/view/ChoyChartView.vue:1233
 msgctxt "web/components/view/ChartView"
 msgid "Total"
 msgstr "合计"
@@ -1715,6 +1765,21 @@ msgstr "合计"
 msgctxt "web/components/view/ChartView"
 msgid "User actions"
 msgstr "用户操作"
+
+#: web/components/view/ChoyFormPager.vue:71
+msgctxt "web/components/view/ChoyFormPager"
+msgid "Go to record"
+msgstr "跳转到记录"
+
+#: web/components/view/ChoyFormPager.vue:76
+msgctxt "web/components/view/ChoyFormPager"
+msgid "Next record"
+msgstr "下一条"
+
+#: web/components/view/ChoyFormPager.vue:75
+msgctxt "web/components/view/ChoyFormPager"
+msgid "Previous record"
+msgstr "上一条"
 
 #: web/components/view/ChoySearchFit.vue:32
 msgctxt "web/components/view/ChoySearchFit"
@@ -1736,7 +1801,7 @@ msgctxt "web/components/view/FormView"
 msgid "Copy"
 msgstr "复制"
 
-#: web/composables/useFormViewSubmit.ts:178 web/composables/useFormViewSubmit.ts:224
+#: web/composables/useFormViewSubmit.ts:177 web/composables/useFormViewSubmit.ts:223
 msgctxt "web/components/view/FormView"
 msgid "Created successfully"
 msgstr "创建成功"
@@ -1746,12 +1811,12 @@ msgctxt "web/components/view/FormView"
 msgid "Delete"
 msgstr "删除"
 
-#: web/components/view/ChoyFormView.vue:57
+#: web/components/view/ChoyFormView.vue:59
 msgctxt "web/components/view/FormView"
 msgid "Details"
 msgstr "详情"
 
-#: web/components/view/ChoyFormView.vue:492
+#: web/components/view/ChoyFormView.vue:510
 msgctxt "web/components/view/FormView"
 msgid "Discard"
 msgstr "放弃"
@@ -1761,17 +1826,22 @@ msgctxt "web/components/view/FormView"
 msgid "Edit"
 msgstr "编辑"
 
+#: web/components/view/ChoyFormView.vue:106
+msgctxt "web/components/view/FormView"
+msgid "Failed to load"
+msgstr "加载失败"
+
 #: web/components/view/ChoyFormView.vue:39
 msgctxt "web/components/view/FormView"
 msgid "New"
 msgstr "新建"
 
-#: web/composables/useFormViewSubmit.ts:245
+#: web/composables/useFormViewSubmit.ts:244
 msgctxt "web/components/view/FormView"
 msgid "Operation failed"
 msgstr "操作失败"
 
-#: web/composables/useFormViewSubmit.ts:71 web/composables/useFormViewSubmit.ts:77
+#: web/composables/useFormViewSubmit.ts:70 web/composables/useFormViewSubmit.ts:76
 msgctxt "web/components/view/FormView"
 msgid "Please fix the errors in the form first"
 msgstr "请先修正表单中的错误"
@@ -1786,17 +1856,17 @@ msgctxt "web/components/view/FormView"
 msgid "Reset"
 msgstr "重置"
 
-#: web/components/view/ChoyFormView.vue:485 web/components/view/ChoyFormView.vue:490
+#: web/components/view/ChoyFormView.vue:503 web/components/view/ChoyFormView.vue:508
 msgctxt "web/components/view/FormView"
 msgid "Save"
 msgstr "保存"
 
-#: web/composables/useFormViewSubmit.ts:179 web/composables/useFormViewSubmit.ts:224
+#: web/composables/useFormViewSubmit.ts:178 web/composables/useFormViewSubmit.ts:223
 msgctxt "web/components/view/FormView"
 msgid "Saved successfully"
 msgstr "保存成功"
 
-#: web/components/view/ChoyFormView.vue:485 web/components/view/ChoyFormView.vue:490
+#: web/components/view/ChoyFormView.vue:503 web/components/view/ChoyFormView.vue:508
 msgctxt "web/components/view/FormView"
 msgid "Saving..."
 msgstr "保存中..."
@@ -1821,7 +1891,12 @@ msgctxt "web/components/view/KanbanView"
 msgid "%s more"
 msgstr "还有 %s 条"
 
-#: web/components/view/ChoyKanbanView.vue:159
+#: web/components/view/ChoyKanbanView.vue:64
+msgctxt "web/components/view/KanbanView"
+msgid "Failed to load"
+msgstr "加载失败"
+
+#: web/components/view/ChoyKanbanView.vue:203
 msgctxt "web/components/view/KanbanView"
 msgid "Failed to move card"
 msgstr "移动卡片失败"
@@ -1841,7 +1916,7 @@ msgctxt "web/components/view/KanbanView"
 msgid "Move to lane"
 msgstr "移至泳道"
 
-#: web/components/view/ChoyKanbanView.vue:231
+#: web/components/view/ChoyKanbanView.vue:291
 msgctxt "web/components/view/KanbanView"
 msgid "New"
 msgstr "新建"
@@ -1886,7 +1961,7 @@ msgctxt "web/components/view/ListView"
 msgid "Clear selection"
 msgstr "清除选择"
 
-#: web/components/view/ChoyListView.vue:103
+#: web/components/view/ChoyListView.vue:104
 msgctxt "web/components/view/ListView"
 msgid "Click to load more (%s remaining)"
 msgstr "点击加载更多（剩余 %s 条）"
@@ -1901,62 +1976,32 @@ msgctxt "web/components/view/ListView"
 msgid "Discard"
 msgstr "放弃"
 
-#: web/components/view/ChoyListView.vue:303
+#: web/components/view/ChoyListView.vue:373
 msgctxt "web/components/view/ListView"
 msgid "Editing was discarded because the row is no longer visible."
 msgstr "该行已不可见，编辑已放弃。"
 
-#: web/components/view/ChoyListView.vue:633
+#: web/components/view/ChoyListView.vue:698 web/components/view/ChoyListView.vue:87
 msgctxt "web/components/view/ListView"
 msgid "Failed to load list"
 msgstr "列表加载失败"
 
-#: web/composables/resolveViewSurfaceErrorCopy.ts
-msgctxt "web/composables/resolveViewSurfaceErrorCopy"
-msgid "Failed to load"
-msgstr "加载失败"
-
-#: web/composables/resolveViewSurfaceErrorCopy.ts
-msgctxt "web/composables/resolveViewSurfaceErrorCopy"
-msgid "Something went wrong. Retry to try again."
-msgstr "出了点问题。请重试。"
-
-#: web/composables/resolveViewSurfaceErrorCopy.ts
-msgctxt "web/composables/resolveViewSurfaceErrorCopy"
-msgid "Connection lost"
-msgstr "连接已断开"
-
-#: web/composables/resolveViewSurfaceErrorCopy.ts
-msgctxt "web/composables/resolveViewSurfaceErrorCopy"
-msgid "Could not load this data. Check your network, then retry."
-msgstr "无法加载此数据。请检查网络后重试。"
-
-#: web/composables/resolveViewSurfaceErrorCopy.ts
-msgctxt "web/composables/resolveViewSurfaceErrorCopy"
-msgid "Could not refresh."
-msgstr "无法刷新。"
-
-#: web/components/layout/ChoyViewLoadError.vue
-msgctxt "web/components/layout/ChoyViewLoadError"
-msgid "Retry loading"
-msgstr "重试加载"
-
-#: web/components/view/ChoyListView.vue:372
+#: web/components/view/ChoyListView.vue:439
 msgctxt "web/components/view/ListView"
 msgid "Failed to refresh after reorder"
 msgstr "重排后刷新失败"
 
-#: web/components/view/ChoyListView.vue:372
+#: web/components/view/ChoyListView.vue:439
 msgctxt "web/components/view/ListView"
 msgid "Failed to reorder rows"
 msgstr "行重排失败"
 
-#: web/components/view/ChoyListView.vue:117 web/components/view/ChoyListView.vue:21
+#: web/components/view/ChoyListView.vue:118 web/components/view/ChoyListView.vue:21
 msgctxt "web/components/view/ListView"
 msgid "New"
 msgstr "新建"
 
-#: web/components/view/ChoyListView.vue:112
+#: web/components/view/ChoyListView.vue:113
 msgctxt "web/components/view/ListView"
 msgid "No data"
 msgstr "暂无数据"
@@ -2011,17 +2056,27 @@ msgctxt "web/components/view/SearchView"
 msgid "Search..."
 msgstr "搜索…"
 
-#: web/components/view/ChoyViewBusyHost.vue:27
+#: web/components/view/ChoyViewBusyHost.vue:46
 msgctxt "web/components/view/ViewBusyHost"
 msgid "Loading"
 msgstr "加载中"
 
-#: web/components/view/search/Search.vue:689
+#: web/components/view/ChoyViewBusyHost.vue:47
+msgctxt "web/components/view/ViewBusyHost"
+msgid "Retry"
+msgstr "重试"
+
+#: web/components/view/ChoyViewSurfaceError.vue:19
+msgctxt "web/components/view/ViewSurfaceError"
+msgid "Retry"
+msgstr "重试"
+
+#: web/components/view/search/Search.vue:695
 msgctxt "web/components/view/search/Search"
 msgid "Add at least one complete condition before confirming"
 msgstr "确认前请至少添加一条完整条件"
 
-#: web/components/view/search/Search.vue:184 web/components/view/search/Search.vue:352
+#: web/components/view/search/Search.vue:188 web/components/view/search/Search.vue:358
 msgctxt "web/components/view/search/Search"
 msgid "Cancel"
 msgstr "取消"
@@ -2041,12 +2096,12 @@ msgctxt "web/components/view/search/Search"
 msgid "Clear grouping"
 msgstr "清除分组"
 
-#: web/components/view/search/Search.vue:348
+#: web/components/view/search/Search.vue:354
 msgctxt "web/components/view/search/Search"
 msgid "Confirm delete"
 msgstr "确认删除"
 
-#: web/components/view/search/Search.vue:132
+#: web/components/view/search/Search.vue:138
 msgctxt "web/components/view/search/Search"
 msgid "Custom filter"
 msgstr "自定义筛选"
@@ -2061,17 +2116,17 @@ msgctxt "web/components/view/search/Search"
 msgid "Custom group by"
 msgstr "自定义分组"
 
-#: web/components/view/search/Search.vue:97
+#: web/components/view/search/Search.vue:103
 msgctxt "web/components/view/search/Search"
 msgid "Day"
 msgstr "日"
 
-#: web/components/view/search/Search.vue:351
+#: web/components/view/search/Search.vue:357
 msgctxt "web/components/view/search/Search"
 msgid "Delete"
 msgstr "删除"
 
-#: web/components/view/search/Search.vue:347
+#: web/components/view/search/Search.vue:353
 msgctxt "web/components/view/search/Search"
 msgid "Delete favorite \"%s\"? This cannot be undone."
 msgstr "删除收藏「%s」？此操作无法撤销。"
@@ -2081,7 +2136,7 @@ msgctxt "web/components/view/search/Search"
 msgid "Delete favorite %s"
 msgstr "删除收藏 %s"
 
-#: web/components/view/search/Search.vue:286
+#: web/components/view/search/Search.vue:292
 msgctxt "web/components/view/search/Search"
 msgid "Edit favorite"
 msgstr "编辑收藏"
@@ -2091,12 +2146,12 @@ msgctxt "web/components/view/search/Search"
 msgid "Edit favorite %s"
 msgstr "编辑收藏 %s"
 
-#: web/components/view/search/Search.vue:132
+#: web/components/view/search/Search.vue:138
 msgctxt "web/components/view/search/Search"
 msgid "Edit filter"
 msgstr "编辑筛选"
 
-#: web/components/view/search/Search.vue:399
+#: web/components/view/search/Search.vue:405
 msgctxt "web/components/view/search/Search"
 msgid "Enter a favorite name"
 msgstr "请输入收藏名称"
@@ -2106,22 +2161,22 @@ msgctxt "web/components/view/search/Search"
 msgid "Failed to load favorites"
 msgstr "加载收藏失败"
 
-#: web/components/view/search/Search.vue:364
+#: web/components/view/search/Search.vue:370
 msgctxt "web/components/view/search/Search"
 msgid "Favorite deleted"
 msgstr "收藏已删除"
 
-#: web/components/view/search/Search.vue:172
+#: web/components/view/search/Search.vue:176
 msgctxt "web/components/view/search/Search"
 msgid "Favorite name"
 msgstr "收藏名称"
 
-#: web/components/view/search/Search.vue:418
+#: web/components/view/search/Search.vue:424
 msgctxt "web/components/view/search/Search"
 msgid "Favorite saved"
 msgstr "收藏已保存"
 
-#: web/components/view/search/Search.vue:411
+#: web/components/view/search/Search.vue:417
 msgctxt "web/components/view/search/Search"
 msgid "Favorite updated"
 msgstr "收藏已更新"
@@ -2141,12 +2196,12 @@ msgctxt "web/components/view/search/Search"
 msgid "Group by"
 msgstr "分组"
 
-#: web/components/view/search/Search.vue:95
+#: web/components/view/search/Search.vue:101
 msgctxt "web/components/view/search/Search"
 msgid "Month"
 msgstr "月"
 
-#: web/components/view/search/Search.vue:171
+#: web/components/view/search/Search.vue:175
 msgctxt "web/components/view/search/Search"
 msgid "Name"
 msgstr "名称"
@@ -2171,7 +2226,7 @@ msgctxt "web/components/view/search/Search"
 msgid "Not set"
 msgstr "未设置"
 
-#: web/components/view/search/Search.vue:94
+#: web/components/view/search/Search.vue:100
 msgctxt "web/components/view/search/Search"
 msgid "Quarter"
 msgstr "季度"
@@ -2191,12 +2246,12 @@ msgctxt "web/components/view/search/Search"
 msgid "Run search"
 msgstr "执行搜索"
 
-#: web/components/view/search/Search.vue:185
+#: web/components/view/search/Search.vue:189
 msgctxt "web/components/view/search/Search"
 msgid "Save"
 msgstr "保存"
 
-#: web/components/view/search/Search.vue:286
+#: web/components/view/search/Search.vue:292
 msgctxt "web/components/view/search/Search"
 msgid "Save current filters"
 msgstr "保存当前筛选"
@@ -2206,7 +2261,7 @@ msgctxt "web/components/view/search/Search"
 msgid "Save current filters…"
 msgstr "保存当前筛选…"
 
-#: web/components/view/search/Search.vue:230
+#: web/components/view/search/Search.vue:236
 msgctxt "web/components/view/search/Search"
 msgid "Search..."
 msgstr "搜索…"
@@ -2216,7 +2271,7 @@ msgctxt "web/components/view/search/Search"
 msgid "Select a field…"
 msgstr "选择字段…"
 
-#: web/components/view/search/Search.vue:180
+#: web/components/view/search/Search.vue:184
 msgctxt "web/components/view/search/Search"
 msgid "Share with all users"
 msgstr "与所有用户共享"
@@ -2231,27 +2286,27 @@ msgctxt "web/components/view/search/Search"
 msgid "Toggle search menu"
 msgstr "切换搜索菜单"
 
-#: web/components/view/search/Search.vue:176
+#: web/components/view/search/Search.vue:180
 msgctxt "web/components/view/search/Search"
 msgid "Use by default"
 msgstr "设为默认"
 
-#: web/components/view/search/Search.vue:96
+#: web/components/view/search/Search.vue:102
 msgctxt "web/components/view/search/Search"
 msgid "Week"
 msgstr "周"
 
-#: web/components/view/search/Search.vue:93
+#: web/components/view/search/Search.vue:99
 msgctxt "web/components/view/search/Search"
 msgid "Year"
 msgstr "年"
 
-#: web/components/view/search/SearchFilter.vue:92
+#: web/components/view/search/SearchFilter.vue:107
 msgctxt "web/components/view/search/SearchFilter"
 msgid "(empty)"
 msgstr "（空）"
 
-#: web/components/view/search/SearchFilter.vue:98
+#: web/components/view/search/SearchFilter.vue:113
 msgctxt "web/components/view/search/SearchFilter"
 msgid "(incomplete)"
 msgstr "（不完整）"
@@ -2281,7 +2336,7 @@ msgctxt "web/components/view/search/SearchFilterCondition"
 msgid "Add values"
 msgstr "添加值"
 
-#: web/components/view/search/SearchFilterCondition.vue:163
+#: web/components/view/search/SearchFilterCondition.vue:164
 msgctxt "web/components/view/search/SearchFilterCondition"
 msgid "Enter JSON"
 msgstr "输入 JSON"
@@ -2301,7 +2356,7 @@ msgctxt "web/components/view/search/SearchFilterCondition"
 msgid "Operator"
 msgstr "运算符"
 
-#: web/components/view/search/SearchFilterCondition.vue:165
+#: web/components/view/search/SearchFilterCondition.vue:166
 msgctxt "web/components/view/search/SearchFilterCondition"
 msgid "Please select..."
 msgstr "请选择…"
@@ -2316,27 +2371,27 @@ msgctxt "web/components/view/search/SearchFilterCondition"
 msgid "Select a field"
 msgstr "选择字段"
 
-#: web/components/view/search/SearchFilterCondition.vue:155
+#: web/components/view/search/SearchFilterCondition.vue:156
 msgctxt "web/components/view/search/SearchFilterCondition"
 msgid "Select a record"
 msgstr "选择记录"
 
-#: web/components/view/search/SearchFilterCondition.vue:157
+#: web/components/view/search/SearchFilterCondition.vue:158
 msgctxt "web/components/view/search/SearchFilterCondition"
 msgid "Select date"
 msgstr "选择日期"
 
-#: web/components/view/search/SearchFilterCondition.vue:159
+#: web/components/view/search/SearchFilterCondition.vue:160
 msgctxt "web/components/view/search/SearchFilterCondition"
 msgid "Select date and time"
 msgstr "选择日期和时间"
 
-#: web/components/view/search/SearchFilterCondition.vue:161
+#: web/components/view/search/SearchFilterCondition.vue:162
 msgctxt "web/components/view/search/SearchFilterCondition"
 msgid "Select time"
 msgstr "选择时间"
 
-#: web/components/view/search/SearchFilterCondition.vue:167
+#: web/components/view/search/SearchFilterCondition.vue:168
 msgctxt "web/components/view/search/SearchFilterCondition"
 msgid "Value"
 msgstr "值"
@@ -2365,6 +2420,31 @@ msgstr "分组关系"
 msgctxt "web/components/view/search/SearchFilterGroup"
 msgid "Remove group"
 msgstr "移除分组"
+
+#: web/composables/resolveViewSurfaceErrorCopy.ts:58
+msgctxt "web/composables/resolveViewSurfaceErrorCopy@resolveViewSurfaceErrorCopy"
+msgid "Connection lost"
+msgstr "连接已断开"
+
+#: web/composables/resolveViewSurfaceErrorCopy.ts:59
+msgctxt "web/composables/resolveViewSurfaceErrorCopy@resolveViewSurfaceErrorCopy"
+msgid "Could not load this data. Check your network, then retry."
+msgstr "无法加载此数据。请检查网络后重试。"
+
+#: web/composables/resolveViewSurfaceErrorCopy.ts:70
+msgctxt "web/composables/resolveViewSurfaceErrorCopy@resolveViewSurfaceErrorCopy"
+msgid "Could not refresh."
+msgstr "无法刷新。"
+
+#: web/composables/resolveViewSurfaceErrorCopy.ts:62
+msgctxt "web/composables/resolveViewSurfaceErrorCopy@resolveViewSurfaceErrorCopy"
+msgid "Failed to load"
+msgstr "加载失败"
+
+#: web/composables/resolveViewSurfaceErrorCopy.ts:64
+msgctxt "web/composables/resolveViewSurfaceErrorCopy@resolveViewSurfaceErrorCopy"
+msgid "Something went wrong. Retry to try again."
+msgstr "出了点问题。请重试。"
 
 #: web/composables/search/useGroupingOptions.ts:17 web/composables/search/useGroupingOptions.ts:61
 msgctxt "web/composables/search/useGroupingOptions"
@@ -2401,42 +2481,42 @@ msgctxt "web/composables/search/useSearch"
 msgid "Not configured"
 msgstr "未配置"
 
-#: web/composables/useChoyMessage.ts:25
+#: web/composables/useChoyMessage.ts:33
 msgctxt "web/composables/useChoyMessage"
 msgid "Error"
 msgstr "错误"
 
-#: web/composables/useChoyMessage.ts:27
+#: web/composables/useChoyMessage.ts:35
 msgctxt "web/composables/useChoyMessage"
 msgid "Info"
 msgstr "提示"
 
-#: web/composables/useChoyMessage.ts:21
+#: web/composables/useChoyMessage.ts:29
 msgctxt "web/composables/useChoyMessage"
 msgid "Success"
 msgstr "成功"
 
-#: web/composables/useChoyMessage.ts:23
+#: web/composables/useChoyMessage.ts:31
 msgctxt "web/composables/useChoyMessage"
 msgid "Warning"
 msgstr "警告"
 
-#: web/composables/useFormViewLifecycle.ts:111
+#: web/composables/useFormViewLifecycle.ts:126
 msgctxt "web/composables/useFormViewLifecycle@confirmDiscardIfDirty"
 msgid "Cancel"
 msgstr "取消"
 
-#: web/composables/useFormViewLifecycle.ts:110
+#: web/composables/useFormViewLifecycle.ts:125
 msgctxt "web/composables/useFormViewLifecycle@confirmDiscardIfDirty"
 msgid "Discard"
 msgstr "放弃"
 
-#: web/composables/useFormViewLifecycle.ts:109
+#: web/composables/useFormViewLifecycle.ts:122
 msgctxt "web/composables/useFormViewLifecycle@confirmDiscardIfDirty"
 msgid "Unsaved changes"
 msgstr "未保存的更改"
 
-#: web/composables/useFormViewLifecycle.ts:109
+#: web/composables/useFormViewLifecycle.ts:121
 msgctxt "web/composables/useFormViewLifecycle@confirmDiscardIfDirty"
 msgid "You have unsaved changes. Discard them?"
 msgstr "有未保存的更改。要放弃吗？"
@@ -2501,187 +2581,187 @@ msgctxt "web/composables/useRecordIoMenu"
 msgid "Import"
 msgstr "导入"
 
-#: web/export/ExportPanel.vue:34
+#: web/export/ExportPanel.vue:40
 msgctxt "web/export/ExportPanel"
 msgid "CSV stored as document %ref."
 msgstr "CSV 已存为文档 %ref。"
 
-#: web/export/ExportPanel.vue:29
+#: web/export/ExportPanel.vue:35
 msgctxt "web/export/ExportPanel"
 msgid "Cancel"
 msgstr "取消"
 
-#: web/export/ExportPanel.vue:28
+#: web/export/ExportPanel.vue:34
 msgctxt "web/export/ExportPanel"
 msgid "Customize fields…"
 msgstr "自定义字段…"
 
-#: web/export/ExportPanel.vue:40
+#: web/export/ExportPanel.vue:46
 msgctxt "web/export/ExportPanel"
 msgid "Delete"
 msgstr "删除"
 
-#: web/export/ExportPanel.vue:32
+#: web/export/ExportPanel.vue:38
 msgctxt "web/export/ExportPanel"
 msgid "Done"
 msgstr "完成"
 
-#: web/export/ExportPanel.vue:27
+#: web/export/ExportPanel.vue:33
 msgctxt "web/export/ExportPanel"
 msgid "Export"
 msgstr "导出"
 
-#: web/export/ExportPanel.vue:44
+#: web/export/ExportPanel.vue:50
 msgctxt "web/export/ExportPanel"
 msgid "Export %count row(s) matching the current filters."
 msgstr "导出当前筛选匹配的 %count 行。"
 
-#: web/export/ExportPanel.vue:43
+#: web/export/ExportPanel.vue:49
 msgctxt "web/export/ExportPanel"
 msgid "Export %count selected row(s)."
 msgstr "导出已选中的 %count 行。"
 
-#: web/export/ExportPanel.vue:31
+#: web/export/ExportPanel.vue:37
 msgctxt "web/export/ExportPanel"
 msgid "Export CSV"
 msgstr "导出 CSV"
 
-#: web/export/ExportPanel.vue:33
+#: web/export/ExportPanel.vue:39
 msgctxt "web/export/ExportPanel"
 msgid "Export completed"
 msgstr "导出完成"
 
-#: web/export/ExportPanel.vue:45
+#: web/export/ExportPanel.vue:51
 msgctxt "web/export/ExportPanel"
 msgid "Export rows matching the current filters."
 msgstr "导出当前筛选匹配的行。"
 
-#: web/export/ExportPanel.vue:38
+#: web/export/ExportPanel.vue:44
 msgctxt "web/export/ExportPanel"
 msgid "Load template"
 msgstr "加载模板"
 
-#: web/export/ExportPanel.vue:35
+#: web/export/ExportPanel.vue:41
 msgctxt "web/export/ExportPanel"
 msgid "Loading fields…"
 msgstr "正在加载字段…"
 
-#: web/export/ExportPanel.vue:36
+#: web/export/ExportPanel.vue:42
 msgctxt "web/export/ExportPanel"
 msgid "No exportable fields were returned."
 msgstr "未返回可导出字段。"
 
-#: web/export/ExportPanel.vue:30
+#: web/export/ExportPanel.vue:36
 msgctxt "web/export/ExportPanel"
 msgid "Preview"
 msgstr "预览"
 
-#: web/export/ExportPanel.vue:39
+#: web/export/ExportPanel.vue:45
 msgctxt "web/export/ExportPanel"
 msgid "Save template"
 msgstr "保存模板"
 
-#: web/export/ExportPanel.vue:37
+#: web/export/ExportPanel.vue:43
 msgctxt "web/export/ExportPanel"
 msgid "Saved templates"
 msgstr "已保存模板"
 
-#: web/export/ExportPanel.vue:42
+#: web/export/ExportPanel.vue:48
 msgctxt "web/export/ExportPanel"
 msgid "Shared"
 msgstr "共享"
 
-#: web/export/ExportPanel.vue:41
+#: web/export/ExportPanel.vue:47
 msgctxt "web/export/ExportPanel"
 msgid "Template name"
 msgstr "模板名称"
 
-#: web/import/ImportPanel.vue:42
+#: web/import/ImportPanel.vue:48
 msgctxt "web/import/ImportPanel"
 msgid "CSV column"
 msgstr "CSV 列"
 
-#: web/import/ImportPanel.vue:49
+#: web/import/ImportPanel.vue:55
 msgctxt "web/import/ImportPanel"
 msgid "Cancel"
 msgstr "取消"
 
-#: web/import/ImportPanel.vue:47
+#: web/import/ImportPanel.vue:53
 msgctxt "web/import/ImportPanel"
 msgid "Code"
 msgstr "编码"
 
-#: web/import/ImportPanel.vue:52
+#: web/import/ImportPanel.vue:58
 msgctxt "web/import/ImportPanel"
 msgid "Done"
 msgstr "完成"
 
-#: web/import/ImportPanel.vue:39
+#: web/import/ImportPanel.vue:45
 msgctxt "web/import/ImportPanel"
 msgid "Drop CSV here or click to browse"
 msgstr "拖放 CSV 到此处或点击浏览"
 
-#: web/import/ImportPanel.vue:46
+#: web/import/ImportPanel.vue:52
 msgctxt "web/import/ImportPanel"
 msgid "Field"
 msgstr "字段"
 
-#: web/import/ImportPanel.vue:37 web/import/ImportPanel.vue:51 web/import/ImportPanel.vue:63
+#: web/import/ImportPanel.vue:43 web/import/ImportPanel.vue:57 web/import/ImportPanel.vue:69
 msgctxt "web/import/ImportPanel"
 msgid "Import"
 msgstr "导入"
 
-#: web/import/ImportPanel.vue:53
+#: web/import/ImportPanel.vue:59
 msgctxt "web/import/ImportPanel"
 msgid "Import completed"
 msgstr "导入完成"
 
-#: web/import/ImportPanel.vue:43
+#: web/import/ImportPanel.vue:49
 msgctxt "web/import/ImportPanel"
 msgid "Import field"
 msgstr "导入字段"
 
-#: web/import/ImportPanel.vue:41
+#: web/import/ImportPanel.vue:47
 msgctxt "web/import/ImportPanel"
 msgid "Map each CSV column to an importable field. Leave blank to use the header as the field path."
 msgstr "将每个 CSV 列映射到可导入字段。留空则使用表头作为字段路径。"
 
-#: web/import/ImportPanel.vue:48
+#: web/import/ImportPanel.vue:54
 msgctxt "web/import/ImportPanel"
 msgid "Message"
 msgstr "消息"
 
-#: web/import/ImportPanel.vue:50 web/import/ImportPanel.vue:62
+#: web/import/ImportPanel.vue:56 web/import/ImportPanel.vue:68
 msgctxt "web/import/ImportPanel"
 msgid "Preview"
 msgstr "预览"
 
-#: web/import/ImportPanel.vue:45
+#: web/import/ImportPanel.vue:51
 msgctxt "web/import/ImportPanel"
 msgid "Row"
 msgstr "行"
 
-#: web/import/ImportPanel.vue:54
+#: web/import/ImportPanel.vue:60
 msgctxt "web/import/ImportPanel"
 msgid "Rows were imported successfully."
 msgstr "行已成功导入。"
 
-#: web/import/ImportPanel.vue:44
+#: web/import/ImportPanel.vue:50
 msgctxt "web/import/ImportPanel"
 msgid "Same as header"
 msgstr "与表头相同"
 
-#: web/import/ImportPanel.vue:40
+#: web/import/ImportPanel.vue:46
 msgctxt "web/import/ImportPanel"
 msgid "Suggested columns"
 msgstr "建议列"
 
-#: web/import/ImportPanel.vue:61
+#: web/import/ImportPanel.vue:67
 msgctxt "web/import/ImportPanel"
 msgid "Upload CSV"
 msgstr "上传 CSV"
 
-#: web/import/ImportPanel.vue:38
+#: web/import/ImportPanel.vue:44
 msgctxt "web/import/ImportPanel"
 msgid "Upload a UTF-8 CSV. Map columns to importable fields from the catalog."
 msgstr "上传 UTF-8 CSV。将列映射到目录中的可导入字段。"
@@ -3006,6 +3086,11 @@ msgctxt "web/stores/breadcrumbStore"
 msgid "Page"
 msgstr "页面"
 
+#: web/stores/connectivityStore/recoveryToast.ts:29
+msgctxt "web/stores/connectivityStore"
+msgid "Connection restored"
+msgstr "连接已恢复"
+
 #: web/views/app_setting_actions.ts:14
 msgctxt "web/views/AppSettingFormView"
 msgid "Copy Parameter"
@@ -3051,12 +3136,12 @@ msgctxt "web/views/AppSettingListView"
 msgid "Key"
 msgstr "键"
 
-#: web/views/AppSettingListView.vue:50
+#: web/views/AppSettingListView.vue:48
 msgctxt "web/views/AppSettingListView"
 msgid "Parameters View"
 msgstr "参数视图"
 
-#: web/views/AppSettingListView.vue:49
+#: web/views/AppSettingListView.vue:47
 msgctxt "web/views/AppSettingListView"
 msgid "Settings View"
 msgstr "设置视图"
@@ -3839,6 +3924,10 @@ msgstr "用户"
 #~ msgid "Loading..."
 #~ msgstr "加载中..."
 
+#~ msgctxt "web/components/view/ChartView"
+#~ msgid "Retry"
+#~ msgstr "重试"
+
 #~ msgctxt "web/components/view/ChoySettingsView"
 #~ msgid "Cancel"
 #~ msgstr "取消"
@@ -3958,6 +4047,26 @@ msgstr "用户"
 #~ msgctxt "web/components/view/search/Search"
 #~ msgid "Open search menu"
 #~ msgstr "打开搜索菜单"
+
+#~ msgctxt "web/composables/resolveViewSurfaceErrorCopy"
+#~ msgid "Connection lost"
+#~ msgstr "连接已断开"
+
+#~ msgctxt "web/composables/resolveViewSurfaceErrorCopy"
+#~ msgid "Could not load this data. Check your network, then retry."
+#~ msgstr "无法加载此数据。请检查网络后重试。"
+
+#~ msgctxt "web/composables/resolveViewSurfaceErrorCopy"
+#~ msgid "Could not refresh."
+#~ msgstr "无法刷新。"
+
+#~ msgctxt "web/composables/resolveViewSurfaceErrorCopy"
+#~ msgid "Failed to load"
+#~ msgstr "加载失败"
+
+#~ msgctxt "web/composables/resolveViewSurfaceErrorCopy"
+#~ msgid "Something went wrong. Retry to try again."
+#~ msgstr "出了点问题。请重试。"
 
 #~ msgctxt "web/composables/useMenu"
 #~ msgid "No menus available"
