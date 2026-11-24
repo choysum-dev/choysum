@@ -286,6 +286,7 @@ import type { UiModelStore } from '@/web/web/stores/uiModelStore';
 import ChoyActionButton from '@/web/web/components/button/ChoyActionButton.vue';
 import ChoyViewBase from '@/web/web/components/view/ChoyViewBase.vue';
 import { isConnectivityUnreachable } from '@/web/web/stores/connectivityStore';
+import { runUnlessSessionUnreachable } from './formOfflineSaveGate';
 import ChoyViewOverflowRefreshItem from '@/web/web/components/view/ChoyViewOverflowRefreshItem.vue';
 import ChoyFormPager from '@/web/web/components/view/ChoyFormPager.vue';
 import ChoyViewSwitcher, { type ChoyViewSwitcherOption } from '@/web/web/components/view/ChoyViewSwitcher.vue';
@@ -731,16 +732,13 @@ const { submitting, handleSubmit, onNativeSubmit } = useFormViewSubmit({
 });
 
 function onSaveExecute() {
-  if (sessionUnreachable.value) return;
-  return handleSubmit();
+  return runUnlessSessionUnreachable(() => handleSubmit());
 }
 function onNativeSubmitGated() {
-  if (sessionUnreachable.value) return;
-  onNativeSubmit();
+  runUnlessSessionUnreachable(() => onNativeSubmit());
 }
 function onSettingsSaveGated() {
-  if (sessionUnreachable.value) return;
-  return onSettingsSave();
+  return runUnlessSessionUnreachable(() => onSettingsSave());
 }
 
 
