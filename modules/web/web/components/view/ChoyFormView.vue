@@ -4,238 +4,216 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <ChoyViewContainer
-    class="gap-5"
+  <ChoyViewBase
     :data-anchor="isSettingsPresentation ? 'choy.settings-view' : undefined"
     :data-testid="isSettingsPresentation ? 'choy-settings-view' : undefined"
+    :chrome-anchor="isSettingsPresentation ? 'choy.settings.view-chrome' : 'choy.form.view-chrome'"
+    :show-header="resolvedShowHeader"
+    :show-actions="resolvedShowActions"
+    :page-title="chromeTitle || undefined"
+    :page-title-id="pageTitleId"
+    :page-title-class="
+      isSettingsPresentation ? 'choy-settings-view__page-title' : 'choy-form-view__page-title'
+    "
+    :page-title-actions-io="pageTitleActionsIo"
+    :show-title-overflow="showTitleOverflow"
+    :store="store"
+    :busy="overlayBusy"
+    :mode="formBusyMode"
+    busy-host-class="min-h-0 flex-1 overflow-y-auto"
+    :busy-host-attrs="{
+      'data-anchor': isSettingsPresentation ? 'choy.settings.sheet' : 'choy.form-view',
+    }"
+    :error="formSurfaceError"
+    :has-frame="formHasFrame"
+    :has-settled="formHasSettled"
+    :error-fallback-title="_t('Failed to load')"
+    @retry="onFormSurfaceRetry"
+    @cancel="onFormSurfaceCancel"
   >
-    <template v-if="resolvedShowHeader" #header>
-      <div :data-anchor="isSettingsPresentation ? 'choy.settings.view-chrome' : 'choy.form.view-chrome'">
-        <ChoyViewActionBar
-          layout="thirds"
-          class="gap-2 border-b-0 [border-bottom-width:0px]"
-          :system-actions-label="_t('System actions')"
-          :user-actions-label="_t('User actions')"
+    <!--
+      Left chrome contract (List / Kanban / Form):
+      [primary] [page title][⋮] [secondary…]
+      create/edit: primary=Save/Cancel, Reset in ⋮ (no trailing secondary).
+      display: primary=New; after title: #secondary-actions then Edit/Copy/Delete.
+      settings: primary=Save/Discard only (no CRUD / Reset overflow).
+    -->
+    <template v-if="resolvedShowActions" #system-actions>
+      <!-- Settings chrome: Save/Discard; dirty gates enablement. -->
+      <template v-if="isSettingsPresentation && resolvedShowActions">
+        <ChoyButton
+          type="button"
+          size="default"
+          variant="default"
+          data-testid="settings-save"
+          :disabled="controlsLocked || !settingsDirty"
+          @click="onSettingsSave"
         >
-          <template v-if="resolvedShowActions || chromeTitle || showTitleOverflow" #system-actions>
-            <!--
-              Left chrome contract (List / Kanban / Form):
-              [primary] [page title][⋮] [secondary…]
-              create/edit: primary=Save/Cancel, Reset in ⋮ (no trailing secondary).
-              display: primary=New; after title: #secondary-actions then Edit/Copy/Delete.
-              settings: primary=Save/Discard only (no CRUD / Reset overflow).
-            -->
-            <!-- Settings chrome: Save/Discard; dirty gates enablement. -->
-            <template v-if="isSettingsPresentation && resolvedShowActions">
-              <ChoyButton
-                type="button"
-                size="default"
-                variant="default"
-                data-testid="settings-save"
-                :disabled="controlsLocked || !settingsDirty"
-                @click="onSettingsSave"
-              >
-                <Check class="size-4" aria-hidden="true" />
-                {{ settingsSaveLabel }}
-              </ChoyButton>
-              <ChoyButton
-                type="button"
-                size="default"
-                variant="outline"
-                data-testid="settings-discard"
-                :disabled="controlsLocked || !settingsDirty"
-                @click="onSettingsDiscard"
-              >
-                <X class="size-4" aria-hidden="true" />
-                {{ settingsDiscardLabel }}
-              </ChoyButton>
-            </template>
-            <!-- Primary: Save/Cancel while editing; New (or #system-actions) in display. -->
-            <template v-else-if="isEditing && resolvedShowActions">
-              <ChoyButton type="button" size="default" variant="default" :disabled="controlsLocked" @click="handleSubmit">
-                <Check class="size-4" aria-hidden="true" />
-                {{ saveLabel }}
-              </ChoyButton>
-              <ChoyButton type="button" size="default" variant="outline" :disabled="controlsLocked" @click="handleCancel">
-                <X class="size-4" aria-hidden="true" />
-                {{ _t('Cancel') }}
-              </ChoyButton>
-            </template>
-            <slot v-else-if="resolvedShowActions" name="system-actions">
-              <ChoyButton
-                v-if="viewMode === 'display' && effectiveRecordId && resolvedCreateAction && canCreate"
-                type="button"
-                size="default"
-                variant="default"
-                data-testid="form-primary-new"
-                @click="handleCreate"
-              >
-                <Plus class="size-4" aria-hidden="true" />
-                {{ _t('New') }}
-              </ChoyButton>
-            </slot>
-
-            <h1
-              v-if="chromeTitle"
-              :id="pageTitleId || undefined"
-              data-slot="page-title"
-              :class="
-                isSettingsPresentation
-                  ? 'choy-settings-view__page-title min-w-0 max-w-[10rem] truncate text-base font-semibold text-foreground sm:max-w-[14rem]'
-                  : 'choy-form-view__page-title min-w-0 max-w-[10rem] truncate text-base font-semibold text-foreground sm:max-w-[14rem]'
-              "
-            >
-              {{ chromeTitle }}
-            </h1>
-            <ChoyPageTitleActions
-              v-if="showTitleOverflow"
-              :has-io-menu="!!pageTitleActionsIo"
-              :action-import="pageTitleActionsIo?.actionImport ?? false"
-              :action-export="pageTitleActionsIo?.actionExport ?? false"
-              :action-import-upload-hint="pageTitleActionsIo?.actionImportUploadHint"
-              :action-import-column-mapping="pageTitleActionsIo?.actionImportColumnMapping"
-              :action-list-ref="(pageTitleActionsIo?.actionListRef as any)"
-              :action-company-id="pageTitleActionsIo?.actionCompanyId"
-              :store="store"
-            >
-              <template
-                v-if="showRefreshInOverflow || showResetInOverflow || $slots['overflow-actions']"
-                #overflow
-              >
-                <DropdownMenuItem
-                  v-if="showRefreshInOverflow"
-                  data-testid="form-overflow-refresh"
-                  @select="handleRefresh"
-                >
-                  <RefreshCw class="size-4" aria-hidden="true" />
-                  {{ _t('Refresh') }}
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  v-if="showResetInOverflow"
-                  data-testid="form-overflow-reset"
-                  :disabled="controlsLocked"
-                  @select="handleReset"
-                >
-                  <RotateCcw class="size-4" aria-hidden="true" />
-                  {{ _t('Reset') }}
-                </DropdownMenuItem>
-                <slot name="overflow-actions" />
-              </template>
-            </ChoyPageTitleActions>
-
-            <!--
-              Same tray as title/⋮ (List/Kanban secondary-actions parity) — no ActionBar separator.
-              Product CTAs (e.g. Activate) render before Edit/Copy/Delete.
-            -->
-            <slot
-              v-if="!isSettingsPresentation && resolvedShowActions && viewMode === 'display'"
-              name="secondary-actions"
-              :form-data="exposedFormData"
-              :record-id="effectiveRecordId"
-              :view-mode="viewMode"
-              :loading="loading"
-            />
-            <!-- Built-in secondary: Edit/Copy/Delete after product #secondary-actions. -->
-            <template v-if="!isSettingsPresentation && resolvedShowActions && viewMode === 'display' && effectiveRecordId">
-              <ChoyButton
-                v-if="canEdit"
-                type="button"
-                size="default"
-                variant="outline"
-                data-testid="form-secondary-edit"
-                @click="handleEdit"
-              >
-                <Pencil class="size-4" aria-hidden="true" />
-                {{ _t('Edit') }}
-              </ChoyButton>
-              <ChoyButton
-                v-if="canCopy"
-                type="button"
-                size="default"
-                variant="outline"
-                data-testid="form-secondary-copy"
-                @click="handleCopy"
-              >
-                <Copy class="size-4" aria-hidden="true" />
-                {{ _t('Copy') }}
-              </ChoyButton>
-              <ChoyButton
-                v-if="canDelete"
-                type="button"
-                size="default"
-                variant="outline-destructive"
-                data-testid="form-secondary-delete"
-                @click="handleDelete"
-              >
-                <Trash2 class="size-4" aria-hidden="true" />
-                {{ _t('Delete') }}
-              </ChoyButton>
-            </template>
-          </template>
-          <!-- Only register when filled — empty tray would paint a dangling ActionBar separator. -->
-          <template v-if="resolvedShowActions && !!slots['user-actions']" #user-actions>
-            <slot
-              name="user-actions"
-              :form-data="exposedFormData"
-              :record-id="effectiveRecordId"
-              :view-mode="viewMode"
-              :loading="loading"
-            />
-          </template>
-          <!-- Keep #center registered so the thirds grid does not collapse. -->
-          <template #center>
-            <div class="min-w-0" />
-          </template>
-          <template #header-right>
-            <template v-if="isSettingsPresentation && settingsViewSwitcherOptions.length > 1">
-              <ChoyViewSwitcher
-                :active="settingsActiveView"
-                :options="settingsViewSwitcherOptions"
-                :aria-label="_t('View switcher')"
-                @select="onSettingsViewSelect"
-              />
-            </template>
-            <slot v-else name="statusbar" />
-            <slot v-if="!isSettingsPresentation" name="button-box" />
-            <ChoyFormPager
-              v-if="!isSettingsPresentation && formRecordPager.visible.value"
-              :current="formRecordPager.current.value"
-              :total="formRecordPager.total.value"
-              :can-prev="formRecordPager.canPrev.value"
-              :can-next="formRecordPager.canNext.value"
-              :busy="formRecordPager.busy.value"
-              @prev="formRecordPager.goPrev()"
-              @next="formRecordPager.goNext()"
-              @goto="formRecordPager.goTo($event)"
-            />
-            <slot name="header-right" />
-          </template>
-        </ChoyViewActionBar>
-      </div>
+          <Check class="size-4" aria-hidden="true" />
+          {{ settingsSaveLabel }}
+        </ChoyButton>
+        <ChoyButton
+          type="button"
+          size="default"
+          variant="outline"
+          data-testid="settings-discard"
+          :disabled="controlsLocked || !settingsDirty"
+          @click="onSettingsDiscard"
+        >
+          <X class="size-4" aria-hidden="true" />
+          {{ settingsDiscardLabel }}
+        </ChoyButton>
+      </template>
+      <!-- Primary: Save/Cancel while editing; New (or #system-actions) in display. -->
+      <template v-else-if="isEditing && resolvedShowActions">
+        <ChoyButton type="button" size="default" variant="default" :disabled="controlsLocked" @click="handleSubmit">
+          <Check class="size-4" aria-hidden="true" />
+          {{ saveLabel }}
+        </ChoyButton>
+        <ChoyButton type="button" size="default" variant="outline" :disabled="controlsLocked" @click="handleCancel">
+          <X class="size-4" aria-hidden="true" />
+          {{ _t('Cancel') }}
+        </ChoyButton>
+      </template>
+      <slot v-else-if="resolvedShowActions" name="system-actions">
+        <ChoyButton
+          v-if="viewMode === 'display' && effectiveRecordId && resolvedCreateAction && canCreate"
+          type="button"
+          size="default"
+          variant="default"
+          data-testid="form-primary-new"
+          @click="handleCreate"
+        >
+          <Plus class="size-4" aria-hidden="true" />
+          {{ _t('New') }}
+        </ChoyButton>
+      </slot>
     </template>
 
-    <ChoyViewBusyHost
-      :busy="overlayBusy"
-      :mode="formBusyMode"
-      class="min-h-0 flex-1 overflow-y-auto"
-      :data-anchor="isSettingsPresentation ? 'choy.settings.sheet' : 'choy.form-view'"
-      :error="formSurfaceError"
-      :has-frame="formHasFrame"
-      :has-settled="formHasSettled"
-      :error-fallback-title="_t('Failed to load')"
-      @retry="onFormSurfaceRetry"
-      @cancel="onFormSurfaceCancel"
+    <template
+      v-if="showRefreshInOverflow || showResetInOverflow || $slots['overflow-actions']"
+      #overflow-actions
     >
-      <form
-        ref="formRef"
-        :class="isSettingsPresentation ? 'choy-settings-view__sheet flex min-h-0 min-w-0 flex-1 flex-col gap-8' : undefined"
-        :inert="(isSettingsPresentation ? overlayBusy : submitting) || undefined"
-        @submit.self.prevent="isSettingsPresentation ? onSettingsSave() : onNativeSubmit()"
+      <ChoyViewOverflowRefreshItem
+        v-if="showRefreshInOverflow"
+        test-id="form-overflow-refresh"
+        @select="handleRefresh"
+      />
+      <DropdownMenuItem
+        v-if="showResetInOverflow"
+        data-testid="form-overflow-reset"
+        :disabled="controlsLocked"
+        @select="handleReset"
       >
-        <slot :form-data="exposedFormData" :view-mode="viewMode" :loading="loading" />
-      </form>
-    </ChoyViewBusyHost>
-  </ChoyViewContainer>
+        <RotateCcw class="size-4" aria-hidden="true" />
+        {{ _t('Reset') }}
+      </DropdownMenuItem>
+      <slot name="overflow-actions" />
+    </template>
+
+    <template
+      v-if="
+        !isSettingsPresentation &&
+        resolvedShowActions &&
+        viewMode === 'display' &&
+        (!!slots['secondary-actions'] || !!effectiveRecordId)
+      "
+      #secondary-actions
+    >
+    <!--
+      Same tray as title/⋮ (List/Kanban secondary-actions parity) — no ActionBar separator.
+      Product CTAs (e.g. Activate) render before Edit/Copy/Delete.
+    -->
+    <slot
+      name="secondary-actions"
+      :form-data="exposedFormData"
+      :record-id="effectiveRecordId"
+      :view-mode="viewMode"
+      :loading="loading"
+    />
+    <!-- Built-in secondary: Edit/Copy/Delete after product #secondary-actions. -->
+    <template v-if="effectiveRecordId">
+      <ChoyButton
+        v-if="canEdit"
+        type="button"
+        size="default"
+        variant="outline"
+        data-testid="form-secondary-edit"
+        @click="handleEdit"
+      >
+        <Pencil class="size-4" aria-hidden="true" />
+        {{ _t('Edit') }}
+      </ChoyButton>
+      <ChoyButton
+        v-if="canCopy"
+        type="button"
+        size="default"
+        variant="outline"
+        data-testid="form-secondary-copy"
+        @click="handleCopy"
+      >
+        <Copy class="size-4" aria-hidden="true" />
+        {{ _t('Copy') }}
+      </ChoyButton>
+      <ChoyButton
+        v-if="canDelete"
+        type="button"
+        size="default"
+        variant="outline-destructive"
+        data-testid="form-secondary-delete"
+        @click="handleDelete"
+      >
+        <Trash2 class="size-4" aria-hidden="true" />
+        {{ _t('Delete') }}
+      </ChoyButton>
+    </template>
+    </template>
+
+    <!-- Only register when filled — empty tray would paint a dangling ActionBar separator. -->
+    <template v-if="resolvedShowActions && !!slots['user-actions']" #user-actions>
+      <slot
+        name="user-actions"
+        :form-data="exposedFormData"
+        :record-id="effectiveRecordId"
+        :view-mode="viewMode"
+        :loading="loading"
+      />
+    </template>
+
+    <template #header-right>
+      <template v-if="isSettingsPresentation && settingsViewSwitcherOptions.length > 1">
+        <ChoyViewSwitcher
+          :active="settingsActiveView"
+          :options="settingsViewSwitcherOptions"
+          :aria-label="_t('View switcher')"
+          @select="onSettingsViewSelect"
+        />
+      </template>
+      <slot v-else name="statusbar" />
+      <slot v-if="!isSettingsPresentation" name="button-box" />
+      <ChoyFormPager
+        v-if="!isSettingsPresentation && formRecordPager.visible.value"
+        :current="formRecordPager.current.value"
+        :total="formRecordPager.total.value"
+        :can-prev="formRecordPager.canPrev.value"
+        :can-next="formRecordPager.canNext.value"
+        :busy="formRecordPager.busy.value"
+        @prev="formRecordPager.goPrev()"
+        @next="formRecordPager.goNext()"
+        @goto="formRecordPager.goTo($event)"
+      />
+      <slot name="header-right" />
+    </template>
+
+    <form
+      ref="formRef"
+      :class="isSettingsPresentation ? 'choy-settings-view__sheet flex min-h-0 min-w-0 flex-1 flex-col gap-8' : undefined"
+      :inert="(isSettingsPresentation ? overlayBusy : submitting) || undefined"
+      @submit.self.prevent="isSettingsPresentation ? onSettingsSave() : onNativeSubmit()"
+    >
+      <slot :form-data="exposedFormData" :view-mode="viewMode" :loading="loading" />
+    </form>
+  </ChoyViewBase>
 </template>
 
 <style scoped>
@@ -282,14 +260,13 @@ import { nextLocalToken } from '@/web/web/components/view/localToken';
 import { createTranslate } from '@/web/web/i18n';
 import type { UiModelStore } from '@/web/web/stores/uiModelStore';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
-import ChoyPageTitleActions from '@/web/web/components/layout/ChoyPageTitleActions.vue';
-import ChoyViewContainer from '@/web/web/components/view/ChoyViewContainer.vue';
-import ChoyViewActionBar from '@/web/web/components/view/ChoyViewActionBar.vue';
-import ChoyViewBusyHost from '@/web/web/components/view/ChoyViewBusyHost.vue';
+import ChoyViewBase from '@/web/web/components/view/ChoyViewBase.vue';
+import ChoyViewOverflowRefreshItem from '@/web/web/components/view/ChoyViewOverflowRefreshItem.vue';
 import ChoyFormPager from '@/web/web/components/view/ChoyFormPager.vue';
 import ChoyViewSwitcher, { type ChoyViewSwitcherOption } from '@/web/web/components/view/ChoyViewSwitcher.vue';
 import DropdownMenuItem from '@/web/web/components/vendor/ui/dropdown-menu/DropdownMenuItem.vue';
-import { Plus, Pencil, RefreshCw, Trash2, Check, X, Copy, RotateCcw } from 'lucide-vue-next';
+import { Plus, Pencil, Trash2, Check, X, Copy, RotateCcw } from 'lucide-vue-next';
+import { useViewTitleOverflow } from '@/web/web/components/view/useViewTitleOverflow';
 import type {
   FormSubmitHandler,
   FormChildSubmitApiRegistration,
@@ -821,15 +798,6 @@ async function onSettingsViewSelect(value: string) {
 }
 
 const isEditing = computed(() => viewMode.value === 'edit' || viewMode.value === 'create');
-const showRefreshInOverflow = computed(
-  () =>
-    !isSettingsPresentation.value &&
-    resolvedShowActions.value &&
-    resolvedShowHeader.value &&
-    canRefresh.value &&
-    viewMode.value === 'display' &&
-    !!effectiveRecordId.value,
-);
 /** Reset lives in ⋮ during create/edit so the left bar stays [Save][Cancel][title][⋮]. */
 const showResetInOverflow = computed(
   () =>
@@ -838,14 +806,19 @@ const showResetInOverflow = computed(
     resolvedShowHeader.value &&
     isEditing.value,
 );
-const showTitleOverflow = computed(
-  () =>
+const { showRefreshInOverflow, showTitleOverflow } = useViewTitleOverflow({
+  pageTitleActionsIo,
+  showRefresh: () =>
     !isSettingsPresentation.value &&
-    (!!pageTitleActionsIo.value ||
-      showRefreshInOverflow.value ||
-      showResetInOverflow.value ||
-      !!slots['overflow-actions']),
-);
+    resolvedShowActions.value &&
+    resolvedShowHeader.value &&
+    canRefresh.value &&
+    viewMode.value === 'display' &&
+    !!effectiveRecordId.value,
+  showReset: showResetInOverflow,
+  hasOverflowSlot: () => !!slots['overflow-actions'],
+  enabled: () => !isSettingsPresentation.value,
+});
 
 useRegisterPageActionTarget({
   store,

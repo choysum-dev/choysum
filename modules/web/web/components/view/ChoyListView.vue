@@ -4,189 +4,157 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <ChoyViewContainer class="gap-5">
-    <template v-if="showHeader" #header>
-      <div data-anchor="choy.list.view-chrome">
-        <ChoyViewActionBar
-          layout="thirds"
-          class="gap-2 border-b-0 [border-bottom-width:0px]"
-          :system-actions-label="_t('System actions')"
-          :user-actions-label="_t('User actions')"
+  <ChoyViewBase
+    class="choy-list-view"
+    chrome-anchor="choy.list.view-chrome"
+    :show-header="showHeader"
+    :show-actions="showActions"
+    :page-title="pageTitle"
+    :page-title-id="pageTitleId"
+    page-title-class="choy-list-view__page-title"
+    :page-title-actions-io="pageTitleActionsIo"
+    :show-title-overflow="showTitleOverflow"
+    :store="store"
+    :busy="listBusy"
+    :mode="listBusyMode"
+    busy-host-class="flex min-h-0 min-w-0 flex-1 flex-col"
+    :error="controller.vm.error"
+    :has-frame="listHasFrame"
+    :has-settled="!!controller.vm.hasAppliedOnce"
+    :error-fallback-title="_t('Failed to load list')"
+    @retry="onSurfaceRetry"
+    @cancel="onSurfaceCancel"
+  >
+    <template v-if="showActions || editable" #system-actions>
+      <!-- Keep Save/Discard outside the overridable slot so custom toolbars cannot hide them. -->
+      <ChoyButton
+        v-if="editable && isEditing"
+        type="button"
+        size="default"
+        variant="default"
+        :disabled="inlineSaving"
+        @click="handleInlineSave"
+      >
+        <Check class="size-4" aria-hidden="true" />
+        {{ _t('Save') }}
+      </ChoyButton>
+
+      <ChoyButton
+        v-if="editable && isEditing"
+        type="button"
+        size="default"
+        variant="outline"
+        @click="handleInlineDiscard"
+      >
+        <X class="size-4" aria-hidden="true" />
+        {{ _t('Discard') }}
+      </ChoyButton>
+
+      <slot
+        v-if="showActions"
+        name="system-actions"
+        :selected-items="selectedItems"
+        :is-editing="isEditing"
+        :inline-saving="inlineSaving"
+        :save="handleInlineSave"
+        :discard="handleInlineDiscard"
+      >
+        <ChoyButton
+          v-if="resolvedCreateAction && canCreate"
+          type="button"
+          size="default"
+          variant="default"
+          @click="handleCreate"
         >
-          <template v-if="showActions || pageTitle || showTitleOverflow" #system-actions>
-            <!-- Keep Save/Discard outside the overridable slot so custom toolbars cannot hide them. -->
-            <ChoyButton
-              v-if="editable && isEditing"
-              type="button"
-              size="default"
-              variant="default"
-              :disabled="inlineSaving"
-              @click="handleInlineSave"
-            >
-              <Check class="size-4" aria-hidden="true" />
-              {{ _t('Save') }}
-            </ChoyButton>
+          <Plus class="size-4" aria-hidden="true" />
+          {{ _t('New') }}
+        </ChoyButton>
+      </slot>
+    </template>
 
-            <ChoyButton
-              v-if="editable && isEditing"
-              type="button"
-              size="default"
-              variant="outline"
-              @click="handleInlineDiscard"
-            >
-              <X class="size-4" aria-hidden="true" />
-              {{ _t('Discard') }}
-            </ChoyButton>
+    <template v-if="showRefreshInOverflow || !!slots['overflow-actions']" #overflow-actions>
+      <ChoyViewOverflowRefreshItem
+        v-if="showRefreshInOverflow"
+        test-id="list-overflow-refresh"
+        @select="handleRefresh"
+      />
+      <slot name="overflow-actions" :selected-items="selectedItems" />
+    </template>
 
-            <slot
-              v-if="showActions"
-              name="system-actions"
-              :selected-items="selectedItems"
-              :is-editing="isEditing"
-              :inline-saving="inlineSaving"
-              :save="handleInlineSave"
-              :discard="handleInlineDiscard"
-            >
-              <ChoyButton
-                v-if="resolvedCreateAction && canCreate"
-                type="button"
-                size="default"
-                variant="default"
-                @click="handleCreate"
-              >
-                <Plus class="size-4" aria-hidden="true" />
-                {{ _t('New') }}
-              </ChoyButton>
-            </slot>
+    <template v-if="showActions" #secondary-actions>
+      <slot name="secondary-actions" :selected-items="selectedItems" />
+    </template>
 
-            <!-- Page title + ⋮ (IO / refresh / domain overflow) live in view chrome, not a separate Page band. -->
-            <h1
-              v-if="pageTitle"
-              :id="pageTitleId || undefined"
-              data-slot="page-title"
-              class="choy-list-view__page-title min-w-0 max-w-[10rem] truncate text-base font-semibold text-foreground sm:max-w-[14rem]"
-            >
-              {{ pageTitle }}
-            </h1>
-            <ChoyPageTitleActions
-              v-if="showTitleOverflow"
-              :has-io-menu="!!pageTitleActionsIo"
-              :action-import="pageTitleActionsIo?.actionImport ?? false"
-              :action-export="pageTitleActionsIo?.actionExport ?? false"
-              :action-import-upload-hint="pageTitleActionsIo?.actionImportUploadHint"
-              :action-import-column-mapping="pageTitleActionsIo?.actionImportColumnMapping"
-              :action-list-ref="(pageTitleActionsIo?.actionListRef as any)"
-              :action-company-id="pageTitleActionsIo?.actionCompanyId"
-              :store="store"
-            >
-              <template v-if="showRefreshInOverflow || $slots['overflow-actions']" #overflow>
-                <DropdownMenuItem
-                  v-if="showRefreshInOverflow"
-                  data-testid="list-overflow-refresh"
-                  @select="handleRefresh"
-                >
-                  <RefreshCw class="size-4" aria-hidden="true" />
-                  {{ _t('Refresh') }}
-                </DropdownMenuItem>
-                <slot name="overflow-actions" :selected-items="selectedItems" />
-              </template>
-            </ChoyPageTitleActions>
+    <template v-if="showActions && !!slots['user-actions']" #user-actions>
+      <slot name="user-actions" :selected-items="selectedItems" />
+    </template>
 
-            <!-- Same tray as title/⋮ (Form secondary parity) — no ActionBar separator. -->
-            <slot
-              v-if="showActions"
-              name="secondary-actions"
-              :selected-items="selectedItems"
-            />
-          </template>
+    <!-- Selection replaces Search in the center column. Search stays mounted. -->
+    <template #center>
+      <div
+        v-show="hasSelection"
+        data-anchor="choy.list.selection-bar"
+        class="flex min-w-0 w-full flex-nowrap items-center gap-2 overflow-x-auto"
+        role="toolbar"
+        :aria-label="_t('Selection actions')"
+      >
+        <div class="flex min-w-0 items-center gap-1">
+          <span class="truncate text-sm text-muted-foreground tabular-nums">
+            {{ _t('%s selected', selectedItems.length) }}
+          </span>
+          <ChoyButton
+            type="button"
+            variant="ghost"
+            size="icon"
+            class="size-control shrink-0 text-muted-foreground"
+            :aria-label="_t('Clear selection')"
+            @click="clearSelection"
+          >
+            <X class="size-4" aria-hidden="true" />
+          </ChoyButton>
+        </div>
 
-          <!-- Only register when filled — empty tray would paint a dangling ActionBar separator. -->
-          <template v-if="showActions && !!slots['user-actions']" #user-actions>
-            <slot name="user-actions" :selected-items="selectedItems" />
-          </template>
+        <ChoyButton
+          v-if="deleteAction && canDelete"
+          size="default"
+          variant="outline-destructive"
+          :disabled="deleteLoading"
+          @click="handleDelete"
+        >
+          <Trash2 class="size-4" aria-hidden="true" />
+          {{ _t('Delete') }}
+        </ChoyButton>
 
-          <!-- Selection replaces Search in the center column. Search stays mounted. -->
-          <template #center>
-            <div
-              v-show="hasSelection"
-              data-anchor="choy.list.selection-bar"
-              class="flex min-w-0 w-full flex-nowrap items-center gap-2 overflow-x-auto"
-              role="toolbar"
-              :aria-label="_t('Selection actions')"
-            >
-              <!-- Count as muted text (shadcn data-table); clear is a ghost icon button. -->
-              <div class="flex min-w-0 items-center gap-1">
-                <span class="truncate text-sm text-muted-foreground tabular-nums">
-                  {{ _t('%s selected', selectedItems.length) }}
-                </span>
-                <ChoyButton
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  class="size-control shrink-0 text-muted-foreground"
-                  :aria-label="_t('Clear selection')"
-                  @click="clearSelection"
-                >
-                  <X class="size-4" aria-hidden="true" />
-                </ChoyButton>
-              </div>
+        <slot name="selection-actions" :selected-items="selectedItems" :clear="clearSelection" />
+      </div>
+      <ChoySearchFit
+        v-if="resolvedSearchView"
+        v-show="!hasSelection"
+        :field-visible="!hasSelection"
+      >
+        <component :is="resolvedSearchView" class="min-w-0 w-full" :store="store" @query-update="onSearch" />
+      </ChoySearchFit>
+    </template>
 
-              <ChoyButton
-                v-if="deleteAction && canDelete"
-                size="default"
-                variant="outline-destructive"
-                :disabled="deleteLoading"
-                @click="handleDelete"
-              >
-                <Trash2 class="size-4" aria-hidden="true" />
-                {{ _t('Delete') }}
-              </ChoyButton>
-
-              <slot name="selection-actions" :selected-items="selectedItems" :clear="clearSelection" />
-            </div>
-            <ChoySearchFit
-              v-if="resolvedSearchView"
-              v-show="!hasSelection"
-              :field-visible="!hasSelection"
-            >
-              <component :is="resolvedSearchView" class="min-w-0 w-full" :store="store" @query-update="onSearch" />
-            </ChoySearchFit>
-          </template>
-
-          <template #header-right>
-            <!-- Pager, then a hairline, then view-mode chrome at the trailing edge. -->
-            <div v-if="showPaginate && canMountPagination">
-              <ChoyPagination
-                class="gap-2"
-                :total="listPaginationEffective.total"
-                v-model:page="listPageModel"
-                v-model:page-size="listPageSizeModel"
-              />
-            </div>
-            <Separator
-              v-if="$slots['header-right'] && showPaginate && canMountPagination"
-              orientation="vertical"
-              class="mx-0 !h-4 w-px shrink-0 max-md:hidden"
-            />
-            <div v-if="$slots['header-right']" class="flex items-center gap-1">
-              <slot name="header-right" />
-            </div>
-          </template>
-        </ChoyViewActionBar>
+    <template #header-right>
+      <div v-if="showPaginate && canMountPagination">
+        <ChoyPagination
+          class="gap-2"
+          :total="listPaginationEffective.total"
+          v-model:page="listPageModel"
+          v-model:page-size="listPageSizeModel"
+        />
+      </div>
+      <Separator
+        v-if="slots['header-right'] && showPaginate && canMountPagination"
+        orientation="vertical"
+        class="mx-0 !h-4 w-px shrink-0 max-md:hidden"
+      />
+      <div v-if="slots['header-right']" class="flex items-center gap-1">
+        <slot name="header-right" />
       </div>
     </template>
 
-    <ChoyViewBusyHost
-      :busy="listBusy"
-      :mode="listBusyMode"
-      class="flex min-h-0 min-w-0 flex-1 flex-col"
-      :error="controller.vm.error"
-      :has-frame="listHasFrame"
-      :has-settled="!!controller.vm.hasAppliedOnce"
-      :error-fallback-title="_t('Failed to load list')"
-      @retry="onSurfaceRetry"
-      @cancel="onSurfaceCancel"
-    >
     <div
       ref="tableWrapRef"
       data-anchor="choy.list.table"
@@ -264,8 +232,7 @@ SPDX-License-Identifier: Apache-2.0
         </ChoyTableHost>
       </ListInlineEditScope>
     </div>
-    </ChoyViewBusyHost>
-  </ChoyViewContainer>
+  </ChoyViewBase>
 </template>
 
 <script setup lang="ts" generic="T extends BaseModel">
@@ -273,7 +240,6 @@ import type { ConditionGroup, QueryUpdatePayload } from '@/web/web/query/types';
 import { ChoyMessage } from '../../composables/useChoyMessage';
 import {
   computed,
-  onActivated,
   onMounted,
   onBeforeUnmount,
   provide,
@@ -328,10 +294,8 @@ import {
 } from '@/web/web/query/orderBy';
 import { useCancelableEmit } from '@/web/web/composables/useCancelableEmit';
 import { useAdaptiveHeight } from '@/web/web/composables/useAdaptiveHeight';
-import ChoyViewContainer from '@/web/web/components/view/ChoyViewContainer.vue';
-import ChoyViewActionBar from '@/web/web/components/view/ChoyViewActionBar.vue';
+import ChoyViewBase from '@/web/web/components/view/ChoyViewBase.vue';
 import ChoySearchFit from '@/web/web/components/view/ChoySearchFit.vue';
-import ChoyViewBusyHost from '@/web/web/components/view/ChoyViewBusyHost.vue';
 import { useListViewActions } from '@/web/web/composables/useListViewActions';
 import { useVirtualizationAdapter } from '@/web/web/composables/virtualizationAdapter';
 import { awaitFieldSelection } from '@/web/web/query/utils/registry/fieldReady';
@@ -361,10 +325,13 @@ import { openRecordFromCollection } from '@/web/web/navigation/openRecordFromCol
 import { snapshotFromListStore } from '@/web/web/navigation/snapshotFromListStore';
 import { useRecordSetStore } from '@/web/web/stores/recordSetStore';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
-import ChoyPageTitleActions from '@/web/web/components/layout/ChoyPageTitleActions.vue';
 import { Separator } from '@/web/web/components/vendor/ui/separator';
-import DropdownMenuItem from '@/web/web/components/vendor/ui/dropdown-menu/DropdownMenuItem.vue';
-import { Check, ChevronDown, ChevronRight, Plus, RefreshCw, Trash2, X } from 'lucide-vue-next';
+import { Check, ChevronDown, ChevronRight, Plus, Trash2, X } from 'lucide-vue-next';
+import ChoyViewOverflowRefreshItem from '@/web/web/components/view/ChoyViewOverflowRefreshItem.vue';
+import { useViewTitleOverflow } from '@/web/web/components/view/useViewTitleOverflow';
+import { useCollectionBusyMode } from '@/web/web/components/view/useCollectionBusyMode';
+import { useControllerSoftFailSurface } from '@/web/web/components/view/useControllerSoftFailSurface';
+import { useDetailPathRecordSetHygiene } from '@/web/web/components/view/useDetailPathRecordSetHygiene';
 
 defineOptions({ name: 'ChoyListView', inheritAttrs: false });
 
@@ -484,24 +451,10 @@ try {
   router = null;
   route = null;
 }
-// Only collection pages that open Form clear the pager session on return —
-// embedded / Search-more lists must not wipe an open Form's record set.
-function clearRecordSetSessionIfDetailHost() {
-  if (props.detailPath == null) return;
-  try {
-    const rs = useRecordSetStore();
-    const active = rs.active;
-    if (!active) return;
-    // Relation pickers for another model must not wipe the open Form's session.
-    const model = String((store as { modelName?: string })?.modelName || '').trim();
-    if (model && active.model && active.model !== model) return;
-    rs.clear();
-  } catch {
-    // Pinia may be unavailable in unit mounts without an app shell.
-  }
-}
-onMounted(clearRecordSetSessionIfDetailHost);
-onActivated(clearRecordSetSessionIfDetailHost);
+useDetailPathRecordSetHygiene({
+  detailPath: () => props.detailPath,
+  modelName: () => (store as { modelName?: string })?.modelName,
+});
 // Relation pickers set registerActionTarget=false; do not inherit the host page's Create route.
 const resolvedCreateAction = useResolvedCreateAction(() => props.createAction, {
   enabled: () => props.registerActionTarget !== false,
@@ -559,23 +512,14 @@ const firstFrame = useSearchFirstFrameHost(store, {
 const canCreate = computed(() => canShowDeclaredAction(props.actionIds?.create, props.hasAction));
 const canRefresh = computed(() => canShowAction(props.actionIds?.refresh, props.hasAction));
 const canDelete = computed(() => canShowDeclaredAction(props.actionIds?.delete, props.hasAction));
-const showRefreshInOverflow = computed(
-  () => props.showActions && props.refreshAction && canRefresh.value,
-);
-const showTitleOverflow = computed(
-  () => !!pageTitleActionsIo.value || showRefreshInOverflow.value || !!slots['overflow-actions'],
-);
+const { showRefreshInOverflow, showTitleOverflow } = useViewTitleOverflow({
+  pageTitleActionsIo,
+  showRefresh: () => props.showActions && props.refreshAction && canRefresh.value,
+  hasOverflowSlot: () => !!slots['overflow-actions'],
+});
 // List controller
 const controller = createListController(store as any);
 const listBusy = computed(() => !!controller.vm.loading);
-/** With prior rows → stale (keep content); first empty load → block (Loader2). */
-const listBusyMode = computed<'stale' | 'block'>(() => {
-  const nodes = controller.vm.visibleNodes;
-  if (Array.isArray(nodes) && nodes.length > 0) return 'stale';
-  const rows = (controller.vm.result as { rows?: unknown[] } | null)?.rows;
-  if (Array.isArray(rows) && rows.length > 0) return 'stale';
-  return 'block';
-});
 /** True when the list already has a successful content frame (rows or group nodes). */
 const listHasFrame = computed(() => {
   const nodes = controller.vm.visibleNodes;
@@ -583,38 +527,26 @@ const listHasFrame = computed(() => {
   const rows = (controller.vm.result as { rows?: unknown[] } | null)?.rows;
   return Array.isArray(rows) && rows.length > 0;
 });
+/** With prior rows → stale (keep content); first empty load → block (Loader2). */
+const listBusyMode = useCollectionBusyMode({ hasContent: listHasFrame });
 /** Empty copy only after a successful settle with no rows — not when apply failed. */
 const showListEmpty = computed(
   () => !!controller.vm.hasAppliedOnce && !listBusy.value && controller.vm.error == null,
 );
 
-async function onSurfaceRetry(): Promise<void> {
-  try {
-    // Soft-fail: replay the failed intent. Idle Retry (no error) → full reload with props.
-    if (controller.vm.error != null && typeof (controller as any).retryPending === 'function') {
-      await (controller as any).retryPending();
-      return;
-    }
-    await loadData();
-  } catch {
-    // Controller already sets vm.error; Host keeps showing surface error.
-  }
-}
-
-function onSurfaceCancel(): void {
-  if (typeof (controller as any).restoreCommitted === 'function') {
-    (controller as any).restoreCommitted();
-  } else {
-    controller.vm.error = null;
-  }
-  // Drop canceled search chrome so forcedCondition/relation watchers do not re-apply it.
-  const qs = ((store.state as any)?.queryState || {}) as Record<string, unknown>;
-  lastSearchPayload.value = {
-    keyword: (qs.keyword as string | undefined) ?? '',
-    appliedFilters: (qs.appliedFilters as any) || [],
-    appliedGroups: (qs.appliedGroups as any) || [],
-  };
-}
+const { onSurfaceRetry, onSurfaceCancel } = useControllerSoftFailSurface({
+  getController: () => controller as any,
+  reload: () => loadData(),
+  onCancelExtra: () => {
+    // Drop canceled search chrome so forcedCondition/relation watchers do not re-apply it.
+    const qs = ((store.state as any)?.queryState || {}) as Record<string, unknown>;
+    lastSearchPayload.value = {
+      keyword: (qs.keyword as string | undefined) ?? '',
+      appliedFilters: (qs.appliedFilters as any) || [],
+      appliedGroups: (qs.appliedGroups as any) || [],
+    };
+  },
+});
 
 // Whether grouped mode is active, based on the controller result
 const isGroupMode = computed(() => controller.vm.result?.kind === 'group');

@@ -4,93 +4,77 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <ChoyViewContainer
+  <ChoyViewBase
     data-anchor="choy.chart-view"
     data-region="chart-view"
-    :class="cn('choy-chart-view', 'gap-5', props.class)"
+    :class="cn('choy-chart-view', props.class)"
+    chrome-anchor="choy.chart.view-chrome"
+    :show-header="showHeader"
+    :show-actions="showActions"
+    :page-title="pageTitle"
+    :page-title-id="pageTitleId"
+    page-title-class="choy-chart-view__page-title"
+    :page-title-actions-io="pageTitleActionsIo"
+    :show-title-overflow="showTitleOverflow"
+    :store="store"
+    :busy="boardBusy"
+    :mode="chartBusyMode"
+    busy-host-class="relative flex min-h-0 min-w-0 w-full flex-1 flex-col"
+    :busy-host-attrs="{ 'data-region': 'chart-body' }"
+    :error="chartSurfaceError"
+    :has-frame="!!spec"
+    :has-settled="chartHasSettled"
+    :error-fallback-title="_t('Failed to load')"
+    @retry="onRetry"
+    @cancel="onSurfaceCancel"
   >
-    <template v-if="showHeader" #header>
-      <div data-anchor="choy.chart.view-chrome">
-        <ChoyViewActionBar
-          layout="thirds"
-          class="gap-2 border-b-0 [border-bottom-width:0px]"
-          :system-actions-label="_t('System actions')"
-          :user-actions-label="_t('User actions')"
+    <template v-if="showActions" #system-actions>
+      <slot name="system-actions">
+        <!-- Keep New mounted during busy so the action bar does not flash. -->
+        <ChoyButton
+          v-if="showCreate"
+          type="button"
+          size="default"
+          variant="default"
+          :disabled="boardBusy"
+          @click="emit('create')"
         >
-          <template v-if="showActions || pageTitle || showTitleOverflow" #system-actions>
-            <slot v-if="showActions" name="system-actions">
-              <!-- Keep New mounted during busy so the action bar does not flash. -->
-              <ChoyButton
-                v-if="showCreate"
-                type="button"
-                size="default"
-                variant="default"
-                :disabled="boardBusy"
-                @click="emit('create')"
-              >
-                <Plus class="size-4" aria-hidden="true" />
-                {{ resolvedCreateLabel }}
-              </ChoyButton>
-            </slot>
-
-            <h1
-              v-if="pageTitle"
-              :id="pageTitleId || undefined"
-              data-slot="page-title"
-              class="choy-chart-view__page-title min-w-0 max-w-[10rem] truncate text-base font-semibold text-foreground sm:max-w-[14rem]"
-            >
-              {{ pageTitle }}
-            </h1>
-            <ChoyPageTitleActions
-              v-if="showTitleOverflow"
-              :has-io-menu="!!pageTitleActionsIo"
-              :action-import="pageTitleActionsIo?.actionImport ?? false"
-              :action-export="pageTitleActionsIo?.actionExport ?? false"
-              :action-import-upload-hint="pageTitleActionsIo?.actionImportUploadHint"
-              :action-import-column-mapping="pageTitleActionsIo?.actionImportColumnMapping"
-              :action-list-ref="(pageTitleActionsIo?.actionListRef as any)"
-              :action-company-id="pageTitleActionsIo?.actionCompanyId"
-              :store="store"
-            >
-              <template v-if="showRefreshInOverflow || $slots['overflow-actions']" #overflow>
-                <DropdownMenuItem
-                  v-if="showRefreshInOverflow"
-                  data-testid="chart-overflow-refresh"
-                  :disabled="boardBusy"
-                  @select="onRefresh"
-                >
-                  <RefreshCw class="size-4" aria-hidden="true" />
-                  {{ resolvedRefreshLabel }}
-                </DropdownMenuItem>
-                <slot name="overflow-actions" />
-              </template>
-            </ChoyPageTitleActions>
-          </template>
-
-          <template v-if="showActions && !!$slots['user-actions']" #user-actions>
-            <slot name="user-actions" />
-          </template>
-
-          <!-- Keep #center registered so trailing controls stay in the last column. -->
-          <template #center>
-            <ChoySearchFit v-if="$slots.search">
-              <slot name="search" :on-query-update="onSearch" />
-            </ChoySearchFit>
-            <div v-else class="min-w-0" />
-          </template>
-
-          <template v-if="$slots['header-right']" #header-right>
-            <slot name="header-right" />
-          </template>
-        </ChoyViewActionBar>
-      </div>
+          <Plus class="size-4" aria-hidden="true" />
+          {{ resolvedCreateLabel }}
+        </ChoyButton>
+      </slot>
     </template>
 
-    <div
-      v-if="showChartControls"
-      class="flex min-h-control flex-nowrap items-center justify-between gap-3 pb-3"
-      data-region="chart-controls"
-    >
+    <template v-if="showRefreshInOverflow || $slots['overflow-actions']" #overflow-actions>
+      <ChoyViewOverflowRefreshItem
+        v-if="showRefreshInOverflow"
+        test-id="chart-overflow-refresh"
+        :disabled="boardBusy"
+        :label="resolvedRefreshLabel"
+        @select="onRefresh"
+      />
+      <slot name="overflow-actions" />
+    </template>
+
+    <template v-if="showActions && !!$slots['user-actions']" #user-actions>
+      <slot name="user-actions" />
+    </template>
+
+    <template v-if="$slots.search" #center>
+      <ChoySearchFit>
+        <slot name="search" :on-query-update="onSearch" />
+      </ChoySearchFit>
+    </template>
+
+    <template v-if="$slots['header-right']" #header-right>
+      <slot name="header-right" />
+    </template>
+
+    <template v-if="showChartControls" #header-extra>
+      <div
+        class="flex min-h-control flex-nowrap items-center justify-between gap-3 pb-3"
+        data-region="chart-controls"
+      >
       <!-- Odoo-like: measure left (fixed width); stack / sort / type right. -->
       <slot
         name="metric-switcher"
@@ -230,21 +214,10 @@ SPDX-License-Identifier: Apache-2.0
           </slot>
         </div>
       </TooltipProvider>
-    </div>
+      </div>
+    </template>
 
-    <ChoyViewBusyHost
-      ref="chartBodyRef"
-      :busy="boardBusy"
-      :mode="chartBusyMode"
-      class="relative flex min-h-0 min-w-0 w-full flex-1 flex-col"
-      data-region="chart-body"
-      :error="chartSurfaceError"
-      :has-frame="!!spec"
-      :has-settled="chartHasSettled"
-      :error-fallback-title="_t('Failed to load')"
-      @retry="onRetry"
-      @cancel="onSurfaceCancel"
-    >
+    <div ref="chartBodyRef" class="relative flex min-h-0 min-w-0 w-full flex-1 flex-col">
       <ChartContainer
         v-if="spec"
         :config="spec.config"
@@ -438,8 +411,8 @@ SPDX-License-Identifier: Apache-2.0
         class="min-h-[280px] w-full flex-1 border-none"
         :description="resolvedEmptyLabel"
       />
-    </ChoyViewBusyHost>
-  </ChoyViewContainer>
+    </div>
+  </ChoyViewBase>
 </template>
 
 <script setup lang="ts">
@@ -461,7 +434,6 @@ import {
   LineChart,
   PieChart,
   Plus,
-  RefreshCw,
 } from 'lucide-vue-next';
 import {
   VisArea,
@@ -486,12 +458,12 @@ import type { ChoySearchQuery } from './searchViewHelpers';
 import ChoyButton from '../layout/ChoyButton.vue';
 import ChoyButtonGroup from '../layout/ChoyButtonGroup.vue';
 import ChoyEmpty from '../layout/ChoyEmpty.vue';
-import ChoyPageTitleActions from '../layout/ChoyPageTitleActions.vue';
-import ChoyViewContainer from '@/web/web/components/view/ChoyViewContainer.vue';
-import ChoyViewActionBar from '@/web/web/components/view/ChoyViewActionBar.vue';
+import ChoyViewBase from '@/web/web/components/view/ChoyViewBase.vue';
 import ChoySearchFit from '@/web/web/components/view/ChoySearchFit.vue';
-import ChoyViewBusyHost from '@/web/web/components/view/ChoyViewBusyHost.vue';
+import ChoyViewOverflowRefreshItem from '@/web/web/components/view/ChoyViewOverflowRefreshItem.vue';
 import { useProvideViewScope } from '@/web/web/components/view/viewScopeKeys';
+import { useViewTitleOverflow } from '@/web/web/components/view/useViewTitleOverflow';
+import { useCollectionBusyMode } from '@/web/web/components/view/useCollectionBusyMode';
 import { createTranslate } from '@/web/web/i18n';
 import {
   ChartContainer,
@@ -502,7 +474,6 @@ import SelectContent from '../vendor/ui/select/SelectContent.vue';
 import SelectItem from '../vendor/ui/select/SelectItem.vue';
 import SelectTrigger from '../vendor/ui/select/SelectTrigger.vue';
 import Switch from '../vendor/ui/switch/Switch.vue';
-import DropdownMenuItem from '../vendor/ui/dropdown-menu/DropdownMenuItem.vue';
 import Tooltip from '../vendor/ui/tooltip/Tooltip.vue';
 import TooltipContent from '../vendor/ui/tooltip/TooltipContent.vue';
 import TooltipProvider from '../vendor/ui/tooltip/TooltipProvider.vue';
@@ -630,15 +601,11 @@ const firstFrame = useSearchFirstFrameHost(store, {
 const { pageTitle, pageTitleId, pageTitleActionsIo } = useHostPageTitleInView(
   () => props.showHeader,
 );
-const showRefreshInOverflow = computed(
-  () => props.showActions && props.showHeader && props.showRefresh,
-);
-const showTitleOverflow = computed(
-  () =>
-    !!pageTitleActionsIo.value ||
-    showRefreshInOverflow.value ||
-    !!slots['overflow-actions'],
-);
+const { showRefreshInOverflow, showTitleOverflow } = useViewTitleOverflow({
+  pageTitleActionsIo,
+  showRefresh: () => props.showActions && props.showHeader && props.showRefresh,
+  hasOverflowSlot: () => !!slots['overflow-actions'],
+});
 
 const resolvedCreateLabel = computed(() => props.createLabel || _t('New'));
 const resolvedRefreshLabel = computed(() => props.refreshLabel || _t('Refresh'));
@@ -664,15 +631,12 @@ const categories = ref<string[]>([]);
 const seriesMatrix = ref<ChoyChartSeries[]>([]);
 const registryMetrics = ref<ChoyChartMetricOption[]>([]);
 
-const chartBodyRef = ref<{ $el?: HTMLElement } | HTMLElement | null>(null);
+const chartBodyRef = ref<HTMLElement | null>(null);
 const plotHeight = ref(CHOY_CHART_MIN_PLOT_HEIGHT);
 let chartBodyObserver: ResizeObserver | null = null;
 
 function chartBodyEl(): HTMLElement | null {
-  const r = chartBodyRef.value;
-  if (!r) return null;
-  if (r instanceof HTMLElement) return r;
-  const el = (r as { $el?: unknown }).$el;
+  const el = chartBodyRef.value;
   return el instanceof HTMLElement ? el : null;
 }
 
@@ -693,9 +657,11 @@ const bootstrapping = ref(props.autoBootstrap !== false);
 /** Prep failure before the first apply (beforeBootstrap / field selection). */
 const prepError = ref<unknown>(null);
 const boardBusy = computed(() => !!controller.vm.loading || bootstrapping.value);
-const chartBusyMode = computed<'stale' | 'block'>(() => {
-  const rows = (controller.vm.result as { rows?: unknown[] } | null)?.rows;
-  return rows && rows.length > 0 ? 'stale' : 'block';
+const chartBusyMode = useCollectionBusyMode({
+  hasContent: () => {
+    const rows = (controller.vm.result as { rows?: unknown[] } | null)?.rows;
+    return !!(rows && rows.length > 0);
+  },
 });
 /** Prep or apply failure for BusyHost surface error (replaces raw-message overlay). */
 const chartSurfaceError = computed(() => prepError.value ?? controller.vm.error ?? null);

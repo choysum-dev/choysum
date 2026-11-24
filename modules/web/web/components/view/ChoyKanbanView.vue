@@ -4,116 +4,86 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <ChoyViewContainer
+  <ChoyViewBase
     data-anchor="choy.kanban-view"
-    :class="['choy-kanban-view', 'gap-5', props.class]"
+    :class="['choy-kanban-view', props.class]"
+    chrome-anchor="choy.kanban.view-chrome"
+    :show-header="
+      showHeader &&
+      (!!slots.header ||
+        !!slots.search ||
+        !!slots['header-right'] ||
+        showActions ||
+        !!pageTitle ||
+        showTitleOverflow)
+    "
+    :show-actions="showActions"
+    :page-title="pageTitle"
+    :page-title-id="pageTitleId"
+    page-title-class="choy-kanban-view__page-title"
+    :page-title-actions-io="pageTitleActionsIo"
+    :show-title-overflow="showTitleOverflow"
+    :store="boundStore"
+    :busy="boardBusy"
+    :mode="boardBusyMode"
+    busy-host-class="choy-kanban-view__body flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-hidden"
+    :error="boardSurfaceError"
+    :has-frame="boardHasFrame"
+    :has-settled="boardHasSettled"
+    :error-fallback-title="_t('Failed to load')"
+    @retry="onSurfaceRetry"
+    @cancel="onSurfaceCancel"
   >
-    <template
-      v-if="
-        showHeader &&
-        ($slots.header ||
-          $slots.search ||
-          $slots['header-right'] ||
-          showActions ||
-          pageTitle ||
-          showTitleOverflow)
-      "
-      #header
-    >
-      <div data-anchor="choy.kanban.view-chrome">
-        <ChoyViewActionBar
-          layout="thirds"
-          class="gap-2 border-b-0 [border-bottom-width:0px]"
-          :system-actions-label="_t('System actions')"
-          :user-actions-label="_t('User actions')"
+    <template v-if="showActions" #system-actions>
+      <slot name="system-actions">
+        <!--
+          Keep New mounted during search/move busy. Hiding it behind
+          boardBusy made the action bar flash when switching into Kanban.
+        -->
+        <ChoyButton
+          v-if="!props.readonly"
+          type="button"
+          size="default"
+          variant="default"
+          :disabled="boardBusy"
+          @click="onCreate"
         >
-          <template v-if="showActions || pageTitle || showTitleOverflow" #system-actions>
-            <slot v-if="showActions" name="system-actions">
-              <!--
-                Keep New mounted during search/move busy. Hiding it behind
-                boardBusy made the action bar flash when switching into Kanban.
-              -->
-              <ChoyButton
-                v-if="!props.readonly"
-                type="button"
-                size="default"
-                variant="default"
-                :disabled="boardBusy"
-                @click="onCreate"
-              >
-                <Plus class="size-4" aria-hidden="true" />
-                {{ resolvedCreateLabel }}
-              </ChoyButton>
-            </slot>
+          <Plus class="size-4" aria-hidden="true" />
+          {{ resolvedCreateLabel }}
+        </ChoyButton>
+      </slot>
+    </template>
 
-            <!-- Page title + ⋮ live in view chrome, not a separate Page band (List parity). -->
-            <h1
-              v-if="pageTitle"
-              :id="pageTitleId || undefined"
-              data-slot="page-title"
-              class="choy-kanban-view__page-title min-w-0 max-w-[10rem] truncate text-base font-semibold text-foreground sm:max-w-[14rem]"
-            >
-              {{ pageTitle }}
-            </h1>
-            <ChoyPageTitleActions
-              v-if="showTitleOverflow"
-              :has-io-menu="!!pageTitleActionsIo"
-              :action-import="pageTitleActionsIo?.actionImport ?? false"
-              :action-export="pageTitleActionsIo?.actionExport ?? false"
-              :action-import-upload-hint="pageTitleActionsIo?.actionImportUploadHint"
-              :action-import-column-mapping="pageTitleActionsIo?.actionImportColumnMapping"
-              :action-list-ref="(pageTitleActionsIo?.actionListRef as any)"
-              :action-company-id="pageTitleActionsIo?.actionCompanyId"
-              :store="boundStore"
-            >
-              <template v-if="showRefreshInOverflow || $slots['overflow-actions']" #overflow>
-                <DropdownMenuItem
-                  v-if="showRefreshInOverflow"
-                  data-testid="kanban-overflow-refresh"
-                  @select="onRefresh"
-                >
-                  <RefreshCw class="size-4" aria-hidden="true" />
-                  {{ _t('Refresh') }}
-                </DropdownMenuItem>
-                <slot name="overflow-actions" />
-              </template>
-            </ChoyPageTitleActions>
+    <template v-if="showRefreshInOverflow || !!slots['overflow-actions']" #overflow-actions>
+      <ChoyViewOverflowRefreshItem
+        v-if="showRefreshInOverflow"
+        test-id="kanban-overflow-refresh"
+        @select="onRefresh"
+      />
+      <slot name="overflow-actions" />
+    </template>
 
-            <!-- Same tray as title/⋮ (Form secondary parity) — no ActionBar separator. -->
-            <slot v-if="showActions" name="secondary-actions" />
-          </template>
-          <!-- Only mount the tray when the product view actually fills it (List parity). -->
-          <template v-if="$slots['user-actions'] || $slots.header" #user-actions>
-            <slot name="user-actions" />
-            <div v-if="$slots.header" class="min-w-0">
-              <slot name="header" />
-            </div>
-          </template>
-          <!-- Keep #center registered so the trailing controls stay in the last column. -->
-          <template #center>
-            <ChoySearchFit v-if="$slots.search">
-              <slot name="search" :on-query-update="engine.applySearch" />
-            </ChoySearchFit>
-          </template>
+    <template v-if="showActions" #secondary-actions>
+      <slot name="secondary-actions" />
+    </template>
 
-          <template v-if="$slots['header-right']" #header-right>
-            <slot name="header-right" />
-          </template>
-        </ChoyViewActionBar>
+    <template v-if="slots['user-actions'] || slots.header" #user-actions>
+      <slot name="user-actions" />
+      <div v-if="slots.header" class="min-w-0">
+        <slot name="header" />
       </div>
     </template>
 
-    <ChoyViewBusyHost
-      :busy="boardBusy"
-      :mode="boardBusyMode"
-      class="choy-kanban-view__body flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-hidden"
-      :error="boardSurfaceError"
-      :has-frame="boardHasFrame"
-      :has-settled="boardHasSettled"
-      :error-fallback-title="_t('Failed to load')"
-      @retry="onSurfaceRetry"
-      @cancel="onSurfaceCancel"
-    >
+    <template v-if="slots.search" #center>
+      <ChoySearchFit>
+        <slot name="search" :on-query-update="engine.applySearch" />
+      </ChoySearchFit>
+    </template>
+
+    <template v-if="slots['header-right']" #header-right>
+      <slot name="header-right" />
+    </template>
+
       <div v-if="laneCount > 0 && !isFlatBoard" class="md:hidden">
         <Select :model-value="mobileLaneKey" @update:model-value="onMobileLaneChange">
           <SelectTrigger
@@ -295,30 +265,27 @@ SPDX-License-Identifier: Apache-2.0
           {{ _t('No lanes') }}
         </div>
       </div>
-    </ChoyViewBusyHost>
-  </ChoyViewContainer>
+  </ChoyViewBase>
 </template>
 
 <script setup lang="ts">
 import { computed, defineComponent, h, ref, useSlots, watch, type PropType } from 'vue';
-import { Plus, RefreshCw } from 'lucide-vue-next';
+import { Plus } from 'lucide-vue-next';
 import type { ClassValue } from '../../lib/utils';
 import type { ModelStore } from '@/web/web/stores/modelStore';
 import type { Lane } from '@/web/web/query/types';
 import ChoyBadge from '../layout/ChoyBadge.vue';
 import ChoyButton from '../layout/ChoyButton.vue';
-import ChoyPageTitleActions from '@/web/web/components/layout/ChoyPageTitleActions.vue';
-import ChoyViewContainer from '@/web/web/components/view/ChoyViewContainer.vue';
-import ChoyViewActionBar from '@/web/web/components/view/ChoyViewActionBar.vue';
+import ChoyViewBase from '@/web/web/components/view/ChoyViewBase.vue';
 import ChoySearchFit from '@/web/web/components/view/ChoySearchFit.vue';
-import ChoyViewBusyHost from '@/web/web/components/view/ChoyViewBusyHost.vue';
+import ChoyViewOverflowRefreshItem from '@/web/web/components/view/ChoyViewOverflowRefreshItem.vue';
 import ChoyKanbanLoadSentinel from '@/web/web/components/view/ChoyKanbanLoadSentinel.vue';
 import ChoyKanbanVirtualLaneBody from '@/web/web/components/view/ChoyKanbanVirtualLaneBody.vue';
 import { useProvideViewScope } from '@/web/web/components/view/viewScopeKeys';
-import DropdownMenu from '../vendor/ui/dropdown-menu/DropdownMenu.vue';
-import DropdownMenuContent from '../vendor/ui/dropdown-menu/DropdownMenuContent.vue';
-import DropdownMenuItem from '../vendor/ui/dropdown-menu/DropdownMenuItem.vue';
-import DropdownMenuTrigger from '../vendor/ui/dropdown-menu/DropdownMenuTrigger.vue';
+import { useViewTitleOverflow } from '@/web/web/components/view/useViewTitleOverflow';
+import { useCollectionBusyMode } from '@/web/web/components/view/useCollectionBusyMode';
+import { useControllerSoftFailSurface } from '@/web/web/components/view/useControllerSoftFailSurface';
+import { useDetailPathRecordSetHygiene } from '@/web/web/components/view/useDetailPathRecordSetHygiene';
 import Select from '../vendor/ui/select/Select.vue';
 import SelectContent from '../vendor/ui/select/SelectContent.vue';
 import SelectItem from '../vendor/ui/select/SelectItem.vue';
@@ -359,7 +326,6 @@ import {
 import { openRecordFromCollection } from '@/web/web/navigation/openRecordFromCollection';
 import { snapshotFromListStore } from '@/web/web/navigation/snapshotFromListStore';
 import { useRecordSetStore } from '@/web/web/stores/recordSetStore';
-import { onActivated, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 /** Shared default card body for lane cards. */
@@ -449,13 +415,11 @@ const props = withDefaults(
 
 const slots = useSlots();
 const { pageTitle, pageTitleId, pageTitleActionsIo } = useHostPageTitleInView(() => props.showHeader);
-const showRefreshInOverflow = computed(() => props.showActions && props.showHeader);
-const showTitleOverflow = computed(
-  () =>
-    !!pageTitleActionsIo.value ||
-    showRefreshInOverflow.value ||
-    !!slots['overflow-actions'],
-);
+const { showRefreshInOverflow, showTitleOverflow } = useViewTitleOverflow({
+  pageTitleActionsIo,
+  showRefresh: () => props.showActions && props.showHeader,
+  hasOverflowSlot: () => !!slots['overflow-actions'],
+});
 
 const emit = defineEmits<{
   'card-click': [card: ChoyKanbanCard];
@@ -476,22 +440,10 @@ try {
   router = null;
   route = null;
 }
-function clearRecordSetSessionIfDetailHost() {
-  if (props.detailPath == null) return;
-  try {
-    const rs = useRecordSetStore();
-    const active = rs.active;
-    if (!active) return;
-    // Relation pickers for another model must not wipe the open Form's session.
-    const model = String((boundStore as { modelName?: string }).modelName || '').trim();
-    if (model && active.model && active.model !== model) return;
-    rs.clear();
-  } catch {
-    // Pinia may be unavailable in unit mounts without an app shell.
-  }
-}
-onMounted(clearRecordSetSessionIfDetailHost);
-onActivated(clearRecordSetSessionIfDetailHost);
+useDetailPathRecordSetHygiene({
+  detailPath: () => props.detailPath,
+  modelName: () => (boundStore as { modelName?: string }).modelName,
+});
 
 function handleMoveError(error: unknown): void {
   if (props.onMoveError) {
@@ -552,11 +504,6 @@ const displayLanes = computed({
 
 /** Search / move: drives BusyHost and blocks drag; does not hide New. */
 const boardBusy = computed(() => engine.boardBusy.value);
-const boardBusyMode = computed<'stale' | 'block'>(() => {
-  const lanes = engine.lanes.value;
-  if (Array.isArray(lanes) && lanes.length > 0) return 'stale';
-  return 'block';
-});
 const boardSurfaceError = computed(() => engine.controller.vm.error);
 const boardHasSettled = computed(() => !!engine.controller.vm.hasAppliedOnce);
 const boardHasFrame = computed(() => {
@@ -565,32 +512,19 @@ const boardHasFrame = computed(() => {
   const rows = (engine.controller.vm.result as { rows?: unknown[] } | null)?.rows;
   return Array.isArray(rows) && rows.length > 0;
 });
+// Busy mode keys off rendered lanes only: group rows can land before
+// syncLanesFromController assigns lanes; keep block overlay until then.
+const boardBusyMode = useCollectionBusyMode({
+  hasContent: () => {
+    const lanes = engine.lanes.value;
+    return Array.isArray(lanes) && lanes.length > 0;
+  },
+});
 
-async function onSurfaceRetry(): Promise<void> {
-  try {
-    const ctrl = engine.controller as { retryPending?: () => Promise<unknown>; vm: { error: unknown } };
-    if (ctrl.vm.error != null && typeof ctrl.retryPending === 'function') {
-      await ctrl.retryPending();
-      return;
-    }
-    await engine.refresh();
-  } catch {
-    // refresh surfaces onSearchError; Host keeps failure UI while error remains.
-  }
-}
-
-/** Soft-fail Cancel: restore committed list chrome and keep the retained board frame. */
-function onSurfaceCancel(): void {
-  const ctrl = engine.controller as {
-    restoreCommitted?: () => void;
-    vm: { error: unknown };
-  };
-  if (typeof ctrl.restoreCommitted === 'function') {
-    ctrl.restoreCommitted();
-    return;
-  }
-  ctrl.vm.error = null;
-}
+const { onSurfaceRetry, onSurfaceCancel } = useControllerSoftFailSurface({
+  getController: () => engine.controller as any,
+  reload: () => engine.refresh(),
+});
 /** Any lane append in flight (blocks drops board-wide so pages are not overwritten). */
 const loadMoreBusy = computed(() => engine.loadMorePending.value);
 /** Lane key currently appending; busy chrome is scoped to this lane only. */

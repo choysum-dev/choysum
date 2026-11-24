@@ -55,7 +55,15 @@ SPDX-License-Identifier: Apache-2.0
           <slot name="user-actions" />
         </ChoyActionTray>
       </div>
-      <div v-if="$slots.center" class="min-w-0 flex-1">
+      <!--
+        Thirds layout reserves the middle column even with no #center so trailing
+        controls stay on the right (Form / Chart empty-pad contract).
+      -->
+      <div
+        v-if="$slots.center || props.layout === 'thirds'"
+        class="min-w-0 flex-1"
+        data-slot="view-action-bar-center"
+      >
         <slot name="center" />
       </div>
       <div
