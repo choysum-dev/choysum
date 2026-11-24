@@ -31,7 +31,12 @@ SPDX-License-Identifier: Apache-2.0
         </template>
 
         <div v-if="error" class="flex flex-col gap-4">
-          <ChoyActionButton class="w-full" data-testid="logout-retry" @execute="retryLogout">
+          <ChoyActionButton
+            class="w-full"
+            data-testid="logout-retry"
+            :requires-connectivity="false"
+            @execute="retryLogout"
+          >
             {{ _t('Retry') }}
           </ChoyActionButton>
           <p class="text-center text-sm">

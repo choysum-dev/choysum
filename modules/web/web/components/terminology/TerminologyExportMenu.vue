@@ -6,18 +6,17 @@ SPDX-License-Identifier: Apache-2.0
 <template>
   <ChoyDropdownMenu v-model:open="menuOpen">
     <ChoyDropdownMenuTrigger as-child>
-      <ChoyActionButton
+      <ChoyButton
         type="button"
         size="default"
         variant="outline"
-        :disabled="!application"
-        :busy="downloading"
+        :disabled="!application || downloading"
         :aria-label="_t('Export PO')"
         data-testid="terminology-export-trigger"
       >
         {{ _t('Export PO') }}
         <ChevronDown class="size-4" aria-hidden="true" />
-      </ChoyActionButton>
+      </ChoyButton>
     </ChoyDropdownMenuTrigger>
     <ChoyDropdownMenuContent align="start" class="min-w-[12rem]" data-testid="terminology-export-menu">
       <ChoyDropdownMenuLabel>{{ _t('Module') }}</ChoyDropdownMenuLabel>
@@ -67,7 +66,7 @@ SPDX-License-Identifier: Apache-2.0
 import { computed, ref, watch } from 'vue';
 import { Check, ChevronDown } from 'lucide-vue-next';
 import {
-  ChoyActionButton,
+  ChoyButton,
   ChoyDropdownMenu,
   ChoyDropdownMenuContent,
   ChoyDropdownMenuItem,

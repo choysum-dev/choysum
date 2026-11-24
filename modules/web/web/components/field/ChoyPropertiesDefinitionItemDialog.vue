@@ -220,6 +220,7 @@ SPDX-License-Identifier: Apache-2.0
             size="default"
             variant="default"
             data-testid="choy-properties-definition-item-save"
+            :requires-connectivity="false"
             @execute="onApply"
           >
             {{ _t('Apply') }}

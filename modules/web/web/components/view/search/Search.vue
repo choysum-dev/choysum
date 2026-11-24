@@ -419,6 +419,7 @@ import { Search, ChevronDown, Check, Pencil, X, Funnel, Layers, Star } from 'luc
 import ChoyBadge from '@/web/web/components/layout/ChoyBadge.vue';
 import ChoyButton from '@/web/web/components/button/ChoyButton.vue';
 import ChoyActionButton from '@/web/web/components/button/ChoyActionButton.vue';
+import { isConnectivityUnreachable } from '@/web/web/stores/connectivityStore';
 import {
   ChoyDialog,
   ChoyDialogContent,
@@ -781,6 +782,7 @@ function onEditFavorite(it: { id: string; name: string; isDefault: boolean; shar
 }
 
 async function onConfirmSaveFavorite() {
+  if (isConnectivityUnreachable()) return;
   if (saveFavoriteSaving.value) return;
   const name = saveFavoriteName.value.trim();
   if (!name) {

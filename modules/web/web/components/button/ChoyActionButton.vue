@@ -88,13 +88,15 @@ const pending = ref(false);
 
 const actionIdTrimmed = computed(() => String(props.actionId ?? '').trim());
 
-const aclAllowed = computed(() => {
+function isActionAllowedNow(): boolean {
   const id = actionIdTrimmed.value;
   if (!id) return true;
   const checker = props.hasAction ?? getGlobalActionChecker();
   if (typeof checker !== 'function') return true;
   return !!checker(id);
-});
+}
+
+const aclAllowed = computed(() => isActionAllowedNow());
 
 /** Hide mode + denied → do not mount; disable mode keeps the control. */
 const aclVisible = computed(() => {
@@ -129,6 +131,8 @@ async function onClick(event: Event) {
   }
 
   if (props.confirm != null) {
+    // Block native submit until the user answers; cancel does not submit the form.
+    e?.preventDefault?.();
     const conf = props.confirm;
     const message = typeof conf === 'string' ? conf : conf.message;
     const title = typeof conf === 'string' ? undefined : conf.title;
@@ -142,6 +146,15 @@ async function onClick(event: Event) {
         cancelText,
       });
     } catch {
+      return;
+    }
+    // Re-check live (do not trust cached ACL computed; checker may flip during await).
+    if (
+      !!props.disabled ||
+      !!props.busy ||
+      offlineBlocked.value ||
+      !isActionAllowedNow()
+    ) {
       return;
     }
   }

@@ -24,7 +24,6 @@ SPDX-License-Identifier: Apache-2.0
 
         <ChoyFormView
           v-else
-          ref="preferencesFormRef"
           class="mt-3 flex min-h-0 flex-1 flex-col overflow-hidden"
           :store="userStore"
           :record-id="userId"
@@ -208,11 +207,7 @@ SPDX-License-Identifier: Apache-2.0
               <ChoyButton type="button" variant="outline" :disabled="saving" @click="visible = false">{{
                 _t('Cancel')
               }}</ChoyButton>
-              <ChoyActionButton
-                type="button"
-                :busy="saving || loading"
-                @execute="onPreferencesSave"
-              >{{
+              <ChoyActionButton type="submit" :busy="saving || loading">{{
                 _t('Save')
               }}</ChoyActionButton>
             </ChoyDialogFooter>
@@ -282,7 +277,6 @@ const { _t } = createTranslate('auth', { scope: 'web/dialogs/preferences/Prefere
 const authStore = useAuthStore();
 const i18nStore = useI18nStore();
 const collaborationCaps = useReactiveCollaborationCaps();
-const preferencesFormRef = ref<{ submit?: () => void | Promise<unknown> } | null>(null);
 const userStore = createModelStore('auth.User');
 const languageStore = createModelStore('base.Language');
 
@@ -465,11 +459,6 @@ onBeforeUnmount(() => {
 });
 
 const missingUserMessage = () => _t('Cannot update preferences: missing user id');
-
-/** Footer Save: invoke FormView.submit (exposed) so ActionButton stays type=button. */
-function onPreferencesSave() {
-  return preferencesFormRef.value?.submit?.();
-}
 
 function onMissingUserSubmit() {
   ChoyMessage.error(missingUserMessage());

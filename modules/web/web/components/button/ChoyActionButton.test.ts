@@ -374,6 +374,45 @@ describe('ChoyActionButton', () => {
     }
   });
 
+  test('confirm prevents default before dialog and skips run when ACL flips', async () => {
+    let runs = 0;
+    const gate = { allowed: true };
+    const w = mountApp(ChoyActionButton as any, {
+      props: {
+        confirm: 'Sure?',
+        actionId: 'flip.action',
+        hasAction: (id?: string) => id === 'flip.action' && gate.allowed,
+        actionMode: 'disable',
+        run: async () => {
+          runs += 1;
+        },
+        'data-testid': 'act-conf-recheck',
+      },
+      slots: { default: () => 'Go' },
+    });
+    try {
+      await flushPromises();
+      const onClick = w.setupState()?.onClick as ((e: Event) => Promise<void>) | undefined;
+      let prevented = false;
+      const ev = {
+        stopPropagation() {},
+        preventDefault() {
+          prevented = true;
+        },
+      } as unknown as Event;
+      const pendingClick = onClick?.(ev);
+      expect(prevented).toBe(true);
+      expect(useConfirmChoyStore().open).toBe(true);
+      gate.allowed = false;
+      resolveConfirmChoy('confirm');
+      await pendingClick;
+      await flushPromises();
+      expect(runs).toBe(0);
+    } finally {
+      w.unmount();
+    }
+  });
+
   test('confirm dismiss with run does not set pending or call run', async () => {
     let runs = 0;
     const w = mountApp(ChoyActionButton as any, {

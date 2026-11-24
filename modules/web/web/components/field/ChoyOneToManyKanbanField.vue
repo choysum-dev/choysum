@@ -97,6 +97,7 @@ SPDX-License-Identifier: Apache-2.0
                   class="absolute end-1.5 top-1.5 z-10 size-7 text-muted-foreground opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive group-hover/card:opacity-100 group-focus-within/card:opacity-100"
                   :aria-label="_t('Delete')"
                   data-testid="choy-o2m-kanban-delete"
+                  :requires-connectivity="false"
                   @execute="handleRemoveItem(index)"
                 >
                   <Trash2 class="size-3.5" aria-hidden="true" />
@@ -257,12 +258,13 @@ SPDX-License-Identifier: Apache-2.0
             variant="ghost"
             class="text-destructive hover:bg-destructive/10 hover:text-destructive"
             data-testid="choy-o2m-kanban-dialog-delete"
+            :requires-connectivity="false"
             @execute="handleDialogRemove"
           >{{ _t('Delete') }}</ChoyActionButton>
         </div>
         <ChoyDialogFooter class="w-auto shrink-0 border-0 p-0">
           <ChoyButton type="button" variant="outline" @click="handleDialogCancel">{{ _t('Cancel') }}</ChoyButton>
-          <ChoyActionButton v-if="dialogMode !== 'display'" type="button" @execute="handleDialogSubmit">{{ _t('Save') }}</ChoyActionButton>
+          <ChoyActionButton v-if="dialogMode !== 'display'" type="button" :requires-connectivity="false" @execute="handleDialogSubmit">{{ _t('Save') }}</ChoyActionButton>
         </ChoyDialogFooter>
       </div>
     </ChoyDialogContent>

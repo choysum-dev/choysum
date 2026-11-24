@@ -45,6 +45,7 @@ SPDX-License-Identifier: Apache-2.0
           data-testid="choy-property-label-translations-save"
           :disabled="rows.length === 0"
           :busy="loading"
+          :requires-connectivity="false"
           @execute="handleSave"
         >
           {{ _t('Save translations') }}

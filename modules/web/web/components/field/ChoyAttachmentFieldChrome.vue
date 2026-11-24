@@ -69,7 +69,7 @@ SPDX-License-Identifier: Apache-2.0
                       :disabled="uploadBlocked"
                       @change="onFileInputChange"
                     />
-                    <ChoyActionButton
+                    <ChoyButton
                       size="sm"
                       variant="ghost"
                       class="size-7 p-0 text-white hover:bg-white/15 hover:text-white"
@@ -78,7 +78,7 @@ SPDX-License-Identifier: Apache-2.0
                       as="span"
                     >
                       <RefreshCw class="size-3.5" aria-hidden="true" />
-                    </ChoyActionButton>
+                    </ChoyButton>
                   </label>
                 </TooltipTrigger>
                 <TooltipContent side="top">{{ replaceLabel }}</TooltipContent>
@@ -218,9 +218,9 @@ SPDX-License-Identifier: Apache-2.0
                   :disabled="uploadBlocked"
                   @change="onFileInputChange"
                 />
-                <ChoyActionButton size="sm" variant="ghost" class="h-auto px-1.5 py-0 text-primary" :disabled="uploadBlocked" as="span">
+                <ChoyButton size="sm" variant="ghost" class="h-auto px-1.5 py-0 text-primary" :disabled="uploadBlocked" as="span">
                   {{ replaceLabel }}
-                </ChoyActionButton>
+                </ChoyButton>
               </label>
               <ChoyActionButton
                 size="sm"
@@ -271,7 +271,7 @@ SPDX-License-Identifier: Apache-2.0
               <Upload class="mx-auto mb-2.5 block size-5 text-primary" />
               <div class="w-full text-center text-sm leading-normal text-muted-foreground">{{ dropLabel }}</div>
             </template>
-            <ChoyActionButton v-else size="sm" variant="ghost" class="h-auto px-1.5 py-0 text-primary" as="span">{{ uploadLabel }}</ChoyActionButton>
+            <ChoyButton v-else size="sm" variant="ghost" class="h-auto px-1.5 py-0 text-primary" as="span">{{ uploadLabel }}</ChoyButton>
           </Attachment>
         </label>
       </template>
