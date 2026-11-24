@@ -285,7 +285,7 @@ import { createTranslate } from '@/web/web/i18n';
 import type { UiModelStore } from '@/web/web/stores/uiModelStore';
 import ChoyActionButton from '@/web/web/components/button/ChoyActionButton.vue';
 import ChoyViewBase from '@/web/web/components/view/ChoyViewBase.vue';
-import { useConnectivityStore } from '@/web/web/stores/connectivityStore';
+import { readSessionUnreachable } from './sessionUnreachable';
 import ChoyViewOverflowRefreshItem from '@/web/web/components/view/ChoyViewOverflowRefreshItem.vue';
 import ChoyFormPager from '@/web/web/components/view/ChoyFormPager.vue';
 import ChoyViewSwitcher, { type ChoyViewSwitcherOption } from '@/web/web/components/view/ChoyViewSwitcher.vue';
@@ -755,13 +755,7 @@ const controlsLocked = computed<boolean>(() => {
   return loading.value || submitting.value || formControlBusy.value.busy;
 });
 /** Pager host offline gate (D10); ActionButton gates Save/Edit itself. */
-const sessionUnreachable = computed(() => {
-  try {
-    return useConnectivityStore().status === 'unreachable';
-  } catch {
-    return false;
-  }
-});
+const sessionUnreachable = computed(() => readSessionUnreachable());
 const saveLabel = computed(() => (submitting.value ? _t('Saving...') : _t('Save')));
 // Explicit dirty=false stays false; omitted dirty falls back to controller draft dirty.
 const settingsDirty = computed(() => (hasDirtyProp ? props.dirty === true : isFormDirty()));

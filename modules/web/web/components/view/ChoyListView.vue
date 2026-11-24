@@ -339,7 +339,7 @@ import { snapshotFromListStore } from '@/web/web/navigation/snapshotFromListStor
 import { useRecordSetStore } from '@/web/web/stores/recordSetStore';
 import ChoyButton from '@/web/web/components/button/ChoyButton.vue';
 import ChoyActionButton from '@/web/web/components/button/ChoyActionButton.vue';
-import { useConnectivityStore } from '@/web/web/stores/connectivityStore';
+import { readSessionUnreachable } from './sessionUnreachable';
 import { Separator } from '@/web/web/components/vendor/ui/separator';
 import { Check, ChevronDown, ChevronRight, Plus, Trash2, X } from 'lucide-vue-next';
 import ChoyViewOverflowRefreshItem from '@/web/web/components/view/ChoyViewOverflowRefreshItem.vue';
@@ -527,13 +527,7 @@ const firstFrame = useSearchFirstFrameHost(store, {
 const canCreate = computed(() => canShowDeclaredAction(props.actionIds?.create, props.hasAction));
 const canRefresh = computed(() => canShowAction(props.actionIds?.refresh, props.hasAction));
 const canDelete = computed(() => canShowDeclaredAction(props.actionIds?.delete, props.hasAction));
-const sessionUnreachable = computed(() => {
-  try {
-    return useConnectivityStore().status === 'unreachable';
-  } catch {
-    return false;
-  }
-});
+const sessionUnreachable = computed(() => readSessionUnreachable());
 const { showRefreshInOverflow, showTitleOverflow } = useViewTitleOverflow({
   pageTitleActionsIo,
   showRefresh: () => props.showActions && props.refreshAction && canRefresh.value,
