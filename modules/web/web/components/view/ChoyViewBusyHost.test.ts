@@ -452,11 +452,15 @@ describe('ChoyViewBusyHost', () => {
       store.markUnreachable();
       store.markReachable();
       await clock.flush();
-      // Second recovery edge while the first delay is pending clears that timer.
+      // Advance partway so a leaked first timer would fire at the original deadline.
+      const half = Math.floor(VIEW_LOAD_RETRY_AFTER_RECOVERY_MS / 2);
+      await clock.advance(half);
       store.markUnreachable();
       store.markReachable();
       await clock.flush();
-      await clock.advance(VIEW_LOAD_RETRY_AFTER_RECOVERY_MS);
+      await clock.advance(VIEW_LOAD_RETRY_AFTER_RECOVERY_MS - half);
+      expect(onRetry.calls.length).toBe(0);
+      await clock.advance(half);
       expect(onRetry.calls.length).toBe(1);
       mounted.unmount();
     } finally {
