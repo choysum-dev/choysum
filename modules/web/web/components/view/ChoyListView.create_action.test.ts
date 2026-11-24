@@ -327,4 +327,66 @@ describe('ListView create action', () => {
     expect(blob).toContain('p1');
     unmount();
   });
+
+  test('soft-fail retryPending and Cancel restore committed search payload', async () => {
+    const { plugins } = buildPageMountGlobal({
+      route: { name: 'PartnerList', path: '/partner/partners', fullPath: '/partner/partners' },
+      router: { push },
+    });
+    const store = makeStore();
+    const { unmount, root, setupState } = mountApp(ChoyListView as any, {
+      props: {
+        store,
+        createAction: '',
+        showHeader: false,
+        showActions: false,
+        refreshAction: false,
+        deleteAction: false,
+        showPaginate: false,
+      },
+      plugins,
+    });
+    await flushPromises();
+
+    const state = setupState() as {
+      onSurfaceRetry: () => Promise<void>;
+      onSurfaceCancel: () => void;
+      onSearch: (payload: { keyword?: string; appliedFilters: unknown[] }) => void;
+      lastSearchPayload: { keyword?: string } | null;
+      controller: {
+        vm: { error: unknown; hasAppliedOnce?: boolean; result?: unknown; visibleNodes?: unknown[] };
+        retryPending: () => Promise<unknown>;
+        restoreCommitted: () => void;
+      };
+    };
+    state.controller.vm.hasAppliedOnce = true;
+    state.controller.vm.result = { kind: 'search', rows: [{ Id: '1' }] } as any;
+    state.controller.vm.visibleNodes = [{ Id: '1' }] as any;
+    store.state.queryState.keyword = 'committed';
+    // Commit search via handler, then overwrite with a failed pending payload.
+    state.onSearch({ keyword: 'committed', appliedFilters: [] });
+    state.onSearch({ keyword: 'pending-fail', appliedFilters: [] });
+    state.controller.vm.error = new Error('offline page');
+    state.onSurfaceCancel();
+    expect(state.controller.vm.error).toBeNull();
+    expect(state.lastSearchPayload?.keyword).toBe('committed');
+
+    // Soft-fail Retry uses retryPending when error is set.
+    let retried = 0;
+    state.controller.vm.error = new Error('still offline');
+    state.controller.retryPending = async () => {
+      retried += 1;
+      state.controller.vm.error = null;
+    };
+    await state.onSurfaceRetry();
+    expect(retried).toBe(1);
+
+    // Fallback Cancel when restoreCommitted is missing.
+    delete (state.controller as any).restoreCommitted;
+    state.controller.vm.error = new Error('fallback');
+    state.onSurfaceCancel();
+    expect(state.controller.vm.error).toBeNull();
+    expect(root).toBeTruthy();
+    unmount();
+  });
 });

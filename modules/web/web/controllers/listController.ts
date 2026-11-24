@@ -68,7 +68,9 @@ export function createListController(store: ModelStore<any>): IListController {
   }
 
   async function retryPending(): Promise<DataSetSnapshot | void> {
-    return apply(pendingIntent || undefined);
+    const intent =
+      pendingIntent && Object.keys(pendingIntent).length > 0 ? pendingIntent : undefined;
+    return apply(intent);
   }
 
   // Caches for on-demand tree expansion
@@ -261,17 +263,14 @@ export function createListController(store: ModelStore<any>): IListController {
       const uiFiltersEff: any[] | undefined = (effectiveOverrides as any).appliedFilters;
       const kwEff: string | undefined = (effectiveOverrides as any).keyword;
       let kwFieldsEff: string[] | undefined = (effectiveOverrides as any).keywordFields ?? readQs()?.keywordFields;
-      let compiledFromUi = filtersToQuery(Array.isArray(uiFiltersEff) ? uiFiltersEff : [], kwEff, kwFieldsEff, (store as any)?.metadata?.fields);
+      const compiledFromUi = filtersToQuery(Array.isArray(uiFiltersEff) ? uiFiltersEff : [], kwEff, kwFieldsEff, (store as any)?.metadata?.fields);
 
-      // Merge forced conditions stored in queryState first.
-      const forcedInState = readQs()?.forcedCondition;
-      if (forcedInState !== undefined) {
-        compiledFromUi = combineFilters(compiledFromUi, forcedInState);
-      }
-
-      // Merge the call-site forced condition last.
-      const forcedCondition = hasForcedConditionOverride ? (effectiveOverrides as any).forcedCondition : undefined;
-      const finalCondition = combinePresentConditions(compiledFromUi, forcedCondition) as any;
+      // Call-site forcedCondition replaces stored (including explicit undefined clear).
+      // Without an override, reuse the committed forcedCondition from queryState.
+      const requestForced = hasForcedConditionOverride
+        ? (effectiveOverrides as any).forcedCondition
+        : readQs()?.forcedCondition;
+      const finalCondition = combinePresentConditions(compiledFromUi, requestForced) as any;
 
       // Defer keyword / filters / fields / forcedCondition until RPC success (Strategy A).
       if (effectiveOverrides) {
@@ -288,7 +287,7 @@ export function createListController(store: ModelStore<any>): IListController {
           }
         }
         if (hasForcedConditionOverride) {
-          writeQs({ forcedCondition: (effectiveOverrides as any).forcedCondition });
+          writeQs({ forcedCondition: requestForced });
         }
       }
 
@@ -415,10 +414,10 @@ export function createListController(store: ModelStore<any>): IListController {
         if (seq === applySeq) pendingIntent = null;
         return;
       }
+      // A newer apply owns committed chrome — do not revert it or surface this stale failure.
+      if (seq !== applySeq) return;
       rollbackQueryState();
-      if (seq === applySeq) {
-        vm.error = e;
-      }
+      vm.error = e;
       throw e;
     } finally {
       // Only clear loading if this call is the latest

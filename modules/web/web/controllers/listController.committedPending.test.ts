@@ -133,3 +133,43 @@ test('listController: superseded apply failure does not clobber newer commit', a
   expect(store.state.queryState.pagination.offset).toBe(40);
   expect(ctrl.vm.error).toBeNull();
 });
+
+test('listController: forcedCondition override replaces stored and clear removes it', async () => {
+  const seen: unknown[] = [];
+  const store = makeStore({
+    Search: async (domain: unknown) => {
+      seen.push(domain);
+      return [{ Id: '1', Name: 'Acme' }];
+    },
+  });
+  const ctrl = createListController(store);
+  await ctrl.apply({ forcedCondition: ['ParentId', '=', 'p1'] as any });
+  expect(store.state.queryState.forcedCondition).toEqual(['ParentId', '=', 'p1']);
+  expect(JSON.stringify(seen[seen.length - 1])).toContain('ParentId');
+
+  await ctrl.apply({ forcedCondition: ['ParentId', '=', 'p2'] as any });
+  expect(store.state.queryState.forcedCondition).toEqual(['ParentId', '=', 'p2']);
+  const second = JSON.stringify(seen[seen.length - 1]);
+  expect(second).toContain('p2');
+  expect(second).not.toContain('p1');
+
+  await ctrl.apply({ forcedCondition: undefined });
+  expect(store.state.queryState.forcedCondition).toBeUndefined();
+  const cleared = JSON.stringify(seen[seen.length - 1]);
+  expect(cleared).not.toContain('ParentId');
+});
+
+test('listController: retryPending with empty intent still refreshes', async () => {
+  let searches = 0;
+  const store = makeStore({
+    Search: async () => {
+      searches += 1;
+      return [{ Id: '1', Name: 'Acme' }];
+    },
+  });
+  const ctrl = createListController(store);
+  await ctrl.apply();
+  const before = searches;
+  await ctrl.retryPending();
+  expect(searches).toBeGreaterThan(before);
+});

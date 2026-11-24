@@ -912,8 +912,12 @@ async function onFormSurfaceRetry(): Promise<void> {
   } catch {
     // beginDisplay sets vm.error; Host keeps surface failure UI.
   }
-  // Restore edit intent even when reload fails (seeded soft-fail / Preferences).
-  if ((props.viewMode as any) === 'edit' && controller.vm.original) {
+  // Only re-enter edit when reload failed (successful beginDisplay already owns mode/draft).
+  if (
+    (props.viewMode as any) === 'edit' &&
+    controller.vm.error != null &&
+    controller.vm.original
+  ) {
     controller.beginEdit();
   }
 }

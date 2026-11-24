@@ -112,6 +112,55 @@ describe('FormView reloads when route identity changes', () => {
     wrapper.unmount();
   });
 
+  test('surface retry restores edit after failed reload; cancel clears error and emits', async () => {
+    const store = fakeStore();
+    const surfaceCancel = fnRecorder(() => {});
+    const { wrapper } = mountForm({
+      store,
+      props: {
+        recordId: '1',
+        viewMode: 'edit',
+        resolveRecordIdFromRoute: false,
+        embedded: true,
+        initialValues: { Id: '1', Name: 'seed' },
+      },
+      // Vue 3 listener prop for emit('surface-cancel').
+      on: { onSurfaceCancel: surfaceCancel },
+    });
+    await flushPromises();
+
+    const exposed = wrapper.root as {
+      retrySurface?: () => Promise<void>;
+      cancelSurface?: () => void;
+    };
+    const state = wrapper.setupState() as {
+      controller: {
+        vm: { mode: string; error: unknown; original: any };
+        beginDisplay: (id: string) => Promise<void>;
+        beginEdit: () => void;
+      };
+      isEmbedded: boolean;
+    };
+    const vm = state.controller.vm;
+    expect(state.isEmbedded).toBe(true);
+
+    // Soft-fail without rejecting out of the test host (QuickJS treats unhandled rejects as fatal).
+    state.controller.beginDisplay = async () => {
+      vm.error = new Error('offline browse');
+      vm.mode = 'display';
+    };
+    await exposed.retrySurface?.();
+    await flushPromises();
+    expect(vm.error instanceof Error && vm.error.message).toBe('offline browse');
+    expect(vm.mode).toBe('edit');
+    expect(vm.original).toBeTruthy();
+
+    exposed.cancelSurface?.();
+    expect(vm.error).toBeNull();
+    expect(surfaceCancel.calls.length).toBe(1);
+    wrapper.unmount();
+  });
+
   test('does not follow route when resolveRecordIdFromRoute is false', async () => {
     const store = fakeStore();
     const { wrapper, route } = mountForm({
