@@ -1,0 +1,99 @@
+// SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
+// SPDX-License-Identifier: Apache-2.0
+
+import { createPinia, setActivePinia } from 'pinia';
+import { defineComponent, h, nextTick } from 'vue';
+import { flushPromises, mountApp } from '@/web/web/__tests__/mountApp';
+import { useRecordSetStore, type RecordSetEntry } from '@/web/web/stores/recordSetStore';
+import { useDetailPathRecordSetHygiene } from './useDetailPathRecordSetHygiene';
+
+function sampleEntry(over: Partial<RecordSetEntry> = {}): RecordSetEntry {
+  return {
+    key: 'partner.Partner|list',
+    model: 'partner.Partner',
+    condition: {},
+    orderBy: [],
+    total: 1,
+    index: 0,
+    ids: ['1'],
+    windowStart: 0,
+    ...over,
+  };
+}
+
+describe('useDetailPathRecordSetHygiene', () => {
+  test('clears active session when detailPath host matches model', async () => {
+    setActivePinia(createPinia());
+    const rs = useRecordSetStore();
+    rs.seed(sampleEntry());
+    const Host = defineComponent({
+      name: 'HygieneHost',
+      setup() {
+        useDetailPathRecordSetHygiene({
+          detailPath: '/partner/:id',
+          modelName: 'partner.Partner',
+        });
+        return () => h('div');
+      },
+    });
+    const mounted = mountApp(Host as any);
+    await flushPromises();
+    await nextTick();
+    expect(rs.active).toBeNull();
+    mounted.unmount();
+  });
+
+  test('no-ops when detailPath is null', async () => {
+    setActivePinia(createPinia());
+    const rs = useRecordSetStore();
+    rs.seed(sampleEntry());
+    const Host = defineComponent({
+      setup() {
+        useDetailPathRecordSetHygiene({
+          detailPath: null,
+          modelName: 'partner.Partner',
+        });
+        return () => h('div');
+      },
+    });
+    const mounted = mountApp(Host as any);
+    await flushPromises();
+    expect(rs.active?.model).toBe('partner.Partner');
+    mounted.unmount();
+  });
+
+  test('preserves active session for a different model', async () => {
+    setActivePinia(createPinia());
+    const rs = useRecordSetStore();
+    rs.seed(sampleEntry({ model: 'base.Company', key: 'base.Company|list' }));
+    const Host = defineComponent({
+      setup() {
+        useDetailPathRecordSetHygiene({
+          detailPath: '/partner/:id',
+          modelName: 'partner.Partner',
+        });
+        return () => h('div');
+      },
+    });
+    const mounted = mountApp(Host as any);
+    await flushPromises();
+    expect(rs.active?.model).toBe('base.Company');
+    mounted.unmount();
+  });
+
+  test('clearRecordSetSessionIfDetailHost swallows store errors', () => {
+    const Host = defineComponent({
+      setup() {
+        const { clearRecordSetSessionIfDetailHost } = useDetailPathRecordSetHygiene({
+          detailPath: '/partner/:id',
+          modelName: 'partner.Partner',
+        });
+        // No active Pinia — store access throws into the catch.
+        expect(() => clearRecordSetSessionIfDetailHost()).not.toThrow();
+        return () => h('div');
+      },
+    });
+    const mounted = mountApp(Host as any, { pinia: false as any });
+    mounted.unmount();
+  });
+});

@@ -11,7 +11,7 @@ SPDX-License-Identifier: Apache-2.0
     :show-actions="showActions"
     :page-title="pageTitle"
     :page-title-id="pageTitleId"
-    page-title-class="choy-list-view__page-title min-w-0 max-w-[10rem] truncate text-base font-semibold text-foreground sm:max-w-[14rem]"
+    page-title-class="choy-list-view__page-title"
     :page-title-actions-io="pageTitleActionsIo"
     :show-title-overflow="showTitleOverflow"
     :store="store"
@@ -73,14 +73,11 @@ SPDX-License-Identifier: Apache-2.0
     </template>
 
     <template v-if="showRefreshInOverflow || !!slots['overflow-actions']" #overflow-actions>
-      <DropdownMenuItem
+      <ChoyViewOverflowRefreshItem
         v-if="showRefreshInOverflow"
-        data-testid="list-overflow-refresh"
+        test-id="list-overflow-refresh"
         @select="handleRefresh"
-      >
-        <RefreshCw class="size-4" aria-hidden="true" />
-        {{ _t('Refresh') }}
-      </DropdownMenuItem>
+      />
       <slot name="overflow-actions" :selected-items="selectedItems" />
     </template>
 
@@ -243,7 +240,6 @@ import type { ConditionGroup, QueryUpdatePayload } from '@/web/web/query/types';
 import { ChoyMessage } from '../../composables/useChoyMessage';
 import {
   computed,
-  onActivated,
   onMounted,
   onBeforeUnmount,
   provide,
@@ -330,8 +326,12 @@ import { snapshotFromListStore } from '@/web/web/navigation/snapshotFromListStor
 import { useRecordSetStore } from '@/web/web/stores/recordSetStore';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
 import { Separator } from '@/web/web/components/vendor/ui/separator';
-import DropdownMenuItem from '@/web/web/components/vendor/ui/dropdown-menu/DropdownMenuItem.vue';
-import { Check, ChevronDown, ChevronRight, Plus, RefreshCw, Trash2, X } from 'lucide-vue-next';
+import { Check, ChevronDown, ChevronRight, Plus, Trash2, X } from 'lucide-vue-next';
+import ChoyViewOverflowRefreshItem from '@/web/web/components/view/ChoyViewOverflowRefreshItem.vue';
+import { useViewTitleOverflow } from '@/web/web/components/view/useViewTitleOverflow';
+import { useCollectionBusyMode } from '@/web/web/components/view/useCollectionBusyMode';
+import { useControllerSoftFailSurface } from '@/web/web/components/view/useControllerSoftFailSurface';
+import { useDetailPathRecordSetHygiene } from '@/web/web/components/view/useDetailPathRecordSetHygiene';
 
 defineOptions({ name: 'ChoyListView', inheritAttrs: false });
 
@@ -451,24 +451,10 @@ try {
   router = null;
   route = null;
 }
-// Only collection pages that open Form clear the pager session on return —
-// embedded / Search-more lists must not wipe an open Form's record set.
-function clearRecordSetSessionIfDetailHost() {
-  if (props.detailPath == null) return;
-  try {
-    const rs = useRecordSetStore();
-    const active = rs.active;
-    if (!active) return;
-    // Relation pickers for another model must not wipe the open Form's session.
-    const model = String((store as { modelName?: string })?.modelName || '').trim();
-    if (model && active.model && active.model !== model) return;
-    rs.clear();
-  } catch {
-    // Pinia may be unavailable in unit mounts without an app shell.
-  }
-}
-onMounted(clearRecordSetSessionIfDetailHost);
-onActivated(clearRecordSetSessionIfDetailHost);
+useDetailPathRecordSetHygiene({
+  detailPath: () => props.detailPath,
+  modelName: () => (store as { modelName?: string })?.modelName,
+});
 // Relation pickers set registerActionTarget=false; do not inherit the host page's Create route.
 const resolvedCreateAction = useResolvedCreateAction(() => props.createAction, {
   enabled: () => props.registerActionTarget !== false,
@@ -526,23 +512,14 @@ const firstFrame = useSearchFirstFrameHost(store, {
 const canCreate = computed(() => canShowDeclaredAction(props.actionIds?.create, props.hasAction));
 const canRefresh = computed(() => canShowAction(props.actionIds?.refresh, props.hasAction));
 const canDelete = computed(() => canShowDeclaredAction(props.actionIds?.delete, props.hasAction));
-const showRefreshInOverflow = computed(
-  () => props.showActions && props.refreshAction && canRefresh.value,
-);
-const showTitleOverflow = computed(
-  () => !!pageTitleActionsIo.value || showRefreshInOverflow.value || !!slots['overflow-actions'],
-);
+const { showRefreshInOverflow, showTitleOverflow } = useViewTitleOverflow({
+  pageTitleActionsIo,
+  showRefresh: () => props.showActions && props.refreshAction && canRefresh.value,
+  hasOverflowSlot: () => !!slots['overflow-actions'],
+});
 // List controller
 const controller = createListController(store as any);
 const listBusy = computed(() => !!controller.vm.loading);
-/** With prior rows → stale (keep content); first empty load → block (Loader2). */
-const listBusyMode = computed<'stale' | 'block'>(() => {
-  const nodes = controller.vm.visibleNodes;
-  if (Array.isArray(nodes) && nodes.length > 0) return 'stale';
-  const rows = (controller.vm.result as { rows?: unknown[] } | null)?.rows;
-  if (Array.isArray(rows) && rows.length > 0) return 'stale';
-  return 'block';
-});
 /** True when the list already has a successful content frame (rows or group nodes). */
 const listHasFrame = computed(() => {
   const nodes = controller.vm.visibleNodes;
@@ -550,38 +527,26 @@ const listHasFrame = computed(() => {
   const rows = (controller.vm.result as { rows?: unknown[] } | null)?.rows;
   return Array.isArray(rows) && rows.length > 0;
 });
+/** With prior rows → stale (keep content); first empty load → block (Loader2). */
+const listBusyMode = useCollectionBusyMode({ hasContent: listHasFrame });
 /** Empty copy only after a successful settle with no rows — not when apply failed. */
 const showListEmpty = computed(
   () => !!controller.vm.hasAppliedOnce && !listBusy.value && controller.vm.error == null,
 );
 
-async function onSurfaceRetry(): Promise<void> {
-  try {
-    // Soft-fail: replay the failed intent. Idle Retry (no error) → full reload with props.
-    if (controller.vm.error != null && typeof (controller as any).retryPending === 'function') {
-      await (controller as any).retryPending();
-      return;
-    }
-    await loadData();
-  } catch {
-    // Controller already sets vm.error; Host keeps showing surface error.
-  }
-}
-
-function onSurfaceCancel(): void {
-  if (typeof (controller as any).restoreCommitted === 'function') {
-    (controller as any).restoreCommitted();
-  } else {
-    controller.vm.error = null;
-  }
-  // Drop canceled search chrome so forcedCondition/relation watchers do not re-apply it.
-  const qs = ((store.state as any)?.queryState || {}) as Record<string, unknown>;
-  lastSearchPayload.value = {
-    keyword: (qs.keyword as string | undefined) ?? '',
-    appliedFilters: (qs.appliedFilters as any) || [],
-    appliedGroups: (qs.appliedGroups as any) || [],
-  };
-}
+const { onSurfaceRetry, onSurfaceCancel } = useControllerSoftFailSurface({
+  getController: () => controller as any,
+  reload: () => loadData(),
+  onCancelExtra: () => {
+    // Drop canceled search chrome so forcedCondition/relation watchers do not re-apply it.
+    const qs = ((store.state as any)?.queryState || {}) as Record<string, unknown>;
+    lastSearchPayload.value = {
+      keyword: (qs.keyword as string | undefined) ?? '',
+      appliedFilters: (qs.appliedFilters as any) || [],
+      appliedGroups: (qs.appliedGroups as any) || [],
+    };
+  },
+});
 
 // Whether grouped mode is active, based on the controller result
 const isGroupMode = computed(() => controller.vm.result?.kind === 'group');

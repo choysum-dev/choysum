@@ -56,6 +56,31 @@ describe('ChoyViewActionBar', () => {
     mounted.unmount();
   });
 
+  test('thirds layout pads an empty center column when #center is omitted', async () => {
+    const mounted = mountApp(ChoyViewActionBar as any, {
+      props: { layout: 'thirds' },
+      slots: {
+        'system-actions': () => h('button', { 'data-testid': 'sys' }, 'S'),
+        'header-right': () => h('button', { 'data-testid': 'right' }, 'R'),
+      },
+    });
+    await flushPromises();
+    expect(mounted.q('[data-slot=view-action-bar-center]')).not.toBeNull();
+    expect(mounted.q('[data-testid=sys]')?.textContent).toBe('S');
+    expect(mounted.q('[data-testid=right]')?.textContent).toBe('R');
+    mounted.unmount();
+
+    const split = mountApp(ChoyViewActionBar as any, {
+      props: { layout: 'split' },
+      slots: {
+        'system-actions': () => h('button', { 'data-testid': 'sys' }, 'S'),
+      },
+    });
+    await flushPromises();
+    expect(split.q('[data-slot=view-action-bar-center]')).toBeNull();
+    split.unmount();
+  });
+
   test('border-b-0 class drops the hairline padding air', async () => {
     const mounted = mountApp(ChoyViewActionBar as any, {
       props: { class: 'border-b-0' },

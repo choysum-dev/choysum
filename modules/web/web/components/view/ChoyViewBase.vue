@@ -36,7 +36,7 @@ SPDX-License-Identifier: Apache-2.0
               v-if="pageTitle"
               :id="pageTitleId || undefined"
               data-slot="page-title"
-              :class="pageTitleClass || defaultPageTitleClass"
+              :class="resolvedPageTitleClass"
             >
               {{ pageTitle }}
             </h1>
@@ -63,6 +63,7 @@ SPDX-License-Identifier: Apache-2.0
             <slot name="user-actions" />
           </template>
 
+          <!-- ActionBar thirds pads an empty center when this slot is omitted. -->
           <template v-if="slots.center" #center>
             <slot name="center" />
           </template>
@@ -174,6 +175,9 @@ const attrs = useAttrs();
 
 const defaultPageTitleClass =
   'min-w-0 max-w-[10rem] truncate text-base font-semibold text-foreground sm:max-w-[14rem]';
+
+/** Default title chrome + optional BEM / extra classes from the product view. */
+const resolvedPageTitleClass = computed(() => cn(defaultPageTitleClass, props.pageTitleClass));
 
 const systemActionsLabel = computed(() => props.systemActionsLabel || _t('System actions'));
 const userActionsLabel = computed(() => props.userActionsLabel || _t('User actions'));

@@ -165,4 +165,26 @@ describe('ChoyViewBase', () => {
     expect(mounted.q('[data-slot=view-action-bar-leading]')).not.toBeNull();
     mounted.unmount();
   });
+
+  test('merges default page-title classes with BEM pageTitleClass', async () => {
+    setActivePinia(createPinia());
+    const mounted = mountApp(ChoyViewBase as any, {
+      props: {
+        showActions: true,
+        pageTitle: 'Partners',
+        pageTitleClass: 'choy-list-view__page-title',
+      },
+      slots: {
+        default: () => h('div', 'body'),
+      },
+    });
+    await flushPromises();
+    const title = mounted.q('[data-slot=page-title]') as HTMLElement | null;
+    expect(title?.className || '').toContain('choy-list-view__page-title');
+    expect(title?.className || '').toContain('truncate');
+    expect(title?.className || '').toContain('font-semibold');
+    // Thirds ActionBar pads center when product view omits #center.
+    expect(mounted.q('[data-slot=view-action-bar-center]')).not.toBeNull();
+    mounted.unmount();
+  });
 });

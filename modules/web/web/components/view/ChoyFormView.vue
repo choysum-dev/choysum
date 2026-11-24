@@ -13,9 +13,7 @@ SPDX-License-Identifier: Apache-2.0
     :page-title="chromeTitle || undefined"
     :page-title-id="pageTitleId"
     :page-title-class="
-      isSettingsPresentation
-        ? 'choy-settings-view__page-title min-w-0 max-w-[10rem] truncate text-base font-semibold text-foreground sm:max-w-[14rem]'
-        : 'choy-form-view__page-title min-w-0 max-w-[10rem] truncate text-base font-semibold text-foreground sm:max-w-[14rem]'
+      isSettingsPresentation ? 'choy-settings-view__page-title' : 'choy-form-view__page-title'
     "
     :page-title-actions-io="pageTitleActionsIo"
     :show-title-overflow="showTitleOverflow"
@@ -96,14 +94,11 @@ SPDX-License-Identifier: Apache-2.0
       v-if="showRefreshInOverflow || showResetInOverflow || $slots['overflow-actions']"
       #overflow-actions
     >
-      <DropdownMenuItem
+      <ChoyViewOverflowRefreshItem
         v-if="showRefreshInOverflow"
-        data-testid="form-overflow-refresh"
+        test-id="form-overflow-refresh"
         @select="handleRefresh"
-      >
-        <RefreshCw class="size-4" aria-hidden="true" />
-        {{ _t('Refresh') }}
-      </DropdownMenuItem>
+      />
       <DropdownMenuItem
         v-if="showResetInOverflow"
         data-testid="form-overflow-reset"
@@ -178,11 +173,6 @@ SPDX-License-Identifier: Apache-2.0
         :view-mode="viewMode"
         :loading="loading"
       />
-    </template>
-
-    <!-- Keep #center registered so the thirds grid does not collapse. -->
-    <template #center>
-      <div class="min-w-0" />
     </template>
 
     <template #header-right>
@@ -266,10 +256,12 @@ import { createTranslate } from '@/web/web/i18n';
 import type { UiModelStore } from '@/web/web/stores/uiModelStore';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
 import ChoyViewBase from '@/web/web/components/view/ChoyViewBase.vue';
+import ChoyViewOverflowRefreshItem from '@/web/web/components/view/ChoyViewOverflowRefreshItem.vue';
 import ChoyFormPager from '@/web/web/components/view/ChoyFormPager.vue';
 import ChoyViewSwitcher, { type ChoyViewSwitcherOption } from '@/web/web/components/view/ChoyViewSwitcher.vue';
 import DropdownMenuItem from '@/web/web/components/vendor/ui/dropdown-menu/DropdownMenuItem.vue';
-import { Plus, Pencil, RefreshCw, Trash2, Check, X, Copy, RotateCcw } from 'lucide-vue-next';
+import { Plus, Pencil, Trash2, Check, X, Copy, RotateCcw } from 'lucide-vue-next';
+import { useViewTitleOverflow } from '@/web/web/components/view/useViewTitleOverflow';
 import type {
   FormSubmitHandler,
   FormChildSubmitApiRegistration,
@@ -801,15 +793,6 @@ async function onSettingsViewSelect(value: string) {
 }
 
 const isEditing = computed(() => viewMode.value === 'edit' || viewMode.value === 'create');
-const showRefreshInOverflow = computed(
-  () =>
-    !isSettingsPresentation.value &&
-    resolvedShowActions.value &&
-    resolvedShowHeader.value &&
-    canRefresh.value &&
-    viewMode.value === 'display' &&
-    !!effectiveRecordId.value,
-);
 /** Reset lives in ⋮ during create/edit so the left bar stays [Save][Cancel][title][⋮]. */
 const showResetInOverflow = computed(
   () =>
@@ -818,14 +801,19 @@ const showResetInOverflow = computed(
     resolvedShowHeader.value &&
     isEditing.value,
 );
-const showTitleOverflow = computed(
-  () =>
+const { showRefreshInOverflow, showTitleOverflow } = useViewTitleOverflow({
+  pageTitleActionsIo,
+  showRefresh: () =>
     !isSettingsPresentation.value &&
-    (!!pageTitleActionsIo.value ||
-      showRefreshInOverflow.value ||
-      showResetInOverflow.value ||
-      !!slots['overflow-actions']),
-);
+    resolvedShowActions.value &&
+    resolvedShowHeader.value &&
+    canRefresh.value &&
+    viewMode.value === 'display' &&
+    !!effectiveRecordId.value,
+  showReset: showResetInOverflow,
+  hasOverflowSlot: () => !!slots['overflow-actions'],
+  enabled: () => !isSettingsPresentation.value,
+});
 
 useRegisterPageActionTarget({
   store,

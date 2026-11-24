@@ -13,7 +13,7 @@ SPDX-License-Identifier: Apache-2.0
     :show-actions="showActions"
     :page-title="pageTitle"
     :page-title-id="pageTitleId"
-    page-title-class="choy-chart-view__page-title min-w-0 max-w-[10rem] truncate text-base font-semibold text-foreground sm:max-w-[14rem]"
+    page-title-class="choy-chart-view__page-title"
     :page-title-actions-io="pageTitleActionsIo"
     :show-title-overflow="showTitleOverflow"
     :store="store"
@@ -46,15 +46,13 @@ SPDX-License-Identifier: Apache-2.0
     </template>
 
     <template v-if="showRefreshInOverflow || $slots['overflow-actions']" #overflow-actions>
-      <DropdownMenuItem
+      <ChoyViewOverflowRefreshItem
         v-if="showRefreshInOverflow"
-        data-testid="chart-overflow-refresh"
+        test-id="chart-overflow-refresh"
         :disabled="boardBusy"
+        :label="resolvedRefreshLabel"
         @select="onRefresh"
-      >
-        <RefreshCw class="size-4" aria-hidden="true" />
-        {{ resolvedRefreshLabel }}
-      </DropdownMenuItem>
+      />
       <slot name="overflow-actions" />
     </template>
 
@@ -62,12 +60,10 @@ SPDX-License-Identifier: Apache-2.0
       <slot name="user-actions" />
     </template>
 
-    <!-- Keep #center registered so trailing controls stay in the last column. -->
-    <template #center>
-      <ChoySearchFit v-if="$slots.search">
+    <template v-if="$slots.search" #center>
+      <ChoySearchFit>
         <slot name="search" :on-query-update="onSearch" />
       </ChoySearchFit>
-      <div v-else class="min-w-0" />
     </template>
 
     <template v-if="$slots['header-right']" #header-right>
@@ -438,7 +434,6 @@ import {
   LineChart,
   PieChart,
   Plus,
-  RefreshCw,
 } from 'lucide-vue-next';
 import {
   VisArea,
@@ -465,7 +460,10 @@ import ChoyButtonGroup from '../layout/ChoyButtonGroup.vue';
 import ChoyEmpty from '../layout/ChoyEmpty.vue';
 import ChoyViewBase from '@/web/web/components/view/ChoyViewBase.vue';
 import ChoySearchFit from '@/web/web/components/view/ChoySearchFit.vue';
+import ChoyViewOverflowRefreshItem from '@/web/web/components/view/ChoyViewOverflowRefreshItem.vue';
 import { useProvideViewScope } from '@/web/web/components/view/viewScopeKeys';
+import { useViewTitleOverflow } from '@/web/web/components/view/useViewTitleOverflow';
+import { useCollectionBusyMode } from '@/web/web/components/view/useCollectionBusyMode';
 import { createTranslate } from '@/web/web/i18n';
 import {
   ChartContainer,
@@ -476,7 +474,6 @@ import SelectContent from '../vendor/ui/select/SelectContent.vue';
 import SelectItem from '../vendor/ui/select/SelectItem.vue';
 import SelectTrigger from '../vendor/ui/select/SelectTrigger.vue';
 import Switch from '../vendor/ui/switch/Switch.vue';
-import DropdownMenuItem from '../vendor/ui/dropdown-menu/DropdownMenuItem.vue';
 import Tooltip from '../vendor/ui/tooltip/Tooltip.vue';
 import TooltipContent from '../vendor/ui/tooltip/TooltipContent.vue';
 import TooltipProvider from '../vendor/ui/tooltip/TooltipProvider.vue';
@@ -604,15 +601,11 @@ const firstFrame = useSearchFirstFrameHost(store, {
 const { pageTitle, pageTitleId, pageTitleActionsIo } = useHostPageTitleInView(
   () => props.showHeader,
 );
-const showRefreshInOverflow = computed(
-  () => props.showActions && props.showHeader && props.showRefresh,
-);
-const showTitleOverflow = computed(
-  () =>
-    !!pageTitleActionsIo.value ||
-    showRefreshInOverflow.value ||
-    !!slots['overflow-actions'],
-);
+const { showRefreshInOverflow, showTitleOverflow } = useViewTitleOverflow({
+  pageTitleActionsIo,
+  showRefresh: () => props.showActions && props.showHeader && props.showRefresh,
+  hasOverflowSlot: () => !!slots['overflow-actions'],
+});
 
 const resolvedCreateLabel = computed(() => props.createLabel || _t('New'));
 const resolvedRefreshLabel = computed(() => props.refreshLabel || _t('Refresh'));
@@ -664,9 +657,11 @@ const bootstrapping = ref(props.autoBootstrap !== false);
 /** Prep failure before the first apply (beforeBootstrap / field selection). */
 const prepError = ref<unknown>(null);
 const boardBusy = computed(() => !!controller.vm.loading || bootstrapping.value);
-const chartBusyMode = computed<'stale' | 'block'>(() => {
-  const rows = (controller.vm.result as { rows?: unknown[] } | null)?.rows;
-  return rows && rows.length > 0 ? 'stale' : 'block';
+const chartBusyMode = useCollectionBusyMode({
+  hasContent: () => {
+    const rows = (controller.vm.result as { rows?: unknown[] } | null)?.rows;
+    return !!(rows && rows.length > 0);
+  },
 });
 /** Prep or apply failure for BusyHost surface error (replaces raw-message overlay). */
 const chartSurfaceError = computed(() => prepError.value ?? controller.vm.error ?? null);
