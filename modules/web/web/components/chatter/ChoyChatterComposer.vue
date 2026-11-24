@@ -38,6 +38,7 @@ SPDX-License-Identifier: Apache-2.0
 import { computed, ref } from 'vue';
 import ChoyActionButton from '../button/ChoyActionButton.vue';
 import { createTranslate } from '@/web/web/i18n';
+import { isConnectivityUnreachable } from '@/web/web/stores/connectivityStore';
 
 /**
  * Chatter composer: local draft only; emits post with trimmed body.
@@ -73,7 +74,8 @@ const postingLabel = computed(() => _t('Posting…'));
 
 function submit(): void {
   const text = body.value.trim();
-  if (!text || props.posting || props.disabled) return;
+  // Match Post ActionButton: keyboard Ctrl/Cmd+Enter must not bypass offline gate.
+  if (!text || props.posting || props.disabled || isConnectivityUnreachable()) return;
   emit('post', text);
 }
 
