@@ -77,6 +77,7 @@ import {
 import { createTranslate } from '@/web/web/i18n';
 import { useI18nStore } from '@/web/web/stores/i18nStore';
 import { downloadTerminologyPo } from '@/web/web/stores/i18nStore/poDownload';
+import { isConnectivityUnreachable } from '@/web/web/stores/connectivityStore';
 import { useAuthStore } from '@/auth/web/stores/auth';
 import { ChoyMessage } from '@/web/web/composables/useChoyMessage';
 import { createModelStore } from '@/web/web/stores/registry';
@@ -107,6 +108,7 @@ let loadGeneration = 0;
 const application = computed(() => String(props.application || '').trim());
 const canDownload = computed(
   () =>
+    !isConnectivityUnreachable() &&
     Boolean(
       application.value &&
         selectedModule.value.trim() &&
@@ -175,7 +177,7 @@ function onSelectModule(event: Event, mod: string) {
 }
 
 async function onDownloadPo() {
-  if (!canDownload.value || downloading.value) return;
+  if (isConnectivityUnreachable() || !canDownload.value || downloading.value) return;
   const moduleName = selectedModule.value.trim();
   const lang = String(i18nStore.activeLanguage.code || '').trim();
   downloading.value = true;
