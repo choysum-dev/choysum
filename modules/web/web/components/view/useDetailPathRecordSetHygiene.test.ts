@@ -100,7 +100,7 @@ describe('useDetailPathRecordSetHygiene', () => {
     mounted.unmount();
   });
 
-  test('no-ops when active.model is empty', async () => {
+  test('clears stale session when active.model is empty', async () => {
     setActivePinia(createPinia());
     const rs = useRecordSetStore();
     rs.seed(sampleEntry({ model: '', key: 'unknown|list' }));
@@ -115,8 +115,7 @@ describe('useDetailPathRecordSetHygiene', () => {
     });
     const mounted = mountApp(Host as any);
     await flushPromises();
-    expect(rs.active).not.toBeNull();
-    expect(rs.active?.key).toBe('unknown|list');
+    expect(rs.active).toBeNull();
     mounted.unmount();
   });
 

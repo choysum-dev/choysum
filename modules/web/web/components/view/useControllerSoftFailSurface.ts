@@ -45,11 +45,15 @@ export function useControllerSoftFailSurface(opts: UseControllerSoftFailSurfaceO
   }
 
   function onSurfaceCancel(): void {
-    const ctrl = opts.getController();
-    if (typeof ctrl.restoreCommitted === 'function') {
-      ctrl.restoreCommitted();
-    } else {
-      ctrl.vm.error = null;
+    try {
+      const ctrl = opts.getController();
+      if (typeof ctrl.restoreCommitted === 'function') {
+        ctrl.restoreCommitted();
+      } else {
+        ctrl.vm.error = null;
+      }
+    } catch {
+      // Controller unavailable; keep cancel from throwing into the UI.
     }
     opts.onCancelExtra?.();
   }

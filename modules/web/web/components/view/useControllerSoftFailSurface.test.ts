@@ -53,6 +53,19 @@ describe('useControllerSoftFailSurface', () => {
     expect(ctrl.vm.error).toBeNull();
   });
 
+  test('cancel ignores unbound controller and still runs onCancelExtra', () => {
+    const onCancelExtra = fnRecorder(() => {});
+    const { onSurfaceCancel } = useControllerSoftFailSurface({
+      getController: () => {
+        throw new Error('unbound');
+      },
+      reload: async () => {},
+      onCancelExtra: () => onCancelExtra(),
+    });
+    expect(() => onSurfaceCancel()).not.toThrow();
+    expect(onCancelExtra.calls.length).toBe(1);
+  });
+
   test('retryPending throw does not reject and surfaces the fresh error', async () => {
     const ctrl = {
       retryPending: async () => {
