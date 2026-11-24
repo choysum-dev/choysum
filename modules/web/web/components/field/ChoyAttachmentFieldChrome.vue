@@ -89,6 +89,7 @@ SPDX-License-Identifier: Apache-2.0
                     size="sm"
                     variant="ghost"
                     class="size-7 p-0 text-white hover:bg-white/15 hover:text-white"
+                    :requires-connectivity="false"
                     :disabled="actionsDisabled"
                     :aria-label="removeLabel"
                     @execute="emit('remove')"
@@ -226,6 +227,7 @@ SPDX-License-Identifier: Apache-2.0
                 size="sm"
                 variant="ghost"
                 class="h-auto px-1.5 py-0 text-destructive hover:text-destructive"
+                :requires-connectivity="false"
                 :disabled="actionsDisabled"
                 @execute="emit('remove')"
               >
