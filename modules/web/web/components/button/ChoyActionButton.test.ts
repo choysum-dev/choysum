@@ -6,7 +6,7 @@ import { nextTick } from 'vue';
 
 import { flushPromises, mountApp } from '@/web/web/__tests__/mountApp';
 import { resolveConfirmChoy, useConfirmChoyStore } from '@/web/web/composables/confirmChoyAction';
-import { getGlobalActionChecker, setGlobalActionChecker } from '@/web/web/directives/action';
+import { setGlobalActionChecker } from '@/web/web/directives/action';
 import { useConnectivityStore } from '@/web/web/stores/connectivityStore';
 import ChoyActionButton from './ChoyActionButton.vue';
 
@@ -369,6 +369,57 @@ describe('ChoyActionButton', () => {
       resolveConfirmChoy('confirm');
       await pending;
       expect(runs).toBe(1);
+    } finally {
+      w.unmount();
+    }
+  });
+
+  test('confirm dismiss with run does not set pending or call run', async () => {
+    let runs = 0;
+    const w = mountApp(ChoyActionButton as any, {
+      props: {
+        confirm: 'Sure?',
+        run: async () => {
+          runs += 1;
+        },
+        'data-testid': 'act-conf-run-dismiss',
+      },
+      slots: { default: () => 'Go' },
+    });
+    try {
+      await flushPromises();
+      const onClick = w.setupState()?.onClick as ((e: Event) => Promise<void>) | undefined;
+      const pendingClick = onClick?.(new Event('click'));
+      expect(useConfirmChoyStore().open).toBe(true);
+      expect(w.setupState()?.pending).toBe(false);
+      resolveConfirmChoy('dismiss');
+      await pendingClick;
+      expect(runs).toBe(0);
+      expect(w.setupState()?.pending).toBe(false);
+    } finally {
+      w.unmount();
+    }
+  });
+
+  test('global action checker installed after mount recomputes ACL', async () => {
+    const w = mountApp(ChoyActionButton as any, {
+      props: {
+        actionId: 'late.action',
+        actionMode: 'hide',
+        'data-testid': 'act-late-acl',
+      },
+      slots: { default: () => 'Go' },
+    });
+    try {
+      await flushPromises();
+      // No checker yet → ungated allow.
+      expect(w.setupState()?.aclVisible).toBe(true);
+      setGlobalActionChecker(() => false);
+      await nextTick();
+      expect(w.setupState()?.aclVisible).toBe(false);
+      setGlobalActionChecker(() => true);
+      await nextTick();
+      expect(w.setupState()?.aclVisible).toBe(true);
     } finally {
       w.unmount();
     }

@@ -211,7 +211,7 @@ SPDX-License-Identifier: Apache-2.0
               <ChoyActionButton
                 type="button"
                 :busy="saving || loading"
-                @execute="() => void preferencesFormRef?.submit?.()"
+                @execute="onPreferencesSave"
               >{{
                 _t('Save')
               }}</ChoyActionButton>
@@ -465,6 +465,11 @@ onBeforeUnmount(() => {
 });
 
 const missingUserMessage = () => _t('Cannot update preferences: missing user id');
+
+/** Footer Save: invoke FormView.submit (exposed) so ActionButton stays type=button. */
+function onPreferencesSave() {
+  return preferencesFormRef.value?.submit?.();
+}
 
 function onMissingUserSubmit() {
   ChoyMessage.error(missingUserMessage());

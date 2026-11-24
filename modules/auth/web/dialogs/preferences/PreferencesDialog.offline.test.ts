@@ -76,4 +76,53 @@ describe('PreferencesDialog offline soft-fail chrome', () => {
 
     open.unmount();
   });
+
+  test('Save execute calls FormView submit via preferencesFormRef', async () => {
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const auth = useAuthStore() as any;
+    auth.currentUser = {
+      Id: 'u-save',
+      FirstName: 'Ada',
+      LastName: 'Lovelace',
+      Email: 'ada@example.com',
+      Username: 'ada',
+      LanguageId: 'lang_en',
+      Timezone: 'UTC',
+      Theme: 'light',
+      Density: 'comfortable',
+    };
+    auth.identity = { userId: 'u-save' };
+    useConnectivityStore().resetForTests();
+
+    const props = reactive({ modelValue: true });
+    const open = mountApp(PreferencesDialog as any, {
+      props,
+      reactiveProps: true,
+      plugins: [pinia],
+      on: {
+        'onUpdate:modelValue': (v: boolean) => {
+          props.modelValue = v;
+        },
+      },
+    });
+    await flushPromises();
+    await nextTick();
+
+    const ss = open.setupState() as {
+      // setupState is proxyRefs-unwrapped; assigning replaces the template ref value.
+      preferencesFormRef: { submit?: () => void | Promise<unknown> } | null;
+      onPreferencesSave: () => void | Promise<unknown>;
+    };
+    let submits = 0;
+    ss.preferencesFormRef = {
+      submit: async () => {
+        submits += 1;
+      },
+    };
+    await ss.onPreferencesSave();
+    expect(submits).toBe(1);
+
+    open.unmount();
+  });
 });
