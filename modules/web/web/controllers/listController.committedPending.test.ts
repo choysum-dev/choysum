@@ -173,3 +173,18 @@ test('listController: retryPending with empty intent still refreshes', async () 
   await ctrl.retryPending();
   expect(searches).toBeGreaterThan(before);
 });
+
+test('listController: keywordFields and cleared filters commit on success', async () => {
+  const store = makeStore();
+  store.state.queryState.appliedFilters = [{ id: 'f1', children: [] }];
+  const ctrl = createListController(store);
+  await ctrl.apply({
+    keyword: 'acme',
+    keywordFields: ['Name'],
+    appliedFilters: [],
+  });
+  expect(store.state.queryState.keyword).toBe('acme');
+  expect(store.state.queryState.keywordFields).toEqual(['Name']);
+  expect(store.state.queryState.appliedFilters).toEqual([]);
+  expect(store.state.queryState.userClearedDefaultFilters).toBe(true);
+});

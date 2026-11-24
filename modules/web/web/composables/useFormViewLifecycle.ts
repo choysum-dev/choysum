@@ -211,6 +211,9 @@ export function useFormViewLifecycle<T extends BaseModel>(opts: UseFormViewLifec
       if ((opts.identity.viewMode as any) === 'edit' && normId) {
         const seed = deepClonePreserve((opts.identity.initialValues || {}) as Record<string, unknown>);
         if (seed && typeof seed === 'object' && Object.keys(seed).length > 0) {
+          // beginDisplay may have partially armed onchange before failing — reset for the seed frame.
+          opts.onchangeCtrl.reset();
+          opts.resetOnchangeAgg();
           (opts.controller.vm as any).original = seed;
           (opts.controller.vm as any).draft = deepClonePreserve(seed);
           (opts.controller.vm as any).mode = 'edit';

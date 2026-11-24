@@ -339,6 +339,8 @@ describe('useFormViewLifecycle', () => {
     expect(m.controller.vm.error instanceof Error && m.controller.vm.error.message).toBe('offline');
     expect((m.controller.vm.draft as any)?.Theme).toBe('light');
     expect((m.controller.vm.original as any)?.Theme).toBe('light');
+    expect(m.onchangeCtrl.reset.calls.length).toBeGreaterThan(0);
+    expect(m.resetOnchangeAgg.calls.length).toBeGreaterThan(0);
     m.unmount();
   });
 
