@@ -91,3 +91,45 @@ test('listController: successful paginate commits new pagination', async () => {
   expect(store.state.queryState.pagination.offset).toBe(20);
   expect((ctrl.vm.result as any)?.rows?.[0]?.payload?.Name || (ctrl.vm.result as any)?.rows?.[0]?.Name).toBeTruthy();
 });
+
+test('listController: superseded apply failure does not clobber newer commit', async () => {
+  let releaseSlow: (() => void) | undefined;
+  const slowGate = new Promise<void>(resolve => {
+    releaseSlow = resolve;
+  });
+  let slowEntered: (() => void) | undefined;
+  const slowStarted = new Promise<void>(resolve => {
+    slowEntered = resolve;
+  });
+  const store = makeStore({
+    Search: async (_domain: unknown, opts: { offset?: number; limit?: number }) => {
+      const offset = opts?.offset ?? 0;
+      if (offset === 20) {
+        slowEntered?.();
+        await slowGate;
+        throw new Error('stale page2');
+      }
+      if (offset === 40) return [{ Id: '3', Name: 'Gamma' }];
+      return [{ Id: '1', Name: 'Acme' }];
+    },
+  });
+  const ctrl = createListController(store);
+  await ctrl.apply();
+
+  const slowFail = ctrl.paginate({ limit: 20, offset: 20 }).then(
+    () => null,
+    (e: unknown) => e,
+  );
+  await slowStarted;
+  await ctrl.paginate({ limit: 20, offset: 40 });
+  expect(store.state.queryState.pagination.offset).toBe(40);
+
+  releaseSlow?.();
+  const staleErr = await slowFail;
+  // Aborts may swallow the slow failure as cancellation; either way chrome stays on page 3.
+  expect(
+    staleErr == null || (staleErr instanceof Error && /stale page2/.test(staleErr.message)),
+  ).toBe(true);
+  expect(store.state.queryState.pagination.offset).toBe(40);
+  expect(ctrl.vm.error).toBeNull();
+});

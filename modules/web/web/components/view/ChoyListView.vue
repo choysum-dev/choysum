@@ -590,7 +590,8 @@ const showListEmpty = computed(
 
 async function onSurfaceRetry(): Promise<void> {
   try {
-    if (typeof (controller as any).retryPending === 'function') {
+    // Soft-fail: replay the failed intent. Idle Retry (no error) → full reload with props.
+    if (controller.vm.error != null && typeof (controller as any).retryPending === 'function') {
       await (controller as any).retryPending();
       return;
     }
@@ -603,9 +604,16 @@ async function onSurfaceRetry(): Promise<void> {
 function onSurfaceCancel(): void {
   if (typeof (controller as any).restoreCommitted === 'function') {
     (controller as any).restoreCommitted();
-    return;
+  } else {
+    controller.vm.error = null;
   }
-  controller.vm.error = null;
+  // Drop canceled search chrome so forcedCondition/relation watchers do not re-apply it.
+  const qs = ((store.state as any)?.queryState || {}) as Record<string, unknown>;
+  lastSearchPayload.value = {
+    keyword: (qs.keyword as string | undefined) ?? '',
+    appliedFilters: (qs.appliedFilters as any) || [],
+    appliedGroups: (qs.appliedGroups as any) || [],
+  };
 }
 
 // Whether grouped mode is active, based on the controller result

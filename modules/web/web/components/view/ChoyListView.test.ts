@@ -40,6 +40,7 @@ function makeStore(extra?: Record<string, unknown>) {
     getContext: () => ({}),
     withContext: async (_c: any, fn: any) => fn(),
     Search: async () => [],
+    Count: async () => 0,
     UpdateById: fnRecorder(async () => ({})),
     ...extra
   } as any;

@@ -243,6 +243,7 @@ SPDX-License-Identifier: Apache-2.0
       :has-settled="chartHasSettled"
       :error-fallback-title="_t('Failed to load')"
       @retry="onRetry"
+      @cancel="onSurfaceCancel"
     >
       <ChartContainer
         v-if="spec"
@@ -825,6 +826,12 @@ async function onRetry(): Promise<void> {
     return;
   }
   await onRefresh();
+}
+
+/** Soft-fail Cancel: dismiss overlay and keep the last successful chart frame. */
+function onSurfaceCancel(): void {
+  prepError.value = null;
+  controller.vm.error = null;
 }
 
 function onSearch(query: ChoySearchQuery): void {

@@ -215,6 +215,8 @@ export function createListController(store: ModelStore<any>): IListController {
       if (clearExpandedOnCommit) vm.expandedKeys.clear();
     };
     const rollbackQueryState = () => {
+      // Do not clobber a newer apply that already committed.
+      if (seq !== applySeq) return;
       (store.state as any).queryState = qsCommitted;
     };
 
@@ -271,7 +273,7 @@ export function createListController(store: ModelStore<any>): IListController {
       const forcedCondition = hasForcedConditionOverride ? (effectiveOverrides as any).forcedCondition : undefined;
       const finalCondition = combinePresentConditions(compiledFromUi, forcedCondition) as any;
 
-      // Defer keyword / filters / fields until RPC success (Strategy A).
+      // Defer keyword / filters / fields / forcedCondition until RPC success (Strategy A).
       if (effectiveOverrides) {
         if (hasKeywordOverride) {
           writeQs({ keyword: (effectiveOverrides as any).keyword });
@@ -284,6 +286,9 @@ export function createListController(store: ModelStore<any>): IListController {
           if (prevFiltersLen > 0 && Array.isArray(uiFiltersEff) && uiFiltersEff.length === 0) {
             writeQs({ userClearedDefaultFilters: true });
           }
+        }
+        if (hasForcedConditionOverride) {
+          writeQs({ forcedCondition: (effectiveOverrides as any).forcedCondition });
         }
       }
 
@@ -355,11 +360,12 @@ export function createListController(store: ModelStore<any>): IListController {
       // Applied groups / kind: defer store chrome until success.
       if (overrides?.appliedGroups !== undefined) {
         const gb = gbStrings ?? [];
+        // Any explicit grouping change clears expansion only after a successful commit.
+        clearExpandedOnCommit = true;
         if (gb.length > 0) {
           writeQs({ kind: 'group', appliedGroups: gb });
         } else {
           writeQs({ kind: 'search', appliedGroups: [] });
-          clearExpandedOnCommit = true;
           if (prevGroupsLen > 0 && !userClearedDefaultGroups(readQs())) {
             writeQs({ userClearedDefaultGroups: true });
           }
@@ -404,12 +410,15 @@ export function createListController(store: ModelStore<any>): IListController {
       return snap;
     } catch (e) {
       if (isCancellation(e)) {
-        // Swallow cancellation as non-error; keep loading state governed by latest request
-        // Rolled-back chrome if this apply mutated deferred state only (never store).
+        // Swallow cancellation as non-error; keep loading state governed by latest request.
+        // Clear pending only when this apply is still current (superseded leaves the newer intent).
+        if (seq === applySeq) pendingIntent = null;
         return;
       }
       rollbackQueryState();
-      vm.error = e;
+      if (seq === applySeq) {
+        vm.error = e;
+      }
       throw e;
     } finally {
       // Only clear loading if this call is the latest
@@ -468,7 +477,6 @@ export function createListController(store: ModelStore<any>): IListController {
 
   // Accept string[] or GroupBySpec[] and persist normalized group-by values.
   async function setAppliedGroups(groupby: Array<GroupBySpec>): Promise<void> {
-    vm.expandedKeys.clear();
     const gb = normalizeGroupbyToStrings(groupby as any);
     await apply({ appliedGroups: gb, kind: gb.length > 0 ? 'group' : 'search' });
   }

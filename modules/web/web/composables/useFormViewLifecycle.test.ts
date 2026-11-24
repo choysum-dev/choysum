@@ -52,7 +52,13 @@ function installPopstateCapture(): {
 
 function makeController() {
   const ctrl = {
-    vm: reactive({ mode: 'display' as ViewMode, original: null as any, draft: null as any }),
+    vm: reactive({
+      mode: 'display' as ViewMode,
+      original: null as any,
+      draft: null as any,
+      error: null as unknown,
+      hasAppliedOnce: false,
+    }),
     beginDisplay: fnRecorder(async (_id: string) => {}),
     beginCreate: fnRecorder(async (_seed: any) => {}),
     beginEdit: fnRecorder(() => {
