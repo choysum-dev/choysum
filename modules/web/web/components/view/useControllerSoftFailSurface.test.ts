@@ -72,4 +72,16 @@ describe('useControllerSoftFailSurface', () => {
     }
     expect(threw).toBe(false);
   });
+
+  test('retry surfaces error when reload throws without setting vm.error', async () => {
+    const ctrl = { vm: { error: null as unknown } };
+    const { onSurfaceRetry } = useControllerSoftFailSurface({
+      getController: () => ctrl,
+      reload: async () => {
+        throw new Error('reload failed');
+      },
+    });
+    await onSurfaceRetry();
+    expect(String(ctrl.vm.error || '')).toMatch(/reload failed/);
+  });
 });

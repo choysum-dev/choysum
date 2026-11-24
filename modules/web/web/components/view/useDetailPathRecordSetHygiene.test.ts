@@ -81,6 +81,25 @@ describe('useDetailPathRecordSetHygiene', () => {
     mounted.unmount();
   });
 
+  test('no-ops when modelName is empty so another model session survives', async () => {
+    setActivePinia(createPinia());
+    const rs = useRecordSetStore();
+    rs.seed(sampleEntry({ model: 'base.Company', key: 'base.Company|list' }));
+    const Host = defineComponent({
+      setup() {
+        useDetailPathRecordSetHygiene({
+          detailPath: '/partner/:id',
+          modelName: '',
+        });
+        return () => h('div');
+      },
+    });
+    const mounted = mountApp(Host as any);
+    await flushPromises();
+    expect(rs.active?.model).toBe('base.Company');
+    mounted.unmount();
+  });
+
   test('clearRecordSetSessionIfDetailHost swallows store errors', async () => {
     setActivePinia(createPinia());
     let clearFn: (() => void) | null = null;

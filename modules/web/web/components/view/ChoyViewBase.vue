@@ -19,8 +19,8 @@ SPDX-License-Identifier: Apache-2.0
   [primary / #system-actions] [page title][⋮] [#secondary-actions…]
 -->
 <template>
-  <ChoyViewContainer :class="containerClass" v-bind="containerBind">
-    <template v-if="showHeaderRegion" #header>
+  <ChoyViewContainer :class="containerClass" v-bind="attrs">
+    <template v-if="showHeaderRegion()" #header>
       <div :data-anchor="chromeAnchor || undefined">
         <ChoyViewActionBar
           layout="thirds"
@@ -28,7 +28,7 @@ SPDX-License-Identifier: Apache-2.0
           :system-actions-label="systemActionsLabel"
           :user-actions-label="userActionsLabel"
         >
-          <template v-if="showSystemTray" #system-actions>
+          <template v-if="showSystemTray()" #system-actions>
             <slot name="system-actions" />
             <slot name="primary" />
 
@@ -184,17 +184,11 @@ const userActionsLabel = computed(() => props.userActionsLabel || _t('User actio
 
 const containerClass = computed(() => cn('gap-5', props.class));
 
-/** Pass-through attrs onto the container (data-anchor, data-testid, data-region, …). */
-const containerBind = computed(() => {
-  const out: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(attrs)) {
-    if (key === 'class') continue;
-    out[key] = value;
-  }
-  return out;
-});
-
-const showSystemTray = computed(() => {
+/**
+ * Slot presence is read during render (not via computed) so Vue 3.5 production
+ * builds re-evaluate when a parent adds/removes a conditional named slot.
+ */
+function showSystemTray(): boolean {
   return (
     props.showActions ||
     !!props.pageTitle ||
@@ -203,15 +197,15 @@ const showSystemTray = computed(() => {
     !!slots.primary ||
     !!slots['secondary-actions']
   );
-});
+}
 
-const showHeaderRegion = computed(() => {
+function showHeaderRegion(): boolean {
   if (!props.showHeader) return false;
   return (
-    showSystemTray.value ||
+    showSystemTray() ||
     !!slots['user-actions'] ||
     !!slots.center ||
     !!slots['header-right']
   );
-});
+}
 </script>

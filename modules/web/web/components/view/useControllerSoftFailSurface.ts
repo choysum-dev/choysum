@@ -33,8 +33,10 @@ export function useControllerSoftFailSurface(opts: UseControllerSoftFailSurfaceO
         return;
       }
       await opts.reload();
-    } catch {
-      // Controller sets vm.error; BusyHost keeps the failure overlay.
+    } catch (err) {
+      // Controllers normally set vm.error; surface a fallback if they did not.
+      const ctrl = opts.getController();
+      if (ctrl.vm.error == null) ctrl.vm.error = err;
     }
   }
 

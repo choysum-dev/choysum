@@ -87,6 +87,22 @@ describe('ChoyViewBase', () => {
     mounted.unmount();
   });
 
+  test('showHeader=false still renders header-extra (Chart controls parity)', async () => {
+    setActivePinia(createPinia());
+    const mounted = mountApp(ChoyViewBase as any, {
+      props: { showHeader: false },
+      slots: {
+        'header-extra': () => h('div', { 'data-testid': 'extra' }, 'Controls'),
+        default: () => h('div', { 'data-testid': 'body' }, 'Body'),
+      },
+    });
+    await flushPromises();
+    expect(mounted.q('[data-slot=view-header]')).toBeNull();
+    expect(mounted.q('[data-testid=extra]')?.textContent).toBe('Controls');
+    expect(mounted.q('[data-testid=body]')?.textContent).toBe('Body');
+    mounted.unmount();
+  });
+
   test('forwards busy host attrs and retry/cancel emits', async () => {
     setActivePinia(createPinia());
     useConnectivityStore().resetForTests();

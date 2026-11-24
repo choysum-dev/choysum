@@ -512,7 +512,14 @@ const boardHasFrame = computed(() => {
   const rows = (engine.controller.vm.result as { rows?: unknown[] } | null)?.rows;
   return Array.isArray(rows) && rows.length > 0;
 });
-const boardBusyMode = useCollectionBusyMode({ hasContent: boardHasFrame });
+// Busy mode keys off rendered lanes only: group rows can land before
+// syncLanesFromController assigns lanes; keep block overlay until then.
+const boardBusyMode = useCollectionBusyMode({
+  hasContent: () => {
+    const lanes = engine.lanes.value;
+    return Array.isArray(lanes) && lanes.length > 0;
+  },
+});
 
 const { onSurfaceRetry, onSurfaceCancel } = useControllerSoftFailSurface({
   getController: () => engine.controller as any,

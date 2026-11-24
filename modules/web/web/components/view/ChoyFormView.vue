@@ -112,7 +112,12 @@ SPDX-License-Identifier: Apache-2.0
     </template>
 
     <template
-      v-if="!isSettingsPresentation && resolvedShowActions && viewMode === 'display'"
+      v-if="
+        !isSettingsPresentation &&
+        resolvedShowActions &&
+        viewMode === 'display' &&
+        (!!slots['secondary-actions'] || !!effectiveRecordId)
+      "
       #secondary-actions
     >
     <!--
