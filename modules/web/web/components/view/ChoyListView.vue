@@ -4,189 +4,160 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <ChoyViewContainer class="gap-5">
-    <template v-if="showHeader" #header>
-      <div data-anchor="choy.list.view-chrome">
-        <ChoyViewActionBar
-          layout="thirds"
-          class="gap-2 border-b-0 [border-bottom-width:0px]"
-          :system-actions-label="_t('System actions')"
-          :user-actions-label="_t('User actions')"
+  <ChoyViewBase
+    class="choy-list-view"
+    chrome-anchor="choy.list.view-chrome"
+    :show-header="showHeader"
+    :show-actions="showActions"
+    :page-title="pageTitle"
+    :page-title-id="pageTitleId"
+    page-title-class="choy-list-view__page-title min-w-0 max-w-[10rem] truncate text-base font-semibold text-foreground sm:max-w-[14rem]"
+    :page-title-actions-io="pageTitleActionsIo"
+    :show-title-overflow="showTitleOverflow"
+    :store="store"
+    :busy="listBusy"
+    :mode="listBusyMode"
+    busy-host-class="flex min-h-0 min-w-0 flex-1 flex-col"
+    :error="controller.vm.error"
+    :has-frame="listHasFrame"
+    :has-settled="!!controller.vm.hasAppliedOnce"
+    :error-fallback-title="_t('Failed to load list')"
+    @retry="onSurfaceRetry"
+    @cancel="onSurfaceCancel"
+  >
+    <template v-if="showActions || editable" #system-actions>
+      <!-- Keep Save/Discard outside the overridable slot so custom toolbars cannot hide them. -->
+      <ChoyButton
+        v-if="editable && isEditing"
+        type="button"
+        size="default"
+        variant="default"
+        :disabled="inlineSaving"
+        @click="handleInlineSave"
+      >
+        <Check class="size-4" aria-hidden="true" />
+        {{ _t('Save') }}
+      </ChoyButton>
+
+      <ChoyButton
+        v-if="editable && isEditing"
+        type="button"
+        size="default"
+        variant="outline"
+        @click="handleInlineDiscard"
+      >
+        <X class="size-4" aria-hidden="true" />
+        {{ _t('Discard') }}
+      </ChoyButton>
+
+      <slot
+        v-if="showActions"
+        name="system-actions"
+        :selected-items="selectedItems"
+        :is-editing="isEditing"
+        :inline-saving="inlineSaving"
+        :save="handleInlineSave"
+        :discard="handleInlineDiscard"
+      >
+        <ChoyButton
+          v-if="resolvedCreateAction && canCreate"
+          type="button"
+          size="default"
+          variant="default"
+          @click="handleCreate"
         >
-          <template v-if="showActions || pageTitle || showTitleOverflow" #system-actions>
-            <!-- Keep Save/Discard outside the overridable slot so custom toolbars cannot hide them. -->
-            <ChoyButton
-              v-if="editable && isEditing"
-              type="button"
-              size="default"
-              variant="default"
-              :disabled="inlineSaving"
-              @click="handleInlineSave"
-            >
-              <Check class="size-4" aria-hidden="true" />
-              {{ _t('Save') }}
-            </ChoyButton>
+          <Plus class="size-4" aria-hidden="true" />
+          {{ _t('New') }}
+        </ChoyButton>
+      </slot>
+    </template>
 
-            <ChoyButton
-              v-if="editable && isEditing"
-              type="button"
-              size="default"
-              variant="outline"
-              @click="handleInlineDiscard"
-            >
-              <X class="size-4" aria-hidden="true" />
-              {{ _t('Discard') }}
-            </ChoyButton>
+    <template v-if="showRefreshInOverflow || !!slots['overflow-actions']" #overflow-actions>
+      <DropdownMenuItem
+        v-if="showRefreshInOverflow"
+        data-testid="list-overflow-refresh"
+        @select="handleRefresh"
+      >
+        <RefreshCw class="size-4" aria-hidden="true" />
+        {{ _t('Refresh') }}
+      </DropdownMenuItem>
+      <slot name="overflow-actions" :selected-items="selectedItems" />
+    </template>
 
-            <slot
-              v-if="showActions"
-              name="system-actions"
-              :selected-items="selectedItems"
-              :is-editing="isEditing"
-              :inline-saving="inlineSaving"
-              :save="handleInlineSave"
-              :discard="handleInlineDiscard"
-            >
-              <ChoyButton
-                v-if="resolvedCreateAction && canCreate"
-                type="button"
-                size="default"
-                variant="default"
-                @click="handleCreate"
-              >
-                <Plus class="size-4" aria-hidden="true" />
-                {{ _t('New') }}
-              </ChoyButton>
-            </slot>
+    <template v-if="showActions" #secondary-actions>
+      <slot name="secondary-actions" :selected-items="selectedItems" />
+    </template>
 
-            <!-- Page title + ⋮ (IO / refresh / domain overflow) live in view chrome, not a separate Page band. -->
-            <h1
-              v-if="pageTitle"
-              :id="pageTitleId || undefined"
-              data-slot="page-title"
-              class="choy-list-view__page-title min-w-0 max-w-[10rem] truncate text-base font-semibold text-foreground sm:max-w-[14rem]"
-            >
-              {{ pageTitle }}
-            </h1>
-            <ChoyPageTitleActions
-              v-if="showTitleOverflow"
-              :has-io-menu="!!pageTitleActionsIo"
-              :action-import="pageTitleActionsIo?.actionImport ?? false"
-              :action-export="pageTitleActionsIo?.actionExport ?? false"
-              :action-import-upload-hint="pageTitleActionsIo?.actionImportUploadHint"
-              :action-import-column-mapping="pageTitleActionsIo?.actionImportColumnMapping"
-              :action-list-ref="(pageTitleActionsIo?.actionListRef as any)"
-              :action-company-id="pageTitleActionsIo?.actionCompanyId"
-              :store="store"
-            >
-              <template v-if="showRefreshInOverflow || $slots['overflow-actions']" #overflow>
-                <DropdownMenuItem
-                  v-if="showRefreshInOverflow"
-                  data-testid="list-overflow-refresh"
-                  @select="handleRefresh"
-                >
-                  <RefreshCw class="size-4" aria-hidden="true" />
-                  {{ _t('Refresh') }}
-                </DropdownMenuItem>
-                <slot name="overflow-actions" :selected-items="selectedItems" />
-              </template>
-            </ChoyPageTitleActions>
+    <template v-if="showActions && !!slots['user-actions']" #user-actions>
+      <slot name="user-actions" :selected-items="selectedItems" />
+    </template>
 
-            <!-- Same tray as title/⋮ (Form secondary parity) — no ActionBar separator. -->
-            <slot
-              v-if="showActions"
-              name="secondary-actions"
-              :selected-items="selectedItems"
-            />
-          </template>
+    <!-- Selection replaces Search in the center column. Search stays mounted. -->
+    <template #center>
+      <div
+        v-show="hasSelection"
+        data-anchor="choy.list.selection-bar"
+        class="flex min-w-0 w-full flex-nowrap items-center gap-2 overflow-x-auto"
+        role="toolbar"
+        :aria-label="_t('Selection actions')"
+      >
+        <div class="flex min-w-0 items-center gap-1">
+          <span class="truncate text-sm text-muted-foreground tabular-nums">
+            {{ _t('%s selected', selectedItems.length) }}
+          </span>
+          <ChoyButton
+            type="button"
+            variant="ghost"
+            size="icon"
+            class="size-control shrink-0 text-muted-foreground"
+            :aria-label="_t('Clear selection')"
+            @click="clearSelection"
+          >
+            <X class="size-4" aria-hidden="true" />
+          </ChoyButton>
+        </div>
 
-          <!-- Only register when filled — empty tray would paint a dangling ActionBar separator. -->
-          <template v-if="showActions && !!slots['user-actions']" #user-actions>
-            <slot name="user-actions" :selected-items="selectedItems" />
-          </template>
+        <ChoyButton
+          v-if="deleteAction && canDelete"
+          size="default"
+          variant="outline-destructive"
+          :disabled="deleteLoading"
+          @click="handleDelete"
+        >
+          <Trash2 class="size-4" aria-hidden="true" />
+          {{ _t('Delete') }}
+        </ChoyButton>
 
-          <!-- Selection replaces Search in the center column. Search stays mounted. -->
-          <template #center>
-            <div
-              v-show="hasSelection"
-              data-anchor="choy.list.selection-bar"
-              class="flex min-w-0 w-full flex-nowrap items-center gap-2 overflow-x-auto"
-              role="toolbar"
-              :aria-label="_t('Selection actions')"
-            >
-              <!-- Count as muted text (shadcn data-table); clear is a ghost icon button. -->
-              <div class="flex min-w-0 items-center gap-1">
-                <span class="truncate text-sm text-muted-foreground tabular-nums">
-                  {{ _t('%s selected', selectedItems.length) }}
-                </span>
-                <ChoyButton
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  class="size-control shrink-0 text-muted-foreground"
-                  :aria-label="_t('Clear selection')"
-                  @click="clearSelection"
-                >
-                  <X class="size-4" aria-hidden="true" />
-                </ChoyButton>
-              </div>
+        <slot name="selection-actions" :selected-items="selectedItems" :clear="clearSelection" />
+      </div>
+      <ChoySearchFit
+        v-if="resolvedSearchView"
+        v-show="!hasSelection"
+        :field-visible="!hasSelection"
+      >
+        <component :is="resolvedSearchView" class="min-w-0 w-full" :store="store" @query-update="onSearch" />
+      </ChoySearchFit>
+    </template>
 
-              <ChoyButton
-                v-if="deleteAction && canDelete"
-                size="default"
-                variant="outline-destructive"
-                :disabled="deleteLoading"
-                @click="handleDelete"
-              >
-                <Trash2 class="size-4" aria-hidden="true" />
-                {{ _t('Delete') }}
-              </ChoyButton>
-
-              <slot name="selection-actions" :selected-items="selectedItems" :clear="clearSelection" />
-            </div>
-            <ChoySearchFit
-              v-if="resolvedSearchView"
-              v-show="!hasSelection"
-              :field-visible="!hasSelection"
-            >
-              <component :is="resolvedSearchView" class="min-w-0 w-full" :store="store" @query-update="onSearch" />
-            </ChoySearchFit>
-          </template>
-
-          <template #header-right>
-            <!-- Pager, then a hairline, then view-mode chrome at the trailing edge. -->
-            <div v-if="showPaginate && canMountPagination">
-              <ChoyPagination
-                class="gap-2"
-                :total="listPaginationEffective.total"
-                v-model:page="listPageModel"
-                v-model:page-size="listPageSizeModel"
-              />
-            </div>
-            <Separator
-              v-if="$slots['header-right'] && showPaginate && canMountPagination"
-              orientation="vertical"
-              class="mx-0 !h-4 w-px shrink-0 max-md:hidden"
-            />
-            <div v-if="$slots['header-right']" class="flex items-center gap-1">
-              <slot name="header-right" />
-            </div>
-          </template>
-        </ChoyViewActionBar>
+    <template #header-right>
+      <div v-if="showPaginate && canMountPagination">
+        <ChoyPagination
+          class="gap-2"
+          :total="listPaginationEffective.total"
+          v-model:page="listPageModel"
+          v-model:page-size="listPageSizeModel"
+        />
+      </div>
+      <Separator
+        v-if="slots['header-right'] && showPaginate && canMountPagination"
+        orientation="vertical"
+        class="mx-0 !h-4 w-px shrink-0 max-md:hidden"
+      />
+      <div v-if="slots['header-right']" class="flex items-center gap-1">
+        <slot name="header-right" />
       </div>
     </template>
 
-    <ChoyViewBusyHost
-      :busy="listBusy"
-      :mode="listBusyMode"
-      class="flex min-h-0 min-w-0 flex-1 flex-col"
-      :error="controller.vm.error"
-      :has-frame="listHasFrame"
-      :has-settled="!!controller.vm.hasAppliedOnce"
-      :error-fallback-title="_t('Failed to load list')"
-      @retry="onSurfaceRetry"
-      @cancel="onSurfaceCancel"
-    >
     <div
       ref="tableWrapRef"
       data-anchor="choy.list.table"
@@ -264,8 +235,7 @@ SPDX-License-Identifier: Apache-2.0
         </ChoyTableHost>
       </ListInlineEditScope>
     </div>
-    </ChoyViewBusyHost>
-  </ChoyViewContainer>
+  </ChoyViewBase>
 </template>
 
 <script setup lang="ts" generic="T extends BaseModel">
@@ -328,10 +298,8 @@ import {
 } from '@/web/web/query/orderBy';
 import { useCancelableEmit } from '@/web/web/composables/useCancelableEmit';
 import { useAdaptiveHeight } from '@/web/web/composables/useAdaptiveHeight';
-import ChoyViewContainer from '@/web/web/components/view/ChoyViewContainer.vue';
-import ChoyViewActionBar from '@/web/web/components/view/ChoyViewActionBar.vue';
+import ChoyViewBase from '@/web/web/components/view/ChoyViewBase.vue';
 import ChoySearchFit from '@/web/web/components/view/ChoySearchFit.vue';
-import ChoyViewBusyHost from '@/web/web/components/view/ChoyViewBusyHost.vue';
 import { useListViewActions } from '@/web/web/composables/useListViewActions';
 import { useVirtualizationAdapter } from '@/web/web/composables/virtualizationAdapter';
 import { awaitFieldSelection } from '@/web/web/query/utils/registry/fieldReady';
@@ -361,7 +329,6 @@ import { openRecordFromCollection } from '@/web/web/navigation/openRecordFromCol
 import { snapshotFromListStore } from '@/web/web/navigation/snapshotFromListStore';
 import { useRecordSetStore } from '@/web/web/stores/recordSetStore';
 import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
-import ChoyPageTitleActions from '@/web/web/components/layout/ChoyPageTitleActions.vue';
 import { Separator } from '@/web/web/components/vendor/ui/separator';
 import DropdownMenuItem from '@/web/web/components/vendor/ui/dropdown-menu/DropdownMenuItem.vue';
 import { Check, ChevronDown, ChevronRight, Plus, RefreshCw, Trash2, X } from 'lucide-vue-next';

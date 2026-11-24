@@ -111,6 +111,8 @@ export type { RowEventPayload } from './components/view/listViewTypes';
 export { default as ChoyKanbanView } from './components/view/ChoyKanbanView.vue';
 export { default as ChoyChartView } from './components/view/ChoyChartView.vue';
 export { default as ChoySearchView } from './components/view/ChoySearchView.vue';
+export { default as ChoyViewBase } from './components/view/ChoyViewBase.vue';
+export type { ChoyViewBaseTitleActionsIo } from './components/view/ChoyViewBase.vue';
 export { default as ChoyViewContainer } from './components/view/ChoyViewContainer.vue';
 export { default as ChoyViewActionBar } from './components/view/ChoyViewActionBar.vue';
 export { default as ChoyViewBusyHost } from './components/view/ChoyViewBusyHost.vue';
