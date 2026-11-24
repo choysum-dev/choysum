@@ -179,12 +179,12 @@ export function useFormViewLifecycle<T extends BaseModel>(opts: UseFormViewLifec
   async function initializeForm() {
     const seq = ++initializeSeq;
     const isStale = () => seq !== initializeSeq;
+    const normId = effectiveRecordId.value;
     try {
       const ok = await opts.emitCancelable('before-load');
       if (!ok || isStale()) return;
       opts.onchangeCtrl.reset();
       opts.resetOnchangeAgg();
-      const normId = effectiveRecordId.value;
       if (normId) {
         await opts.controller.beginDisplay(normId);
         if (isStale()) return;
@@ -206,6 +206,24 @@ export function useFormViewLifecycle<T extends BaseModel>(opts: UseFormViewLifec
     } catch (e: any) {
       if (isStale()) return;
       const err = e instanceof Error ? e : new Error(String(e));
+      // Edit intent with seed values: keep a soft-fail frame so BusyHost can show
+      // Retry/Cancel instead of an empty hard-fail (e.g. Preferences offline).
+      if ((opts.identity.viewMode as any) === 'edit' && normId) {
+        const seed = deepClonePreserve((opts.identity.initialValues || {}) as Record<string, unknown>);
+        if (seed && typeof seed === 'object' && Object.keys(seed).length > 0) {
+          // beginDisplay may have partially armed onchange before failing — reset for the seed frame.
+          opts.onchangeCtrl.reset();
+          opts.resetOnchangeAgg();
+          (opts.controller.vm as any).original = seed;
+          (opts.controller.vm as any).draft = deepClonePreserve(seed);
+          (opts.controller.vm as any).mode = 'edit';
+          (opts.controller.vm as any).error = err;
+          (opts.controller.vm as any).hasAppliedOnce = true;
+          opts.emit('mode-change', { mode: 'edit' });
+          opts.emit('action-error', { action: 'load', error: err });
+          return;
+        }
+      }
       opts.emit('action-error', { action: 'load', error: err });
     }
   }

@@ -9,27 +9,9 @@ SPDX-License-Identifier: Apache-2.0
     :class="hostClass"
     v-bind="hostAttrs"
   >
-    <!-- Soft-stale: keep prior frame; tell the user refresh failed. -->
-    <div
-      v-if="showStaleBanner"
-      data-testid="choy-view-surface-stale-banner"
-      role="status"
-      class="flex shrink-0 items-center justify-between gap-3 border-b border-border/60 bg-muted/40 px-3 py-2 text-sm text-foreground"
-    >
-      <span class="min-w-0 leading-5">{{ staleBannerCopy }}</span>
-      <ChoyButton
-        type="button"
-        size="sm"
-        variant="outline"
-        data-testid="choy-view-surface-stale-retry"
-        @click="emit('retry')"
-      >
-        {{ retryLabel }}
-      </ChoyButton>
-    </div>
     <!--
       Always keep the slot mounted so Action chrome under the host (table headers,
-      board columns) does not unmount on no-frame failure / Retry.
+      board columns) does not unmount on failure / Retry / Cancel.
     -->
     <div
       class="flex min-h-0 min-w-0 flex-1 flex-col"
@@ -38,15 +20,18 @@ SPDX-License-Identifier: Apache-2.0
       <slot />
     </div>
     <!--
-      No-frame Action failure: overlay on top of chrome, do not replace the slot.
-      Asset blank pages stay on ChoyViewLoadError (not this host).
+      Action failure overlay: hard-fail (!hasFrame) Retry only; soft-fail (hasFrame)
+      Retry + Cancel. Asset blank pages stay on ChoyViewLoadError (not this host).
     -->
     <ChoyViewSurfaceError
-      v-if="showSurfaceError"
+      v-if="showFailureOverlay"
       class="absolute inset-0 z-20 bg-background/90"
       :title="surfaceCopy.title"
       :detail="surfaceCopy.detail"
+      :show-cancel="showSoftFailCancel"
+      :retry-disabled="retryDisabled"
       @retry="emit('retry')"
+      @cancel="emit('cancel')"
     />
     <!-- Live region must stay outside the inert host subtree so AT can announce it. -->
     <Teleport to="body">
@@ -88,16 +73,12 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, watch } from 'vue';
-import ChoyButton from '../layout/ChoyButton.vue';
 import ChoySkeleton from '../layout/ChoySkeleton.vue';
 import ChoySpinner from '../layout/ChoySpinner.vue';
 import type { ClassValue } from '../../lib/utils';
 import { createTranslate } from '@/web/web/i18n';
 import { useDelayedVisualBusy } from '@/web/web/composables/useDelayedVisualBusy';
-import {
-  resolveViewSurfaceErrorCopy,
-  resolveViewSurfaceStaleBannerCopy,
-} from '@/web/web/composables/resolveViewSurfaceErrorCopy';
+import { resolveViewSurfaceErrorCopy } from '@/web/web/composables/resolveViewSurfaceErrorCopy';
 import { useConnectivityStore } from '../../stores/connectivityStore';
 import { VIEW_LOAD_RETRY_AFTER_RECOVERY_MS } from '../../router/viewLoadError';
 import { viewBusyHostAttrs, viewBusyHostClass, type ViewBusyMode } from './viewBusy';
@@ -116,7 +97,7 @@ const props = withDefaults(
     class?: ClassValue;
     /** Polite live-region text announced while busy (overlay stays aria-hidden). */
     busyLabel?: string;
-    /** Controller/surface load error; with hasSettled and !hasFrame → surface failure UI. */
+    /** Controller/surface load error; with hasSettled → failure overlay. */
     error?: unknown;
     /** True when the surface already has a successful content frame. */
     hasFrame?: boolean;
@@ -124,18 +105,20 @@ const props = withDefaults(
     hasSettled?: boolean;
     /** Optional non-outage title override for resolveViewSurfaceErrorCopy. */
     errorFallbackTitle?: string;
+    /** Optional detail override for non-outage failures. */
+    errorFallbackDetail?: string;
   }>(),
   { busy: false, mode: 'block', hasFrame: false, hasSettled: false },
 );
 
 const emit = defineEmits<{
   retry: [];
+  cancel: [];
 }>();
 
 const busy = computed(() => !!props.busy);
 const mode = computed<ViewBusyMode>(() => props.mode || 'block');
 const busyLabel = computed(() => props.busyLabel || _t('Loading'));
-const retryLabel = computed(() => _t('Retry'));
 /** Overlay only — aria-busy / inert stay on logical `busy`. Stale never uses an overlay. */
 const overlayCandidate = computed(() => busy.value && mode.value !== 'stale');
 const delayedOverlay = useDelayedVisualBusy(overlayCandidate);
@@ -149,29 +132,31 @@ const showOverlay = computed(
 const hostClass = computed(() => viewBusyHostClass(busy.value, mode.value, props.class));
 const hostAttrs = computed(() => viewBusyHostAttrs(busy.value, mode.value));
 
-const showSurfaceError = computed(
-  () => !!props.hasSettled && props.error != null && !props.hasFrame && !busy.value,
+/** Settled failure with or without a prior frame — one center overlay. */
+const showFailureOverlay = computed(
+  () => !!props.hasSettled && props.error != null && !busy.value,
 );
 
-const showStaleBanner = computed(
-  () => !!props.hasSettled && props.error != null && !!props.hasFrame && !busy.value,
-);
+/** Soft-fail keeps prior frame under the mask; Cancel dismisses / restores. */
+const showSoftFailCancel = computed(() => showFailureOverlay.value && !!props.hasFrame);
+
+/** Disable Retry while the session is unreachable (avoid empty retry loops). */
+const retryDisabled = computed(() => connectivity.status === 'unreachable');
 
 /** Any Action failure UI that already exposes Retry — soft-retry after reconnect. */
-const showRetryableFailure = computed(() => showSurfaceError.value || showStaleBanner.value);
+const showRetryableFailure = computed(() => showFailureOverlay.value);
 
 /** Block pointer/keyboard into the slot while a cover (error or block busy) is up. */
 const slotInert = computed(
-  () => showSurfaceError.value || (busy.value && mode.value !== 'stale'),
+  () => showFailureOverlay.value || (busy.value && mode.value !== 'stale'),
 );
 
 const surfaceCopy = computed(() =>
   resolveViewSurfaceErrorCopy(props.error, {
     fallbackTitle: props.errorFallbackTitle,
+    fallbackDetail: props.errorFallbackDetail,
   }),
 );
-
-const staleBannerCopy = computed(() => resolveViewSurfaceStaleBannerCopy());
 
 let recoveryRetryTimer: ReturnType<typeof setTimeout> | null = null;
 let autoRetryResetTimer: ReturnType<typeof setTimeout> | null = null;
@@ -208,7 +193,7 @@ watch(
   },
 );
 
-// Mounted Action surfaces stay on their error/stale UI after reconnect — Asset
+// Mounted Action surfaces stay on their failure overlay after reconnect — Asset
 // ChoyViewLoadError already soft-retries; mirror that here via the same generation.
 watch(
   () => connectivity.recoveryGeneration,

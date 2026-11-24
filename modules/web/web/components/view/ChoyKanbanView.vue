@@ -112,6 +112,7 @@ SPDX-License-Identifier: Apache-2.0
       :has-settled="boardHasSettled"
       :error-fallback-title="_t('Failed to load')"
       @retry="onSurfaceRetry"
+      @cancel="onSurfaceCancel"
     >
       <div v-if="laneCount > 0 && !isFlatBoard" class="md:hidden">
         <Select :model-value="mobileLaneKey" @update:model-value="onMobileLaneChange">
@@ -567,10 +568,28 @@ const boardHasFrame = computed(() => {
 
 async function onSurfaceRetry(): Promise<void> {
   try {
+    const ctrl = engine.controller as { retryPending?: () => Promise<unknown>; vm: { error: unknown } };
+    if (ctrl.vm.error != null && typeof ctrl.retryPending === 'function') {
+      await ctrl.retryPending();
+      return;
+    }
     await engine.refresh();
   } catch {
     // refresh surfaces onSearchError; Host keeps failure UI while error remains.
   }
+}
+
+/** Soft-fail Cancel: restore committed list chrome and keep the retained board frame. */
+function onSurfaceCancel(): void {
+  const ctrl = engine.controller as {
+    restoreCommitted?: () => void;
+    vm: { error: unknown };
+  };
+  if (typeof ctrl.restoreCommitted === 'function') {
+    ctrl.restoreCommitted();
+    return;
+  }
+  ctrl.vm.error = null;
 }
 /** Any lane append in flight (blocks drops board-wide so pages are not overwritten). */
 const loadMoreBusy = computed(() => engine.loadMorePending.value);

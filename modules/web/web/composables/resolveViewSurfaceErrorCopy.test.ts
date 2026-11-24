@@ -27,14 +27,14 @@ test('resolveViewSurfaceErrorCopy: unreachable session uses Action-specific deta
   useConnectivityStore().markUnreachable();
   const copy = resolveViewSurfaceErrorCopy(new Error('anything'));
   expect(copy.title).toBe('Connection lost');
-  expect(copy.detail).toContain('Could not load this data');
+  expect(copy.detail).toContain('Could not complete this request');
   expect(copy.detail).not.toContain('Cannot reach the server');
 });
 
 test('resolveViewSurfaceErrorCopy: transport outage uses Action-specific detail', () => {
   const copy = resolveViewSurfaceErrorCopy(connectError(Code.Unavailable, 'unavailable'));
   expect(copy.title).toBe('Connection lost');
-  expect(copy.detail).toContain('Could not load this data');
+  expect(copy.detail).toContain('Could not complete this request');
   expect(copy.detail).not.toContain('Cannot reach the server');
 });
 

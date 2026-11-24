@@ -52,7 +52,13 @@ function installPopstateCapture(): {
 
 function makeController() {
   const ctrl = {
-    vm: reactive({ mode: 'display' as ViewMode, original: null as any, draft: null as any }),
+    vm: reactive({
+      mode: 'display' as ViewMode,
+      original: null as any,
+      draft: null as any,
+      error: null as unknown,
+      hasAppliedOnce: false,
+    }),
     beginDisplay: fnRecorder(async (_id: string) => {}),
     beginCreate: fnRecorder(async (_seed: any) => {}),
     beginEdit: fnRecorder(() => {
@@ -311,6 +317,30 @@ describe('useFormViewLifecycle', () => {
     const errCall = m.emit.calls.find(c => c[0] === 'action-error');
     expect((errCall?.[1] as any)?.action).toBe('load');
     expect((errCall?.[1] as any)?.error?.message).toBe('boom');
+    m.unmount();
+  });
+
+  test('initializeForm edit load failure seeds soft-fail frame from initialValues', async () => {
+    const m = mountLifecycle({
+      watchIdentity: false,
+      identity: {
+        recordId: 'u1',
+        viewMode: 'edit',
+        initialValues: { Id: 'u1', Theme: 'light' },
+      },
+    });
+    m.controller.beginDisplay.mockImplementation(async () => {
+      throw new Error('offline');
+    });
+    await m.api().initializeForm();
+    await flushPromises();
+    expect(m.controller.vm.mode).toBe('edit');
+    expect(m.controller.vm.hasAppliedOnce).toBe(true);
+    expect(m.controller.vm.error instanceof Error && m.controller.vm.error.message).toBe('offline');
+    expect((m.controller.vm.draft as any)?.Theme).toBe('light');
+    expect((m.controller.vm.original as any)?.Theme).toBe('light');
+    expect(m.onchangeCtrl.reset.calls.length).toBeGreaterThan(0);
+    expect(m.resetOnchangeAgg.calls.length).toBeGreaterThan(0);
     m.unmount();
   });
 

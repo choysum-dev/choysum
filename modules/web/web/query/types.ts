@@ -197,6 +197,10 @@ export interface IListController extends IBrowseViewController {
   /** Remaining leaf rows for a group after fetch/load-more (Search total − loaded). */
   getGroupRecordRemain(key: string): number | undefined;
   bootstrapDefaults?(defaultFilter?: any, defaultGroups?: any): void;
+  /** Soft-fail Cancel: clear error and drop pending intent (queryState already committed). */
+  restoreCommitted(): void;
+  /** Soft-fail Retry: re-apply the last failed overrides. */
+  retryPending(): Promise<DataSetSnapshot | void>;
 }
 
 // Kanban controller interface (wraps underlying list controller operations + lane helpers)

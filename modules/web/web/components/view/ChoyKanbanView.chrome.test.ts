@@ -624,4 +624,65 @@ describe('ChoyKanbanView chrome', () => {
     await flushPromises();
     mounted.unmount();
   });
+
+  test('soft-fail Cancel restores committed state; Retry uses retryPending when error set', async () => {
+    const store = makeStore();
+    const mounted = mountApp(ChoyKanbanView as any, {
+      props: {
+        store,
+        lanes: twoLanes(),
+        autoBootstrap: false,
+        showHeader: false,
+        showActions: false,
+      },
+    });
+    await flushPromises();
+    const state = mounted.setupState() as {
+      onSurfaceRetry: () => Promise<void>;
+      onSurfaceCancel: () => void;
+      engine: {
+        controller: {
+          vm: { error: unknown; hasAppliedOnce?: boolean; result?: unknown };
+          retryPending?: () => Promise<unknown>;
+          restoreCommitted?: () => void;
+        };
+        refresh: () => Promise<void>;
+      };
+    };
+    const ctrl = state.engine.controller;
+    ctrl.vm.hasAppliedOnce = true;
+    ctrl.vm.result = { kind: 'search', rows: [{ Id: '1' }] } as any;
+
+    // Controlled-lanes engine may omit restoreCommitted — cover both Cancel branches.
+    ctrl.restoreCommitted = () => {
+      ctrl.vm.error = null;
+    };
+    ctrl.vm.error = new Error('kanban offline');
+    state.onSurfaceCancel();
+    expect(ctrl.vm.error == null).toBe(true);
+
+    let pendingRetries = 0;
+    ctrl.vm.error = new Error('again');
+    ctrl.retryPending = async () => {
+      pendingRetries += 1;
+      ctrl.vm.error = null;
+    };
+    await state.onSurfaceRetry();
+    expect(pendingRetries).toBe(1);
+
+    delete (ctrl as any).restoreCommitted;
+    ctrl.vm.error = new Error('fallback');
+    state.onSurfaceCancel();
+    expect(ctrl.vm.error == null).toBe(true);
+
+    // Idle Retry (no error) falls through to engine.refresh.
+    let refreshed = 0;
+    state.engine.refresh = async () => {
+      refreshed += 1;
+    };
+    await state.onSurfaceRetry();
+    expect(refreshed).toBe(1);
+
+    mounted.unmount();
+  });
 });

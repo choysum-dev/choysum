@@ -56,7 +56,7 @@ export function resolveViewSurfaceErrorCopy(
   if (outage) {
     return {
       title: _t('Connection lost'),
-      detail: _t('Could not load this data. Check your network, then retry.'),
+      detail: _t('Could not complete this request. Check your network, then retry.'),
     };
   }
   const title = (opts.fallbackTitle || '').trim() || _t('Failed to load');
@@ -65,7 +65,9 @@ export function resolveViewSurfaceErrorCopy(
   return { title, detail };
 }
 
-/** Short banner line when a surface keeps a prior frame after a failed refresh. */
+/**
+ * @deprecated Soft-fail surfaces use the center BusyHost overlay; keep for tests only.
+ */
 export function resolveViewSurfaceStaleBannerCopy(): string {
   return _t('Could not refresh.');
 }

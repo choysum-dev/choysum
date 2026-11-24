@@ -1811,7 +1811,7 @@ msgctxt "web/components/view/FormView"
 msgid "Details"
 msgstr "详情"
 
-#: web/components/view/ChoyFormView.vue:510
+#: web/components/view/ChoyFormView.vue:512
 msgctxt "web/components/view/FormView"
 msgid "Discard"
 msgstr "放弃"
@@ -1851,7 +1851,7 @@ msgctxt "web/components/view/FormView"
 msgid "Reset"
 msgstr "重置"
 
-#: web/components/view/ChoyFormView.vue:503 web/components/view/ChoyFormView.vue:508
+#: web/components/view/ChoyFormView.vue:505 web/components/view/ChoyFormView.vue:510
 msgctxt "web/components/view/FormView"
 msgid "Save"
 msgstr "保存"
@@ -1861,7 +1861,7 @@ msgctxt "web/components/view/FormView"
 msgid "Saved successfully"
 msgstr "保存成功"
 
-#: web/components/view/ChoyFormView.vue:503 web/components/view/ChoyFormView.vue:508
+#: web/components/view/ChoyFormView.vue:505 web/components/view/ChoyFormView.vue:510
 msgctxt "web/components/view/FormView"
 msgid "Saving..."
 msgstr "保存中..."
@@ -1971,22 +1971,22 @@ msgctxt "web/components/view/ListView"
 msgid "Discard"
 msgstr "放弃"
 
-#: web/components/view/ChoyListView.vue:373
+#: web/components/view/ChoyListView.vue:385
 msgctxt "web/components/view/ListView"
 msgid "Editing was discarded because the row is no longer visible."
 msgstr "该行已不可见，编辑已放弃。"
 
-#: web/components/view/ChoyListView.vue:698 web/components/view/ChoyListView.vue:87
+#: web/components/view/ChoyListView.vue:710 web/components/view/ChoyListView.vue:87
 msgctxt "web/components/view/ListView"
 msgid "Failed to load list"
 msgstr "列表加载失败"
 
-#: web/components/view/ChoyListView.vue:439
+#: web/components/view/ChoyListView.vue:451
 msgctxt "web/components/view/ListView"
 msgid "Failed to refresh after reorder"
 msgstr "重排后刷新失败"
 
-#: web/components/view/ChoyListView.vue:439
+#: web/components/view/ChoyListView.vue:451
 msgctxt "web/components/view/ListView"
 msgid "Failed to reorder rows"
 msgstr "行重排失败"
@@ -2051,17 +2051,17 @@ msgctxt "web/components/view/SearchView"
 msgid "Search..."
 msgstr "搜索…"
 
-#: web/components/view/ChoyViewBusyHost.vue:46
+#: web/components/view/ChoyViewBusyHost.vue:48
 msgctxt "web/components/view/ViewBusyHost"
 msgid "Loading"
 msgstr "加载中"
 
-#: web/components/view/ChoyViewBusyHost.vue:47
-msgctxt "web/components/view/ViewBusyHost"
-msgid "Retry"
-msgstr "重试"
+#: web/components/view/ChoyViewSurfaceError.vue:28
+msgctxt "web/components/view/ViewSurfaceError"
+msgid "Cancel"
+msgstr "取消"
 
-#: web/components/view/ChoyViewSurfaceError.vue:19
+#: web/components/view/ChoyViewSurfaceError.vue:27
 msgctxt "web/components/view/ViewSurfaceError"
 msgid "Retry"
 msgstr "重试"
@@ -2423,10 +2423,10 @@ msgstr "连接已断开"
 
 #: web/composables/resolveViewSurfaceErrorCopy.ts:59
 msgctxt "web/composables/resolveViewSurfaceErrorCopy@resolveViewSurfaceErrorCopy"
-msgid "Could not load this data. Check your network, then retry."
-msgstr "无法加载此数据。请检查网络后重试。"
+msgid "Could not complete this request. Check your network, then retry."
+msgstr "无法执行此请求。请检查网络后重试。"
 
-#: web/composables/resolveViewSurfaceErrorCopy.ts:70
+#: web/composables/resolveViewSurfaceErrorCopy.ts:72
 msgctxt "web/composables/resolveViewSurfaceErrorCopy@resolveViewSurfaceErrorCopy"
 msgid "Could not refresh."
 msgstr "无法刷新。"
@@ -4035,6 +4035,10 @@ msgstr "用户"
 #~ msgid "Rows per page"
 #~ msgstr "每页行数"
 
+#~ msgctxt "web/components/view/ViewBusyHost"
+#~ msgid "Retry"
+#~ msgstr "重试"
+
 #~ msgctxt "web/components/view/search/Search"
 #~ msgid "Clear"
 #~ msgstr "清除"
@@ -4070,6 +4074,26 @@ msgstr "用户"
 #~ msgctxt "web/composables/resolveViewSurfaceErrorCopy"
 #~ msgid "Something went wrong. Retry to try again."
 #~ msgstr "出了点问题。请重试。"
+
+#~ msgctxt "web/composables/resolveViewSurfaceErrorCopy@resolveViewSurfaceErrorCopy"
+#~ msgid "Could not apply this sort. Check your network, then retry."
+#~ msgstr "无法应用此排序。请检查网络后重试。"
+
+#~ msgctxt "web/composables/resolveViewSurfaceErrorCopy@resolveViewSurfaceErrorCopy"
+#~ msgid "Could not change the page. Check your network, then retry."
+#~ msgstr "无法切换页码。请检查网络后重试。"
+
+#~ msgctxt "web/composables/resolveViewSurfaceErrorCopy@resolveViewSurfaceErrorCopy"
+#~ msgid "Could not load this data. Check your network, then retry."
+#~ msgstr "无法加载此数据。请检查网络后重试。"
+
+#~ msgctxt "web/composables/resolveViewSurfaceErrorCopy@resolveViewSurfaceErrorCopy"
+#~ msgid "Could not refresh this view. Check your network, then retry."
+#~ msgstr "无法刷新此视图。请检查网络后重试。"
+
+#~ msgctxt "web/composables/resolveViewSurfaceErrorCopy@resolveViewSurfaceErrorCopy"
+#~ msgid "Could not run this search. Check your network, then retry."
+#~ msgstr "无法执行此搜索。请检查网络后重试。"
 
 #~ msgctxt "web/composables/useMenu"
 #~ msgid "No menus available"

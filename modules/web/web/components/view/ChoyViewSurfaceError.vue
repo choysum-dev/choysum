@@ -10,9 +10,25 @@ SPDX-License-Identifier: Apache-2.0
   >
     <ChoyEmpty class="w-full !gap-3 !p-4 md:!p-6" :title="title" :description="detail">
       <template #actions>
-        <ChoyButton type="button" data-testid="choy-view-surface-error-retry" @click="emit('retry')">
-          {{ retryLabel }}
-        </ChoyButton>
+        <div class="flex flex-wrap items-center justify-center gap-2">
+          <ChoyButton
+            v-if="showCancel"
+            type="button"
+            variant="outline"
+            data-testid="choy-view-surface-error-cancel"
+            @click="emit('cancel')"
+          >
+            {{ cancelLabel }}
+          </ChoyButton>
+          <ChoyButton
+            type="button"
+            data-testid="choy-view-surface-error-retry"
+            :disabled="retryDisabled || undefined"
+            @click="emit('retry')"
+          >
+            {{ retryLabel }}
+          </ChoyButton>
+        </div>
       </template>
     </ChoyEmpty>
   </div>
@@ -27,14 +43,23 @@ defineOptions({ name: 'ChoyViewSurfaceError' });
 
 const { _t } = createTranslate('web', { scope: 'web/components/view/ViewSurfaceError' });
 
-defineProps<{
-  title: string;
-  detail: string;
-}>();
+withDefaults(
+  defineProps<{
+    title: string;
+    detail: string;
+    /** Soft-fail (has prior frame): show Cancel next to Retry. */
+    showCancel?: boolean;
+    /** When true, Retry is non-interactive (e.g. still offline). */
+    retryDisabled?: boolean;
+  }>(),
+  { showCancel: false, retryDisabled: false },
+);
 
 const emit = defineEmits<{
   retry: [];
+  cancel: [];
 }>();
 
 const retryLabel = _t('Retry');
+const cancelLabel = _t('Cancel');
 </script>

@@ -118,6 +118,18 @@ describe('ChoyChartView chrome', () => {
     await nextTick();
     expect(mounted.q('[data-testid=choy-empty]')).not.toBeNull();
 
+    // Soft-fail Cancel dismisses prep/controller errors without requiring Retry.
+    ctrlVm.error = new Error('soft fail');
+    const chartState = mounted.setupState() as {
+      onSurfaceCancel: () => void;
+      prepError: unknown;
+    };
+    (chartState as any).prepError = new Error('prep');
+    chartState.onSurfaceCancel();
+    await nextTick();
+    expect(ctrlVm.error).toBeNull();
+    expect((chartState as any).prepError == null).toBe(true);
+
     mounted.unmount();
   });
 
