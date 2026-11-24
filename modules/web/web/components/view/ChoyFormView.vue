@@ -224,6 +224,7 @@ SPDX-License-Identifier: Apache-2.0
       :has-settled="formHasSettled"
       :error-fallback-title="_t('Failed to load')"
       @retry="onFormSurfaceRetry"
+      @cancel="onFormSurfaceCancel"
     >
       <form
         ref="formRef"
@@ -464,6 +465,8 @@ const emit = defineEmits<{
   (e: 'discard'): void;
   /** Settings presentation: ViewSwitcher select after dirty confirm. */
   (e: 'view-select', value: string): void;
+  /** Soft-fail overlay Cancel — embedded/dialog hosts typically close. */
+  (e: 'surface-cancel'): void;
 }>();
 
 // =============================
@@ -906,8 +909,17 @@ async function onFormSurfaceRetry(): Promise<void> {
   if (!(await confirmDiscardIfDirty())) return;
   try {
     await controller.beginDisplay(id);
+    if ((props.viewMode as any) === 'edit') controller.beginEdit();
   } catch {
     // beginDisplay sets vm.error; Host keeps surface failure UI.
+  }
+}
+
+function onFormSurfaceCancel(): void {
+  // Keep draft/original; clear the failure overlay.
+  controller.vm.error = null;
+  if (isEmbedded.value) {
+    emit('surface-cancel');
   }
 }
 
@@ -921,6 +933,8 @@ defineExpose({
   reloadDisplay,
   /** BusyHost surface Retry — reloads display after optional dirty discard. */
   retrySurface: onFormSurfaceRetry,
+  /** BusyHost soft-fail Cancel — clears error; embedded also emits surface-cancel. */
+  cancelSurface: onFormSurfaceCancel,
   reset: handleReset,
   copy: handleCopy,
   getFormData: () => toRaw(exposedFormData.value) as any,

@@ -283,9 +283,16 @@ describe('ChoyViewBusyHost', () => {
       await flushPromises();
       expect(mounted.q('[data-testid=choy-view-surface-error]')).not.toBeNull();
       expect(mounted.text()).toContain('Connection lost');
-      expect(mounted.text()).toContain('Could not load this data');
+      expect(mounted.text()).toContain('Could not complete this request');
       // Slot stays mounted under the overlay (no table-header flicker on Retry).
       expect(mounted.q('[data-testid=body]')?.textContent).toBe('table chrome');
+      const retryBtn = mounted.q('[data-testid=choy-view-surface-error-retry]') as HTMLButtonElement | null;
+      expect(retryBtn?.disabled).toBe(true);
+      useConnectivityStore().markReachable();
+      await flushPromises();
+      expect(
+        (mounted.q('[data-testid=choy-view-surface-error-retry]') as HTMLButtonElement | null)?.disabled,
+      ).toBeFalsy();
       mounted.click('[data-testid=choy-view-surface-error-retry]');
       await flushPromises();
       expect(onRetry.calls.length).toBe(1);
@@ -296,33 +303,11 @@ describe('ChoyViewBusyHost', () => {
     }
   });
 
-  test('error with hasFrame shows stale banner and keeps slot content', async () => {
+  test('error with hasFrame shows center overlay with cancel and keeps slot content', async () => {
     setActivePinia(createPinia());
-    stubSfc(ChoyButton as any, {
-      name: 'ChoyButton',
-      inheritAttrs: false,
-      props: {
-        type: { type: String, default: 'button' },
-        size: { type: String, default: 'default' },
-        variant: { type: String, default: 'default' },
-        disabled: { type: Boolean, default: false },
-      },
-      emits: ['click'],
-      setup(props: any, { slots, emit, attrs }: any) {
-        return () =>
-          h(
-            'button',
-            {
-              type: props.type || 'button',
-              ...attrs,
-              disabled: props.disabled || undefined,
-              onClick: (e: Event) => emit('click', e),
-            },
-            slots.default?.(),
-          );
-      },
-    });
+    stubChoyButton();
     const onRetry = fnRecorder(() => {});
+    const onCancel = fnRecorder(() => {});
     try {
       const mounted = mountApp(ChoyViewBusyHost as any, {
         props: {
@@ -331,19 +316,49 @@ describe('ChoyViewBusyHost', () => {
           hasFrame: true,
           hasSettled: true,
         },
-        on: { onRetry: () => onRetry() },
+        on: {
+          onRetry: () => onRetry(),
+          onCancel: () => onCancel(),
+        },
         slots: {
           default: () => h('div', { 'data-testid': 'body' }, 'cached rows'),
         },
       });
       await flushPromises();
-      expect(mounted.q('[data-testid=choy-view-surface-error]')).toBeNull();
-      expect(mounted.q('[data-testid=choy-view-surface-stale-banner]')).not.toBeNull();
-      expect(mounted.text()).toContain('Could not refresh.');
+      expect(mounted.q('[data-testid=choy-view-surface-stale-banner]')).toBeNull();
+      expect(mounted.q('[data-testid=choy-view-surface-error]')).not.toBeNull();
+      expect(mounted.q('[data-testid=choy-view-surface-error-cancel]')).not.toBeNull();
       expect(mounted.q('[data-testid=body]')?.textContent).toBe('cached rows');
-      mounted.click('[data-testid=choy-view-surface-stale-retry]');
+      mounted.click('[data-testid=choy-view-surface-error-retry]');
       await flushPromises();
       expect(onRetry.calls.length).toBe(1);
+      mounted.click('[data-testid=choy-view-surface-error-cancel]');
+      await flushPromises();
+      expect(onCancel.calls.length).toBe(1);
+      mounted.unmount();
+    } finally {
+      restoreSfc(ChoyButton as any);
+    }
+  });
+
+  test('hard-fail overlay has retry without cancel', async () => {
+    setActivePinia(createPinia());
+    stubChoyButton();
+    try {
+      const mounted = mountApp(ChoyViewBusyHost as any, {
+        props: {
+          busy: false,
+          error: new Error('Failed to fetch'),
+          hasFrame: false,
+          hasSettled: true,
+        },
+        slots: {
+          default: () => h('div', { 'data-testid': 'body' }, 'chrome'),
+        },
+      });
+      await flushPromises();
+      expect(mounted.q('[data-testid=choy-view-surface-error-retry]')).not.toBeNull();
+      expect(mounted.q('[data-testid=choy-view-surface-error-cancel]')).toBeNull();
       mounted.unmount();
     } finally {
       restoreSfc(ChoyButton as any);
@@ -393,7 +408,7 @@ describe('ChoyViewBusyHost', () => {
     }
   });
 
-  test('soft-retries stale banner after connectivity recovery', async () => {
+  test('soft-retries soft-fail overlay after connectivity recovery', async () => {
     const clock = installFakeTimers();
     setActivePinia(createPinia());
     stubChoyButton();
@@ -414,7 +429,8 @@ describe('ChoyViewBusyHost', () => {
         },
       });
       await clock.flush();
-      expect(mounted.q('[data-testid=choy-view-surface-stale-banner]')).not.toBeNull();
+      expect(mounted.q('[data-testid=choy-view-surface-error]')).not.toBeNull();
+      expect(mounted.q('[data-testid=choy-view-surface-error-cancel]')).not.toBeNull();
       store.markUnreachable();
       await clock.flush();
       store.markReachable();

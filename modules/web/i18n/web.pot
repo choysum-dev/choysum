@@ -1860,7 +1860,7 @@ msgctxt "web/components/view/FormView"
 msgid "Details"
 msgstr ""
 
-#: web/components/view/ChoyFormView.vue:510
+#: web/components/view/ChoyFormView.vue:512
 msgctxt "web/components/view/FormView"
 msgid "Discard"
 msgstr ""
@@ -1901,8 +1901,8 @@ msgctxt "web/components/view/FormView"
 msgid "Reset"
 msgstr ""
 
-#: web/components/view/ChoyFormView.vue:503
-#: web/components/view/ChoyFormView.vue:508
+#: web/components/view/ChoyFormView.vue:505
+#: web/components/view/ChoyFormView.vue:510
 msgctxt "web/components/view/FormView"
 msgid "Save"
 msgstr ""
@@ -1913,8 +1913,8 @@ msgctxt "web/components/view/FormView"
 msgid "Saved successfully"
 msgstr ""
 
-#: web/components/view/ChoyFormView.vue:503
-#: web/components/view/ChoyFormView.vue:508
+#: web/components/view/ChoyFormView.vue:505
+#: web/components/view/ChoyFormView.vue:510
 msgctxt "web/components/view/FormView"
 msgid "Saving..."
 msgstr ""
@@ -2028,23 +2028,23 @@ msgctxt "web/components/view/ListView"
 msgid "Discard"
 msgstr ""
 
-#: web/components/view/ChoyListView.vue:373
+#: web/components/view/ChoyListView.vue:385
 msgctxt "web/components/view/ListView"
 msgid "Editing was discarded because the row is no longer visible."
 msgstr ""
 
-#: web/components/view/ChoyListView.vue:698
+#: web/components/view/ChoyListView.vue:710
 #: web/components/view/ChoyListView.vue:87
 msgctxt "web/components/view/ListView"
 msgid "Failed to load list"
 msgstr ""
 
-#: web/components/view/ChoyListView.vue:439
+#: web/components/view/ChoyListView.vue:451
 msgctxt "web/components/view/ListView"
 msgid "Failed to refresh after reorder"
 msgstr ""
 
-#: web/components/view/ChoyListView.vue:439
+#: web/components/view/ChoyListView.vue:451
 msgctxt "web/components/view/ListView"
 msgid "Failed to reorder rows"
 msgstr ""
@@ -2110,17 +2110,17 @@ msgctxt "web/components/view/SearchView"
 msgid "Search..."
 msgstr ""
 
-#: web/components/view/ChoyViewBusyHost.vue:46
+#: web/components/view/ChoyViewBusyHost.vue:48
 msgctxt "web/components/view/ViewBusyHost"
 msgid "Loading"
 msgstr ""
 
-#: web/components/view/ChoyViewBusyHost.vue:47
-msgctxt "web/components/view/ViewBusyHost"
-msgid "Retry"
+#: web/components/view/ChoyViewSurfaceError.vue:28
+msgctxt "web/components/view/ViewSurfaceError"
+msgid "Cancel"
 msgstr ""
 
-#: web/components/view/ChoyViewSurfaceError.vue:19
+#: web/components/view/ChoyViewSurfaceError.vue:27
 msgctxt "web/components/view/ViewSurfaceError"
 msgid "Retry"
 msgstr ""
@@ -2486,10 +2486,10 @@ msgstr ""
 
 #: web/composables/resolveViewSurfaceErrorCopy.ts:59
 msgctxt "web/composables/resolveViewSurfaceErrorCopy@resolveViewSurfaceErrorCopy"
-msgid "Could not load this data. Check your network, then retry."
+msgid "Could not complete this request. Check your network, then retry."
 msgstr ""
 
-#: web/composables/resolveViewSurfaceErrorCopy.ts:70
+#: web/composables/resolveViewSurfaceErrorCopy.ts:72
 msgctxt "web/composables/resolveViewSurfaceErrorCopy@resolveViewSurfaceErrorCopy"
 msgid "Could not refresh."
 msgstr ""

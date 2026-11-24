@@ -39,6 +39,38 @@ export function createListController(store: ModelStore<any>): IListController {
   const aborts = createAbortableRequests();
   let applySeq = 0;
 
+  type ApplyOverrides = {
+    forcedCondition?: QueryCondition<any>;
+    appliedFilters?: ConditionGroup[];
+    keyword?: string;
+    keywordFields?: string[];
+    orderBy?: OrderByState[];
+    pagination?: PaginationState;
+    appliedGroups?: Array<GroupBySpec>;
+    kind?: QueryKind;
+  };
+
+  /** Last successful apply overrides; Retry reuses this after soft-fail. */
+  let pendingIntent: ApplyOverrides | null = null;
+
+  function cloneQueryState(): Record<string, unknown> {
+    const qs = (store.state as any).queryState || {};
+    try {
+      return structuredClone(qs);
+    } catch {
+      return JSON.parse(JSON.stringify(qs)) as Record<string, unknown>;
+    }
+  }
+
+  function restoreCommitted(): void {
+    vm.error = null;
+    pendingIntent = null;
+  }
+
+  async function retryPending(): Promise<DataSetSnapshot | void> {
+    return apply(pendingIntent || undefined);
+  }
+
   // Caches for on-demand tree expansion
   // Children groups under a group key
   const groupChildren = new Map<string, GroupRow[]>();
@@ -149,16 +181,7 @@ export function createListController(store: ModelStore<any>): IListController {
     vm.visibleNodes = out as any[];
   }
 
-  async function apply(overrides?: {
-    forcedCondition?: QueryCondition<any>;
-    appliedFilters?: ConditionGroup[];
-    keyword?: string;
-    keywordFields?: string[];
-    orderBy?: OrderByState[];
-    pagination?: PaginationState;
-    appliedGroups?: Array<GroupBySpec>;
-    kind?: QueryKind;
-  }) {
+  async function apply(overrides?: ApplyOverrides) {
     const target = `list:${String((store as any).storeId ?? (store as any).model ?? 'default')}`;
     const hasFrame =
       (vm.visibleNodes?.length ?? 0) > 0 || ((vm.result as { rows?: unknown[] } | null)?.rows?.length ?? 0) > 0;
@@ -169,19 +192,32 @@ export function createListController(store: ModelStore<any>): IListController {
     );
   }
 
-  async function applyImpl(overrides?: {
-    forcedCondition?: QueryCondition<any>;
-    appliedFilters?: ConditionGroup[];
-    keyword?: string;
-    keywordFields?: string[];
-    orderBy?: OrderByState[];
-    pagination?: PaginationState;
-    appliedGroups?: Array<GroupBySpec>;
-    kind?: QueryKind;
-  }) {
+  async function applyImpl(overrides?: ApplyOverrides) {
     const seq = ++applySeq;
     vm.loading = true;
     vm.error = null;
+    // Strategy A: remember intent for Retry; only commit queryState after RPC success.
+    pendingIntent = overrides ? { ...overrides } : {};
+    const qsCommitted = cloneQueryState();
+    const deferredQs: Record<string, unknown> = {};
+    let clearExpandedOnCommit = false;
+
+    const readQs = (): any => ({ ...(store.state as any).queryState, ...deferredQs });
+    const writeQs = (partial: Record<string, unknown>) => {
+      Object.assign(deferredQs, partial);
+    };
+    const commitDeferredQueryState = () => {
+      if (Object.keys(deferredQs).length === 0 && !clearExpandedOnCommit) return;
+      (store.state as any).queryState = {
+        ...(store.state as any).queryState,
+        ...deferredQs,
+      };
+      if (clearExpandedOnCommit) vm.expandedKeys.clear();
+    };
+    const rollbackQueryState = () => {
+      (store.state as any).queryState = qsCommitted;
+    };
+
     try {
       // Wait briefly for field registration so the first request has field selections.
       try {
@@ -202,15 +238,15 @@ export function createListController(store: ModelStore<any>): IListController {
       }
 
       // Only inherit existing search state when callers did not explicitly override it.
-      const effectiveOverrides = { ...overrides } as typeof overrides;
+      const effectiveOverrides = { ...overrides } as ApplyOverrides | undefined;
       const hasKeywordOverride = overrides && Object.prototype.hasOwnProperty.call(overrides, 'keyword');
       const hasForcedConditionOverride = overrides && Object.prototype.hasOwnProperty.call(overrides, 'forcedCondition');
       const hasAppliedFiltersOverride = overrides && Object.prototype.hasOwnProperty.call(overrides, 'appliedFilters');
-      const existingKw = (store.state as any)?.queryState?.keyword;
+      const existingKw = readQs()?.keyword;
       // queryState.appliedFilters stores the UI condition tree.
-      const existingUiFilters = (store.state as any)?.queryState?.appliedFilters;
+      const existingUiFilters = readQs()?.appliedFilters;
       const prevFiltersLen = Array.isArray(existingUiFilters) ? existingUiFilters.length : 0;
-      const existingGroups = (store.state as any)?.queryState?.appliedGroups;
+      const existingGroups = readQs()?.appliedGroups;
       const prevGroupsLen = Array.isArray(existingGroups) ? existingGroups.length : 0;
       if (!hasKeywordOverride && existingKw !== undefined) {
         (effectiveOverrides as any).keyword = existingKw;
@@ -222,11 +258,11 @@ export function createListController(store: ModelStore<any>): IListController {
       // Compile UI filters and keyword search, then merge forced conditions.
       const uiFiltersEff: any[] | undefined = (effectiveOverrides as any).appliedFilters;
       const kwEff: string | undefined = (effectiveOverrides as any).keyword;
-      let kwFieldsEff: string[] | undefined = (effectiveOverrides as any).keywordFields ?? (store.state as any)?.queryState?.keywordFields;
+      let kwFieldsEff: string[] | undefined = (effectiveOverrides as any).keywordFields ?? readQs()?.keywordFields;
       let compiledFromUi = filtersToQuery(Array.isArray(uiFiltersEff) ? uiFiltersEff : [], kwEff, kwFieldsEff, (store as any)?.metadata?.fields);
 
       // Merge forced conditions stored in queryState first.
-      const forcedInState = (store.state as any)?.queryState?.forcedCondition;
+      const forcedInState = readQs()?.forcedCondition;
       if (forcedInState !== undefined) {
         compiledFromUi = combineFilters(compiledFromUi, forcedInState);
       }
@@ -235,40 +271,23 @@ export function createListController(store: ModelStore<any>): IListController {
       const forcedCondition = hasForcedConditionOverride ? (effectiveOverrides as any).forcedCondition : undefined;
       const finalCondition = combinePresentConditions(compiledFromUi, forcedCondition) as any;
 
-      // Persist keyword, keywordFields, and UI filters so cross-view restores remain stable.
+      // Defer keyword / filters / fields until RPC success (Strategy A).
       if (effectiveOverrides) {
-        // Explicit keyword overrides may also clear a previous keyword value.
         if (hasKeywordOverride) {
-          (store.state as any).queryState = {
-            ...(store.state as any).queryState,
-            keyword: (effectiveOverrides as any).keyword,
-          };
+          writeQs({ keyword: (effectiveOverrides as any).keyword });
         }
         if (effectiveOverrides.keywordFields !== undefined) {
-          (store.state as any).queryState = {
-            ...(store.state as any).queryState,
-            keywordFields: effectiveOverrides.keywordFields,
-          };
+          writeQs({ keywordFields: effectiveOverrides.keywordFields });
         }
-
-        // Keep appliedFilters as the single source of truth for the UI condition tree.
         if (uiFiltersEff !== undefined) {
-          (store.state as any).queryState = {
-            ...(store.state as any).queryState,
-            appliedFilters: uiFiltersEff as any,
-          };
-
-          // Remember explicit clears so default filters are not re-injected later.
+          writeQs({ appliedFilters: uiFiltersEff as any });
           if (prevFiltersLen > 0 && Array.isArray(uiFiltersEff) && uiFiltersEff.length === 0) {
-            (store.state as any).queryState = {
-              ...(store.state as any).queryState,
-              userClearedDefaultFilters: true,
-            };
+            writeQs({ userClearedDefaultFilters: true });
           }
         }
       }
 
-      const relationConditionSource = (store.state as any)?.queryState?.relationConditionSource as
+      const relationConditionSource = readQs()?.relationConditionSource as
         | { model: string; field: string }
         | undefined;
 
@@ -276,7 +295,7 @@ export function createListController(store: ModelStore<any>): IListController {
       // Empty explicit override (user cleared sort) reseeds model default when declared.
       // Grouped ReadGroup only accepts ORDER BY on group keys / aggregates (PostgreSQL).
       const hasOrderByOverride = Object.prototype.hasOwnProperty.call(effectiveOverrides ?? {}, 'orderBy');
-      const existingOrderBy = (store.state as any)?.queryState?.orderBy as OrderByState[] | undefined;
+      const existingOrderBy = readQs()?.orderBy as OrderByState[] | undefined;
       const modelDefaultOrderBy = metadataOrderByToState((store as any)?.metadata?.orderBy);
       // Prefer override group keys; otherwise reuse stored groups unless this apply is
       // an explicit collection (kind:'search') that must ignore stale groups.
@@ -307,10 +326,7 @@ export function createListController(store: ModelStore<any>): IListController {
       }
       // Grouped requests always persist (including undefined) so header chevrons match the query.
       if (resolvedOrderBy !== undefined || hasOrderByOverride || isGroupedRequest) {
-        (store.state as any).queryState = {
-          ...(store.state as any).queryState,
-          orderBy: resolvedOrderBy,
-        };
+        writeQs({ orderBy: resolvedOrderBy });
       }
 
       const ctx = buildSearchOrGroupContext(store, {
@@ -330,49 +346,27 @@ export function createListController(store: ModelStore<any>): IListController {
         options: relationConditionSource ? { relationConditionSource } : undefined,
       });
 
-      // Keep controlled pagination in sync with store state immediately.
+      // Pagination is part of the request via ctx; commit to store only after success.
       if (effectiveOverrides?.pagination) {
         const p = effectiveOverrides.pagination;
-        (store.state as any).queryState = {
-          ...(store.state as any).queryState,
-          pagination: { ...p },
-        };
+        writeQs({ pagination: { ...p } });
       }
 
-      // Write applied groups back so the search header reflects controlled state.
+      // Applied groups / kind: defer store chrome until success.
       if (overrides?.appliedGroups !== undefined) {
         const gb = gbStrings ?? [];
         if (gb.length > 0) {
-          (store.state as any).queryState = {
-            ...(store.state as any).queryState,
-            kind: 'group',
-            appliedGroups: gb,
-          };
+          writeQs({ kind: 'group', appliedGroups: gb });
         } else {
-          // Explicit clears must also clear stale grouped header state.
-          (store.state as any).queryState = {
-            ...(store.state as any).queryState,
-            kind: 'search',
-            appliedGroups: [],
-          };
-
-          // Collapse expanded groups when leaving grouped mode.
-          vm.expandedKeys.clear();
-          if (prevGroupsLen > 0 && !userClearedDefaultGroups((store.state as any).queryState)) {
-            (store.state as any).queryState = {
-              ...(store.state as any).queryState,
-              userClearedDefaultGroups: true,
-            };
+          writeQs({ kind: 'search', appliedGroups: [] });
+          clearExpandedOnCommit = true;
+          if (prevGroupsLen > 0 && !userClearedDefaultGroups(readQs())) {
+            writeQs({ userClearedDefaultGroups: true });
           }
         }
       } else if (ctx.shape === 'collection') {
-        // Collection mode should also clear stale grouped header state.
-        (store.state as any).queryState = {
-          ...(store.state as any).queryState,
-          kind: 'search',
-          appliedGroups: [],
-        };
-        vm.expandedKeys.clear();
+        writeQs({ kind: 'search', appliedGroups: [] });
+        clearExpandedOnCommit = true;
       }
       const bundle = buildPlan(ctx);
 
@@ -398,6 +392,8 @@ export function createListController(store: ModelStore<any>): IListController {
       // Backend rows already provide stable grouped keys and labels.
       // Only commit if still the latest apply
       if (seq !== applySeq) throw new CancellationError('Superseded');
+      commitDeferredQueryState();
+      pendingIntent = null;
       vm.result = snap;
       store.state.result = snap;
       // Reset caches when dataset changes
@@ -409,8 +405,10 @@ export function createListController(store: ModelStore<any>): IListController {
     } catch (e) {
       if (isCancellation(e)) {
         // Swallow cancellation as non-error; keep loading state governed by latest request
+        // Rolled-back chrome if this apply mutated deferred state only (never store).
         return;
       }
+      rollbackQueryState();
       vm.error = e;
       throw e;
     } finally {
@@ -809,6 +807,8 @@ export function createListController(store: ModelStore<any>): IListController {
     loadMoreGroupRecords,
     loadMoreGroupChildren,
     getGroupRecordRemain,
+    restoreCommitted,
+    retryPending,
   };
   return api;
 }

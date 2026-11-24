@@ -27,6 +27,7 @@ SPDX-License-Identifier: Apache-2.0
           class="mt-3 flex min-h-0 flex-1 flex-col overflow-hidden"
           :store="userStore"
           :record-id="userId"
+          :initial-values="preferencesInitialValues"
           view-mode="edit"
           embedded
           :show-header="false"
@@ -34,6 +35,7 @@ SPDX-License-Identifier: Apache-2.0
           :show-messages="false"
           :resolve-record-id-from-route="false"
           :submit-handler="onPreferencesSubmit"
+          @surface-cancel="visible = false"
         >
           <template #default="{ formData, loading }">
             <SelfProfileDraftSeeder
@@ -205,7 +207,9 @@ SPDX-License-Identifier: Apache-2.0
               <ChoyButton type="button" variant="outline" :disabled="saving" @click="visible = false">{{
                 _t('Cancel')
               }}</ChoyButton>
-              <ChoyButton type="submit" :disabled="saving || loading">{{ _t('Save') }}</ChoyButton>
+              <ChoyButton type="submit" :disabled="saving || loading || saveBlockedOffline">{{
+                _t('Save')
+              }}</ChoyButton>
             </ChoyDialogFooter>
           </template>
         </ChoyFormView>
@@ -263,6 +267,7 @@ import {
   type ChoyThemeMode,
 } from '@/auth/web/stores/auth/user_appearance';
 import { readChoyThemePreference } from '@/web/web/composables/applyChoyThemePreference';
+import { useConnectivityStore } from '@/web/web/stores/connectivityStore';
 
 defineOptions({ name: 'PreferencesDialog' });
 
@@ -272,6 +277,7 @@ const emit = defineEmits<{ 'update:modelValue': [boolean]; closed: [] }>();
 const { _t } = createTranslate('auth', { scope: 'web/dialogs/preferences/PreferencesDialog' });
 const authStore = useAuthStore();
 const i18nStore = useI18nStore();
+const connectivity = useConnectivityStore();
 const collaborationCaps = useReactiveCollaborationCaps();
 const userStore = createModelStore('auth.User');
 const languageStore = createModelStore('base.Language');
@@ -307,6 +313,24 @@ function onOpenChangePassword(): void {
 
 const currentUser = computed(() => authStore.currentUser as any);
 const userId = computed(() => String(currentUser.value?.Id || authStore.identity?.userId || '').trim());
+/** Session snapshot for offline soft-fail edit frame (Browse may fail). */
+const preferencesInitialValues = computed(() => {
+  const u = currentUser.value || {};
+  const local = readChoyThemePreference();
+  return {
+    Id: userId.value || undefined,
+    FirstName: u.FirstName,
+    LastName: u.LastName,
+    Email: u.Email,
+    Username: u.Username,
+    Avatar: u.Avatar,
+    LanguageId: u.LanguageId,
+    Timezone: u.Timezone,
+    Theme: resolveUserThemeMode(u, local.theme),
+    Density: resolveUserDensity(u, local.density),
+  };
+});
+const saveBlockedOffline = computed(() => connectivity.status === 'unreachable');
 const seedLanguageId = ref('');
 const seedTimezone = ref('');
 const seedTheme = ref('');

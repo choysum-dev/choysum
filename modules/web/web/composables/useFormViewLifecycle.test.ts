@@ -314,6 +314,28 @@ describe('useFormViewLifecycle', () => {
     m.unmount();
   });
 
+  test('initializeForm edit load failure seeds soft-fail frame from initialValues', async () => {
+    const m = mountLifecycle({
+      watchIdentity: false,
+      identity: {
+        recordId: 'u1',
+        viewMode: 'edit',
+        initialValues: { Id: 'u1', Theme: 'light' },
+      },
+    });
+    m.controller.beginDisplay.mockImplementation(async () => {
+      throw new Error('offline');
+    });
+    await m.api().initializeForm();
+    await flushPromises();
+    expect(m.controller.vm.mode).toBe('edit');
+    expect(m.controller.vm.hasAppliedOnce).toBe(true);
+    expect(m.controller.vm.error instanceof Error && m.controller.vm.error.message).toBe('offline');
+    expect((m.controller.vm.draft as any)?.Theme).toBe('light');
+    expect((m.controller.vm.original as any)?.Theme).toBe('light');
+    m.unmount();
+  });
+
   test('watchFormIdentity re-inits and beginEdit when viewMode is edit', async () => {
     const afterInit = fnRecorder(() => {});
     const m = mountLifecycle({ onAfterInit: afterInit, identity: { viewMode: 'edit' } });

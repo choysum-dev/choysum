@@ -185,6 +185,7 @@ SPDX-License-Identifier: Apache-2.0
       :has-settled="!!controller.vm.hasAppliedOnce"
       :error-fallback-title="_t('Failed to load list')"
       @retry="onSurfaceRetry"
+      @cancel="onSurfaceCancel"
     >
     <div
       ref="tableWrapRef"
@@ -589,10 +590,22 @@ const showListEmpty = computed(
 
 async function onSurfaceRetry(): Promise<void> {
   try {
+    if (typeof (controller as any).retryPending === 'function') {
+      await (controller as any).retryPending();
+      return;
+    }
     await loadData();
   } catch {
-    // loadData already emits action-error / toast; Host keeps showing surface error.
+    // Controller already sets vm.error; Host keeps showing surface error.
   }
+}
+
+function onSurfaceCancel(): void {
+  if (typeof (controller as any).restoreCommitted === 'function') {
+    (controller as any).restoreCommitted();
+    return;
+  }
+  controller.vm.error = null;
 }
 
 // Whether grouped mode is active, based on the controller result
