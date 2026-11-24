@@ -34,10 +34,10 @@ export function useControllerSoftFailSurface(opts: UseControllerSoftFailSurfaceO
       }
       await opts.reload();
     } catch (err) {
-      // Controllers normally set vm.error; surface a fallback if they did not.
+      // Controllers normally set vm.error; always re-surface the thrown value so a
+      // failed retryPending (where vm.error was already non-null) still updates.
       try {
-        const ctrl = opts.getController();
-        if (ctrl.vm.error == null) ctrl.vm.error = err;
+        opts.getController().vm.error = err;
       } catch {
         // Controller unavailable; keep soft-fail from becoming an unhandled rejection.
       }

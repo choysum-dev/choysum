@@ -28,7 +28,8 @@ export function useDetailPathRecordSetHygiene(opts: UseDetailPathRecordSetHygien
       const model = String(toValue(opts.modelName) || '').trim();
       // Bail when model is not yet known — do not wipe another model's pager.
       if (!model) return;
-      if (active.model && active.model !== model) return;
+      // Only clear when the active session is known to belong to this host model.
+      if (!active.model || active.model !== model) return;
       rs.clear();
     } catch {
       // Pinia may be unavailable in unit mounts without an app shell.

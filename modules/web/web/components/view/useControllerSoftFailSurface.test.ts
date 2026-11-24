@@ -53,12 +53,12 @@ describe('useControllerSoftFailSurface', () => {
     expect(ctrl.vm.error).toBeNull();
   });
 
-  test('retry swallows thrown errors from retryPending', async () => {
+  test('retryPending throw does not reject and surfaces the fresh error', async () => {
     const ctrl = {
       retryPending: async () => {
         throw new Error('offline');
       },
-      vm: { error: new Error('x') as unknown },
+      vm: { error: new Error('stale') as unknown },
     };
     const { onSurfaceRetry } = useControllerSoftFailSurface({
       getController: () => ctrl,
@@ -71,6 +71,7 @@ describe('useControllerSoftFailSurface', () => {
       threw = true;
     }
     expect(threw).toBe(false);
+    expect(String(ctrl.vm.error || '')).toMatch(/offline/);
   });
 
   test('retry surfaces error when reload throws without setting vm.error', async () => {

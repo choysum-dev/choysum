@@ -100,6 +100,26 @@ describe('useDetailPathRecordSetHygiene', () => {
     mounted.unmount();
   });
 
+  test('no-ops when active.model is empty', async () => {
+    setActivePinia(createPinia());
+    const rs = useRecordSetStore();
+    rs.seed(sampleEntry({ model: '', key: 'unknown|list' }));
+    const Host = defineComponent({
+      setup() {
+        useDetailPathRecordSetHygiene({
+          detailPath: '/partner/:id',
+          modelName: 'partner.Partner',
+        });
+        return () => h('div');
+      },
+    });
+    const mounted = mountApp(Host as any);
+    await flushPromises();
+    expect(rs.active).not.toBeNull();
+    expect(rs.active?.key).toBe('unknown|list');
+    mounted.unmount();
+  });
+
   test('clearRecordSetSessionIfDetailHost swallows store errors', async () => {
     setActivePinia(createPinia());
     let clearFn: (() => void) | null = null;
