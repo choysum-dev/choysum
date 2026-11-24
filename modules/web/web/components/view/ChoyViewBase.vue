@@ -80,6 +80,7 @@ SPDX-License-Identifier: Apache-2.0
     </div>
 
     <ChoyViewBusyHost
+      v-bind="busyHostAttrs"
       :busy="busy"
       :mode="mode"
       :class="busyHostClass"
@@ -88,7 +89,6 @@ SPDX-License-Identifier: Apache-2.0
       :has-frame="hasFrame"
       :has-settled="hasSettled"
       :error-fallback-title="errorFallbackTitle"
-      v-bind="busyHostAttrs"
       @retry="emit('retry')"
       @cancel="emit('cancel')"
     >

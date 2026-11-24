@@ -118,7 +118,13 @@ describe('ChoyViewBase', () => {
           hasSettled: true,
           errorFallbackTitle: 'Failed',
           busyHostClass: 'custom-busy',
-          busyHostAttrs: { 'data-anchor': 'choy.form-view', 'data-region': 'sheet' },
+          // Conflicting keys must not override typed BusyHost props (attrs spread first).
+          busyHostAttrs: {
+            'data-anchor': 'choy.form-view',
+            'data-region': 'sheet',
+            error: null,
+            busy: true,
+          },
         },
         on: {
           onRetry: () => onRetry(),
@@ -134,6 +140,7 @@ describe('ChoyViewBase', () => {
       expect(host?.getAttribute('data-anchor')).toBe('choy.form-view');
       expect(host?.getAttribute('data-region')).toBe('sheet');
       expect(host?.className || '').toContain('custom-busy');
+      expect(host?.getAttribute('aria-busy')).not.toBe('true');
 
       expect(mounted.q('[data-testid=choy-view-surface-error]')).not.toBeNull();
       mounted.click('[data-testid=choy-view-surface-error-retry]');

@@ -35,8 +35,12 @@ export function useControllerSoftFailSurface(opts: UseControllerSoftFailSurfaceO
       await opts.reload();
     } catch (err) {
       // Controllers normally set vm.error; surface a fallback if they did not.
-      const ctrl = opts.getController();
-      if (ctrl.vm.error == null) ctrl.vm.error = err;
+      try {
+        const ctrl = opts.getController();
+        if (ctrl.vm.error == null) ctrl.vm.error = err;
+      } catch {
+        // Controller unavailable; keep soft-fail from becoming an unhandled rejection.
+      }
     }
   }
 

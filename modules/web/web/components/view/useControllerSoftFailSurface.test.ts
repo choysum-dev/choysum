@@ -84,4 +84,22 @@ describe('useControllerSoftFailSurface', () => {
     await onSurfaceRetry();
     expect(String(ctrl.vm.error || '')).toMatch(/reload failed/);
   });
+
+  test('retry fallback ignores getController throw after reload failure', async () => {
+    const { onSurfaceRetry } = useControllerSoftFailSurface({
+      getController: () => {
+        throw new Error('unbound');
+      },
+      reload: async () => {
+        throw new Error('reload failed');
+      },
+    });
+    let threw = false;
+    try {
+      await onSurfaceRetry();
+    } catch {
+      threw = true;
+    }
+    expect(threw).toBe(false);
+  });
 });
