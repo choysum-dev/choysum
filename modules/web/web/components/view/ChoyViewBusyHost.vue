@@ -87,7 +87,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, onBeforeUnmount, watch } from 'vue';
 import ChoyButton from '../layout/ChoyButton.vue';
 import ChoySkeleton from '../layout/ChoySkeleton.vue';
 import ChoySpinner from '../layout/ChoySpinner.vue';
@@ -98,12 +98,15 @@ import {
   resolveViewSurfaceErrorCopy,
   resolveViewSurfaceStaleBannerCopy,
 } from '@/web/web/composables/resolveViewSurfaceErrorCopy';
+import { useConnectivityStore } from '../../stores/connectivityStore';
+import { VIEW_LOAD_RETRY_AFTER_RECOVERY_MS } from '../../router/viewLoadError';
 import { viewBusyHostAttrs, viewBusyHostClass, type ViewBusyMode } from './viewBusy';
 import ChoyViewSurfaceError from './ChoyViewSurfaceError.vue';
 
 defineOptions({ name: 'ChoyViewBusyHost' });
 
 const { _t } = createTranslate('web', { scope: 'web/components/view/ViewBusyHost' });
+const connectivity = useConnectivityStore();
 
 const props = withDefaults(
   defineProps<{
@@ -154,6 +157,9 @@ const showStaleBanner = computed(
   () => !!props.hasSettled && props.error != null && !!props.hasFrame && !busy.value,
 );
 
+/** Any Action failure UI that already exposes Retry — soft-retry after reconnect. */
+const showRetryableFailure = computed(() => showSurfaceError.value || showStaleBanner.value);
+
 /** Block pointer/keyboard into the slot while a cover (error or block busy) is up. */
 const slotInert = computed(
   () => showSurfaceError.value || (busy.value && mode.value !== 'stale'),
@@ -166,4 +172,63 @@ const surfaceCopy = computed(() =>
 );
 
 const staleBannerCopy = computed(() => resolveViewSurfaceStaleBannerCopy());
+
+let recoveryRetryTimer: ReturnType<typeof setTimeout> | null = null;
+let autoRetryResetTimer: ReturnType<typeof setTimeout> | null = null;
+/** One auto soft-retry per failure episode (avoids flapping storms). */
+let autoRetriedForCurrentError = false;
+
+function clearRecoveryRetryTimer() {
+  if (recoveryRetryTimer) {
+    clearTimeout(recoveryRetryTimer);
+    recoveryRetryTimer = null;
+  }
+}
+
+function clearAutoRetryResetTimer() {
+  if (autoRetryResetTimer) {
+    clearTimeout(autoRetryResetTimer);
+    autoRetryResetTimer = null;
+  }
+}
+
+watch(
+  () => props.error,
+  (next) => {
+    if (next != null) {
+      clearAutoRetryResetTimer();
+      return;
+    }
+    clearRecoveryRetryTimer();
+    clearAutoRetryResetTimer();
+    autoRetryResetTimer = setTimeout(() => {
+      autoRetryResetTimer = null;
+      if (props.error == null) autoRetriedForCurrentError = false;
+    }, VIEW_LOAD_RETRY_AFTER_RECOVERY_MS + 100);
+  },
+);
+
+// Mounted Action surfaces stay on their error/stale UI after reconnect — Asset
+// ChoyViewLoadError already soft-retries; mirror that here via the same generation.
+watch(
+  () => connectivity.recoveryGeneration,
+  (gen, prev) => {
+    if (gen <= 0 || (prev != null && gen <= prev)) return;
+    if (connectivity.status !== 'reachable') return;
+    if (!showRetryableFailure.value || autoRetriedForCurrentError) return;
+    clearRecoveryRetryTimer();
+    recoveryRetryTimer = setTimeout(() => {
+      recoveryRetryTimer = null;
+      if (connectivity.status !== 'reachable') return;
+      if (!showRetryableFailure.value || autoRetriedForCurrentError) return;
+      autoRetriedForCurrentError = true;
+      emit('retry');
+    }, VIEW_LOAD_RETRY_AFTER_RECOVERY_MS);
+  },
+);
+
+onBeforeUnmount(() => {
+  clearRecoveryRetryTimer();
+  clearAutoRetryResetTimer();
+});
 </script>

@@ -12,6 +12,7 @@ import {
 } from '@/web/web/__tests__/mountApp';
 import { loadingTiming } from '@/core/web/client/loadingRegistry';
 import ChoyButton from '../layout/ChoyButton.vue';
+import { VIEW_LOAD_RETRY_AFTER_RECOVERY_MS } from '../../router/viewLoadError';
 import { useConnectivityStore } from '../../stores/connectivityStore';
 import ChoyViewBusyHost from './ChoyViewBusyHost.vue';
 
@@ -23,6 +24,96 @@ async function waitForOverlayDelay(): Promise<void> {
   await flushPromises();
   await sleep(loadingTiming.SURFACE_BUSY_DELAY_MS + 30);
   await flushPromises();
+}
+
+type FakeTimer = { id: number; due: number; fn: () => void };
+
+function installFakeTimers() {
+  const g = globalThis as {
+    setTimeout: typeof setTimeout;
+    clearTimeout: typeof clearTimeout;
+  };
+  const realSetTimeout = g.setTimeout.bind(globalThis);
+  const realClearTimeout = g.clearTimeout.bind(globalThis);
+  let now = 0;
+  let nextId = 1;
+  const timers: FakeTimer[] = [];
+  g.setTimeout = ((fn: unknown, ms?: number, ...args: unknown[]) => {
+    const id = nextId++;
+    const delay = Number(ms) || 0;
+    timers.push({
+      id,
+      due: now + delay,
+      fn: () => {
+        if (typeof fn === 'function') (fn as (...a: unknown[]) => void)(...args);
+      },
+    });
+    return id as unknown as ReturnType<typeof setTimeout>;
+  }) as unknown as typeof setTimeout;
+  g.clearTimeout = ((id: ReturnType<typeof setTimeout>) => {
+    const i = timers.findIndex((t) => t.id === (id as unknown as number));
+    if (i >= 0) timers.splice(i, 1);
+  }) as unknown as typeof clearTimeout;
+
+  async function flushMicrotasks() {
+    await Promise.resolve();
+    await Promise.resolve();
+  }
+
+  async function advance(ms: number) {
+    const target = now + ms;
+    for (;;) {
+      timers.sort((a, b) => a.due - b.due || a.id - b.id);
+      const next = timers[0];
+      if (!next || next.due > target) break;
+      now = next.due;
+      timers.shift();
+      next.fn();
+      await flushMicrotasks();
+    }
+    now = target;
+    await flushMicrotasks();
+  }
+
+  async function flush() {
+    await flushMicrotasks();
+  }
+
+  return {
+    advance,
+    flush,
+    restore() {
+      g.setTimeout = realSetTimeout;
+      g.clearTimeout = realClearTimeout;
+    },
+  };
+}
+
+function stubChoyButton() {
+  stubSfc(ChoyButton as any, {
+    name: 'ChoyButton',
+    inheritAttrs: false,
+    props: {
+      type: { type: String, default: 'button' },
+      size: { type: String, default: 'default' },
+      variant: { type: String, default: 'default' },
+      disabled: { type: Boolean, default: false },
+    },
+    emits: ['click'],
+    setup(props: any, { slots, emit, attrs }: any) {
+      return () =>
+        h(
+          'button',
+          {
+            type: props.type || 'button',
+            ...attrs,
+            disabled: props.disabled || undefined,
+            onClick: (e: Event) => emit('click', e),
+          },
+          slots.default?.(),
+        );
+    },
+  });
 }
 
 describe('ChoyViewBusyHost', () => {
@@ -256,6 +347,286 @@ describe('ChoyViewBusyHost', () => {
       mounted.unmount();
     } finally {
       restoreSfc(ChoyButton as any);
+    }
+  });
+
+  test('soft-retries surface error after connectivity recovery', async () => {
+    const clock = installFakeTimers();
+    setActivePinia(createPinia());
+    stubChoyButton();
+    const onRetry = fnRecorder(() => {});
+    const store = useConnectivityStore();
+    store.resetForTests();
+    try {
+      const mounted = mountApp(ChoyViewBusyHost as any, {
+        props: {
+          busy: false,
+          error: new Error('Failed to fetch'),
+          hasFrame: false,
+          hasSettled: true,
+        },
+        on: { onRetry: () => onRetry() },
+        slots: {
+          default: () => h('div', { 'data-testid': 'body' }, 'table chrome'),
+        },
+      });
+      await clock.flush();
+      expect(mounted.q('[data-testid=choy-view-surface-error]')).not.toBeNull();
+      store.markUnreachable();
+      await clock.flush();
+      store.markReachable();
+      await clock.flush();
+      expect(onRetry.calls.length).toBe(0);
+      await clock.advance(VIEW_LOAD_RETRY_AFTER_RECOVERY_MS);
+      expect(onRetry.calls.length).toBe(1);
+      // One-shot: another recovery edge without clearing error must not storm.
+      store.markUnreachable();
+      store.markReachable();
+      await clock.flush();
+      await clock.advance(VIEW_LOAD_RETRY_AFTER_RECOVERY_MS);
+      expect(onRetry.calls.length).toBe(1);
+      mounted.unmount();
+    } finally {
+      clock.restore();
+      restoreSfc(ChoyButton as any);
+      store.resetForTests();
+    }
+  });
+
+  test('soft-retries stale banner after connectivity recovery', async () => {
+    const clock = installFakeTimers();
+    setActivePinia(createPinia());
+    stubChoyButton();
+    const onRetry = fnRecorder(() => {});
+    const store = useConnectivityStore();
+    store.resetForTests();
+    try {
+      const mounted = mountApp(ChoyViewBusyHost as any, {
+        props: {
+          busy: false,
+          error: new Error('Failed to fetch'),
+          hasFrame: true,
+          hasSettled: true,
+        },
+        on: { onRetry: () => onRetry() },
+        slots: {
+          default: () => h('div', { 'data-testid': 'body' }, 'cached rows'),
+        },
+      });
+      await clock.flush();
+      expect(mounted.q('[data-testid=choy-view-surface-stale-banner]')).not.toBeNull();
+      store.markUnreachable();
+      await clock.flush();
+      store.markReachable();
+      await clock.flush();
+      await clock.advance(VIEW_LOAD_RETRY_AFTER_RECOVERY_MS);
+      expect(onRetry.calls.length).toBe(1);
+      mounted.unmount();
+    } finally {
+      clock.restore();
+      restoreSfc(ChoyButton as any);
+      store.resetForTests();
+    }
+  });
+
+  test('skips soft-retry when unreachable at fire, then retries on next recovery', async () => {
+    const clock = installFakeTimers();
+    setActivePinia(createPinia());
+    stubChoyButton();
+    const onRetry = fnRecorder(() => {});
+    const store = useConnectivityStore();
+    store.resetForTests();
+    try {
+      const mounted = mountApp(ChoyViewBusyHost as any, {
+        props: {
+          busy: false,
+          error: new Error('Failed to fetch'),
+          hasFrame: false,
+          hasSettled: true,
+        },
+        on: { onRetry: () => onRetry() },
+        slots: {
+          default: () => h('div', { 'data-testid': 'body' }, 'table chrome'),
+        },
+      });
+      await clock.flush();
+      store.markUnreachable();
+      store.markReachable();
+      await clock.flush();
+      // Drop again before the delayed soft-retry fires — callback must no-op.
+      store.markUnreachable();
+      await clock.flush();
+      await clock.advance(VIEW_LOAD_RETRY_AFTER_RECOVERY_MS);
+      expect(onRetry.calls.length).toBe(0);
+      store.markReachable();
+      await clock.flush();
+      await clock.advance(VIEW_LOAD_RETRY_AFTER_RECOVERY_MS);
+      expect(onRetry.calls.length).toBe(1);
+      mounted.unmount();
+    } finally {
+      clock.restore();
+      restoreSfc(ChoyButton as any);
+      store.resetForTests();
+    }
+  });
+
+  test('flapping recovery before settle soft-retries once (clears pending timer)', async () => {
+    const clock = installFakeTimers();
+    setActivePinia(createPinia());
+    stubChoyButton();
+    const onRetry = fnRecorder(() => {});
+    const store = useConnectivityStore();
+    store.resetForTests();
+    try {
+      const mounted = mountApp(ChoyViewBusyHost as any, {
+        props: {
+          busy: false,
+          error: new Error('Failed to fetch'),
+          hasFrame: false,
+          hasSettled: true,
+        },
+        on: { onRetry: () => onRetry() },
+        slots: {
+          default: () => h('div', { 'data-testid': 'body' }, 'table chrome'),
+        },
+      });
+      await clock.flush();
+      store.markUnreachable();
+      store.markReachable();
+      await clock.flush();
+      // Advance partway so a leaked first timer would fire at the original deadline.
+      const half = Math.floor(VIEW_LOAD_RETRY_AFTER_RECOVERY_MS / 2);
+      await clock.advance(half);
+      store.markUnreachable();
+      store.markReachable();
+      await clock.flush();
+      await clock.advance(VIEW_LOAD_RETRY_AFTER_RECOVERY_MS - half);
+      expect(onRetry.calls.length).toBe(0);
+      await clock.advance(half);
+      expect(onRetry.calls.length).toBe(1);
+      mounted.unmount();
+    } finally {
+      clock.restore();
+      restoreSfc(ChoyButton as any);
+      store.resetForTests();
+    }
+  });
+
+  test('clears pending recovery timer on unmount', async () => {
+    const clock = installFakeTimers();
+    setActivePinia(createPinia());
+    stubChoyButton();
+    const onRetry = fnRecorder(() => {});
+    const store = useConnectivityStore();
+    store.resetForTests();
+    try {
+      const mounted = mountApp(ChoyViewBusyHost as any, {
+        props: {
+          busy: false,
+          error: new Error('Failed to fetch'),
+          hasFrame: false,
+          hasSettled: true,
+        },
+        on: { onRetry: () => onRetry() },
+        slots: {
+          default: () => h('div', { 'data-testid': 'body' }, 'table chrome'),
+        },
+      });
+      await clock.flush();
+      store.markUnreachable();
+      store.markReachable();
+      await clock.flush();
+      mounted.unmount();
+      await clock.advance(VIEW_LOAD_RETRY_AFTER_RECOVERY_MS + 50);
+      expect(onRetry.calls.length).toBe(0);
+    } finally {
+      clock.restore();
+      restoreSfc(ChoyButton as any);
+      store.resetForTests();
+    }
+  });
+
+  test('allows another auto-retry after a clear sticks', async () => {
+    const clock = installFakeTimers();
+    setActivePinia(createPinia());
+    stubChoyButton();
+    const onRetry = fnRecorder(() => {});
+    const store = useConnectivityStore();
+    store.resetForTests();
+    try {
+      const mounted = mountApp(ChoyViewBusyHost as any, {
+        reactiveProps: true,
+        props: {
+          busy: false,
+          error: new Error('Failed to fetch'),
+          hasFrame: false,
+          hasSettled: true,
+        },
+        on: { onRetry: () => onRetry() },
+        slots: {
+          default: () => h('div', { 'data-testid': 'body' }, 'table chrome'),
+        },
+      });
+      await clock.flush();
+      store.markUnreachable();
+      store.markReachable();
+      await clock.flush();
+      await clock.advance(VIEW_LOAD_RETRY_AFTER_RECOVERY_MS);
+      expect(onRetry.calls.length).toBe(1);
+      // Soft-retry path: parent clears error; wait for one-shot reset window.
+      mounted.props.error = null;
+      await clock.flush();
+      await clock.advance(VIEW_LOAD_RETRY_AFTER_RECOVERY_MS + 100);
+      mounted.props.error = new Error('Failed to fetch again');
+      await clock.flush();
+      expect(mounted.q('[data-testid=choy-view-surface-error]')).not.toBeNull();
+      store.markUnreachable();
+      store.markReachable();
+      await clock.flush();
+      await clock.advance(VIEW_LOAD_RETRY_AFTER_RECOVERY_MS);
+      expect(onRetry.calls.length).toBe(2);
+      mounted.unmount();
+    } finally {
+      clock.restore();
+      restoreSfc(ChoyButton as any);
+      store.resetForTests();
+    }
+  });
+
+  test('skips soft-retry when error clears before recovery timer fires', async () => {
+    const clock = installFakeTimers();
+    setActivePinia(createPinia());
+    stubChoyButton();
+    const onRetry = fnRecorder(() => {});
+    const store = useConnectivityStore();
+    store.resetForTests();
+    try {
+      const mounted = mountApp(ChoyViewBusyHost as any, {
+        reactiveProps: true,
+        props: {
+          busy: false,
+          error: new Error('Failed to fetch'),
+          hasFrame: false,
+          hasSettled: true,
+        },
+        on: { onRetry: () => onRetry() },
+        slots: {
+          default: () => h('div', { 'data-testid': 'body' }, 'table chrome'),
+        },
+      });
+      await clock.flush();
+      store.markUnreachable();
+      store.markReachable();
+      await clock.flush();
+      mounted.props.error = null;
+      await clock.flush();
+      await clock.advance(VIEW_LOAD_RETRY_AFTER_RECOVERY_MS + 50);
+      expect(onRetry.calls.length).toBe(0);
+      mounted.unmount();
+    } finally {
+      clock.restore();
+      restoreSfc(ChoyButton as any);
+      store.resetForTests();
     }
   });
 });
