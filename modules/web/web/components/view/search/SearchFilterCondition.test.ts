@@ -4,7 +4,7 @@
 import { h, nextTick, reactive, unref } from 'vue';
 
 import { flushPromises, fnRecorder, mountApp, stubSfc, restoreSfc } from '@/web/web/__tests__/mountApp';
-import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
+import ChoyButton from '@/web/web/components/button/ChoyButton.vue';
 import SearchFilterCondition from './SearchFilterCondition.vue';
 
 import ChoyVarcharField from '@/web/web/components/field/ChoyVarcharField.vue';

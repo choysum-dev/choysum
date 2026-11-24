@@ -33,7 +33,7 @@ SPDX-License-Identifier: Apache-2.0
 import { computed } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import AuthPanel from '@/auth/web/components/AuthPanel.vue';
-import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
+import ChoyButton from '@/web/web/components/button/ChoyButton.vue';
 import ChoyCard from '@/web/web/components/layout/ChoyCard.vue';
 import ChoyPage from '@/web/web/components/layout/ChoyPage.vue';
 import { createTranslate } from '@/web/web/i18n';

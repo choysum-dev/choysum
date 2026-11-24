@@ -56,7 +56,7 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts">
 import { computed, ref, useSlots } from 'vue';
 import { Download, EllipsisVertical, Upload } from 'lucide-vue-next';
-import ChoyButton from './ChoyButton.vue';
+import ChoyButton from '../button/ChoyButton.vue';
 import DropdownMenu from '../vendor/ui/dropdown-menu/DropdownMenu.vue';
 import DropdownMenuContent from '../vendor/ui/dropdown-menu/DropdownMenuContent.vue';
 import DropdownMenuItem from '../vendor/ui/dropdown-menu/DropdownMenuItem.vue';

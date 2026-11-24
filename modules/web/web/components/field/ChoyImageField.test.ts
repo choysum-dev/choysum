@@ -11,7 +11,7 @@ import type { UseField } from '@/web/web/composables/useField';
 import { flushPromises, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
 import ChoyFieldBase from './ChoyFieldBase.vue';
 import ImageField from './ChoyImageField.vue';
-import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
+import ChoyButton from '@/web/web/components/button/ChoyButton.vue';
 import { ChoyDialog, ChoyDialogContent } from '@/web/web/components/layout/choyDialog';
 import { CollaborationCapsKey } from '@/web/web/platform/collaborationCaps';
 

@@ -21,6 +21,11 @@ export function setGlobalActionChecker(checker: ActionChecker | undefined): void
   globalActionChecker = checker;
 }
 
+/** Current global ACL checker (used by ChoyActionButton when hasAction prop is omitted). */
+export function getGlobalActionChecker(): ActionChecker | undefined {
+  return globalActionChecker;
+}
+
 /**
  * Object syntax supported by the action directive.
  */

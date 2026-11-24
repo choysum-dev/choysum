@@ -15,13 +15,14 @@ SPDX-License-Identifier: Apache-2.0
       @keydown.meta.enter="!$event.isComposing && ($event.preventDefault(), submit())"
     ></textarea>
     <div class="flex justify-end">
-      <ChoyButton
+      <ChoyActionButton
         size="sm"
-        :disabled="disabled || posting || !canSubmit"
-        @click="submit"
+        :disabled="disabled || !canSubmit"
+        :busy="posting"
+        @execute="submit"
       >
         {{ posting ? postingLabel : resolvedPostLabel }}
-      </ChoyButton>
+      </ChoyActionButton>
     </div>
     <p
       v-if="error"
@@ -35,7 +36,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import ChoyButton from '../layout/ChoyButton.vue';
+import ChoyActionButton from '../button/ChoyActionButton.vue';
 import { createTranslate } from '@/web/web/i18n';
 
 /**

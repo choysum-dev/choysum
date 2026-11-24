@@ -25,7 +25,7 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts">
 import { computed, onBeforeUnmount, watch } from 'vue';
 import { useRouter } from 'vue-router';
-import ChoyButton from './ChoyButton.vue';
+import ChoyButton from '../button/ChoyButton.vue';
 import { createTranslate } from '@/web/web/i18n';
 import { useConnectivityStore } from '../../stores/connectivityStore';
 import {

@@ -11,7 +11,7 @@ SPDX-License-Identifier: Apache-2.0
     v-on="$attrs"
   >
     <template #button-box>
-      <ChoyButtonBox>
+      <ChoyStatBox>
         <ChoyStatInfo :store="store" prop="Users" :label="_t('Users')" :icon="User" @click="activeTab = 'users'" />
         <ChoyStatInfo
           :store="store"
@@ -21,7 +21,7 @@ SPDX-License-Identifier: Apache-2.0
           @click="activeTab = 'implied_roles'"
         />
         <ChoyStatInfo :store="store" prop="RecordRules" :label="_t('Record Rules')" :icon="Settings" @click="openRecordRules" />
-      </ChoyButtonBox>
+      </ChoyStatBox>
     </template>
 
     <ChoyCard :title="_t('Basic Information')" class="mb-3.5">
@@ -260,7 +260,7 @@ import { defineModelActions } from '@/core/web/resource';
 import { usePermission } from '@/auth/web/composables/usePermission';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { useI18n } from 'vue-i18n';
-import { ChoyBooleanField, ChoyButtonBox, ChoyCard, ChoyCol, ChoyDatetimeField, ChoyFormView, ChoyGrid, ChoyJsonField, ChoyManyToManyField, ChoyManyToOneField, ChoyOneToManyField, ChoySelectionField, ChoyStatInfo, ChoyTab, ChoyTabs, ChoyVarcharField, ChoyManyToOneRefField, ChoyManyToManyRefTreeField} from '@/web';
+import { ChoyBooleanField, ChoyStatBox, ChoyCard, ChoyCol, ChoyDatetimeField, ChoyFormView, ChoyGrid, ChoyJsonField, ChoyManyToManyField, ChoyManyToOneField, ChoyOneToManyField, ChoySelectionField, ChoyStatInfo, ChoyTab, ChoyTabs, ChoyVarcharField, ChoyManyToOneRefField, ChoyManyToManyRefTreeField} from '@/web';
 import type { ChoyViewMode as ViewMode } from '@/web';
 import { createTranslate, translateTerm } from '@/web/web/i18n';
 import type { TermReference } from '@/core/service/i18n';

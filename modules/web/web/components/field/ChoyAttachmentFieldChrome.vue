@@ -69,7 +69,7 @@ SPDX-License-Identifier: Apache-2.0
                       :disabled="uploadBlocked"
                       @change="onFileInputChange"
                     />
-                    <ChoyButton
+                    <ChoyActionButton
                       size="sm"
                       variant="ghost"
                       class="size-7 p-0 text-white hover:bg-white/15 hover:text-white"
@@ -78,23 +78,23 @@ SPDX-License-Identifier: Apache-2.0
                       as="span"
                     >
                       <RefreshCw class="size-3.5" aria-hidden="true" />
-                    </ChoyButton>
+                    </ChoyActionButton>
                   </label>
                 </TooltipTrigger>
                 <TooltipContent side="top">{{ replaceLabel }}</TooltipContent>
               </Tooltip>
               <Tooltip>
                 <TooltipTrigger as-child>
-                  <ChoyButton
+                  <ChoyActionButton
                     size="sm"
                     variant="ghost"
                     class="size-7 p-0 text-white hover:bg-white/15 hover:text-white"
                     :disabled="actionsDisabled"
                     :aria-label="removeLabel"
-                    @click.stop="emit('remove')"
+                    @execute="emit('remove')"
                   >
                     <Trash2 class="size-3.5" aria-hidden="true" />
-                  </ChoyButton>
+                  </ChoyActionButton>
                 </TooltipTrigger>
                 <TooltipContent side="top">{{ removeLabel }}</TooltipContent>
               </Tooltip>
@@ -218,19 +218,19 @@ SPDX-License-Identifier: Apache-2.0
                   :disabled="uploadBlocked"
                   @change="onFileInputChange"
                 />
-                <ChoyButton size="sm" variant="ghost" class="h-auto px-1.5 py-0 text-primary" :disabled="uploadBlocked" as="span">
+                <ChoyActionButton size="sm" variant="ghost" class="h-auto px-1.5 py-0 text-primary" :disabled="uploadBlocked" as="span">
                   {{ replaceLabel }}
-                </ChoyButton>
+                </ChoyActionButton>
               </label>
-              <ChoyButton
+              <ChoyActionButton
                 size="sm"
                 variant="ghost"
                 class="h-auto px-1.5 py-0 text-destructive hover:text-destructive"
                 :disabled="actionsDisabled"
-                @click="emit('remove')"
+                @execute="emit('remove')"
               >
                 {{ removeLabel }}
-              </ChoyButton>
+              </ChoyActionButton>
             </AttachmentActions>
           </AttachmentContent>
         </Attachment>
@@ -271,7 +271,7 @@ SPDX-License-Identifier: Apache-2.0
               <Upload class="mx-auto mb-2.5 block size-5 text-primary" />
               <div class="w-full text-center text-sm leading-normal text-muted-foreground">{{ dropLabel }}</div>
             </template>
-            <ChoyButton v-else size="sm" variant="ghost" class="h-auto px-1.5 py-0 text-primary" as="span">{{ uploadLabel }}</ChoyButton>
+            <ChoyActionButton v-else size="sm" variant="ghost" class="h-auto px-1.5 py-0 text-primary" as="span">{{ uploadLabel }}</ChoyActionButton>
           </Attachment>
         </label>
       </template>
@@ -352,7 +352,8 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts">
 import { computed } from 'vue';
 import { Download, RefreshCw, Trash2, Upload } from 'lucide-vue-next';
-import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
+import ChoyButton from '@/web/web/components/button/ChoyButton.vue';
+import ChoyActionButton from '@/web/web/components/button/ChoyActionButton.vue';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../vendor/ui/tooltip';
 import Attachment from '../vendor/ui/attachment/Attachment.vue';
 import AttachmentActions from '../vendor/ui/attachment/AttachmentActions.vue';

@@ -463,7 +463,7 @@ import {
 } from '@/web/web/composables/fieldErrorSpace';
 import { CircleHelp, Languages, Building2 } from 'lucide-vue-next';
 import { cn, type ClassValue } from '@/web/web/lib/utils';
-import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
+import ChoyButton from '@/web/web/components/button/ChoyButton.vue';
 import Field from '@/web/web/components/vendor/ui/field/Field.vue';
 import FieldContent from '@/web/web/components/vendor/ui/field/FieldContent.vue';
 import FieldDescription from '@/web/web/components/vendor/ui/field/FieldDescription.vue';

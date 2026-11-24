@@ -9,7 +9,7 @@ import { UseUserFiltersKey } from '@/web/web/composables/search/useUserFilters';
 import { flushPromises, fnRecorder, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
 import Search from './Search.vue';
 import SearchFilter from './SearchFilter.vue';
-import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
+import ChoyButton from '@/web/web/components/button/ChoyButton.vue';
 import { ChoyDialog, ChoyDialogContent, ChoyDialogTitle } from '@/web/web/components/layout/choyDialog';
 import Popover from '@/web/web/components/vendor/ui/popover/Popover.vue';
 import PopoverContent from '@/web/web/components/vendor/ui/popover/PopoverContent.vue';

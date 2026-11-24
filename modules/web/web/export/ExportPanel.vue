@@ -27,8 +27,8 @@ SPDX-License-Identifier: Apache-2.0
                   {{ item.shared ? `${item.Name} (${sharedTemplateLabel})` : item.Name }}
                 </option>
               </select>
-              <ChoyButton size="sm" variant="outline" :disabled="!selectedTemplateId || busy" @click="applySelectedTemplate">{{ loadTemplateLabel }}</ChoyButton>
-              <ChoyButton size="sm" variant="destructive" :disabled="!selectedTemplateCanDelete || busy" @click="deleteSelectedTemplate">{{ deleteTemplateLabel }}</ChoyButton>
+              <ChoyActionButton size="sm" variant="outline" :disabled="!selectedTemplateId" :busy="busy" @execute="applySelectedTemplate">{{ loadTemplateLabel }}</ChoyActionButton>
+              <ChoyActionButton size="sm" variant="destructive" :disabled="!selectedTemplateCanDelete" :busy="busy" @execute="deleteSelectedTemplate">{{ deleteTemplateLabel }}</ChoyActionButton>
             </div>
             <div class="flex flex-wrap items-center gap-2">
               <input v-model="templateSaveName" :placeholder="templateNameLabel" class="min-w-[180px] flex-[1_1_180px]" />
@@ -36,7 +36,7 @@ SPDX-License-Identifier: Apache-2.0
                 <input type="checkbox" v-model="templateSaveShared" />
                 {{ sharedTemplateLabel }}
               </label>
-              <ChoyButton size="sm" variant="outline" :disabled="!canSaveTemplate || busy" @click="saveCurrentTemplate">{{ saveTemplateLabel }}</ChoyButton>
+              <ChoyActionButton size="sm" variant="outline" :disabled="!canSaveTemplate" :busy="busy" @execute="saveCurrentTemplate">{{ saveTemplateLabel }}</ChoyActionButton>
             </div>
             <p v-if="exportTemplatesLoadError" class="m-0 text-muted-foreground">{{ exportTemplatesLoadError }}</p>
           </div>
@@ -62,8 +62,8 @@ SPDX-License-Identifier: Apache-2.0
 
       <ChoyDialogFooter>
         <ChoyButton size="sm" variant="outline" :disabled="busy" @click="visible = false">{{ cancelLabel }}</ChoyButton>
-        <ChoyButton v-if="!exportDone" size="sm" variant="outline" :disabled="busy" @click="runPreview">{{ previewActionLabel }}</ChoyButton>
-        <ChoyButton v-if="!exportDone" size="sm" variant="default" :disabled="busy" @click="commitExport">{{ exportActionLabel }}</ChoyButton>
+        <ChoyActionButton v-if="!exportDone" size="sm" variant="outline" :busy="busy" @execute="runPreview">{{ previewActionLabel }}</ChoyActionButton>
+        <ChoyActionButton v-if="!exportDone" size="sm" variant="default" :busy="busy" @execute="commitExport">{{ exportActionLabel }}</ChoyActionButton>
         <ChoyButton v-else size="sm" variant="default" @click="visible = false">{{ doneLabel }}</ChoyButton>
       </ChoyDialogFooter>
     </ChoyDialogContent>
@@ -79,7 +79,8 @@ import {
   ChoyDialogHeader,
   ChoyDialogTitle,
 } from '@/web/web/components/layout/choyDialog';
-import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
+import ChoyButton from '@/web/web/components/button/ChoyButton.vue';
+import ChoyActionButton from '@/web/web/components/button/ChoyActionButton.vue';
 import { describeExportFields, previewExport, runExport, ExportMode, type ExportFieldNode, type ExportReport } from '@/core/web/export/client';
 import { downloadExportCsvBytes, suggestExportFileName } from '@/core/web/export/download_csv';
 import { normalizeExportFieldPaths } from '@/core/web/export/field_paths';

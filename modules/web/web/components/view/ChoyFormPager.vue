@@ -84,8 +84,8 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts">
 import { computed, nextTick, ref } from 'vue';
 import { ChevronLeft, ChevronRight } from 'lucide-vue-next';
-import ChoyButton from '../layout/ChoyButton.vue';
-import ChoyButtonGroup from '../layout/ChoyButtonGroup.vue';
+import ChoyButton from '../button/ChoyButton.vue';
+import ChoyButtonGroup from '../button/ChoyButtonGroup.vue';
 import Input from '../vendor/ui/input/Input.vue';
 import { createTranslate } from '../../i18n';
 import {

@@ -23,26 +23,26 @@ SPDX-License-Identifier: Apache-2.0
     >
       <!-- Install / Upgrade / Uninstall after the title/⋮ cluster (List/Kanban CTA parity). -->
       <template #secondary-actions>
-        <ChoyButton
+        <ChoyActionButton
           v-if="primaryAction"
           type="button"
           size="default"
           :variant="primaryButtonVariant"
           :data-testid="`module-catalog-form-primary-${primaryAction}`"
-          @click="onPrimaryClick"
+          @execute="onPrimaryClick"
         >
           {{ primaryActionLabel }}
-        </ChoyButton>
-        <ChoyButton
+        </ChoyActionButton>
+        <ChoyActionButton
           v-if="canUninstallRow && hasAction(moduleUninstallAction)"
           type="button"
           size="default"
           variant="outline-destructive"
           data-testid="module-catalog-form-uninstall"
-          @click="onUninstallClick"
+          @execute="onUninstallClick"
         >
           {{ _t('Uninstall') }}
-        </ChoyButton>
+        </ChoyActionButton>
       </template>
 
       <div data-anchor="choy.form.sheet" class="flex min-h-full flex-col gap-0">
@@ -323,7 +323,7 @@ import ModuleCatalogOpProgressStrip from './ModuleCatalogOpProgressStrip.vue';
 import {
   ChoyBadge,
   ChoyBooleanField,
-  ChoyButton,
+  ChoyActionButton,
   ChoyCol,
   ChoyDatetimeField,
   ChoyFormView,

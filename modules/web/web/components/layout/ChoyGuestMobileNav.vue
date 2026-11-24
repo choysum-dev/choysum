@@ -78,7 +78,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import ChoyButton from './ChoyButton.vue'
+import ChoyButton from '../button/ChoyButton.vue'
 import {
   Popover,
   PopoverContent,

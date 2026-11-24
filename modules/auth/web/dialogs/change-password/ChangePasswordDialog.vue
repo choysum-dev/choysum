@@ -90,13 +90,13 @@ SPDX-License-Identifier: Apache-2.0
             <ChoyButton type="button" variant="outline" :disabled="saving || loading" @click="close">{{
               _t('Cancel')
             }}</ChoyButton>
-            <ChoyButton
+            <ChoyActionButton
               type="submit"
-              :disabled="saving || loading"
+              :busy="saving || loading"
               data-testid="change-password-submit"
             >
               {{ _t('Change password') }}
-            </ChoyButton>
+            </ChoyActionButton>
           </ChoyDialogFooter>
         </template>
       </ChoyFormView>
@@ -107,6 +107,7 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import {
+  ChoyActionButton,
   ChoyButton,
   ChoyDialog,
   ChoyDialogContent,

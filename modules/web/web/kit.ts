@@ -26,8 +26,10 @@ export { default as ChoyTabs } from './components/layout/ChoyTabs.vue';
 export { default as ChoyTab } from './components/layout/ChoyTab.vue';
 export { default as ChoyStepper } from './components/layout/ChoyStepper.vue';
 export type { ChoyStepperStep } from './components/layout/ChoyStepper.vue';
-export { default as ChoyButton } from './components/layout/ChoyButton.vue';
-export { default as ChoyButtonGroup } from './components/layout/ChoyButtonGroup.vue';
+export { default as ChoyButton } from './components/button/ChoyButton.vue';
+export { default as ChoyButtonGroup } from './components/button/ChoyButtonGroup.vue';
+export { default as ChoyActionButton } from './components/button/ChoyActionButton.vue';
+export type { ChoyActionConfirm } from './components/button/ChoyActionButton.vue';
 export { default as ChoyInput } from './components/vendor/ui/input/Input.vue';
 export { default as ChoyCheckbox } from './components/vendor/ui/checkbox/Checkbox.vue';
 export {
@@ -138,8 +140,8 @@ export { default as ChoyPagination } from './components/view/ChoyPagination.vue'
 export { default as ChoyFormPager } from './components/view/ChoyFormPager.vue';
 export { default as ChoyBreadcrumb } from './components/view/ChoyBreadcrumb.vue';
 export { default as ChoyViewScope } from './components/view/ChoyViewScope.vue';
-export { default as ChoyButtonBox } from './components/view/ChoyButtonBox.vue';
-export { default as ChoyStatInfo } from './components/view/ChoyStatInfo.vue';
+export { default as ChoyStatBox } from './components/button/ChoyStatBox.vue';
+export { default as ChoyStatInfo } from './components/button/ChoyStatInfo.vue';
 export { default as ChoyTableColumn } from './components/table/ChoyTableColumn.vue';
 export type { ChoyBreadcrumbItem } from './components/view/ChoyBreadcrumb.vue';
 export type { ViewMode as ChoyViewMode, ViewKindId as ChoyViewKindId } from './components/view/ChoyViewScope.vue';

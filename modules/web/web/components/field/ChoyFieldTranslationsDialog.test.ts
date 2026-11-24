@@ -9,7 +9,7 @@ import { useI18nStore } from '@/web/web/stores/i18nStore';
 import { replaceStoreFactory } from '@/web/web/stores/registry';
 import { flushPromises, fnRecorder, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
 import { ChoyDialog, ChoyDialogContent, ChoyDialogTitle } from '@/web/web/components/layout/choyDialog';
-import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
+import ChoyButton from '@/web/web/components/button/ChoyButton.vue';
 import FieldTranslationsDialog from './ChoyFieldTranslationsDialog.vue';
 
 const DEFAULT_LANGS = [

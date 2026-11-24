@@ -34,7 +34,7 @@ SPDX-License-Identifier: Apache-2.0
 import { computed } from 'vue';
 import type { ModelStore } from '@/web/web/stores/modelStore';
 import type SandboxRecord from '@/sandbox/service/models/sandbox_record';
-import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
+import ChoyButton from '@/web/web/components/button/ChoyButton.vue';
 import { useField } from '@/web/web/composables/useField';
 import { createTranslate } from '@/web/web/i18n';
 

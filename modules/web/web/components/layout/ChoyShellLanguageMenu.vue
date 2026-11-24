@@ -41,7 +41,7 @@ SPDX-License-Identifier: Apache-2.0
 import { computed } from 'vue';
 import { createTranslate } from '@/web/web/i18n';
 import { Check, Languages } from 'lucide-vue-next';
-import ChoyButton from './ChoyButton.vue';
+import ChoyButton from '../button/ChoyButton.vue';
 import {
   DropdownMenu as ChoyDropdownMenu,
   DropdownMenuContent as ChoyDropdownMenuContent,

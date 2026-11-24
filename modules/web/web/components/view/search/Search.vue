@@ -289,16 +289,16 @@ SPDX-License-Identifier: Apache-2.0
                 >
                   <Pencil class="size-3.5" />
                 </ChoyButton>
-                <ChoyButton
+                <ChoyActionButton
                   v-if="it.canDelete"
                   class="choy-search__menu-item-delete"
                   variant="ghost"
                   size="sm"
                   :aria-label="_t('Delete favorite %s', it.name)"
-                  @click.stop="onRemoveFavorite(it)"
+                  @execute="onRemoveFavorite(it)"
                 >
                   <X class="size-3.5" />
-                </ChoyButton>
+                </ChoyActionButton>
               </div>
               <div v-if="favoritesLoadError" class="choy-search-menu__status choy-search-menu__status--error">
                 <span>{{ _t('Failed to load favorites') }}</span>
@@ -372,7 +372,7 @@ SPDX-License-Identifier: Apache-2.0
       </form>
       <ChoyDialogFooter>
         <ChoyButton size="sm" variant="outline" :disabled="saveFavoriteSaving" @click="saveFavoriteOpen = false">{{ _t('Cancel') }}</ChoyButton>
-        <ChoyButton size="sm" variant="default" :disabled="saveFavoriteSaving" @click="onConfirmSaveFavorite">{{ _t('Save') }}</ChoyButton>
+        <ChoyActionButton size="sm" variant="default" :busy="saveFavoriteSaving" @execute="onConfirmSaveFavorite">{{ _t('Save') }}</ChoyActionButton>
       </ChoyDialogFooter>
       </ChoyDialogContent>
     </ChoyDialog>
@@ -417,7 +417,8 @@ import { useMenuStore } from '@/web/web/stores/menuStore';
 import { useRoute } from 'vue-router';
 import { Search, ChevronDown, Check, Pencil, X, Funnel, Layers, Star } from 'lucide-vue-next';
 import ChoyBadge from '@/web/web/components/layout/ChoyBadge.vue';
-import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
+import ChoyButton from '@/web/web/components/button/ChoyButton.vue';
+import ChoyActionButton from '@/web/web/components/button/ChoyActionButton.vue';
 import {
   ChoyDialog,
   ChoyDialogContent,

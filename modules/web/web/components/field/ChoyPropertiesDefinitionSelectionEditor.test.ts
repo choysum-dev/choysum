@@ -4,7 +4,7 @@
 import { h, nextTick } from 'vue';
 
 import { mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
-import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
+import ChoyButton from '@/web/web/components/button/ChoyButton.vue';
 import ChoyPropertiesDefinitionSelectionEditor from './ChoyPropertiesDefinitionSelectionEditor.vue';
 import type { SelectionDraftRow } from './propertiesDefinitionHelpers';
 

@@ -8,14 +8,15 @@ SPDX-License-Identifier: Apache-2.0
     class="choy-chatter-follower-bar flex flex-wrap items-center gap-2"
     data-anchor="choy.chatter.follower-bar"
   >
-    <ChoyButton
+    <ChoyActionButton
       size="sm"
       variant="outline"
       :disabled="!enabled"
-      @click="toggle"
+      :busy="loading"
+      @execute="toggle"
     >
       {{ loading ? '…' : following ? resolvedUnfollowLabel : resolvedFollowLabel }}
-    </ChoyButton>
+    </ChoyActionButton>
     <span
       v-if="followerCount > 0"
       class="text-xs text-muted-foreground"
@@ -27,7 +28,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import ChoyButton from '../layout/ChoyButton.vue';
+import ChoyActionButton from '../button/ChoyActionButton.vue';
 import { createTranslate } from '@/web/web/i18n';
 
 /**

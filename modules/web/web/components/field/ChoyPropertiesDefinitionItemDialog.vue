@@ -215,15 +215,15 @@ SPDX-License-Identifier: Apache-2.0
           >
             {{ _t('Cancel') }}
           </ChoyButton>
-          <ChoyButton
+          <ChoyActionButton
             type="button"
             size="default"
             variant="default"
             data-testid="choy-properties-definition-item-save"
-            @click="onApply"
+            @execute="onApply"
           >
             {{ _t('Apply') }}
-          </ChoyButton>
+          </ChoyActionButton>
         </template>
       </ChoyDialogFooter>
     </ChoyDialogContent>
@@ -253,7 +253,8 @@ import {
   ChoyDialogHeader,
   ChoyDialogTitle,
 } from '@/web/web/components/layout/choyDialog';
-import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
+import ChoyButton from '@/web/web/components/button/ChoyButton.vue';
+import ChoyActionButton from '@/web/web/components/button/ChoyActionButton.vue';
 import ChoyFormView from '@/web/web/components/view/ChoyFormView.vue';
 import type { FormSubmitHandler } from '@/web/web/components/view/formViewTypes';
 import type { ViewMode } from '@/web/web/components/view/viewScopeKeys';

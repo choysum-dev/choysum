@@ -12,8 +12,8 @@ import ListView from '../view/ChoyListView.vue';
 import Search from '../view/search/Search.vue';
 import ChoyViewScope from '../view/ChoyViewScope.vue';
 import { VIEW_SCOPE_KEY } from '../view/viewScopeKeys';
-import ChoyButtonBox from '../view/ChoyButtonBox.vue';
-import ChoyStatInfo from '../view/ChoyStatInfo.vue';
+import ChoyStatBox from '../button/ChoyStatBox.vue';
+import ChoyStatInfo from '../button/ChoyStatInfo.vue';
 import ChoyTableColumn from '../table/ChoyTableColumn.vue';
 import ChoyVarcharField from './ChoyVarcharField.vue';
 import ChoyTextField from './ChoyTextField.vue';
@@ -502,7 +502,7 @@ describe('Choy store-mode field hosts', () => {
 
     const HostBox = defineComponent({
       setup() {
-        return () => h(ChoyButtonBox, null, () => h('button', 'Go'));
+        return () => h(ChoyStatBox, null, () => h('button', 'Go'));
       },
     });
     const box = mountApp(HostBox);
@@ -513,7 +513,7 @@ describe('Choy store-mode field hosts', () => {
     const emptyBox = mountApp(
       defineComponent({
         setup() {
-          return () => h(ChoyButtonBox, null, () => null);
+          return () => h(ChoyStatBox, null, () => null);
         },
       }),
     );

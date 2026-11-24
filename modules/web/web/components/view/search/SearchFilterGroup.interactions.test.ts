@@ -4,7 +4,7 @@
 import { h, reactive } from 'vue';
 
 import { flushPromises, fnRecorder, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
-import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
+import ChoyButton from '@/web/web/components/button/ChoyButton.vue';
 import ToggleGroup from '@/web/web/components/vendor/ui/toggle-group/ToggleGroup.vue';
 import ToggleGroupItem from '@/web/web/components/vendor/ui/toggle-group/ToggleGroupItem.vue';
 import SearchFilterCondition from './SearchFilterCondition.vue';

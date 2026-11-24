@@ -10,7 +10,7 @@ import { replaceStoreFactory } from '@/web/web/stores/registry';
 import ChoyFieldBase from './ChoyFieldBase.vue';
 import ChoyManyToManyField from './ChoyManyToManyField.vue';
 import { ChoyDialog, ChoyDialogContent, ChoyDialogTitle } from '@/web/web/components/layout/choyDialog';
-import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
+import ChoyButton from '@/web/web/components/button/ChoyButton.vue';
 import ChoyViewScope from '@/web/web/components/view/ChoyViewScope.vue';
 import ChoyTableHost from '@/web/web/components/internal/ChoyTableHost.vue';
 import ChoyTableColumn from '@/web/web/components/table/ChoyTableColumn.vue';

@@ -11,7 +11,7 @@ import { computed, defineComponent, h, nextTick, ref } from 'vue';
 import { createTermReference } from '@/core/service/i18n';
 import type { UseField } from '@/web/web/composables/useField';
 import { flushPromises, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
-import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
+import ChoyButton from '@/web/web/components/button/ChoyButton.vue';
 import ChoyTableColumn from '@/web/web/components/table/ChoyTableColumn.vue';
 import ChoyFieldBase from './ChoyFieldBase.vue';
 import FieldCompanyValuesDialog from './ChoyFieldCompanyValuesDialog.vue';

@@ -7,7 +7,7 @@ import { computed, h, nextTick, reactive, ref } from 'vue';
 import { TRANSLATED_BASE_LANG } from '@/core/service/orm/model/properties_label_i18n';
 import type { UseField } from '@/web/web/composables/useField';
 import { flushPromises, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
-import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
+import ChoyButton from '@/web/web/components/button/ChoyButton.vue';
 import { useI18nStore } from '@/web/web/stores/i18nStore';
 import ChoyFieldBase from './ChoyFieldBase.vue';
 import ChoyPropertiesDefinitionField from './ChoyPropertiesDefinitionField.vue';

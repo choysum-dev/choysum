@@ -134,7 +134,7 @@ import {
   setListHandleDragImage,
   useListHandleReorder,
 } from '@/web/web/composables/useListHandleReorder';
-import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
+import ChoyButton from '@/web/web/components/button/ChoyButton.vue';
 import Input from '../vendor/ui/input/Input.vue';
 import type { SelectionDraftRow } from './propertiesDefinitionHelpers';
 

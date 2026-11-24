@@ -117,7 +117,7 @@ import {
   useListHandleReorder,
 } from '@/web/web/composables/useListHandleReorder';
 import ChoyFieldBase, { type FieldStateExpr, type FormItemProps } from './ChoyFieldBase.vue';
-import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
+import ChoyButton from '@/web/web/components/button/ChoyButton.vue';
 import { createTranslate } from '@/web/web/i18n';
 import { useI18nStore } from '@/web/web/stores/i18nStore';
 import ChoyPropertiesDefinitionItemDialog from './ChoyPropertiesDefinitionItemDialog.vue';

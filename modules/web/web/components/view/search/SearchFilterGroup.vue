@@ -170,7 +170,7 @@ import { computed } from 'vue';
 import type { ConditionGroup, Condition } from '@/web/web/query/types';
 import type { ModelStore } from '@/web/web/stores/modelStore';
 import SearchFilterCondition from './SearchFilterCondition.vue';
-import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
+import ChoyButton from '@/web/web/components/button/ChoyButton.vue';
 import ToggleGroup from '@/web/web/components/vendor/ui/toggle-group/ToggleGroup.vue';
 import ToggleGroupItem from '@/web/web/components/vendor/ui/toggle-group/ToggleGroupItem.vue';
 import { Layers, Plus, Trash2 } from 'lucide-vue-next';

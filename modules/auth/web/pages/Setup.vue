@@ -80,17 +80,25 @@ SPDX-License-Identifier: Apache-2.0
                   >
                     {{ _t('Back') }}
                   </ChoyButton>
+                  <ChoyActionButton
+                    v-if="step === 'review'"
+                    id="setup-submit"
+                    type="submit"
+                    size="lg"
+                    class="submit-button ms-auto"
+                    :busy="submitting"
+                  >
+                    {{ submitting ? _t('Complete Setup') + '…' : _t('Complete Setup') }}
+                  </ChoyActionButton>
                   <ChoyButton
+                    v-else
                     id="setup-submit"
                     type="submit"
                     size="lg"
                     class="submit-button ms-auto"
                     :disabled="submitting"
                   >
-                    <template v-if="step === 'review'">
-                      {{ submitting ? _t('Complete Setup') + '…' : _t('Complete Setup') }}
-                    </template>
-                    <template v-else>{{ _t('Next') }}</template>
+                    {{ _t('Next') }}
                   </ChoyButton>
                 </div>
               </template>
@@ -114,6 +122,7 @@ import SetupOrganizationStep from './setup/SetupOrganizationStep.vue';
 import SetupReviewStep from './setup/SetupReviewStep.vue';
 import {
   ChoyPage,
+  ChoyActionButton,
   ChoyButton,
   ChoyFormView,
   ChoyStepper,

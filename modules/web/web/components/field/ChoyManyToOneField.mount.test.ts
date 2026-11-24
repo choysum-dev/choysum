@@ -10,7 +10,7 @@ import { flushPromises, fnRecorder, mountApp, restoreSfc, stubSfc } from '@/web/
 import ChoyFieldBase from './ChoyFieldBase.vue';
 import ChoyManyToOneField from './ChoyManyToOneField.vue';
 import { ChoyDialog, ChoyDialogContent, ChoyDialogTitle } from '@/web/web/components/layout/choyDialog';
-import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
+import ChoyButton from '@/web/web/components/button/ChoyButton.vue';
 import ChoyViewScope from '@/web/web/components/view/ChoyViewScope.vue';
 import RelationCombobox from '@/web/web/components/internal/RelationCombobox.vue';
 

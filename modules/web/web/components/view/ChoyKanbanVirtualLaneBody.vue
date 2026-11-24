@@ -140,7 +140,7 @@ import { computed, ref } from 'vue';
 import { useVirtualizer } from '@tanstack/vue-virtual';
 import { MoreHorizontal } from 'lucide-vue-next';
 import { setHtml5DragImage } from '@/web/web/composables/useListHandleReorder';
-import ChoyButton from '../layout/ChoyButton.vue';
+import ChoyButton from '../button/ChoyButton.vue';
 import DropdownMenu from '../vendor/ui/dropdown-menu/DropdownMenu.vue';
 import DropdownMenuContent from '../vendor/ui/dropdown-menu/DropdownMenuContent.vue';
 import DropdownMenuItem from '../vendor/ui/dropdown-menu/DropdownMenuItem.vue';

@@ -6,7 +6,7 @@ import { buildPageMountGlobal } from '@choysum/page-mount';
 
 import { flushPromises, fnRecorder, mountApp } from '@/web/web/__tests__/mountApp';
 import ChoyStatInfo from './ChoyStatInfo.vue';
-import ChoyButtonBox from './ChoyButtonBox.vue';
+import ChoyStatBox from './ChoyStatBox.vue';
 import { resolveStatDisplayValue, slotHasContent } from './statInfoHelpers';
 
 describe('statInfoHelpers', () => {
@@ -182,8 +182,8 @@ describe('ButtonBox', () => {
       setup() {
         return () =>
           h('div', { class: 'host' }, [
-            h(ChoyButtonBox as any),
-            h(ChoyButtonBox as any, null, { default: () => h(ChoyStatInfo as any, { value: 1, label: 'A' }) }),
+            h(ChoyStatBox as any),
+            h(ChoyStatBox as any, null, { default: () => h(ChoyStatInfo as any, { value: 1, label: 'A' }) }),
           ]);
       },
     });
@@ -200,7 +200,7 @@ describe('ButtonBox', () => {
       setup() {
         return () =>
           h('div', { class: 'host' }, [
-            h(ChoyButtonBox as any, null, {
+            h(ChoyStatBox as any, null, {
               default: () => (show.value ? h(ChoyStatInfo as any, { value: 1, label: 'A' }) : null),
             }),
           ]);

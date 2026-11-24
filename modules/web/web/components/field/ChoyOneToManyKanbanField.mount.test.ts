@@ -8,7 +8,7 @@ import { flushPromises, fnRecorder, mountApp, restoreSfc, stubSfc } from '@/web/
 import ChoyFieldBase from './ChoyFieldBase.vue';
 import ChoyOneToManyKanbanField from './ChoyOneToManyKanbanField.vue';
 import ChoyViewScope from '@/web/web/components/view/ChoyViewScope.vue';
-import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
+import ChoyButton from '@/web/web/components/button/ChoyButton.vue';
 import { ChoyDialog, ChoyDialogContent, ChoyDialogTitle } from '@/web/web/components/layout/choyDialog';
 
 function makeBinding(opts: { items?: any[]; isEditMode?: boolean; isForm?: boolean }) {

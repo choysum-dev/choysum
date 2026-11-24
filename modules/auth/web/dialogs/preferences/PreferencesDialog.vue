@@ -18,12 +18,13 @@ SPDX-License-Identifier: Apache-2.0
         <form v-if="!userId" class="mt-4 flex flex-col gap-4" @submit.prevent="onMissingUserSubmit">
           <ChoyDialogFooter>
             <ChoyButton type="button" variant="outline" @click="visible = false">{{ _t('Cancel') }}</ChoyButton>
-            <ChoyButton type="submit">{{ _t('Save') }}</ChoyButton>
+            <ChoyActionButton type="button" @execute="onMissingUserSubmit">{{ _t('Save') }}</ChoyActionButton>
           </ChoyDialogFooter>
         </form>
 
         <ChoyFormView
           v-else
+          ref="preferencesFormRef"
           class="mt-3 flex min-h-0 flex-1 flex-col overflow-hidden"
           :store="userStore"
           :record-id="userId"
@@ -207,9 +208,13 @@ SPDX-License-Identifier: Apache-2.0
               <ChoyButton type="button" variant="outline" :disabled="saving" @click="visible = false">{{
                 _t('Cancel')
               }}</ChoyButton>
-              <ChoyButton type="submit" :disabled="saving || loading || saveBlockedOffline">{{
+              <ChoyActionButton
+                type="button"
+                :busy="saving || loading"
+                @execute="() => void preferencesFormRef?.submit?.()"
+              >{{
                 _t('Save')
-              }}</ChoyButton>
+              }}</ChoyActionButton>
             </ChoyDialogFooter>
           </template>
         </ChoyFormView>
@@ -220,6 +225,7 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import {
+  ChoyActionButton,
   ChoyButton,
   ChoyDialog,
   ChoyDialogContent,
@@ -267,8 +273,6 @@ import {
   type ChoyThemeMode,
 } from '@/auth/web/stores/auth/user_appearance';
 import { readChoyThemePreference } from '@/web/web/composables/applyChoyThemePreference';
-import { useConnectivityStore } from '@/web/web/stores/connectivityStore';
-
 defineOptions({ name: 'PreferencesDialog' });
 
 const props = defineProps<{ modelValue: boolean }>();
@@ -277,8 +281,8 @@ const emit = defineEmits<{ 'update:modelValue': [boolean]; closed: [] }>();
 const { _t } = createTranslate('auth', { scope: 'web/dialogs/preferences/PreferencesDialog' });
 const authStore = useAuthStore();
 const i18nStore = useI18nStore();
-const connectivity = useConnectivityStore();
 const collaborationCaps = useReactiveCollaborationCaps();
+const preferencesFormRef = ref<{ submit?: () => void | Promise<unknown> } | null>(null);
 const userStore = createModelStore('auth.User');
 const languageStore = createModelStore('base.Language');
 
@@ -330,7 +334,6 @@ const preferencesInitialValues = computed(() => {
     Density: resolveUserDensity(u, local.density),
   };
 });
-const saveBlockedOffline = computed(() => connectivity.status === 'unreachable');
 const seedLanguageId = ref('');
 const seedTimezone = ref('');
 const seedTheme = ref('');

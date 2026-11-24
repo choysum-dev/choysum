@@ -89,7 +89,7 @@ import type { UseField } from '@/web/web/composables/useField';
 import type { NarrowAggProp, NonNumericAggFns } from '@/web/web/composables/useField';
 import { useBufferedCommit, type CommitStrategy } from '@/web/web/composables/useBufferedCommit';
 import Input from '../vendor/ui/input/Input.vue';
-import ChoyButton from '../layout/ChoyButton.vue';
+import ChoyButton from '../button/ChoyButton.vue';
 import ChoyFieldBase, { type FieldStateExpr, type FormItemProps } from './ChoyFieldBase.vue';
 import { ChoyMessage } from '../../composables/useChoyMessage';
 import { createTranslate } from '@/web/web/i18n';

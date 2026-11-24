@@ -12,9 +12,9 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { useSlots } from 'vue';
-import { slotHasContent } from '@/web/web/components/view/statInfoHelpers';
+import { slotHasContent } from '@/web/web/components/button/statInfoHelpers';
 
-defineOptions({ name: 'ChoyButtonBox' });
+defineOptions({ name: 'ChoyStatBox' });
 
 const slots = useSlots();
 

@@ -43,15 +43,15 @@ SPDX-License-Identifier: Apache-2.0
       <DropdownMenuContent align="end" class="choy-notification-bell__menu">
         <div class="flex items-center justify-between gap-2 border-b border-border px-3 py-2 text-sm text-muted-foreground">
           <span>{{ _t('Notifications') }}</span>
-          <ChoyButton
+          <ChoyActionButton
             v-if="inboxUnreadCount > 0"
             size="sm"
             variant="link"
             data-test="notification-mark-all-read"
-            @click.stop="markAllRead"
+            @execute="markAllRead"
           >
             {{ _t('Mark all read') }}
-          </ChoyButton>
+          </ChoyActionButton>
         </div>
         <div v-if="loading" class="flex justify-center p-3">
           <ChoySpinner :label="_t('Loading...')" />
@@ -99,7 +99,7 @@ import ItemDescription from '../vendor/ui/item/ItemDescription.vue';
 import ItemTitle from '../vendor/ui/item/ItemTitle.vue';
 import ChoyEmpty from './ChoyEmpty.vue';
 import ChoySpinner from './ChoySpinner.vue';
-import ChoyButton from './ChoyButton.vue';
+import ChoyActionButton from '../button/ChoyActionButton.vue';
 import { cn, type ClassValue } from '../../lib/utils';
 import {
   choyNotificationAriaLabel,

@@ -31,17 +31,19 @@ SPDX-License-Identifier: Apache-2.0
     <template v-if="showActions" #system-actions>
       <slot name="system-actions">
         <!-- Keep New mounted during busy so the action bar does not flash. -->
-        <ChoyButton
+        <ChoyActionButton
           v-if="showCreate"
           type="button"
           size="default"
           variant="default"
-          :disabled="boardBusy"
-          @click="emit('create')"
+          :busy="boardBusy"
+          :action-id="actionIds?.create"
+          :has-action="hasAction"
+          @execute="emit('create')"
         >
           <Plus class="size-4" aria-hidden="true" />
           {{ resolvedCreateLabel }}
-        </ChoyButton>
+        </ChoyActionButton>
       </slot>
     </template>
 
@@ -455,8 +457,10 @@ import type { GroupBySpec, QueryCondition } from '@/core/service/api/query';
 import type { ModelStore } from '@/web/web/stores/modelStore';
 import type { OrderByState } from '@/web/web/query/state';
 import type { ChoySearchQuery } from './searchViewHelpers';
-import ChoyButton from '../layout/ChoyButton.vue';
-import ChoyButtonGroup from '../layout/ChoyButtonGroup.vue';
+import ChoyButton from '../button/ChoyButton.vue';
+import ChoyButtonGroup from '../button/ChoyButtonGroup.vue';
+import ChoyActionButton from '../button/ChoyActionButton.vue';
+import type { ActionIdMap } from '@/web/web/components/view/actionVisibility';
 import ChoyEmpty from '../layout/ChoyEmpty.vue';
 import ChoyViewBase from '@/web/web/components/view/ChoyViewBase.vue';
 import ChoySearchFit from '@/web/web/components/view/ChoySearchFit.vue';
@@ -566,6 +570,8 @@ const props = withDefaults(
     refreshLabel?: string;
     showCreate?: boolean;
     showRefresh?: boolean;
+    actionIds?: ActionIdMap;
+    hasAction?: (actionId: string | undefined) => boolean;
     autoBootstrap?: boolean;
     beforeBootstrap?: () => Promise<void>;
     /** Optional remap for category / series labels after group snapshot mapping. */

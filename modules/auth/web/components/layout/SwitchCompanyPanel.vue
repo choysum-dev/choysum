@@ -90,14 +90,14 @@ SPDX-License-Identifier: Apache-2.0
         >
           {{ _t('Reset') }}
         </ChoyButton>
-        <ChoyButton
+        <ChoyActionButton
           size="sm"
           :disabled="disabled"
           data-testid="company-switch-confirm"
-          @click.stop="emit('confirm')"
+          @execute="emit('confirm')"
         >
           {{ _t('Confirm') }}
-        </ChoyButton>
+        </ChoyActionButton>
       </div>
     </template>
   </div>
@@ -105,7 +105,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <script lang="ts" setup>
 import { Check } from 'lucide-vue-next';
-import { ChoyButton, ChoyCheckbox, ChoyInput } from '@/web';
+import { ChoyActionButton, ChoyButton, ChoyCheckbox, ChoyInput } from '@/web';
 import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'SwitchCompanyPanel' });

@@ -5,7 +5,7 @@ import { createPinia, getActivePinia, setActivePinia } from 'pinia';
 import { buildPageMountGlobal } from '@choysum/page-mount';
 import { flushPromises, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
 import { h } from 'vue';
-import ChoyButton from './ChoyButton.vue';
+import ChoyButton from '../button/ChoyButton.vue';
 import ChoyViewLoadError from './ChoyViewLoadError.vue';
 import {
   clearViewLoadError,
