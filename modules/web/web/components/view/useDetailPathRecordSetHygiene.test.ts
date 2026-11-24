@@ -81,19 +81,25 @@ describe('useDetailPathRecordSetHygiene', () => {
     mounted.unmount();
   });
 
-  test('clearRecordSetSessionIfDetailHost swallows store errors', () => {
+  test('clearRecordSetSessionIfDetailHost swallows store errors', async () => {
+    setActivePinia(createPinia());
+    let clearFn: (() => void) | null = null;
     const Host = defineComponent({
       setup() {
-        const { clearRecordSetSessionIfDetailHost } = useDetailPathRecordSetHygiene({
+        const api = useDetailPathRecordSetHygiene({
           detailPath: '/partner/:id',
           modelName: 'partner.Partner',
         });
-        // No active Pinia — store access throws into the catch.
-        expect(() => clearRecordSetSessionIfDetailHost()).not.toThrow();
+        clearFn = api.clearRecordSetSessionIfDetailHost;
         return () => h('div');
       },
     });
-    const mounted = mountApp(Host as any, { pinia: false as any });
+    const mounted = mountApp(Host as any);
+    await flushPromises();
+    // Drop active Pinia so useRecordSetStore throws into the catch.
+    setActivePinia(undefined as unknown as ReturnType<typeof createPinia>);
+    expect(clearFn).not.toBeNull();
+    expect(() => clearFn!()).not.toThrow();
     mounted.unmount();
   });
 });
