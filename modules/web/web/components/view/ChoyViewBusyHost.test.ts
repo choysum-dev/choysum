@@ -351,6 +351,7 @@ describe('ChoyViewBusyHost', () => {
   });
 
   test('soft-retries surface error after connectivity recovery', async () => {
+    const clock = installFakeTimers();
     setActivePinia(createPinia());
     stubChoyButton();
     const onRetry = fnRecorder(() => {});
@@ -369,31 +370,31 @@ describe('ChoyViewBusyHost', () => {
           default: () => h('div', { 'data-testid': 'body' }, 'table chrome'),
         },
       });
-      await flushPromises();
+      await clock.flush();
       expect(mounted.q('[data-testid=choy-view-surface-error]')).not.toBeNull();
       store.markUnreachable();
-      await flushPromises();
+      await clock.flush();
       store.markReachable();
-      await flushPromises();
+      await clock.flush();
       expect(onRetry.calls.length).toBe(0);
-      await sleep(VIEW_LOAD_RETRY_AFTER_RECOVERY_MS + 30);
-      await flushPromises();
+      await clock.advance(VIEW_LOAD_RETRY_AFTER_RECOVERY_MS);
       expect(onRetry.calls.length).toBe(1);
       // One-shot: another recovery edge without clearing error must not storm.
       store.markUnreachable();
       store.markReachable();
-      await flushPromises();
-      await sleep(VIEW_LOAD_RETRY_AFTER_RECOVERY_MS + 30);
-      await flushPromises();
+      await clock.flush();
+      await clock.advance(VIEW_LOAD_RETRY_AFTER_RECOVERY_MS);
       expect(onRetry.calls.length).toBe(1);
       mounted.unmount();
     } finally {
+      clock.restore();
       restoreSfc(ChoyButton as any);
       store.resetForTests();
     }
   });
 
   test('soft-retries stale banner after connectivity recovery', async () => {
+    const clock = installFakeTimers();
     setActivePinia(createPinia());
     stubChoyButton();
     const onRetry = fnRecorder(() => {});
@@ -412,17 +413,58 @@ describe('ChoyViewBusyHost', () => {
           default: () => h('div', { 'data-testid': 'body' }, 'cached rows'),
         },
       });
-      await flushPromises();
+      await clock.flush();
       expect(mounted.q('[data-testid=choy-view-surface-stale-banner]')).not.toBeNull();
       store.markUnreachable();
-      await flushPromises();
+      await clock.flush();
       store.markReachable();
-      await flushPromises();
-      await sleep(VIEW_LOAD_RETRY_AFTER_RECOVERY_MS + 30);
-      await flushPromises();
+      await clock.flush();
+      await clock.advance(VIEW_LOAD_RETRY_AFTER_RECOVERY_MS);
       expect(onRetry.calls.length).toBe(1);
       mounted.unmount();
     } finally {
+      clock.restore();
+      restoreSfc(ChoyButton as any);
+      store.resetForTests();
+    }
+  });
+
+  test('skips soft-retry when unreachable at fire, then retries on next recovery', async () => {
+    const clock = installFakeTimers();
+    setActivePinia(createPinia());
+    stubChoyButton();
+    const onRetry = fnRecorder(() => {});
+    const store = useConnectivityStore();
+    store.resetForTests();
+    try {
+      const mounted = mountApp(ChoyViewBusyHost as any, {
+        props: {
+          busy: false,
+          error: new Error('Failed to fetch'),
+          hasFrame: false,
+          hasSettled: true,
+        },
+        on: { onRetry: () => onRetry() },
+        slots: {
+          default: () => h('div', { 'data-testid': 'body' }, 'table chrome'),
+        },
+      });
+      await clock.flush();
+      store.markUnreachable();
+      store.markReachable();
+      await clock.flush();
+      // Drop again before the delayed soft-retry fires — callback must no-op.
+      store.markUnreachable();
+      await clock.flush();
+      await clock.advance(VIEW_LOAD_RETRY_AFTER_RECOVERY_MS);
+      expect(onRetry.calls.length).toBe(0);
+      store.markReachable();
+      await clock.flush();
+      await clock.advance(VIEW_LOAD_RETRY_AFTER_RECOVERY_MS);
+      expect(onRetry.calls.length).toBe(1);
+      mounted.unmount();
+    } finally {
+      clock.restore();
       restoreSfc(ChoyButton as any);
       store.resetForTests();
     }
