@@ -9,6 +9,7 @@ SPDX-License-Identifier: Apache-2.0
     v-bind="$attrs"
     :store="store"
     :searchView="ChoySearchView"
+    :keyword-fields="keywordFields"
     :action-ids="{}"
     :detail-path="detailPathForRow"
   >
@@ -49,6 +50,9 @@ const props = defineProps<{
 
 const application = computed(() => String(props.application || '').trim());
 const store = resolvePageStore(props.store, 'TranslationTermListView');
+
+/** Quick-search Src (source) and Value (translation); text fields are not in the char/varchar fallback. */
+const keywordFields = ['Src', 'Value'];
 
 function detailPathForRow(row: Record<string, unknown>) {
   const id = String(row?.Id ?? '').trim();
