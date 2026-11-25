@@ -72,6 +72,10 @@ describe('ExportPanel template save FormView / UiModel', () => {
   }));
 
   beforeEach(() => {
+    ensureAbortController();
+    // Empty defaults: tests that set defaultFields via props stay in control of effectiveFields.
+    const hub = CreateWebClient(ExportHub)() as any;
+    hub.describeFields = async () => ({ fields: [], defaultFields: [] });
     templateSearch.mockReset();
     templateSearch.mockImplementation(async () => []);
     templateCreate.mockReset();

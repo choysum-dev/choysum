@@ -220,7 +220,8 @@ let sessionToken = 0;
 let activeRpcAbort: AbortController | null = null;
 
 function isAbortError(err: unknown): boolean {
-  if (err instanceof DOMException && err.name === 'AbortError') {
+  // FE unit host may lack DOMException; guard before instanceof.
+  if (typeof DOMException !== 'undefined' && err instanceof DOMException && err.name === 'AbortError') {
     return true;
   }
   return err instanceof Error && err.name === 'AbortError';
@@ -233,8 +234,14 @@ function abortActiveRpc() {
 
 function beginActiveRpc(): AbortSignal {
   abortActiveRpc();
-  activeRpcAbort = new AbortController();
-  return activeRpcAbort.signal;
+  try {
+    activeRpcAbort = new AbortController();
+    return activeRpcAbort.signal;
+  } catch {
+    // FE unit host may lack AbortController; RPC still proceeds without abort.
+    activeRpcAbort = null;
+    return { aborted: false } as AbortSignal;
+  }
 }
 
 function endActiveRpc(signal: AbortSignal) {
@@ -447,11 +454,7 @@ function preparePanelOpen() {
   }
   pendingFieldPaths.value = null;
   // Catch so FE unit hosts without an ExportHub stub do not surface unhandled rejections.
-  try {
-    void loadFields().catch(() => {});
-  } catch {
-    /* sync throw when AbortController is missing in the FE unit host */
-  }
+  void loadFields().catch(() => {});
 }
 
 watch(
@@ -561,10 +564,10 @@ watch(visible, open => {
 });
 
 onMounted(() => {
-  // Mounted already-open: template form only. Full preparePanelOpen (DescribeFields)
-  // runs when visible flips true; FE unit hosts lack an ExportHub stub for that RPC.
-  if (visible.value && templatesEnabled.value) {
-    resetTemplateSaveForm();
+  // Mounted already-open: same path as visible false→true (loadFields is caught when
+  // the FE unit host has no ExportHub / AbortController).
+  if (visible.value) {
+    preparePanelOpen();
   }
 });
 </script>
