@@ -188,7 +188,7 @@ func TestApply_RevisionMismatchAndSuccess(t *testing.T) {
 	}
 
 	// Restore revision and apply.
-	doc.BaseRevision = computeBaseRevision(context.Background(), o, doc.ModuleOrder)
+	doc.BaseRevision = computeBaseRevision(context.Background(), o, o.Resolver, nil, doc.ModuleOrder)
 	raw, _ = json.Marshal(doc)
 	row.PlanJson = raw
 	if err := o.saveOperation(context.Background(), row); err != nil {

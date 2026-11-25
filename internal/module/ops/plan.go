@@ -84,7 +84,12 @@ func (o *Ops) planSyncOp(ctx context.Context, operatorUserId string) (PlanResult
 }
 
 func (o *Ops) planModuleOp(ctx context.Context, action, moduleName, origin string, req PlanRequest) (PlanResult, error) {
-	root, blockers, err := o.resolveRootModule(ctx, moduleName, origin)
+	// Read-only + request-scoped Load/Peek/snapshot cache: Plan must not remigrate
+	// catalog tables on the warm path.
+	resolver := newPlanResolver(o.Resolver)
+	snapCache := map[string]snapVersions{}
+
+	root, blockers, err := o.resolveRootModule(ctx, resolver, moduleName, origin)
 	if err != nil {
 		return PlanResult{}, err
 	}
@@ -107,13 +112,13 @@ func (o *Ops) planModuleOp(ctx context.Context, action, moduleName, origin strin
 		if profile != "" {
 			buildOpts = append(buildOpts, plan.WithWebShellProfile(plan.WebShellProfile(profile)))
 		}
-		built, err = plan.BuildPlan(ctx, opType, root, o.Resolver, buildOpts...)
+		built, err = plan.BuildPlan(ctx, opType, root, resolver, buildOpts...)
 		if err != nil {
 			return PlanResult{}, err
 		}
 	}
 
-	doc := o.enrichPlanDocument(ctx, action, moduleName, origin, built, blockers)
+	doc := o.enrichPlanDocument(ctx, resolver, snapCache, action, moduleName, origin, built, blockers)
 	doc.SkipWebShell = req.SkipWebShell
 	doc.WebShellProfile = profile
 	doc.LifecycleInput = strings.TrimSpace(req.LifecycleInput)
@@ -158,12 +163,18 @@ func toPlanOpType(action string) (plan.OpType, bool) {
 	}
 }
 
-func (o *Ops) resolveRootModule(ctx context.Context, moduleName, origin string) (*pkgmeta.Module, []PlanIssue, error) {
+func (o *Ops) resolveRootModule(ctx context.Context, resolver plan.Resolver, moduleName, origin string) (*pkgmeta.Module, []PlanIssue, error) {
 	_ = origin // origin pins PlanJson; resolution uses Peek then Load for installed modules.
+	if resolver == nil {
+		resolver = o.Resolver
+	}
+	if resolver == nil {
+		return nil, nil, errors.New("ops: resolver is required")
+	}
 	var blockers []PlanIssue
-	mod, err := o.Resolver.Peek(ctx, moduleName)
+	mod, err := resolver.Peek(ctx, moduleName)
 	if err != nil || mod == nil {
-		loaded, loadErr := o.Resolver.Load(moduleName)
+		loaded, loadErr := resolver.Load(moduleName)
 		if loadErr != nil {
 			return nil, nil, loadErr
 		}
@@ -180,7 +191,14 @@ func (o *Ops) resolveRootModule(ctx context.Context, moduleName, origin string) 
 	return mod, blockers, nil
 }
 
-func (o *Ops) enrichPlanDocument(ctx context.Context, action, rootName, origin string, built plan.Plan, blockers []PlanIssue) PlanDocument {
+type snapVersions struct {
+	localV, registryV string
+}
+
+func (o *Ops) enrichPlanDocument(ctx context.Context, resolver plan.Resolver, snapCache map[string]snapVersions, action, rootName, origin string, built plan.Plan, blockers []PlanIssue) PlanDocument {
+	if resolver == nil {
+		resolver = o.Resolver
+	}
 	orderNames := append([]string{}, built.ModuleOrder...)
 	if len(orderNames) == 0 && rootName != "" && len(blockers) == 0 {
 		orderNames = []string{rootName}
@@ -188,17 +206,17 @@ func (o *Ops) enrichPlanDocument(ctx context.Context, action, rootName, origin s
 
 	entries := make([]ModuleOrderEntry, 0, len(orderNames))
 	for _, name := range orderNames {
-		entries = append(entries, o.buildOrderEntry(ctx, action, rootName, name, origin, false))
+		entries = append(entries, o.buildOrderEntry(ctx, resolver, snapCache, action, rootName, name, origin, false))
 	}
 
 	ensureNames := append([]string{}, built.EnsureOrder...)
 	ensureEntries := make([]ModuleOrderEntry, 0, len(ensureNames))
 	for _, name := range ensureNames {
-		ensureEntries = append(ensureEntries, o.buildOrderEntry(ctx, action, rootName, name, origin, true))
+		ensureEntries = append(ensureEntries, o.buildOrderEntry(ctx, resolver, snapCache, action, rootName, name, origin, true))
 	}
 
 	if action == ActionUninstall {
-		blockers = append(blockers, o.uninstallBlockers(ctx, rootName, orderNames)...)
+		blockers = append(blockers, o.uninstallBlockers(ctx, resolver, rootName, orderNames)...)
 	}
 
 	doc := PlanDocument{
@@ -209,15 +227,15 @@ func (o *Ops) enrichPlanDocument(ctx context.Context, action, rootName, origin s
 		EnsureOrder:   ensureNames,
 		NeedsWebBuild: built.NeedsGlobalWebBuild,
 	}
-	doc.BaseRevision = computeBaseRevision(ctx, o, entries)
+	doc.BaseRevision = computeBaseRevision(ctx, o, resolver, snapCache, entries)
 	return doc
 }
 
 // buildOrderEntry fills Role/Effect/Application and display versions for one plan step.
 // ensureStep marks EnsureOrder rows (always Role=dependency; Effect install or already_satisfied).
-func (o *Ops) buildOrderEntry(ctx context.Context, action, rootName, name, origin string, ensureStep bool) ModuleOrderEntry {
-	currentRaw, targetRaw := o.versionsForModule(ctx, name, origin)
-	app, installed := o.applicationAndInstalled(ctx, name)
+func (o *Ops) buildOrderEntry(ctx context.Context, resolver plan.Resolver, snapCache map[string]snapVersions, action, rootName, name, origin string, ensureStep bool) ModuleOrderEntry {
+	currentRaw, targetRaw := o.versionsForModule(ctx, resolver, snapCache, name, origin)
+	app, installed := o.applicationAndInstalled(ctx, resolver, name)
 
 	role := RoleDependency
 	reason := action
@@ -278,51 +296,77 @@ func (o *Ops) buildOrderEntry(ctx context.Context, action, rootName, name, origi
 	}
 }
 
-func (o *Ops) applicationAndInstalled(ctx context.Context, name string) (application string, installed bool) {
-	if o == nil || o.Resolver == nil {
+func (o *Ops) applicationAndInstalled(ctx context.Context, resolver plan.Resolver, name string) (application string, installed bool) {
+	if resolver == nil {
+		resolver = o.Resolver
+	}
+	if resolver == nil {
 		return "", false
 	}
-	if loaded, err := o.Resolver.Load(name); err == nil && loaded != nil {
+	if loaded, err := resolver.Load(name); err == nil && loaded != nil {
 		application = strings.TrimSpace(loaded.ApplicationStr)
 		installed = loaded.Status == pkgmeta.Installed
 	}
 	if application == "" {
-		if peeked, err := o.Resolver.Peek(ctx, name); err == nil && peeked != nil {
+		if peeked, err := resolver.Peek(ctx, name); err == nil && peeked != nil {
 			application = strings.TrimSpace(peeked.ApplicationStr)
 		}
 	}
 	return application, installed
 }
 
-func (o *Ops) versionsForModule(ctx context.Context, name, origin string) (current, target string) {
-	if installed, err := o.Resolver.Load(name); err == nil && installed != nil {
-		current = strings.TrimSpace(installed.Version)
+func (o *Ops) versionsForModule(ctx context.Context, resolver plan.Resolver, snapCache map[string]snapVersions, name, origin string) (current, target string) {
+	if resolver == nil {
+		resolver = o.Resolver
 	}
-	localV, registryV := o.snapshotVersions(ctx, name)
+	if resolver != nil {
+		if installed, err := resolver.Load(name); err == nil && installed != nil {
+			current = strings.TrimSpace(installed.Version)
+		}
+	}
+	localV, registryV := o.snapshotVersionsCached(ctx, snapCache, name)
 	switch origin {
 	case originRegistry:
 		target = firstNonEmpty(registryV, localV, current)
 	default:
 		target = firstNonEmpty(localV, registryV, current)
 	}
-	if target == "" {
-		if peeked, err := o.Resolver.Peek(ctx, name); err == nil && peeked != nil {
+	if target == "" && resolver != nil {
+		if peeked, err := resolver.Peek(ctx, name); err == nil && peeked != nil {
 			target = strings.TrimSpace(peeked.Version)
 		}
 	}
 	return current, target
 }
 
-func (o *Ops) snapshotVersions(ctx context.Context, name string) (localV, registryV string) {
+func (o *Ops) snapshotVersionsCached(ctx context.Context, snapCache map[string]snapVersions, name string) (localV, registryV string) {
+	key := strings.TrimSpace(name)
+	if snapCache != nil {
+		if hit, ok := snapCache[key]; ok {
+			return hit.localV, hit.registryV
+		}
+	}
+	localV, registryV, ok := o.snapshotVersions(ctx, name)
+	// Cache successful reads only (including empty rows). Transient session /
+	// query failures must not poison later enrichment in the same Plan.
+	if snapCache != nil && ok {
+		snapCache[key] = snapVersions{localV: localV, registryV: registryV}
+	}
+	return localV, registryV
+}
+
+func (o *Ops) snapshotVersions(ctx context.Context, name string) (localV, registryV string, ok bool) {
 	sess, err := o.session(ctx)
 	if err != nil {
-		return "", ""
+		return "", "", false
 	}
 	var rows []modmeta.ModuleSourceSnapshot
-	_ = sess.WithContext(ctx).
+	if err := sess.WithContext(ctx).
 		Where("module_name = ? AND available = ?", name, true).
 		Order("source_type ASC, source_ref ASC").
-		Find(&rows).Error
+		Find(&rows).Error; err != nil {
+		return "", "", false
+	}
 	for _, row := range rows {
 		v := ""
 		if row.Version.Valid {
@@ -339,15 +383,25 @@ func (o *Ops) snapshotVersions(ctx context.Context, name string) (localV, regist
 			}
 		}
 	}
-	return localV, registryV
+	return localV, registryV, true
 }
 
-func (o *Ops) uninstallBlockers(ctx context.Context, rootName string, planned []string) []PlanIssue {
+func (o *Ops) uninstallBlockers(ctx context.Context, resolver plan.Resolver, rootName string, planned []string) []PlanIssue {
+	if resolver == nil {
+		resolver = o.Resolver
+	}
 	plannedSet := make(map[string]struct{}, len(planned))
 	for _, n := range planned {
 		plannedSet[n] = struct{}{}
 	}
-	root, err := o.Resolver.Load(rootName)
+	if resolver == nil {
+		return []PlanIssue{{
+			Code:    "DEPENDENCY_LOOKUP_FAILED",
+			Level:   "error",
+			Message: fmt.Sprintf("could not check dependents of module %q: resolver is nil", rootName),
+		}}
+	}
+	root, err := resolver.Load(rootName)
 	if err != nil {
 		return []PlanIssue{{
 			Code:    "DEPENDENCY_LOOKUP_FAILED",
@@ -382,7 +436,7 @@ func (o *Ops) uninstallBlockers(ctx context.Context, rootName string, planned []
 	return out
 }
 
-func computeBaseRevision(ctx context.Context, o *Ops, entries []ModuleOrderEntry) string {
+func computeBaseRevision(ctx context.Context, o *Ops, resolver plan.Resolver, snapCache map[string]snapVersions, entries []ModuleOrderEntry) string {
 	// Hash mixes frozen PlanJson target/origin with live installed + snapshot
 	// versions so Apply rejects when the world moved since Plan.
 	type revPart struct {
@@ -393,14 +447,17 @@ func computeBaseRevision(ctx context.Context, o *Ops, entries []ModuleOrderEntry
 		Local    string `json:"l,omitempty"`
 		Registry string `json:"r,omitempty"`
 	}
+	if resolver == nil && o != nil {
+		resolver = o.Resolver
+	}
 	parts := make([]revPart, 0, len(entries))
 	for _, e := range entries {
 		localV, registryV := "", ""
 		current := e.CurrentVersion
 		if o != nil {
-			localV, registryV = o.snapshotVersions(ctx, e.ModuleName)
-			if o.Resolver != nil {
-				if installed, err := o.Resolver.Load(e.ModuleName); err == nil {
+			localV, registryV = o.snapshotVersionsCached(ctx, snapCache, e.ModuleName)
+			if resolver != nil {
+				if installed, err := resolver.Load(e.ModuleName); err == nil {
 					if installed != nil {
 						current = strings.TrimSpace(installed.Version)
 					} else {

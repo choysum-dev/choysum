@@ -29,7 +29,7 @@ func TestEnrichPlanDocument_InstallTargetAndSatisfiedDeps(t *testing.T) {
 		AffectedApps:      []string{"auth", "core", "partner"},
 		NeedsGlobalWebBuild: true,
 	}
-	doc := o.enrichPlanDocument(context.Background(), ActionInstall, "partner", originLocal, built, nil)
+	doc := o.enrichPlanDocument(context.Background(), o.Resolver, nil, ActionInstall, "partner", originLocal, built, nil)
 	if !doc.NeedsWebBuild {
 		t.Fatal("NeedsWebBuild should pass through")
 	}
@@ -74,7 +74,7 @@ func TestEnrichPlanDocument_UninstallDependentsShareApplication(t *testing.T) {
 		ModuleOrder:  []string{"partner_commercial", "partner"},
 		AffectedApps: []string{"partner"},
 	}
-	doc := o.enrichPlanDocument(context.Background(), ActionUninstall, "partner", originLocal, built, nil)
+	doc := o.enrichPlanDocument(context.Background(), o.Resolver, nil, ActionUninstall, "partner", originLocal, built, nil)
 	if len(doc.ModuleOrder) != 2 {
 		t.Fatalf("ModuleOrder = %#v", doc.ModuleOrder)
 	}
@@ -106,7 +106,7 @@ func TestEnrichPlanDocument_UpgradeEnsureModules(t *testing.T) {
 		EnsureOrder:  []string{"document"},
 		AffectedApps: []string{"document", "partner"},
 	}
-	doc := o.enrichPlanDocument(context.Background(), ActionUpgrade, "partner", originLocal, built, nil)
+	doc := o.enrichPlanDocument(context.Background(), o.Resolver, nil, ActionUpgrade, "partner", originLocal, built, nil)
 	if len(doc.ModuleOrder) != 1 || doc.ModuleOrder[0].Effect != EffectUpgrade || doc.ModuleOrder[0].Role != RoleTarget {
 		t.Fatalf("ModuleOrder = %#v", doc.ModuleOrder)
 	}
@@ -145,23 +145,23 @@ func TestBuildOrderEntry_EnsureStepEffects(t *testing.T) {
 	}).Error; err != nil {
 		t.Fatalf("seed auth snapshot: %v", err)
 	}
-	satisfied := o.buildOrderEntry(ctx, ActionInstall, "partner", "core", originLocal, true)
+	satisfied := o.buildOrderEntry(ctx, o.Resolver, nil, ActionInstall, "partner", "core", originLocal, true)
 	if satisfied.Effect != EffectAlreadySatisfied {
 		t.Fatalf("ensure satisfied = %#v", satisfied)
 	}
-	ensureInstalled := o.buildOrderEntry(ctx, ActionInstall, "partner", "auth", originLocal, true)
+	ensureInstalled := o.buildOrderEntry(ctx, o.Resolver, nil, ActionInstall, "partner", "auth", originLocal, true)
 	if ensureInstalled.Effect != EffectAlreadySatisfied {
 		t.Fatalf("ensure installed (version skew) = %#v", ensureInstalled)
 	}
-	installDepInstalled := o.buildOrderEntry(ctx, ActionInstall, "partner", "auth", originLocal, false)
+	installDepInstalled := o.buildOrderEntry(ctx, o.Resolver, nil, ActionInstall, "partner", "auth", originLocal, false)
 	if installDepInstalled.Effect != EffectAlreadySatisfied {
 		t.Fatalf("install dep already installed = %#v", installDepInstalled)
 	}
-	depUpgrade := o.buildOrderEntry(ctx, ActionUpgrade, "partner", "auth", originLocal, false)
+	depUpgrade := o.buildOrderEntry(ctx, o.Resolver, nil, ActionUpgrade, "partner", "auth", originLocal, false)
 	if depUpgrade.Effect != EffectUpgrade {
 		t.Fatalf("dependency upgrade = %#v", depUpgrade)
 	}
-	missingUpgrade := o.buildOrderEntry(ctx, ActionUpgrade, "partner", "document", originLocal, false)
+	missingUpgrade := o.buildOrderEntry(ctx, o.Resolver, nil, ActionUpgrade, "partner", "document", originLocal, false)
 	if missingUpgrade.Effect != EffectInstall {
 		t.Fatalf("upgrade missing module = %#v", missingUpgrade)
 	}
@@ -179,11 +179,11 @@ func TestBuildOrderEntry_EnsureStepEffects(t *testing.T) {
 	}).Error; err != nil {
 		t.Fatalf("seed core snapshot: %v", err)
 	}
-	sameVersion := o.buildOrderEntry(ctx, ActionUpgrade, "partner", "core", originLocal, false)
+	sameVersion := o.buildOrderEntry(ctx, o.Resolver, nil, ActionUpgrade, "partner", "core", originLocal, false)
 	if sameVersion.Effect != EffectAlreadySatisfied {
 		t.Fatalf("upgrade same version = %#v", sameVersion)
 	}
-	app, installed := (&Ops{}).applicationAndInstalled(ctx, "core")
+	app, installed := (&Ops{}).applicationAndInstalled(ctx, nil, "core")
 	if app != "" || installed {
 		t.Fatalf("nil resolver applicationAndInstalled = %q %v", app, installed)
 	}
@@ -199,7 +199,7 @@ func TestEnrichPlanDocument_InstallAlreadyInstalledTargetSatisfied(t *testing.T)
 		},
 	}}
 	built := plan.Plan{ModuleOrder: []string{"core"}, AffectedApps: []string{"core"}}
-	doc := o.enrichPlanDocument(context.Background(), ActionInstall, "core", originLocal, built, nil)
+	doc := o.enrichPlanDocument(context.Background(), o.Resolver, nil, ActionInstall, "core", originLocal, built, nil)
 	if doc.ModuleOrder[0].Effect != EffectAlreadySatisfied || doc.ModuleOrder[0].Role != RoleTarget {
 		t.Fatalf("entry = %#v", doc.ModuleOrder[0])
 	}

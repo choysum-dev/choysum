@@ -52,7 +52,8 @@ func NewHost(opts HostOptions) (*Ops, error) {
 			life = lifecycle.NewService(opts.Scope, opts.Executor, lifecycle.WithLockerFactory(lockerFactory))
 		}
 		if resolver == nil {
-			resolver = lifecycle.NewModuleManager(opts.Scope, opts.Executor, lifecycle.WithLockerFactory(lockerFactory))
+			mm := lifecycle.NewModuleManager(opts.Scope, opts.Executor, lifecycle.WithLockerFactory(lockerFactory))
+			resolver = lifecycle.NewReadOnlyResolver(mm)
 		}
 	}
 

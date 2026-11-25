@@ -456,7 +456,9 @@ func AssembleModuleManagementHost(scopeProvider jsengine.ScopeProvider, opts ...
 		LockerFactory: cfg.lockerFactory,
 		Events:        events,
 		Lifecycle:     moduleLifecycleOrDefault(cfg.moduleLifecycleFactory)(runtimeScope, executor, cfg.lockerFactory),
-		Resolver:      lifecycle.NewModuleManager(runtimeScope, executor, lifecycle.WithLockerFactory(cfg.lockerFactory)),
+		Resolver: lifecycle.NewReadOnlyResolver(
+			lifecycle.NewModuleManager(runtimeScope, executor, lifecycle.WithLockerFactory(cfg.lockerFactory)),
+		),
 	})
 	if err != nil {
 		return nil, nil, err
@@ -663,7 +665,10 @@ func startOpsHost(jse *quickjsengine.QuickjsEngine, scopeProvider jsengine.Scope
 		resolverFactory := cfg.moduleResolverFactory
 		if resolverFactory == nil {
 			resolverFactory = func(runtimeScope scope.Scope, jsExecutor jsexecutor.JsExecutor, lockerFactory statepkg.LockerFactory) plan.Resolver {
-				return lifecycle.NewModuleManager(runtimeScope, jsExecutor, lifecycle.WithLockerFactory(lockerFactory))
+				// Plan peeks/loads via this Resolver; wrap read-only so preview
+				// never remigrates CatalogEntities. Lifecycle keeps a writable MM.
+				mm := lifecycle.NewModuleManager(runtimeScope, jsExecutor, lifecycle.WithLockerFactory(lockerFactory))
+				return lifecycle.NewReadOnlyResolver(mm)
 			}
 		}
 		host := &ops.Ops{
@@ -724,7 +729,9 @@ func startOpsHost(jse *quickjsengine.QuickjsEngine, scopeProvider jsengine.Scope
 			host.Lifecycle = lifecycleFactory(opScope, executor, cfg.lockerFactory)
 		}
 		if host.Resolver == nil {
-			host.Resolver = lifecycle.NewModuleManager(opScope, executor, lifecycle.WithLockerFactory(cfg.lockerFactory))
+			host.Resolver = lifecycle.NewReadOnlyResolver(
+				lifecycle.NewModuleManager(opScope, executor, lifecycle.WithLockerFactory(cfg.lockerFactory)),
+			)
 		}
 		compilerExecutor = executor
 		handedOff = true

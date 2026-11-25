@@ -8,6 +8,8 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+
+	"github.com/choysum-dev/choysum/internal/module/lifecycle"
 )
 
 // Apply validates blockers and baseRevision, then moves the operation to queued.
@@ -36,11 +38,14 @@ func (o *Ops) Apply(ctx context.Context, req ApplyRequest) error {
 	if len(doc.Blockers) > 0 {
 		return fmt.Errorf("ops: operation %q has blockers", id)
 	}
+	// Match Plan: read-only + request cache so baseRevision / blockers do not
+	// remigrate catalog tables on the warm path.
+	resolver := newPlanResolver(o.Resolver)
 	if row.Action != ActionSync && row.Action != ActionLoadDemo {
 		if len(doc.ModuleOrder) == 0 {
 			return fmt.Errorf("ops: operation %q has empty module order", id)
 		}
-		current := computeBaseRevision(ctx, o, doc.ModuleOrder)
+		current := computeBaseRevision(ctx, o, resolver, nil, doc.ModuleOrder)
 		if doc.BaseRevision == "" || current != doc.BaseRevision {
 			return fmt.Errorf("ops: baseRevision mismatch for operation %q", id)
 		}
@@ -50,7 +55,10 @@ func (o *Ops) Apply(ctx context.Context, req ApplyRequest) error {
 		for _, e := range doc.ModuleOrder {
 			planned = append(planned, e.ModuleName)
 		}
-		if blockers := o.uninstallBlockers(ctx, row.ModuleName, planned); len(blockers) > 0 {
+		// Fresh Load for Dependents: do not reuse the request cache that
+		// computeBaseRevision may have filled with a version-only read path.
+		uninstallResolver := lifecycle.AsReadOnlyResolver(o.Resolver)
+		if blockers := o.uninstallBlockers(ctx, uninstallResolver, row.ModuleName, planned); len(blockers) > 0 {
 			return fmt.Errorf("ops: operation %q has blockers", id)
 		}
 	}

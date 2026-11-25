@@ -400,15 +400,11 @@ func (m *ModuleManager) bootstrapMetaTables(txScope scope.Scope) error {
 	migrator := session.Migrator()
 	baseReady := migrator.HasTable(&meta.Module{}) && migrator.HasTable(&modmeta.LockLease{})
 	if baseReady {
-		// Existing installs: keep ops satellites (W1 hard-cut) and dual-store /
-		// effective catalog columns aligned (e.g. additive Model.OrderBy).
-		if err := session.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
-			return xfmt.Errorf("auto migrate catalog entities: %w", err)
-		}
-		if migrator.HasTable(&meta.Model{}) {
-			if err := modmeta.EnsureEffectiveAppNameUniqueIndex(db); err != nil {
-				return xfmt.Errorf("ensure effective app/name unique index: %w", err)
-			}
+		// Existing installs: keep ops satellites and dual-store / effective
+		// catalog columns aligned (e.g. additive Model.OrderBy). Memoized per
+		// sql.DB so bridge Plan's per-request ModuleManager does not remigrate.
+		if err := ensureCatalogSchemaMigrated(db); err != nil {
+			return err
 		}
 		return nil
 	}
@@ -455,9 +451,12 @@ func (m *ModuleManager) bootstrapMetaTables(txScope scope.Scope) error {
 	if err := txScope.Session().AutoMigrate(m.entities...); err != nil {
 		return xfmt.Errorf("auto migrate meta entities: %w", err)
 	}
-	if err := modmeta.EnsureEffectiveAppNameUniqueIndex(db); err != nil {
-		return xfmt.Errorf("ensure effective app/name unique index: %w", err)
+	if err := ensureEffectiveAppNameIndexIfModelExists(db); err != nil {
+		return err
 	}
+	// Cold bootstrap already applied CatalogEntities; mark success only so a
+	// later ensureMetaTables / migrateBaseModule on this pool is a no-op.
+	rememberCatalogSchemaMigrated(db, nil)
 	if logger != nil {
 		logger.Debug("meta base table bootstrap completed", "duration_ms", time.Since(startedAt).Milliseconds())
 	}
@@ -650,16 +649,18 @@ func releaseLeaseWithContextFallback(runtimeScope scope.Scope, locker statepkg.L
 	}
 }
 
+// migrateBaseModule applies CatalogEntities DDL. Call from install/upgrade of
+// core (and ensureMetaTables cold/bootstrap paths), not from Plan Load/Peek.
 func (m *ModuleManager) migrateBaseModule() error {
 	started := time.Now()
 	m.runtimeScope.Logger().Debug("base module entity migration started")
-	if err := m.runtimeScope.Session().AutoMigrate(
-		m.entities...,
-	); err != nil {
-		return xfmt.Errorf("error migrating base module: %w", err)
+	if m.runtimeScope == nil || m.runtimeScope.Session() == nil || m.runtimeScope.Session().DB == nil {
+		return xfmt.Errorf("error migrating base module: session is unavailable")
 	}
-	if err := modmeta.EnsureEffectiveAppNameUniqueIndex(m.runtimeScope.Session().DB); err != nil {
-		return xfmt.Errorf("ensure effective app/name unique index: %w", err)
+	// Shares process memo with ensureMetaTables so repeated write-path calls
+	// do not remigrate the same sql.DB pool.
+	if err := ensureCatalogSchemaMigrated(m.runtimeScope.Session().DB); err != nil {
+		return xfmt.Errorf("error migrating base module: %w", err)
 	}
 	m.runtimeScope.Logger().Debug("base module entity migration completed", "step", moduleStepBaseEntityMigrate, "duration_ms", time.Since(started).Milliseconds())
 	return nil
@@ -692,48 +693,29 @@ func (m *ModuleManager) resolveInstallModuleFromOrigin(ctx context.Context, name
 	return m.fetchInstallModuleFromOrigin(ctx, name)
 }
 
+// Peek returns a module from origin without persisting it. It may AutoMigrate
+// catalog tables via ensureMetaTables (write/bootstrap path). Plan uses
+// ReadOnlyResolver / peekModuleRecord instead so preview never remigrates.
 func (m *ModuleManager) Peek(ctx context.Context, name string) (*meta.Module, error) {
 	if err := m.ensureMetaTables(); err != nil {
 		return nil, err
 	}
-	if ctx == nil {
-		ctx = context.Background()
-	}
-	coordinator := m.newOriginCoordinator()
-	module, err := coordinator.Peek(ctx, name)
-	if err != nil {
-		return nil, xfmt.Errorf("error peeking module %s: %w", name, err)
-	}
-	return module, nil
+	return m.peekModuleRecord(ctx, name)
 }
 
+// Load returns a module row from the DB (any status). Catalog AutoMigrate is
+// only via ensureMetaTables when tables are bootstrapped; it does not call
+// migrateBaseModule — install/upgrade of core must migrate explicitly.
 func (m *ModuleManager) Load(name string) (*meta.Module, error) {
 	if err := m.ensureMetaTables(); err != nil {
 		return nil, err
 	}
-
-	if meta.IsCoreModule(name) {
-		if err := m.migrateBaseModule(); err != nil {
-			return nil, err
-		}
-	}
-
-	var module meta.Module
-	if result := m.runtimeScope.Session().
-		Preload("Dependencies", func(db *gorm.DB) *gorm.DB { return db.Where("status = ?", meta.Installed).Order("id ASC") }).
-		Preload("Dependents", func(db *gorm.DB) *gorm.DB { return db.Where("status = ?", meta.Installed).Order("id ASC") }).
-		Where("name = ?", name).Take(&module); result.Error != nil {
-		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, xfmt.Errorf("error loading module %s: %w", name, result.Error)
-		} else {
-			return nil, nil
-		}
-	}
-	return &module, nil
+	return m.loadModuleRecord(name)
 }
 
 // SchemaPlan computes the schema plan for an installed module without applying DDL.
-// It uses a read-only module lookup so dry-run never AutoMigrates meta/base tables.
+// It uses a read-only module lookup (same idea as ReadOnlyResolver) so dry-run
+// never AutoMigrates meta/base tables.
 func (m *ModuleManager) SchemaPlan(ctx context.Context, name string) (schema.SchemaPlan, error) {
 	name = strings.TrimSpace(name)
 	if name == "" {
@@ -755,6 +737,41 @@ func (m *ModuleManager) SchemaPlan(ctx context.Context, name string) (schema.Sch
 		return schema.SchemaPlan{}, xfmt.Errorf("error preparing schema migrator for module %s: %w", name, err)
 	}
 	return migrator.PlanOnly()
+}
+
+// peekModuleRecord peeks origin without ensureMetaTables / migrateBaseModule.
+func (m *ModuleManager) peekModuleRecord(ctx context.Context, name string) (*meta.Module, error) {
+	if m == nil {
+		return nil, xfmt.Errorf("module manager is nil")
+	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	coordinator := m.newOriginCoordinator()
+	module, err := coordinator.Peek(ctx, name)
+	if err != nil {
+		return nil, xfmt.Errorf("error peeking module %s: %w", name, err)
+	}
+	return module, nil
+}
+
+// loadModuleRecord loads a module row by name (any status) without
+// ensureMetaTables / migrateBaseModule.
+func (m *ModuleManager) loadModuleRecord(name string) (*meta.Module, error) {
+	if m == nil || m.runtimeScope == nil || m.runtimeScope.Session() == nil {
+		return nil, xfmt.Errorf("runtime scope is nil")
+	}
+	var module meta.Module
+	if result := m.runtimeScope.Session().
+		Preload("Dependencies", func(db *gorm.DB) *gorm.DB { return db.Where("status = ?", meta.Installed).Order("id ASC") }).
+		Preload("Dependents", func(db *gorm.DB) *gorm.DB { return db.Where("status = ?", meta.Installed).Order("id ASC") }).
+		Where("name = ?", name).Take(&module); result.Error != nil {
+		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, xfmt.Errorf("error loading module %s: %w", name, result.Error)
+		}
+		return nil, nil
+	}
+	return &module, nil
 }
 
 // loadInstalledModuleRecord loads an installed module row without ensureMetaTables / migrateBaseModule.
