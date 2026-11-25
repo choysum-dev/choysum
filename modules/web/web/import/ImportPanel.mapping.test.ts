@@ -192,10 +192,12 @@ describe('ImportPanel mapping FormView store', () => {
     m.unmount();
   });
 
-  test('mappingFormValues mirrors FormView draft into store; onMappingFormChange clears preview', async () => {
+  test('mappingFormValues reads draft; onMappingFormChange syncs store and clears preview', async () => {
     const m = mountPanel();
     await flushPromises();
-    const s = asSetup(m);
+    const s = asSetup(m) as ReturnType<typeof asSetup> & {
+      syncStoreFromDraft: () => void;
+    };
     s.catalogFields.splice(0, s.catalogFields.length, { path: 'Name', label: 'Name' });
     s.mappingRows.splice(0, s.mappingRows.length, { header: 'Full Name', fieldPath: '' });
     s.rebuildMappingFormStore();
@@ -204,12 +206,14 @@ describe('ImportPanel mapping FormView store', () => {
     setMappingFormViewRef(s, {
       getFormData: () => ({ Full_Name: 'Name' }),
     });
+    // Read helper must not mutate the store (avoids watcher feedback loops).
     const values = s.mappingFormValues();
     expect(values.Full_Name).toBe('Name');
-    expect(s.mappingFormStore!.getField('Full_Name')).toBe('Name');
+    expect(s.mappingFormStore!.getField('Full_Name')).toBe('');
 
     (s as { previewReport: unknown }).previewReport = { stats: { ok: 1, error: 0, total: 1 } };
     s.onMappingFormChange();
+    expect(s.mappingFormStore!.getField('Full_Name')).toBe('Name');
     expect(unwrapRef((s as { previewReport: unknown }).previewReport as any)).toBeNull();
 
     // Row with no prop mapping is skipped (continue in syncMappingRowsFromStore).

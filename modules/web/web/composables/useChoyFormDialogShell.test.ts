@@ -112,6 +112,23 @@ describe('useChoyFormDialogShell', () => {
     expect(closed).toBe(0);
   });
 
+  test('onFooterCancel keeps dialog open when formView.cancel rejects', async () => {
+    let closed = 0;
+    const formViewRef = ref<ChoyFormDialogViewApi | null>({
+      cancel: async () => {
+        throw new Error('discard dismissed');
+      },
+    });
+    const shell = useChoyFormDialogShell({
+      onClose: () => {
+        closed += 1;
+      },
+      formViewRef,
+    });
+    await shell.onFooterCancel();
+    expect(closed).toBe(0);
+  });
+
   test('onFooterCancel falls back to onClose without cancel API', async () => {
     let closed = 0;
     const formViewRef = ref<ChoyFormDialogViewApi | null>(null);

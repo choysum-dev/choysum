@@ -318,21 +318,25 @@ function mappingPropForHeader(header: string): string {
   return mappingPropByHeader.value[header] ?? '';
 }
 
+/** Prefer FormView draft; fall back to UiModel store (read-only — no store writes). */
 function mappingFormValues(): Record<string, unknown> {
   const draft = mappingFormViewRef.value?.getFormData?.() as Record<string, unknown> | undefined;
-  const store = mappingFormStore.value;
   if (draft && typeof draft === 'object') {
-    // Mirror controller draft into UiModelStore so store readers stay aligned.
-    if (store) {
-      for (const name of store.fieldNames) {
-        if (Object.prototype.hasOwnProperty.call(draft, name)) {
-          store.setField(name, draft[name]);
-        }
-      }
-    }
     return draft;
   }
-  return store?.getValues() ?? {};
+  return mappingFormStore.value?.getValues() ?? {};
+}
+
+/** Mirror FormView draft into the UiModel store so store-backed readers stay aligned. */
+function syncStoreFromDraft(): void {
+  const draft = mappingFormViewRef.value?.getFormData?.() as Record<string, unknown> | undefined;
+  const store = mappingFormStore.value;
+  if (!draft || typeof draft !== 'object' || !store) return;
+  for (const name of store.fieldNames) {
+    if (Object.prototype.hasOwnProperty.call(draft, name)) {
+      store.setField(name, draft[name]);
+    }
+  }
 }
 
 function syncMappingRowsFromStore(): void {
@@ -351,6 +355,7 @@ function syncMappingRowsFromStore(): void {
 }
 
 function onMappingFormChange() {
+  syncStoreFromDraft();
   syncMappingRowsFromStore();
   onMappingChange();
 }

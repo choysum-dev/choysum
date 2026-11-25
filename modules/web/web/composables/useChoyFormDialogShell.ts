@@ -103,7 +103,11 @@ export function useChoyFormDialogShell(opts: UseChoyFormDialogShellOptions) {
     }
     const api = opts.formViewRef.value;
     if (api?.cancel) {
-      await api.cancel();
+      try {
+        await api.cancel();
+      } catch {
+        // FormView cancel rejected (e.g. discard dismissed); keep the dialog open.
+      }
       return;
     }
     opts.onClose();
