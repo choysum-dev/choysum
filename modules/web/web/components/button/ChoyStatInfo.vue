@@ -29,7 +29,7 @@ import { useRouter, type RouteLocationRaw } from 'vue-router';
 import type { BaseModel, FieldPath } from '@/core/rpc';
 import type { ModelStore } from '@/web/web/stores/modelStore';
 import { useField } from '@/web/web/composables/useField';
-import { resolveStatDisplayValue } from '@/web/web/components/view/statInfoHelpers';
+import { resolveStatDisplayValue } from '@/web/web/components/button/statInfoHelpers';
 
 defineOptions({ name: 'ChoyStatInfo', inheritAttrs: false });
 

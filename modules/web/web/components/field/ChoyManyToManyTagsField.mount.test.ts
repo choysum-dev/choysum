@@ -15,7 +15,7 @@ import { replaceStoreFactory } from '@/web/web/stores/registry';
 import ChoyFieldBase from './ChoyFieldBase.vue';
 import ChoyManyToManyTagsField from './ChoyManyToManyTagsField.vue';
 import { ChoyDialog, ChoyDialogContent, ChoyDialogTitle } from '@/web/web/components/layout/choyDialog';
-import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
+import ChoyButton from '@/web/web/components/button/ChoyButton.vue';
 import ChoyViewScope from '@/web/web/components/view/ChoyViewScope.vue';
 import RelationCombobox from '@/web/web/components/internal/RelationCombobox.vue';
 

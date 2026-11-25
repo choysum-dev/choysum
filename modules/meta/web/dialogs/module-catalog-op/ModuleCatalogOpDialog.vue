@@ -231,16 +231,17 @@ SPDX-License-Identifier: Apache-2.0
         >
           {{ step === 'plan' ? _t('Cancel') : _t('Close') }}
         </ChoyButton>
-        <ChoyButton
+        <ChoyActionButton
           v-if="step === 'plan'"
           type="button"
           data-testid="module-op-confirm"
           :variant="action === 'uninstall' ? 'destructive' : 'default'"
-          :disabled="!canConfirm || executeLoading"
-          @click="onConfirm"
+          :disabled="!canConfirm"
+          :busy="executeLoading"
+          @execute="onConfirm"
         >
           {{ _t('Confirm') }}
-        </ChoyButton>
+        </ChoyActionButton>
         <template v-else-if="step === 'result'">
           <ChoyButton
             v-if="opStatus?.ReloadFailed"
@@ -274,6 +275,7 @@ import {
 } from '@/meta/web/views/module_op_plan_impact';
 import type { ModuleOpPlanModuleView } from '@/meta/web/views/module_op_plan_impact';
 import {
+  ChoyActionButton,
   ChoyBadge,
   ChoyButton,
   ChoyDialog,

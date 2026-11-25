@@ -50,7 +50,7 @@ SPDX-License-Identifier: Apache-2.0
 import { computed, provide } from 'vue';
 import type { ConditionGroup, Condition } from '@/web/web/query/types';
 import type { ModelStore } from '@/web/web/stores/modelStore';
-import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
+import ChoyButton from '@/web/web/components/button/ChoyButton.vue';
 import SearchFilterGroup from './SearchFilterGroup.vue';
 import { valueToPreview } from '@/web/web/query/utils/condition/like';
 import { getOperatorLabel } from '@/web/web/query/utils/filter/operators';

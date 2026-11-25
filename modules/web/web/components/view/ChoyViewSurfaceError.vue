@@ -35,7 +35,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import ChoyButton from '../layout/ChoyButton.vue';
+import ChoyButton from '../button/ChoyButton.vue';
 import ChoyEmpty from '../layout/ChoyEmpty.vue';
 import { createTranslate } from '@/web/web/i18n';
 

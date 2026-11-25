@@ -31,9 +31,14 @@ SPDX-License-Identifier: Apache-2.0
         </template>
 
         <div v-if="error" class="flex flex-col gap-4">
-          <ChoyButton class="w-full" data-testid="logout-retry" @click="retryLogout">
+          <ChoyActionButton
+            class="w-full"
+            data-testid="logout-retry"
+            :requires-connectivity="false"
+            @execute="retryLogout"
+          >
             {{ _t('Retry') }}
-          </ChoyButton>
+          </ChoyActionButton>
           <p class="text-center text-sm">
             <button
               type="button"
@@ -55,7 +60,7 @@ import { useRouter } from 'vue-router';
 import { storeToRefs } from 'pinia';
 import { useAuthStore } from '../stores/auth';
 import AuthPanel from '../components/AuthPanel.vue';
-import { ChoyPage, ChoyCard, ChoyButton } from '@/web';
+import { ChoyPage, ChoyCard, ChoyActionButton } from '@/web';
 import { createTranslate } from '@/web/web/i18n';
 import { formatLogoutError, nextLogoutCountdown, stopLogoutRedirectTimer } from './logout_page';
 

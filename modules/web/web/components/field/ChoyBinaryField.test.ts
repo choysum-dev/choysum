@@ -7,7 +7,7 @@ import type { UseField } from '@/web/web/composables/useField';
 import { flushPromises, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
 import BinaryField from './ChoyBinaryField.vue';
 import ChoyFieldBase from './ChoyFieldBase.vue';
-import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
+import ChoyButton from '@/web/web/components/button/ChoyButton.vue';
 import { CollaborationCapsKey } from '@/web/web/platform/collaborationCaps';
 
 const CAPS_WITH_DOCUMENT = { message: false, audit: false, document: true };

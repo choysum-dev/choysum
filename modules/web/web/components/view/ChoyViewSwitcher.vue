@@ -36,8 +36,8 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import ChoyButton from '../layout/ChoyButton.vue';
-import ChoyButtonGroup from '../layout/ChoyButtonGroup.vue';
+import ChoyButton from '../button/ChoyButton.vue';
+import ChoyButtonGroup from '../button/ChoyButtonGroup.vue';
 import Tooltip from '../vendor/ui/tooltip/Tooltip.vue';
 import TooltipContent from '../vendor/ui/tooltip/TooltipContent.vue';
 import TooltipProvider from '../vendor/ui/tooltip/TooltipProvider.vue';

@@ -55,7 +55,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { PanelLeft } from 'lucide-vue-next'
-import ChoyButton from './ChoyButton.vue'
+import ChoyButton from '../button/ChoyButton.vue'
 import ChoyCommandPalette from './ChoyCommandPalette.vue'
 import ChoyShellBreadcrumb from './ChoyShellBreadcrumb.vue'
 import { runShellMenuToggle } from './runShellMenuToggle'

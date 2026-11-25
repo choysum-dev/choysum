@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import type { Directive, DirectiveBinding } from 'vue';
+import { shallowRef } from 'vue';
 import { normalizeOptionalString } from '@/core/service/utils/normalization';
 
 type BoolOperator = 'or' | 'and';
@@ -12,13 +13,19 @@ type ActionMode = 'hide' | 'disable';
  */
 type ActionChecker = (resourceId: string | undefined) => boolean;
 
-let globalActionChecker: ActionChecker | undefined;
+/** Reactive so ChoyActionButton ACL recomputes when auth installs the checker after mount. */
+const globalActionCheckerRef = shallowRef<ActionChecker | undefined>();
 
 /**
  * Installs the default permission checker used by the action directive.
  */
 export function setGlobalActionChecker(checker: ActionChecker | undefined): void {
-  globalActionChecker = checker;
+  globalActionCheckerRef.value = checker;
+}
+
+/** Current global ACL checker (used by ChoyActionButton when hasAction prop is omitted). */
+export function getGlobalActionChecker(): ActionChecker | undefined {
+  return globalActionCheckerRef.value;
 }
 
 /**
@@ -62,7 +69,7 @@ function normalizeBinding(binding: DirectiveBinding<ActionBindingValue>): Normal
   const obj = (isObjectValue ? binding.value : null) as ActionBindingObject | null;
 
   const ids = normalizeIds(obj?.ids ?? (Array.isArray(binding.value) || typeof binding.value === 'string' ? binding.value : undefined));
-  const hasAction = obj?.hasAction ?? globalActionChecker;
+  const hasAction = obj?.hasAction ?? globalActionCheckerRef.value;
 
   const mode: ActionMode = obj?.mode ?? (binding.modifiers.disable ? 'disable' : 'hide');
   const operator: BoolOperator = obj?.operator ?? (binding.modifiers.and ? 'and' : 'or');

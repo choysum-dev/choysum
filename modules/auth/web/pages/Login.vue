@@ -100,9 +100,9 @@ SPDX-License-Identifier: Apache-2.0
               />
 
               <ChoyField class="mt-3">
-                <ChoyButton type="submit" class="submit-button w-full" :disabled="loading">
+                <ChoyActionButton type="submit" class="submit-button w-full" :busy="loading">
                   {{ loading ? _t('Log In') + '…' : _t('Log In') }}
-                </ChoyButton>
+                </ChoyActionButton>
                 <ChoyFieldDescription v-if="showRegisterLink" class="text-center">
                   {{ _t("Don't have an account?") }}
                   <router-link to="/register" class="text-primary hover:underline">{{
@@ -129,7 +129,7 @@ import AuthPageErrorClear from './AuthPageErrorClear.vue';
 import {
   ChoyPage,
   ChoyCard,
-  ChoyButton,
+  ChoyActionButton,
   ChoyField,
   ChoyFieldDescription,
   ChoyFieldGroup,

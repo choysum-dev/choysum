@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 import { onMounted, onUnmounted, ref } from 'vue'
 import { Search } from 'lucide-vue-next'
 import { createTranslate } from '../../i18n'
-import ChoyButton from './ChoyButton.vue'
+import ChoyButton from '../button/ChoyButton.vue'
 import { ChoyDialog, ChoyDialogContent, ChoyDialogDescription, ChoyDialogHeader, ChoyDialogTitle } from './choyDialog'
 import { shouldToggleCommandPalette } from './choyCommandPaletteHotkey'
 

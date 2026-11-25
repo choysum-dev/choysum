@@ -5,7 +5,7 @@ import { h, nextTick } from 'vue';
 import { createPinia, setActivePinia } from 'pinia';
 import { flushPromises, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
 import { useConnectivityStore } from '../../stores/connectivityStore';
-import ChoyButton from './ChoyButton.vue';
+import ChoyButton from '../button/ChoyButton.vue';
 import ChoyConnectivityPill from './ChoyConnectivityPill.vue';
 
 beforeEach(() => {

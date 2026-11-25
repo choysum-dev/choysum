@@ -123,7 +123,7 @@ import type { WebFieldMetadata, ModelStore } from '@/web/web/stores/modelStore';
 import { useStandaloneField } from '@/web/web/composables/useField';
 import { useInjectedFilterEditorBindings } from '@/web/web/composables/search/useFilterEditorBindings';
 import { createTranslate } from '@/web/web/i18n';
-import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
+import ChoyButton from '@/web/web/components/button/ChoyButton.vue';
 import Input from '@/web/web/components/vendor/ui/input/Input.vue';
 import Select from '@/web/web/components/vendor/ui/select/Select.vue';
 import SelectContent from '@/web/web/components/vendor/ui/select/SelectContent.vue';

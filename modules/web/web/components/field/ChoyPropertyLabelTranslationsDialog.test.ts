@@ -8,7 +8,7 @@ import { ChoyMessage } from '../../composables/useChoyMessage';
 import { replaceStoreFactory } from '@/web/web/stores/registry';
 import { flushPromises, fnRecorder, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
 import { ChoyDialog, ChoyDialogContent, ChoyDialogTitle } from '@/web/web/components/layout/choyDialog';
-import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
+import ChoyButton from '@/web/web/components/button/ChoyButton.vue';
 import PropertyLabelTranslationsDialog from './ChoyPropertyLabelTranslationsDialog.vue';
 
 const DEFAULT_LANGS = [

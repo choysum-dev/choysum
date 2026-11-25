@@ -80,17 +80,25 @@ SPDX-License-Identifier: Apache-2.0
                   >
                     {{ _t('Back') }}
                   </ChoyButton>
+                  <ChoyActionButton
+                    v-if="step === 'review'"
+                    id="setup-submit"
+                    type="submit"
+                    size="lg"
+                    class="submit-button ms-auto"
+                    :busy="submitting"
+                  >
+                    {{ submitting ? _t('Complete Setup') + '…' : _t('Complete Setup') }}
+                  </ChoyActionButton>
                   <ChoyButton
+                    v-else
                     id="setup-submit"
                     type="submit"
                     size="lg"
                     class="submit-button ms-auto"
                     :disabled="submitting"
                   >
-                    <template v-if="step === 'review'">
-                      {{ submitting ? _t('Complete Setup') + '…' : _t('Complete Setup') }}
-                    </template>
-                    <template v-else>{{ _t('Next') }}</template>
+                    {{ _t('Next') }}
                   </ChoyButton>
                 </div>
               </template>
@@ -114,6 +122,7 @@ import SetupOrganizationStep from './setup/SetupOrganizationStep.vue';
 import SetupReviewStep from './setup/SetupReviewStep.vue';
 import {
   ChoyPage,
+  ChoyActionButton,
   ChoyButton,
   ChoyFormView,
   ChoyStepper,
@@ -121,6 +130,7 @@ import {
   type ChoyStepperStep,
 } from '@/web';
 import { createTranslate } from '@/web/web/i18n';
+import { isConnectivityUnreachable } from '@/web/web/stores/connectivityStore';
 import { useI18nStore } from '@/web/web/stores/i18nStore';
 import { ChoysumError } from '../error';
 import { resolveLoginRedirect, runHandledAuthSubmit } from './login_form';
@@ -400,6 +410,9 @@ function onEnterKey(e: KeyboardEvent) {
 
   const form = (target.closest('form') as HTMLFormElement | null) || setupWizardForm();
   if (!form) return;
+
+  // Match Complete Setup ActionButton: do not start review submit while offline.
+  if (step.value === 'review' && isConnectivityUnreachable()) return;
 
   e.preventDefault();
   e.stopPropagation();

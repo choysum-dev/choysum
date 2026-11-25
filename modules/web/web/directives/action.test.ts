@@ -3,7 +3,7 @@
 
 import type { DirectiveBinding } from 'vue';
 import { syncFnRecorder } from '@/web/web/__tests__/mountApp';
-import { setGlobalActionChecker, vAction, type ActionBindingValue } from './action';
+import { getGlobalActionChecker, setGlobalActionChecker, vAction, type ActionBindingValue } from './action';
 
 function bindDirective(value: ActionBindingValue, modifiers: Record<string, boolean> = {}): HTMLButtonElement {
   const el = document.createElement('button');
@@ -20,6 +20,13 @@ function updateDirective(el: HTMLButtonElement, value: ActionBindingValue, modif
 describe('v-action directive', () => {
   afterEach(() => {
     setGlobalActionChecker(undefined);
+  });
+
+  test('getGlobalActionChecker mirrors setGlobalActionChecker', () => {
+    expect(getGlobalActionChecker()).toBeUndefined();
+    const checker = () => true;
+    setGlobalActionChecker(checker);
+    expect(getGlobalActionChecker()).toBe(checker);
   });
 
   test('hides element by default when permission is denied', () => {

@@ -164,13 +164,13 @@ SPDX-License-Identifier: Apache-2.0
               </div>
 
               <ChoyField class="mt-3">
-                <ChoyButton
+                <ChoyActionButton
                   type="submit"
                   class="submit-button w-full"
                   :disabled="loading || !formData.AgreeTerms"
                 >
                   {{ _t('Create Account') }}
-                </ChoyButton>
+                </ChoyActionButton>
                 <ChoyFieldDescription class="text-center">
                   {{ _t('Already have an account?') }}
                   <router-link to="/login" class="text-primary hover:underline">{{
@@ -197,7 +197,7 @@ import AuthPageErrorClear from './AuthPageErrorClear.vue';
 import {
   ChoyPage,
   ChoyCard,
-  ChoyButton,
+  ChoyActionButton,
   ChoyField,
   ChoyFieldDescription,
   ChoyFieldGroup,

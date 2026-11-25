@@ -11,7 +11,8 @@ import { h } from 'vue';
 import { buildPageMountGlobal } from '@choysum/page-mount';
 
 import { flushPromises, fnRecorder, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
-import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
+import ChoyButton from '@/web/web/components/button/ChoyButton.vue';
+import ChoyActionButton from '@/web/web/components/button/ChoyActionButton.vue';
 import ChoyListView from './ChoyListView.vue';
 import ChoyPagination from './ChoyPagination.vue';
 import ChoyTableHost from '@/web/web/components/internal/ChoyTableHost.vue';
@@ -48,7 +49,7 @@ function findNewButton(el: HTMLElement) {
 }
 
 function stubListChrome() {
-  // fe-qjs: nested vendor Button often drops native click; stub ChoyButton like Search tests.
+  // fe-qjs: nested vendor Button often drops native click; stub chrome buttons.
   stubSfc(ChoyButton as any, {
     name: 'ChoyButton',
     inheritAttrs: false,
@@ -69,6 +70,35 @@ function stubListChrome() {
             class: ['choy-btn', attrs.class],
             disabled: props.disabled || undefined,
             onClick: (e: Event) => emit('click', e),
+          },
+          slots.default?.(),
+        );
+    },
+  });
+  stubSfc(ChoyActionButton as any, {
+    name: 'ChoyActionButton',
+    inheritAttrs: false,
+    props: {
+      variant: { type: String, default: 'default' },
+      size: { type: String, default: 'default' },
+      disabled: { type: Boolean, default: false },
+      busy: { type: Boolean, default: false },
+      type: { type: String, default: 'button' },
+      actionId: { type: String, default: undefined },
+      hasAction: { type: Function, default: undefined },
+      requiresConnectivity: { type: Boolean, default: true },
+    },
+    emits: ['execute'],
+    setup(props: any, { slots, emit, attrs }: any) {
+      return () =>
+        h(
+          'button',
+          {
+            type: props.type || 'button',
+            ...attrs,
+            class: ['choy-action-btn', attrs.class],
+            disabled: props.disabled || props.busy || undefined,
+            onClick: () => emit('execute'),
           },
           slots.default?.(),
         );
@@ -98,6 +128,7 @@ function stubListChrome() {
 
 function restoreListChrome() {
   restoreSfc(ChoyButton as any);
+  restoreSfc(ChoyActionButton as any);
   restoreSfc(ChoyTableHost);
   restoreSfc(ChoyTableColumn);
   restoreSfc(ChoyPagination);

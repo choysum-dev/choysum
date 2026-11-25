@@ -15,13 +15,14 @@ SPDX-License-Identifier: Apache-2.0
       @keydown.meta.enter="!$event.isComposing && ($event.preventDefault(), submit())"
     ></textarea>
     <div class="flex justify-end">
-      <ChoyButton
+      <ChoyActionButton
         size="sm"
-        :disabled="disabled || posting || !canSubmit"
-        @click="submit"
+        :disabled="disabled || !canSubmit"
+        :busy="posting"
+        @execute="submit"
       >
         {{ posting ? postingLabel : resolvedPostLabel }}
-      </ChoyButton>
+      </ChoyActionButton>
     </div>
     <p
       v-if="error"
@@ -35,8 +36,9 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import ChoyButton from '../layout/ChoyButton.vue';
+import ChoyActionButton from '../button/ChoyActionButton.vue';
 import { createTranslate } from '@/web/web/i18n';
+import { isConnectivityUnreachable } from '@/web/web/stores/connectivityStore';
 
 /**
  * Chatter composer: local draft only; emits post with trimmed body.
@@ -72,7 +74,8 @@ const postingLabel = computed(() => _t('Posting…'));
 
 function submit(): void {
   const text = body.value.trim();
-  if (!text || props.posting || props.disabled) return;
+  // Match Post ActionButton: keyboard Ctrl/Cmd+Enter must not bypass offline gate.
+  if (!text || props.posting || props.disabled || isConnectivityUnreachable()) return;
   emit('post', text);
 }
 

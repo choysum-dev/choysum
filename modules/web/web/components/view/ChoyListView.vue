@@ -27,28 +27,29 @@ SPDX-License-Identifier: Apache-2.0
   >
     <template v-if="showActions || editable" #system-actions>
       <!-- Keep Save/Discard outside the overridable slot so custom toolbars cannot hide them. -->
-      <ChoyButton
+      <ChoyActionButton
         v-if="editable && isEditing"
         type="button"
         size="default"
         variant="default"
-        :disabled="inlineSaving"
-        @click="handleInlineSave"
+        :busy="inlineSaving"
+        @execute="handleInlineSave"
       >
         <Check class="size-4" aria-hidden="true" />
         {{ _t('Save') }}
-      </ChoyButton>
+      </ChoyActionButton>
 
-      <ChoyButton
+      <ChoyActionButton
         v-if="editable && isEditing"
         type="button"
         size="default"
         variant="outline"
-        @click="handleInlineDiscard"
+        :requires-connectivity="false"
+        @execute="handleInlineDiscard"
       >
         <X class="size-4" aria-hidden="true" />
         {{ _t('Discard') }}
-      </ChoyButton>
+      </ChoyActionButton>
 
       <slot
         v-if="showActions"
@@ -59,16 +60,18 @@ SPDX-License-Identifier: Apache-2.0
         :save="handleInlineSave"
         :discard="handleInlineDiscard"
       >
-        <ChoyButton
+        <ChoyActionButton
           v-if="resolvedCreateAction && canCreate"
           type="button"
           size="default"
           variant="default"
-          @click="handleCreate"
+          :action-id="actionIds?.create"
+          :has-action="hasAction"
+          @execute="handleCreate"
         >
           <Plus class="size-4" aria-hidden="true" />
           {{ _t('New') }}
-        </ChoyButton>
+        </ChoyActionButton>
       </slot>
     </template>
 
@@ -114,16 +117,18 @@ SPDX-License-Identifier: Apache-2.0
           </ChoyButton>
         </div>
 
-        <ChoyButton
+        <ChoyActionButton
           v-if="deleteAction && canDelete"
           size="default"
           variant="outline-destructive"
-          :disabled="deleteLoading"
-          @click="handleDelete"
+          :busy="deleteLoading"
+          :action-id="actionIds?.delete"
+          :has-action="hasAction"
+          @execute="handleDelete"
         >
           <Trash2 class="size-4" aria-hidden="true" />
           {{ _t('Delete') }}
-        </ChoyButton>
+        </ChoyActionButton>
 
         <slot name="selection-actions" :selected-items="selectedItems" :clear="clearSelection" />
       </div>
@@ -141,6 +146,7 @@ SPDX-License-Identifier: Apache-2.0
         <ChoyPagination
           class="gap-2"
           :total="listPaginationEffective.total"
+          :disabled="sessionUnreachable"
           v-model:page="listPageModel"
           v-model:page-size="listPageSizeModel"
         />
@@ -220,10 +226,17 @@ SPDX-License-Identifier: Apache-2.0
                 <ChoyEmpty class="w-full !gap-3 !p-4 md:!p-6" :description="_t('No data')">
                   <!-- Toolbar New covers the usual chrome; keep empty-state New only when header is hidden. -->
                   <template v-if="!showHeader && showActions && resolvedCreateAction && canCreate" #actions>
-                    <ChoyButton type="button" size="default" variant="default" @click="handleCreate">
+                    <ChoyActionButton
+                      type="button"
+                      size="default"
+                      variant="default"
+                      :action-id="actionIds?.create"
+                      :has-action="hasAction"
+                      @execute="handleCreate"
+                    >
                       <Plus class="size-4" aria-hidden="true" />
                       {{ _t('New') }}
-                    </ChoyButton>
+                    </ChoyActionButton>
                   </template>
                 </ChoyEmpty>
               </slot>
@@ -324,7 +337,9 @@ import {
 import { openRecordFromCollection } from '@/web/web/navigation/openRecordFromCollection';
 import { snapshotFromListStore } from '@/web/web/navigation/snapshotFromListStore';
 import { useRecordSetStore } from '@/web/web/stores/recordSetStore';
-import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
+import ChoyButton from '@/web/web/components/button/ChoyButton.vue';
+import ChoyActionButton from '@/web/web/components/button/ChoyActionButton.vue';
+import { isConnectivityUnreachable } from '@/web/web/stores/connectivityStore';
 import { Separator } from '@/web/web/components/vendor/ui/separator';
 import { Check, ChevronDown, ChevronRight, Plus, Trash2, X } from 'lucide-vue-next';
 import ChoyViewOverflowRefreshItem from '@/web/web/components/view/ChoyViewOverflowRefreshItem.vue';
@@ -512,6 +527,7 @@ const firstFrame = useSearchFirstFrameHost(store, {
 const canCreate = computed(() => canShowDeclaredAction(props.actionIds?.create, props.hasAction));
 const canRefresh = computed(() => canShowAction(props.actionIds?.refresh, props.hasAction));
 const canDelete = computed(() => canShowDeclaredAction(props.actionIds?.delete, props.hasAction));
+const sessionUnreachable = computed(() => isConnectivityUnreachable());
 const { showRefreshInOverflow, showTitleOverflow } = useViewTitleOverflow({
   pageTitleActionsIo,
   showRefresh: () => props.showActions && props.refreshAction && canRefresh.value,

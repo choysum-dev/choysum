@@ -3,16 +3,16 @@
 
 import { Comment, Text, defineComponent, h, nextTick, ref } from 'vue';
 import { flushPromises, mountApp } from '@/web/web/__tests__/mountApp';
-import ChoyButtonBox from './ChoyButtonBox.vue';
+import ChoyStatBox from './ChoyStatBox.vue';
 
-describe('ChoyButtonBox', () => {
+describe('ChoyStatBox', () => {
   test('does not render the flex shell when the default slot is empty', async () => {
-    const empty = mountApp(ChoyButtonBox as any);
+    const empty = mountApp(ChoyStatBox as any);
     await flushPromises();
     expect(empty.q('.choy-button-box')).toBeNull();
     empty.unmount();
 
-    const commentsOnly = mountApp(ChoyButtonBox as any, {
+    const commentsOnly = mountApp(ChoyStatBox as any, {
       slots: {
         default: () => [h(Comment, 'x'), h(Text, '   ')],
       },
@@ -27,7 +27,7 @@ describe('ChoyButtonBox', () => {
     const Host = defineComponent({
       setup() {
         return () =>
-          h(ChoyButtonBox as any, null, {
+          h(ChoyStatBox as any, null, {
             default: () =>
               show.value ? h('button', { 'data-testid': 'action' }, 'Go') : null,
           });

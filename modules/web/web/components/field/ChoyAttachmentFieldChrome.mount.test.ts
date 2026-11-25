@@ -3,7 +3,7 @@
 
 import { h } from 'vue';
 import { flushPromises, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
-import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
+import ChoyButton from '@/web/web/components/button/ChoyButton.vue';
 import ChoyAttachmentFieldChrome from './ChoyAttachmentFieldChrome.vue';
 
 function installButtonStub() {

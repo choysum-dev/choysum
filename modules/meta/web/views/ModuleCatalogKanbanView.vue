@@ -45,15 +45,15 @@ SPDX-License-Identifier: Apache-2.0
 
       <!-- After title + ⋮ in the system tray (no ActionBar separator). -->
       <template v-if="showHeader" #secondary-actions>
-        <ChoyButton
+        <ChoyActionButton
           v-if="hasAction(moduleSyncAction)"
           type="button"
           size="default"
           variant="outline"
           data-testid="module-catalog-sync"
-          :disabled="syncBusy"
+          :busy="syncBusy"
           :aria-busy="syncBusy || undefined"
-          @click="onSync"
+          @execute="onSync"
         >
           <RefreshCw
             class="size-4"
@@ -61,17 +61,17 @@ SPDX-License-Identifier: Apache-2.0
             aria-hidden="true"
           />
           {{ _t('Update Module List') }}
-        </ChoyButton>
-        <ChoyButton
+        </ChoyActionButton>
+        <ChoyActionButton
           v-if="hasAction(moduleLoadDemoAction) && hasPendingDemo"
           type="button"
           size="default"
           variant="outline"
           data-testid="module-catalog-load-demo"
-          @click="onLoadDemo"
+          @execute="onLoadDemo"
         >
           {{ _t('Load Demo Data') }}
-        </ChoyButton>
+        </ChoyActionButton>
       </template>
 
       <template v-if="showHeader" #header-right>
@@ -153,7 +153,7 @@ import {
   moduleCatalogKanbanRowToCard as rowToCard,
 } from './module_catalog_kanban_view';
 import {
-  ChoyButton,
+  ChoyActionButton,
   ChoyKanbanView,
   ChoyMessage,
   ChoySearchView,

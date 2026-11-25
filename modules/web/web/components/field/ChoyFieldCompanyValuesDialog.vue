@@ -30,9 +30,9 @@ SPDX-License-Identifier: Apache-2.0
       </div>
       <ChoyDialogFooter>
         <ChoyButton type="button" variant="outline" :disabled="saving" @click="visible = false">{{ _t('Cancel') }}</ChoyButton>
-        <ChoyButton type="button" :disabled="saving" @click="handleSave">
+        <ChoyActionButton type="button" :busy="saving" @execute="handleSave">
           {{ _t('Save company values') }}
-        </ChoyButton>
+        </ChoyActionButton>
       </ChoyDialogFooter>
     </ChoyDialogContent>
   </ChoyDialog>
@@ -47,7 +47,8 @@ import {
   ChoyDialogHeader,
   ChoyDialogTitle,
 } from '@/web/web/components/layout/choyDialog';
-import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
+import ChoyButton from '@/web/web/components/button/ChoyButton.vue';
+import ChoyActionButton from '@/web/web/components/button/ChoyActionButton.vue';
 import ChoyInput from '@/web/web/components/vendor/ui/input/Input.vue';
 import { ChoyMessage } from '../../composables/useChoyMessage';
 import { useAuthStore } from '@/auth/web/stores/auth';

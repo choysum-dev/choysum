@@ -86,10 +86,10 @@ SPDX-License-Identifier: Apache-2.0
               {{ _t('Preferences') }}
             </ChoyDropdownMenuItem>
             <ChoyDropdownMenuSeparator />
-            <ChoyDropdownMenuItem @select="onMenuLogout">
+            <ChoyActionMenuItem data-testid="auth-user-menu-logout" @execute="onMenuLogout">
               <LogOut class="size-4" aria-hidden="true" />
               {{ _t('Log Out') }}
-            </ChoyDropdownMenuItem>
+            </ChoyActionMenuItem>
           </ChoyDropdownMenuContent>
         </ChoyDropdownMenu>
       </ChoyCollapsedIdentityTipHost>
@@ -106,6 +106,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { Link2Off, LogOut, Settings } from 'lucide-vue-next';
 import {
+  ChoyActionMenuItem,
   ChoyAvatar,
   ChoyAvatarFallback,
   ChoyAvatarImage,

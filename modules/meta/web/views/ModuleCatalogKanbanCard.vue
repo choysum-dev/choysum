@@ -56,26 +56,26 @@ SPDX-License-Identifier: Apache-2.0
       </div>
     </div>
     <div class="flex flex-wrap items-center justify-start gap-1 pt-2">
-      <ChoyButton
+      <ChoyActionButton
         v-if="primaryAction"
         type="button"
         size="xs"
         :variant="primaryAction === 'progress' ? 'outline' : 'default'"
         :data-testid="`module-catalog-card-primary-${primaryAction}`"
-        @click.stop="emit('primary')"
+        @execute="emit('primary')"
       >
         {{ primaryLabel }}
-      </ChoyButton>
-      <ChoyButton
+      </ChoyActionButton>
+      <ChoyActionButton
         v-if="showUninstall"
         type="button"
         size="xs"
         variant="outline-destructive"
         data-testid="module-catalog-card-uninstall"
-        @click.stop="emit('uninstall')"
+        @execute="emit('uninstall')"
       >
         {{ _t('Uninstall') }}
-      </ChoyButton>
+      </ChoyActionButton>
     </div>
   </div>
 </template>
@@ -83,7 +83,7 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts">
 import { createTranslate } from '@/web/web/i18n';
 import type { ChoyKanbanCard } from '@/web';
-import { ChoyBadge, ChoyButton } from '@/web';
+import { ChoyBadge, ChoyActionButton } from '@/web';
 import {
   moduleCatalogKanbanCardApplication,
   moduleCatalogKanbanCardAuthor,

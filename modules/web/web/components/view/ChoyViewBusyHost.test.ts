@@ -11,7 +11,7 @@ import {
   stubSfc,
 } from '@/web/web/__tests__/mountApp';
 import { loadingTiming } from '@/core/web/client/loadingRegistry';
-import ChoyButton from '../layout/ChoyButton.vue';
+import ChoyButton from '../button/ChoyButton.vue';
 import { VIEW_LOAD_RETRY_AFTER_RECOVERY_MS } from '../../router/viewLoadError';
 import { useConnectivityStore } from '../../stores/connectivityStore';
 import ChoyViewBusyHost from './ChoyViewBusyHost.vue';

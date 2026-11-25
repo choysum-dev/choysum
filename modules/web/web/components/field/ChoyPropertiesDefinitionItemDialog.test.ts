@@ -8,7 +8,7 @@ import { resolveConfirmChoy } from '@/web/web/composables/confirmChoyAction';
 import { useI18nStore } from '@/web/web/stores/i18nStore';
 import { flushPromises, fnRecorder, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
 import { ChoyDialog, ChoyDialogContent, ChoyDialogTitle } from '@/web/web/components/layout/choyDialog';
-import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
+import ChoyButton from '@/web/web/components/button/ChoyButton.vue';
 import ChoyFormView from '@/web/web/components/view/ChoyFormView.vue';
 import ChoyVarcharField from '@/web/web/components/field/ChoyVarcharField.vue';
 import ChoyTextField from '@/web/web/components/field/ChoyTextField.vue';

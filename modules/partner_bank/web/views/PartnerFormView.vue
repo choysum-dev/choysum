@@ -57,16 +57,17 @@ SPDX-License-Identifier: Apache-2.0
                 {{ item?.AllowInbound ? _t('Yes') : _t('No') }}/{{ item?.AllowOutbound ? _t('Yes') : _t('No') }}
               </div>
               <div v-if="editable || removable" class="mt-auto inline-flex gap-1 pt-1">
-                <ChoyButton v-if="editable" variant="ghost" size="sm" @click.stop="edit">{{ _t('Edit') }}</ChoyButton>
-                <ChoyButton
+                <ChoyActionButton v-if="editable" variant="ghost" size="sm" :requires-connectivity="false" @execute="edit">{{ _t('Edit') }}</ChoyActionButton>
+                <ChoyActionButton
                   v-if="removable"
                   variant="ghost"
                   size="sm"
                   class="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                  @click.stop="remove"
+                  :requires-connectivity="false"
+                  @execute="remove"
                 >
                   {{ _t('Delete') }}
-                </ChoyButton>
+                </ChoyActionButton>
               </div>
             </div>
           </template>
@@ -84,7 +85,7 @@ import type Partner from '@/partner_bank/service/models/partner';
 import type { ModelStore } from '@/web/web/stores/modelStore';
 import {
   ChoyBadge,
-  ChoyButton,
+  ChoyActionButton,
   ChoyOneToManyField,
   ChoyOneToManyKanbanField,
   ChoyTab,
@@ -104,7 +105,7 @@ export default defineComponent({
   components: {
     Xpath,
     ChoyBadge,
-    ChoyButton,
+    ChoyActionButton,
     ChoyTab,
     // Generic SFCs are not Options-API component-typed; cast for registration.
     ChoyOneToManyField: ChoyOneToManyField as any,

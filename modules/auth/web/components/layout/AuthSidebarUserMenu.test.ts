@@ -10,7 +10,7 @@ import { resetDialogServiceForTests } from '@/web/web/composables/dialogService'
 import { useConnectivityStore } from '@/web/web/stores/connectivityStore';
 import { useLayoutStore } from '@/web/web/stores/layoutStore';
 import { pinViewportWidth } from '@/web/web/stores/layoutStore/pinViewport';
-import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
+import ChoyButton from '@/web/web/components/button/ChoyButton.vue';
 import { useAuthStore } from '@/auth/web/stores/auth';
 import AuthSidebarUserMenu from './AuthSidebarUserMenu.vue';
 

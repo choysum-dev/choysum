@@ -37,7 +37,7 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts">
 import { useSlots } from 'vue';
 import { cn, type ClassValue } from '../../lib/utils';
-import { slotHasContent } from './statInfoHelpers';
+import { slotHasContent } from '../button/statInfoHelpers';
 
 defineOptions({ name: 'ChoyViewContainer' });
 

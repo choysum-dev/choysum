@@ -14,44 +14,44 @@ SPDX-License-Identifier: Apache-2.0
     @create-success="reloadActiveLanguagesAfterLanguageSave"
   >
     <template #secondary-actions="{ formData, recordId: slotRecordId, loading }">
-      <ChoyButton
+      <ChoyActionButton
         v-if="!loading && showActivateFor(formData, slotRecordId)"
         type="button"
         size="default"
         data-testid="language-activate"
-        :disabled="activeBusy || reloadBusy"
+        :busy="activeBusy || reloadBusy"
         :aria-busy="activeBusy || undefined"
-        @click="() => void onActivate(slotRecordId)"
+        @execute="() => void onActivate(slotRecordId)"
       >
         <CircleCheck class="size-4" aria-hidden="true" />
         {{ _t('Activate') }}
-      </ChoyButton>
-      <ChoyButton
+      </ChoyActionButton>
+      <ChoyActionButton
         v-else-if="!loading && showDeactivateFor(formData, slotRecordId)"
         type="button"
         size="default"
         variant="outline"
         data-testid="language-deactivate"
-        :disabled="activeBusy || reloadBusy"
+        :busy="activeBusy || reloadBusy"
         :aria-busy="activeBusy || undefined"
-        @click="() => void onDeactivate(slotRecordId)"
+        @execute="() => void onDeactivate(slotRecordId)"
       >
         <CircleOff class="size-4" aria-hidden="true" />
         {{ _t('Deactivate') }}
-      </ChoyButton>
-      <ChoyButton
+      </ChoyActionButton>
+      <ChoyActionButton
         v-if="!loading && showReloadTerminologyFor(formData, slotRecordId)"
         type="button"
         size="default"
         variant="outline"
         data-testid="language-reload-terminology"
-        :disabled="activeBusy || reloadBusy"
+        :busy="activeBusy || reloadBusy"
         :aria-busy="reloadBusy || undefined"
-        @click="() => void onReloadTerminology(slotRecordId, formData)"
+        @execute="() => void onReloadTerminology(slotRecordId, formData)"
       >
         <Languages class="size-4" aria-hidden="true" />
         {{ _t('Update translations') }}
-      </ChoyButton>
+      </ChoyActionButton>
     </template>
 
     <template #default="{ viewMode: mode }">
@@ -174,7 +174,7 @@ import { ChoyMessage } from '@/web/web/composables/useChoyMessage';
 import { useI18nStore } from '@/web/web/stores/i18nStore';
 import {
   ChoyBooleanField,
-  ChoyButton,
+  ChoyActionButton,
   ChoyCol,
   ChoyFormView,
   ChoyGrid,

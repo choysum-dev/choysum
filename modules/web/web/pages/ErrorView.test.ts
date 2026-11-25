@@ -12,7 +12,7 @@ import ErrorView from './ErrorView.vue';
 import AuthPanel from '@/auth/web/components/AuthPanel.vue';
 import ChoyPage from '@/web/web/components/layout/ChoyPage.vue';
 import ChoyCard from '@/web/web/components/layout/ChoyCard.vue';
-import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
+import ChoyButton from '@/web/web/components/button/ChoyButton.vue';
 
 describe('ErrorView', () => {
   beforeEach(() => {

@@ -66,18 +66,19 @@ SPDX-License-Identifier: Apache-2.0
 
       <ChoyDialogFooter>
         <ChoyButton size="sm" variant="outline" :disabled="busy" @click="visible = false">{{ cancelLabel }}</ChoyButton>
-        <ChoyButton
+        <ChoyActionButton
           v-if="step === 0"
           size="sm"
           variant="default"
-          :disabled="!selectedFile || busy"
-          @click="uploadAndPreview"
+          :disabled="!selectedFile"
+          :busy="busy"
+          @execute="uploadAndPreview"
         >
           {{ previewActionLabel }}
-        </ChoyButton>
-        <ChoyButton v-else-if="step === 1" size="sm" variant="default" :disabled="!canImport || busy" @click="commitImport">
+        </ChoyActionButton>
+        <ChoyActionButton v-else-if="step === 1" size="sm" variant="default" :disabled="!canImport" :busy="busy" @execute="commitImport">
           {{ importActionLabel }}
-        </ChoyButton>
+        </ChoyActionButton>
         <ChoyButton v-else-if="importDone" size="sm" variant="default" @click="finish">{{ doneLabel }}</ChoyButton>
       </ChoyDialogFooter>
     </ChoyDialogContent>
@@ -93,7 +94,8 @@ import {
   ChoyDialogHeader,
   ChoyDialogTitle,
 } from '@/web/web/components/layout/choyDialog';
-import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
+import ChoyButton from '@/web/web/components/button/ChoyButton.vue';
+import ChoyActionButton from '@/web/web/components/button/ChoyActionButton.vue';
 import ChoyStepper, { type ChoyStepperStep } from '@/web/web/components/layout/ChoyStepper.vue';
 type UploadFile = { raw?: File | null; name?: string };
 import {

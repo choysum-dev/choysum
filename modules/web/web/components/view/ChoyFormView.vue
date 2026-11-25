@@ -41,52 +41,70 @@ SPDX-License-Identifier: Apache-2.0
     <template v-if="resolvedShowActions" #system-actions>
       <!-- Settings chrome: Save/Discard; dirty gates enablement. -->
       <template v-if="isSettingsPresentation && resolvedShowActions">
-        <ChoyButton
+        <ChoyActionButton
           type="button"
           size="default"
           variant="default"
           data-testid="settings-save"
-          :disabled="controlsLocked || !settingsDirty"
-          @click="onSettingsSave"
+          :disabled="!settingsDirty"
+          :busy="controlsLocked"
+          @execute="onSettingsSaveGated"
         >
           <Check class="size-4" aria-hidden="true" />
           {{ settingsSaveLabel }}
-        </ChoyButton>
-        <ChoyButton
+        </ChoyActionButton>
+        <ChoyActionButton
           type="button"
           size="default"
           variant="outline"
           data-testid="settings-discard"
-          :disabled="controlsLocked || !settingsDirty"
-          @click="onSettingsDiscard"
+          :requires-connectivity="false"
+          :disabled="!settingsDirty"
+          :busy="controlsLocked"
+          @execute="onSettingsDiscard"
         >
           <X class="size-4" aria-hidden="true" />
           {{ settingsDiscardLabel }}
-        </ChoyButton>
+        </ChoyActionButton>
       </template>
       <!-- Primary: Save/Cancel while editing; New (or #system-actions) in display. -->
       <template v-else-if="isEditing && resolvedShowActions">
-        <ChoyButton type="button" size="default" variant="default" :disabled="controlsLocked" @click="handleSubmit">
+        <ChoyActionButton
+          type="button"
+          size="default"
+          variant="default"
+          :busy="controlsLocked"
+          @execute="onSaveExecute"
+        >
           <Check class="size-4" aria-hidden="true" />
           {{ saveLabel }}
-        </ChoyButton>
-        <ChoyButton type="button" size="default" variant="outline" :disabled="controlsLocked" @click="handleCancel">
+        </ChoyActionButton>
+        <ChoyActionButton
+          type="button"
+          size="default"
+          variant="outline"
+          :requires-connectivity="false"
+          :busy="controlsLocked"
+          @execute="handleCancel"
+        >
           <X class="size-4" aria-hidden="true" />
           {{ _t('Cancel') }}
-        </ChoyButton>
+        </ChoyActionButton>
       </template>
       <slot v-else-if="resolvedShowActions" name="system-actions">
-        <ChoyButton
+        <ChoyActionButton
           v-if="viewMode === 'display' && effectiveRecordId && resolvedCreateAction && canCreate"
           type="button"
           size="default"
           variant="default"
           data-testid="form-primary-new"
-          @click="handleCreate"
+          :action-id="actionIds?.create"
+          :has-action="hasAction"
+          @execute="handleCreate"
         >
           <Plus class="size-4" aria-hidden="true" />
           {{ _t('New') }}
-        </ChoyButton>
+        </ChoyActionButton>
       </slot>
     </template>
 
@@ -99,15 +117,16 @@ SPDX-License-Identifier: Apache-2.0
         test-id="form-overflow-refresh"
         @select="handleRefresh"
       />
-      <DropdownMenuItem
+      <ChoyActionMenuItem
         v-if="showResetInOverflow"
         data-testid="form-overflow-reset"
+        :requires-connectivity="false"
         :disabled="controlsLocked"
-        @select="handleReset"
+        @execute="handleReset"
       >
         <RotateCcw class="size-4" aria-hidden="true" />
         {{ _t('Reset') }}
-      </DropdownMenuItem>
+      </ChoyActionMenuItem>
       <slot name="overflow-actions" />
     </template>
 
@@ -133,39 +152,45 @@ SPDX-License-Identifier: Apache-2.0
     />
     <!-- Built-in secondary: Edit/Copy/Delete after product #secondary-actions. -->
     <template v-if="effectiveRecordId">
-      <ChoyButton
+      <ChoyActionButton
         v-if="canEdit"
         type="button"
         size="default"
         variant="outline"
         data-testid="form-secondary-edit"
-        @click="handleEdit"
+        :action-id="actionIds?.edit"
+        :has-action="hasAction"
+        @execute="handleEdit"
       >
         <Pencil class="size-4" aria-hidden="true" />
         {{ _t('Edit') }}
-      </ChoyButton>
-      <ChoyButton
+      </ChoyActionButton>
+      <ChoyActionButton
         v-if="canCopy"
         type="button"
         size="default"
         variant="outline"
         data-testid="form-secondary-copy"
-        @click="handleCopy"
+        :action-id="actionIds?.copy"
+        :has-action="hasAction"
+        @execute="handleCopy"
       >
         <Copy class="size-4" aria-hidden="true" />
         {{ _t('Copy') }}
-      </ChoyButton>
-      <ChoyButton
+      </ChoyActionButton>
+      <ChoyActionButton
         v-if="canDelete"
         type="button"
         size="default"
         variant="outline-destructive"
         data-testid="form-secondary-delete"
-        @click="handleDelete"
+        :action-id="actionIds?.delete"
+        :has-action="hasAction"
+        @execute="handleDelete"
       >
         <Trash2 class="size-4" aria-hidden="true" />
         {{ _t('Delete') }}
-      </ChoyButton>
+      </ChoyActionButton>
     </template>
     </template>
 
@@ -197,7 +222,7 @@ SPDX-License-Identifier: Apache-2.0
         :total="formRecordPager.total.value"
         :can-prev="formRecordPager.canPrev.value"
         :can-next="formRecordPager.canNext.value"
-        :busy="formRecordPager.busy.value"
+        :busy="formRecordPager.busy.value || sessionUnreachable"
         @prev="formRecordPager.goPrev()"
         @next="formRecordPager.goNext()"
         @goto="formRecordPager.goTo($event)"
@@ -209,7 +234,7 @@ SPDX-License-Identifier: Apache-2.0
       ref="formRef"
       :class="isSettingsPresentation ? 'choy-settings-view__sheet flex min-h-0 min-w-0 flex-1 flex-col gap-8' : undefined"
       :inert="(isSettingsPresentation ? overlayBusy : submitting) || undefined"
-      @submit.self.prevent="isSettingsPresentation ? onSettingsSave() : onNativeSubmit()"
+      @submit.self.prevent="isSettingsPresentation ? onSettingsSaveGated() : onNativeSubmitGated()"
     >
       <slot :form-data="exposedFormData" :view-mode="viewMode" :loading="loading" />
     </form>
@@ -259,12 +284,14 @@ import { useFormViewSubmit } from '@/web/web/composables/useFormViewSubmit';
 import { nextLocalToken } from '@/web/web/components/view/localToken';
 import { createTranslate } from '@/web/web/i18n';
 import type { UiModelStore } from '@/web/web/stores/uiModelStore';
-import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
+import ChoyActionButton from '@/web/web/components/button/ChoyActionButton.vue';
+import ChoyActionMenuItem from '@/web/web/components/button/ChoyActionMenuItem.vue';
 import ChoyViewBase from '@/web/web/components/view/ChoyViewBase.vue';
+import { isConnectivityUnreachable } from '@/web/web/stores/connectivityStore';
+import { runUnlessSessionUnreachable } from './formOfflineSaveGate';
 import ChoyViewOverflowRefreshItem from '@/web/web/components/view/ChoyViewOverflowRefreshItem.vue';
 import ChoyFormPager from '@/web/web/components/view/ChoyFormPager.vue';
 import ChoyViewSwitcher, { type ChoyViewSwitcherOption } from '@/web/web/components/view/ChoyViewSwitcher.vue';
-import DropdownMenuItem from '@/web/web/components/vendor/ui/dropdown-menu/DropdownMenuItem.vue';
 import { Plus, Pencil, Trash2, Check, X, Copy, RotateCcw } from 'lucide-vue-next';
 import { useViewTitleOverflow } from '@/web/web/components/view/useViewTitleOverflow';
 import type {
@@ -705,6 +732,17 @@ const { submitting, handleSubmit, onNativeSubmit } = useFormViewSubmit({
   detailsTitle,
 });
 
+function onSaveExecute() {
+  return runUnlessSessionUnreachable(() => handleSubmit());
+}
+function onNativeSubmitGated() {
+  runUnlessSessionUnreachable(() => onNativeSubmit());
+}
+function onSettingsSaveGated() {
+  return runUnlessSessionUnreachable(() => onSettingsSave());
+}
+
+
 /** Binary/Image fields use this to show Attachment state=uploading during Prepare/PUT/Finalize. */
 provide('form-submitting', submitting);
 
@@ -729,6 +767,8 @@ const controlsLocked = computed<boolean>(() => {
   if (isSettingsPresentation.value) return settingsControlBusy.value;
   return loading.value || submitting.value || formControlBusy.value.busy;
 });
+/** Pager host offline gate (D10); ActionButton gates Save/Edit itself. */
+const sessionUnreachable = computed(() => isConnectivityUnreachable());
 const saveLabel = computed(() => (submitting.value ? _t('Saving...') : _t('Save')));
 // Explicit dirty=false stays false; omitted dirty falls back to controller draft dirty.
 const settingsDirty = computed(() => (hasDirtyProp ? props.dirty === true : isFormDirty()));

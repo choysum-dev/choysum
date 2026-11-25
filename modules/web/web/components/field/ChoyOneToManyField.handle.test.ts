@@ -11,7 +11,7 @@ import ChoyOneToManyField from './ChoyOneToManyField.vue';
 import ChoyTableColumn from '@/web/web/components/table/ChoyTableColumn.vue';
 import ChoyTableHost from '@/web/web/components/internal/ChoyTableHost.vue';
 import ChoyViewScope from '@/web/web/components/view/ChoyViewScope.vue';
-import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
+import ChoyButton from '@/web/web/components/button/ChoyButton.vue';
 
 function makeBinding(opts: {
   items?: any[];

@@ -40,17 +40,19 @@ SPDX-License-Identifier: Apache-2.0
           Keep New mounted during search/move busy. Hiding it behind
           boardBusy made the action bar flash when switching into Kanban.
         -->
-        <ChoyButton
+        <ChoyActionButton
           v-if="!props.readonly"
           type="button"
           size="default"
           variant="default"
-          :disabled="boardBusy"
-          @click="onCreate"
+          :busy="boardBusy"
+          :action-id="actionIds?.create"
+          :has-action="hasAction"
+          @execute="onCreate"
         >
           <Plus class="size-4" aria-hidden="true" />
           {{ resolvedCreateLabel }}
-        </ChoyButton>
+        </ChoyActionButton>
       </slot>
     </template>
 
@@ -275,7 +277,9 @@ import type { ClassValue } from '../../lib/utils';
 import type { ModelStore } from '@/web/web/stores/modelStore';
 import type { Lane } from '@/web/web/query/types';
 import ChoyBadge from '../layout/ChoyBadge.vue';
-import ChoyButton from '../layout/ChoyButton.vue';
+import ChoyButton from '../button/ChoyButton.vue';
+import ChoyActionButton from '../button/ChoyActionButton.vue';
+import type { ActionIdMap } from '@/web/web/components/view/actionVisibility';
 import ChoyViewBase from '@/web/web/components/view/ChoyViewBase.vue';
 import ChoySearchFit from '@/web/web/components/view/ChoySearchFit.vue';
 import ChoyViewOverflowRefreshItem from '@/web/web/components/view/ChoyViewOverflowRefreshItem.vue';
@@ -360,6 +364,8 @@ const props = withDefaults(
     showHeader?: boolean;
     showActions?: boolean;
     createLabel?: string;
+    actionIds?: ActionIdMap;
+    hasAction?: (actionId: string | undefined) => boolean;
     readonly?: boolean;
     /**
      * Card drag behavior. `readonly` forces `none`.

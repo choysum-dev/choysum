@@ -188,16 +188,17 @@ SPDX-License-Identifier: Apache-2.0
                     <div v-if="item?.Email" class="truncate text-xs text-muted-foreground">{{ _t('Email') }} {{ item.Email }}</div>
                     <div v-if="item?.Phone" class="truncate text-xs text-muted-foreground">{{ _t('Phone') }} {{ item.Phone }}</div>
                     <div v-if="editable || removable" class="mt-auto inline-flex gap-1 pt-1">
-                      <ChoyButton v-if="editable" variant="ghost" size="sm" @click.stop="edit">{{ _t('Edit') }}</ChoyButton>
-                      <ChoyButton
+                      <ChoyActionButton v-if="editable" variant="ghost" size="sm" :requires-connectivity="false" @execute="edit">{{ _t('Edit') }}</ChoyActionButton>
+                      <ChoyActionButton
                         v-if="removable"
                         variant="ghost"
                         size="sm"
                         class="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                        @click.stop="remove"
+                        :requires-connectivity="false"
+                        @execute="remove"
                       >
                         {{ _t('Delete') }}
-                      </ChoyButton>
+                      </ChoyActionButton>
                     </div>
                   </div>
                 </template>
@@ -233,7 +234,7 @@ import { createTranslate } from '@/web/web/i18n';
 import {
   ChoyBadge,
   ChoyBooleanField,
-  ChoyButton,
+  ChoyActionButton,
   ChoyCard,
   ChoyChatter,
   ChoyCol,

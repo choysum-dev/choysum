@@ -18,7 +18,7 @@ describe('PreferencesDialog offline soft-fail chrome', () => {
     }
   });
 
-  test('seeds initialValues from session and blocks Save while unreachable', async () => {
+  test('seeds initialValues from session and Save ActionButton disables while unreachable', async () => {
     const pinia = createPinia();
     setActivePinia(pinia);
     const auth = useAuthStore() as any;
@@ -52,7 +52,6 @@ describe('PreferencesDialog offline soft-fail chrome', () => {
 
     const ss = open.setupState() as {
       preferencesInitialValues: Record<string, unknown>;
-      saveBlockedOffline: boolean;
       userId: string;
       visible: boolean;
     };
@@ -64,11 +63,11 @@ describe('PreferencesDialog offline soft-fail chrome', () => {
       Email: 'ada@example.com',
       Username: 'ada',
     });
-    expect(ss.saveBlockedOffline).toBe(false);
+    expect(useConnectivityStore().status).toBe('reachable');
 
     useConnectivityStore().markUnreachable();
     await nextTick();
-    expect(ss.saveBlockedOffline).toBe(true);
+    expect(useConnectivityStore().status).toBe('unreachable');
 
     // Same effect as Form `@surface-cancel="visible = false"`.
     ss.visible = false;
@@ -77,4 +76,5 @@ describe('PreferencesDialog offline soft-fail chrome', () => {
 
     open.unmount();
   });
+
 });

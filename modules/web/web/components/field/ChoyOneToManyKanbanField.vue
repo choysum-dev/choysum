@@ -89,7 +89,7 @@ SPDX-License-Identifier: Apache-2.0
                 >
                   <GripVertical class="size-3.5" aria-hidden="true" />
                 </button>
-                <ChoyButton
+                <ChoyActionButton
                   v-if="removable"
                   type="button"
                   size="icon"
@@ -97,10 +97,11 @@ SPDX-License-Identifier: Apache-2.0
                   class="absolute end-1.5 top-1.5 z-10 size-7 text-muted-foreground opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive group-hover/card:opacity-100 group-focus-within/card:opacity-100"
                   :aria-label="_t('Delete')"
                   data-testid="choy-o2m-kanban-delete"
-                  @click.stop="handleRemoveItem(index)"
+                  :requires-connectivity="false"
+                  @execute="handleRemoveItem(index)"
                 >
                   <Trash2 class="size-3.5" aria-hidden="true" />
-                </ChoyButton>
+                </ChoyActionButton>
                 <div
                   :class="[
                     'min-w-0',
@@ -251,18 +252,19 @@ SPDX-License-Identifier: Apache-2.0
       </div>
       <div class="flex shrink-0 items-center justify-between gap-2">
         <div class="min-w-0">
-          <ChoyButton
+          <ChoyActionButton
             v-if="dialogMode === 'edit' && removable"
             type="button"
             variant="ghost"
             class="text-destructive hover:bg-destructive/10 hover:text-destructive"
             data-testid="choy-o2m-kanban-dialog-delete"
-            @click="handleDialogRemove"
-          >{{ _t('Delete') }}</ChoyButton>
+            :requires-connectivity="false"
+            @execute="handleDialogRemove"
+          >{{ _t('Delete') }}</ChoyActionButton>
         </div>
         <ChoyDialogFooter class="w-auto shrink-0 border-0 p-0">
           <ChoyButton type="button" variant="outline" @click="handleDialogCancel">{{ _t('Cancel') }}</ChoyButton>
-          <ChoyButton v-if="dialogMode !== 'display'" type="button" @click="handleDialogSubmit">{{ _t('Save') }}</ChoyButton>
+          <ChoyActionButton v-if="dialogMode !== 'display'" type="button" :requires-connectivity="false" @execute="handleDialogSubmit">{{ _t('Save') }}</ChoyActionButton>
         </ChoyDialogFooter>
       </div>
     </ChoyDialogContent>
@@ -279,7 +281,8 @@ import {
   ChoyDialogHeader,
   ChoyDialogTitle,
 } from '@/web/web/components/layout/choyDialog';
-import ChoyButton from '@/web/web/components/layout/ChoyButton.vue';
+import ChoyButton from '@/web/web/components/button/ChoyButton.vue';
+import ChoyActionButton from '@/web/web/components/button/ChoyActionButton.vue';
 import { confirmChoyAction } from '../../composables/confirmChoyAction';
 import type { RuleItem } from 'async-validator';
 import type { BaseModel, FieldPath, FieldPathType, ClientModel } from '@/core/rpc';

@@ -50,14 +50,14 @@ SPDX-License-Identifier: Apache-2.0
         {{ mod }}
       </ChoyDropdownMenuItem>
       <ChoyDropdownMenuSeparator />
-      <ChoyDropdownMenuItem
-        :disabled="!canDownload || downloading"
+      <ChoyActionMenuItem
+        :disabled="!canDownloadBase || downloading"
         class="text-sm font-normal text-primary focus:text-primary data-[disabled]:text-primary"
         data-testid="terminology-export-download"
-        @select="onDownloadPo"
+        @execute="onDownloadPo"
       >
         {{ downloading ? _t('Downloading…') : _t('Download PO') }}
-      </ChoyDropdownMenuItem>
+      </ChoyActionMenuItem>
     </ChoyDropdownMenuContent>
   </ChoyDropdownMenu>
 </template>
@@ -66,6 +66,7 @@ SPDX-License-Identifier: Apache-2.0
 import { computed, ref, watch } from 'vue';
 import { Check, ChevronDown } from 'lucide-vue-next';
 import {
+  ChoyActionMenuItem,
   ChoyButton,
   ChoyDropdownMenu,
   ChoyDropdownMenuContent,
@@ -105,13 +106,13 @@ const downloading = ref(false);
 let loadGeneration = 0;
 
 const application = computed(() => String(props.application || '').trim());
-const canDownload = computed(
-  () =>
-    Boolean(
-      application.value &&
-        selectedModule.value.trim() &&
-        (i18nStore.lang || i18nStore.activeLanguage.code)
-    )
+/** Local readiness only; connectivity is gated by ChoyActionMenuItem. */
+const canDownloadBase = computed(() =>
+  Boolean(
+    application.value &&
+      selectedModule.value.trim() &&
+      (i18nStore.lang || i18nStore.activeLanguage.code)
+  )
 );
 
 watch(
@@ -175,7 +176,7 @@ function onSelectModule(event: Event, mod: string) {
 }
 
 async function onDownloadPo() {
-  if (!canDownload.value || downloading.value) return;
+  if (!canDownloadBase.value || downloading.value) return;
   const moduleName = selectedModule.value.trim();
   const lang = String(i18nStore.activeLanguage.code || '').trim();
   downloading.value = true;
