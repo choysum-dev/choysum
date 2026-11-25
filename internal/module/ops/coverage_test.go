@@ -555,11 +555,11 @@ func TestCoverage_UninstallBlockersEdges(t *testing.T) {
 	t.Parallel()
 	db := newOpsTestDB(t)
 	o := &Ops{Scope: newOpsTestScope(t, db), Resolver: &mapResolver{loadErr: errors.New("no")}}
-	if issues := o.uninstallBlockers(context.Background(), "core", nil); len(issues) != 1 || issues[0].Code != "DEPENDENCY_LOOKUP_FAILED" {
+	if issues := o.uninstallBlockers(context.Background(), o.Resolver, "core", nil); len(issues) != 1 || issues[0].Code != "DEPENDENCY_LOOKUP_FAILED" {
 		t.Fatalf("load err => %#v", issues)
 	}
 	o.Resolver = &mapResolver{}
-	if issues := o.uninstallBlockers(context.Background(), "core", nil); issues != nil {
+	if issues := o.uninstallBlockers(context.Background(), o.Resolver, "core", nil); issues != nil {
 		t.Fatalf("nil root => %#v", issues)
 	}
 	root := &pkgmeta.Module{
@@ -569,7 +569,7 @@ func TestCoverage_UninstallBlockersEdges(t *testing.T) {
 		},
 	}
 	o.Resolver = &mapResolver{load: map[string]*pkgmeta.Module{"core": root}}
-	issues := o.uninstallBlockers(context.Background(), "core", []string{"auth"})
+	issues := o.uninstallBlockers(context.Background(), o.Resolver, "core", []string{"auth"})
 	if len(issues) != 0 {
 		t.Fatalf("planned dependent skipped: %#v", issues)
 	}
