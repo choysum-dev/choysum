@@ -17,17 +17,17 @@ SPDX-License-Identifier: Apache-2.0
       </ChoyButton>
     </DropdownMenuTrigger>
     <DropdownMenuContent align="end">
-      <DropdownMenuItem
+      <ChoyActionMenuItem
         v-for="item in visibleItems"
         :key="item.key"
         :disabled="item.disabled"
         :data-testid="`page-io-menu-${item.key}`"
-        @select="onCommand(item.key)"
+        @execute="onCommand(item.key)"
       >
         <Upload v-if="item.key === 'import'" class="size-4" aria-hidden="true" />
         <Download v-else-if="item.key === 'export'" class="size-4" aria-hidden="true" />
         {{ item.label }}
-      </DropdownMenuItem>
+      </ChoyActionMenuItem>
       <template v-if="$slots.default">
         <DropdownMenuSeparator v-if="visibleItems.length" />
         <slot />
@@ -57,9 +57,9 @@ SPDX-License-Identifier: Apache-2.0
 import { computed, ref, useSlots } from 'vue';
 import { Download, EllipsisVertical, Upload } from 'lucide-vue-next';
 import ChoyButton from '../button/ChoyButton.vue';
+import ChoyActionMenuItem from '../button/ChoyActionMenuItem.vue';
 import DropdownMenu from '../vendor/ui/dropdown-menu/DropdownMenu.vue';
 import DropdownMenuContent from '../vendor/ui/dropdown-menu/DropdownMenuContent.vue';
-import DropdownMenuItem from '../vendor/ui/dropdown-menu/DropdownMenuItem.vue';
 import DropdownMenuSeparator from '../vendor/ui/dropdown-menu/DropdownMenuSeparator.vue';
 import DropdownMenuTrigger from '../vendor/ui/dropdown-menu/DropdownMenuTrigger.vue';
 import { createTranslate } from '@/web/web/i18n';

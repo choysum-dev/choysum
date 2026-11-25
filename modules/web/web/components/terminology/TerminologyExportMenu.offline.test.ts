@@ -16,7 +16,7 @@ describe('TerminologyExportMenu offline download gate', () => {
     }
   });
 
-  test('canDownload is false and onDownloadPo no-ops while unreachable', async () => {
+  test('ActionMenuItem download is disabled while unreachable; onDownloadPo still guards busy', async () => {
     const pinia = createPinia();
     setActivePinia(pinia);
     useConnectivityStore().markUnreachable();
@@ -28,14 +28,23 @@ describe('TerminologyExportMenu offline download gate', () => {
     await flushPromises();
 
     const ss = mounted.setupState() as {
-      canDownload: boolean;
+      canDownloadBase: boolean;
       selectedModule: string;
       onDownloadPo: () => Promise<void>;
       downloading: boolean;
     };
     ss.selectedModule = 'web';
     await flushPromises();
-    expect(ss.canDownload).toBe(false);
+    expect(ss.canDownloadBase).toBe(true);
+
+    const download = mounted.q('[data-testid="terminology-export-download"]') as HTMLElement | null;
+    expect(download).not.toBeNull();
+    expect(
+      download!.getAttribute('data-disabled') != null ||
+        download!.hasAttribute('disabled') ||
+        (download as HTMLButtonElement).disabled === true,
+    ).toBe(true);
+
     await ss.onDownloadPo();
     expect(ss.downloading).toBe(false);
 

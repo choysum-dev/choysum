@@ -117,15 +117,16 @@ SPDX-License-Identifier: Apache-2.0
         test-id="form-overflow-refresh"
         @select="handleRefresh"
       />
-      <DropdownMenuItem
+      <ChoyActionMenuItem
         v-if="showResetInOverflow"
         data-testid="form-overflow-reset"
+        :requires-connectivity="false"
         :disabled="controlsLocked"
-        @select="handleReset"
+        @execute="handleReset"
       >
         <RotateCcw class="size-4" aria-hidden="true" />
         {{ _t('Reset') }}
-      </DropdownMenuItem>
+      </ChoyActionMenuItem>
       <slot name="overflow-actions" />
     </template>
 
@@ -284,13 +285,13 @@ import { nextLocalToken } from '@/web/web/components/view/localToken';
 import { createTranslate } from '@/web/web/i18n';
 import type { UiModelStore } from '@/web/web/stores/uiModelStore';
 import ChoyActionButton from '@/web/web/components/button/ChoyActionButton.vue';
+import ChoyActionMenuItem from '@/web/web/components/button/ChoyActionMenuItem.vue';
 import ChoyViewBase from '@/web/web/components/view/ChoyViewBase.vue';
 import { isConnectivityUnreachable } from '@/web/web/stores/connectivityStore';
 import { runUnlessSessionUnreachable } from './formOfflineSaveGate';
 import ChoyViewOverflowRefreshItem from '@/web/web/components/view/ChoyViewOverflowRefreshItem.vue';
 import ChoyFormPager from '@/web/web/components/view/ChoyFormPager.vue';
 import ChoyViewSwitcher, { type ChoyViewSwitcherOption } from '@/web/web/components/view/ChoyViewSwitcher.vue';
-import DropdownMenuItem from '@/web/web/components/vendor/ui/dropdown-menu/DropdownMenuItem.vue';
 import { Plus, Pencil, Trash2, Check, X, Copy, RotateCcw } from 'lucide-vue-next';
 import { useViewTitleOverflow } from '@/web/web/components/view/useViewTitleOverflow';
 import type {

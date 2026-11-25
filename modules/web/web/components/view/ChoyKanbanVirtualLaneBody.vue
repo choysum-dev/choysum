@@ -57,13 +57,13 @@ SPDX-License-Identifier: Apache-2.0
               </ChoyButton>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" class="min-w-[10rem]">
-              <DropdownMenuItem
+              <ChoyActionMenuItem
                 v-for="target in otherLanes"
                 :key="target.key"
-                @select="emit('move-to-lane', cards[item.index]!, target.key)"
+                @execute="emit('move-to-lane', cards[item.index]!, target.key)"
               >
                 {{ moveToLabel(target.label) }}
-              </DropdownMenuItem>
+              </ChoyActionMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -107,13 +107,13 @@ SPDX-License-Identifier: Apache-2.0
               </ChoyButton>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" class="min-w-[10rem]">
-              <DropdownMenuItem
+              <ChoyActionMenuItem
                 v-for="target in otherLanes"
                 :key="target.key"
-                @select="emit('move-to-lane', card, target.key)"
+                @execute="emit('move-to-lane', card, target.key)"
               >
                 {{ moveToLabel(target.label) }}
-              </DropdownMenuItem>
+              </ChoyActionMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -143,7 +143,7 @@ import { setHtml5DragImage } from '@/web/web/composables/useListHandleReorder';
 import ChoyButton from '../button/ChoyButton.vue';
 import DropdownMenu from '../vendor/ui/dropdown-menu/DropdownMenu.vue';
 import DropdownMenuContent from '../vendor/ui/dropdown-menu/DropdownMenuContent.vue';
-import DropdownMenuItem from '../vendor/ui/dropdown-menu/DropdownMenuItem.vue';
+import ChoyActionMenuItem from '../button/ChoyActionMenuItem.vue';
 import DropdownMenuTrigger from '../vendor/ui/dropdown-menu/DropdownMenuTrigger.vue';
 import ChoyKanbanLoadSentinel from './ChoyKanbanLoadSentinel.vue';
 import {

@@ -4,15 +4,19 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <DropdownMenuItem :data-testid="testId" :disabled="disabled" @select="onSelect">
+  <ChoyActionMenuItem
+    :data-testid="testId"
+    :disabled="disabled"
+    @execute="onExecute"
+  >
     <RefreshCw class="size-4" aria-hidden="true" />
     {{ label || _t('Refresh') }}
-  </DropdownMenuItem>
+  </ChoyActionMenuItem>
 </template>
 
 <script setup lang="ts">
 import { RefreshCw } from 'lucide-vue-next';
-import DropdownMenuItem from '@/web/web/components/vendor/ui/dropdown-menu/DropdownMenuItem.vue';
+import ChoyActionMenuItem from '@/web/web/components/button/ChoyActionMenuItem.vue';
 import { createTranslate } from '@/web/web/i18n';
 
 defineOptions({ name: 'ChoyViewOverflowRefreshItem' });
@@ -35,7 +39,7 @@ const emit = defineEmits<{
   select: [];
 }>();
 
-function onSelect(): void {
+function onExecute(): void {
   emit('select');
 }
 </script>

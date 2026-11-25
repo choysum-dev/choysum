@@ -63,11 +63,11 @@ SPDX-License-Identifier: Apache-2.0
           :description="_t('No notifications')"
         />
         <template v-else>
-          <DropdownMenuItem
+          <ChoyActionMenuItem
             v-for="row in rows"
             :key="String(row.Id)"
             :class="row.IsRead !== true ? 'is-unread bg-primary/10' : undefined"
-            @select="() => handleItemClick(row)"
+            @execute="() => handleItemClick(row)"
           >
             <Item size="sm" class="min-w-64 border-none bg-transparent p-0 shadow-none">
               <ItemContent>
@@ -77,7 +77,7 @@ SPDX-License-Identifier: Apache-2.0
                 </ItemDescription>
               </ItemContent>
             </Item>
-          </DropdownMenuItem>
+          </ChoyActionMenuItem>
         </template>
       </DropdownMenuContent>
     </DropdownMenu>
@@ -91,7 +91,6 @@ import Badge from '../vendor/ui/badge/Badge.vue';
 import Button from '../vendor/ui/button/Button.vue';
 import DropdownMenu from '../vendor/ui/dropdown-menu/DropdownMenu.vue';
 import DropdownMenuContent from '../vendor/ui/dropdown-menu/DropdownMenuContent.vue';
-import DropdownMenuItem from '../vendor/ui/dropdown-menu/DropdownMenuItem.vue';
 import DropdownMenuTrigger from '../vendor/ui/dropdown-menu/DropdownMenuTrigger.vue';
 import Item from '../vendor/ui/item/Item.vue';
 import ItemContent from '../vendor/ui/item/ItemContent.vue';
@@ -100,6 +99,7 @@ import ItemTitle from '../vendor/ui/item/ItemTitle.vue';
 import ChoyEmpty from './ChoyEmpty.vue';
 import ChoySpinner from './ChoySpinner.vue';
 import ChoyActionButton from '../button/ChoyActionButton.vue';
+import ChoyActionMenuItem from '../button/ChoyActionMenuItem.vue';
 import { cn, type ClassValue } from '../../lib/utils';
 import {
   choyNotificationAriaLabel,

@@ -20,12 +20,13 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
 import ChoyButton from './ChoyButton.vue';
 import type { ClassValue } from '../../lib/utils';
-import { confirmChoyAction } from '../../composables/confirmChoyAction';
-import { getGlobalActionChecker } from '../../directives/action';
-import { isConnectivityUnreachable } from '../../stores/connectivityStore';
+import {
+  useChoyActionPolicy,
+  type ChoyActionConfirm,
+  type ChoyActionMode,
+} from '../../composables/useChoyActionPolicy';
 
 type ButtonVariant =
   | 'default'
@@ -36,17 +37,8 @@ type ButtonVariant =
   | 'destructive'
   | 'link';
 type ButtonSize = 'default' | 'sm' | 'lg' | 'icon' | 'xs' | 'icon-xs' | 'icon-sm' | 'icon-lg';
-type ActionMode = 'hide' | 'disable';
 
-export type ChoyActionConfirm =
-  | string
-  | {
-      message: string;
-      title?: string;
-      destructive?: boolean;
-      confirmText?: string;
-      cancelText?: string;
-    };
+export type { ChoyActionConfirm };
 
 /**
  * L3 action shell: ACL, confirm, busy, offline gate, then run/@execute.
@@ -65,7 +57,7 @@ const props = withDefaults(
     type?: 'button' | 'submit' | 'reset';
     actionId?: string;
     hasAction?: (id: string | undefined) => boolean;
-    actionMode?: ActionMode;
+    actionMode?: ChoyActionMode;
     requiresConnectivity?: boolean;
     confirm?: ChoyActionConfirm;
     run?: () => void | Promise<void>;
@@ -84,91 +76,17 @@ const emit = defineEmits<{
   execute: [];
 }>();
 
-const pending = ref(false);
-
-const actionIdTrimmed = computed(() => String(props.actionId ?? '').trim());
-
-function isActionAllowedNow(): boolean {
-  const id = actionIdTrimmed.value;
-  if (!id) return true;
-  const checker = props.hasAction ?? getGlobalActionChecker();
-  if (typeof checker !== 'function') return true;
-  return !!checker(id);
-}
-
-const aclAllowed = computed(() => isActionAllowedNow());
-
-/** Hide mode + denied → do not mount; disable mode keeps the control. */
-const aclVisible = computed(() => {
-  if (!actionIdTrimmed.value) return true;
-  if (aclAllowed.value) return true;
-  return props.actionMode === 'disable';
-});
-
-const offlineBlocked = computed(
-  () => props.requiresConnectivity !== false && isConnectivityUnreachable(),
-);
-
-const effectiveDisabled = computed(
-  () =>
-    !!props.disabled ||
-    !!props.busy ||
-    pending.value ||
-    offlineBlocked.value ||
-    (!!actionIdTrimmed.value && !aclAllowed.value && props.actionMode === 'disable'),
+const { pending, aclVisible, offlineBlocked, effectiveDisabled, activate } = useChoyActionPolicy(
+  props,
+  () => emit('execute'),
 );
 
 async function onClick(event: Event) {
   // Nested hosts (kanban cards, list rows) must not receive the same click.
   // Skip stopPropagation for as=span label chrome so the parent <label> still opens the file picker.
-  const e = event as Partial<Event> | undefined;
-  if (props.as === 'button' || effectiveDisabled.value) {
-    e?.stopPropagation?.();
-  }
-  if (effectiveDisabled.value) {
-    e?.preventDefault?.();
-    return;
-  }
-
-  if (props.confirm != null) {
-    // Block native submit until the user answers; cancel does not submit the form.
-    e?.preventDefault?.();
-    const conf = props.confirm;
-    const message = typeof conf === 'string' ? conf : conf.message;
-    const title = typeof conf === 'string' ? undefined : conf.title;
-    const destructive = typeof conf === 'string' ? undefined : conf.destructive;
-    const confirmText = typeof conf === 'string' ? undefined : conf.confirmText;
-    const cancelText = typeof conf === 'string' ? undefined : conf.cancelText;
-    try {
-      await confirmChoyAction(message, title || 'Confirm', {
-        destructive,
-        confirmText,
-        cancelText,
-      });
-    } catch {
-      return;
-    }
-    // Re-check live (do not trust cached ACL computed; checker may flip during await).
-    if (
-      !!props.disabled ||
-      !!props.busy ||
-      offlineBlocked.value ||
-      !isActionAllowedNow()
-    ) {
-      return;
-    }
-  }
-
-  pending.value = true;
-  try {
-    if (typeof props.run === 'function') {
-      await props.run();
-    } else {
-      emit('execute');
-    }
-  } finally {
-    pending.value = false;
-  }
+  await activate(event, {
+    stopPropagation: props.as === 'button' || effectiveDisabled.value,
+  });
 }
 
 defineExpose({
