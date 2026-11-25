@@ -82,6 +82,43 @@ func TestReadOnlyResolver_ColdStartMigratesOnce(t *testing.T) {
 	}
 }
 
+func TestReadOnlyResolver_PartialSchemaMigratesOpsTable(t *testing.T) {
+	// Mirrors CLI e2e seedModuleStatusForCLI: only meta_module exists.
+	db := newModuleSourceSnapshotSyncDB(t)
+	if err := db.AutoMigrate(&meta.Module{}); err != nil {
+		t.Fatalf("seed meta_module: %v", err)
+	}
+	if db.Migrator().HasTable(&modmeta.ModuleOperation{}) {
+		t.Fatal("fixture must not include meta_module_operation")
+	}
+
+	resetCatalogSchemaMigrateForTest()
+	t.Cleanup(resetCatalogSchemaMigrateForTest)
+
+	var calls int
+	prev := migrateCatalogEntities
+	migrateCatalogEntities = func(gdb *gorm.DB, entities ...any) error {
+		calls++
+		return prev(gdb, entities...)
+	}
+	t.Cleanup(func() { migrateCatalogEntities = prev })
+
+	runtimeScope := newModuleSourceSnapshotSyncScope(t.TempDir(), db)
+	manager := NewModuleManager(runtimeScope, nil)
+	manager.bootstrapOnce.Do(func() {})
+
+	ro := NewReadOnlyResolver(manager)
+	if _, err := ro.Load("missing"); err != nil {
+		t.Fatalf("partial-schema Load: %v", err)
+	}
+	if calls != 1 {
+		t.Fatalf("partial-schema AutoMigrate calls=%d, want 1", calls)
+	}
+	if !db.Migrator().HasTable(&modmeta.ModuleOperation{}) {
+		t.Fatal("expected meta_module_operation after cold migrate")
+	}
+}
+
 func TestAsReadOnlyResolver(t *testing.T) {
 	if AsReadOnlyResolver(nil) != nil {
 		t.Fatal("nil in => nil out")

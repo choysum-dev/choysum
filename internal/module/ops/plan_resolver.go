@@ -58,9 +58,11 @@ func (r *planResolver) Load(name string) (*pkgmeta.Module, error) {
 	r.mu.Unlock()
 
 	mod, err := r.inner.Load(key)
-	r.mu.Lock()
-	r.loadByName[key] = loadCacheEntry{mod: mod, err: err}
-	r.mu.Unlock()
+	if err == nil {
+		r.mu.Lock()
+		r.loadByName[key] = loadCacheEntry{mod: mod, err: nil}
+		r.mu.Unlock()
+	}
 	return mod, err
 }
 
@@ -77,8 +79,11 @@ func (r *planResolver) Peek(ctx context.Context, name string) (*pkgmeta.Module, 
 	r.mu.Unlock()
 
 	mod, err := r.inner.Peek(ctx, key)
-	r.mu.Lock()
-	r.peekByName[key] = peekCacheEntry{mod: mod, err: err}
-	r.mu.Unlock()
+	// Success only: a cancelled/timed-out Peek must not poison later retries.
+	if err == nil {
+		r.mu.Lock()
+		r.peekByName[key] = peekCacheEntry{mod: mod, err: nil}
+		r.mu.Unlock()
+	}
 	return mod, err
 }

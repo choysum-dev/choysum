@@ -168,6 +168,9 @@ func (o *Ops) resolveRootModule(ctx context.Context, resolver plan.Resolver, mod
 	if resolver == nil {
 		resolver = o.Resolver
 	}
+	if resolver == nil {
+		return nil, nil, errors.New("ops: resolver is required")
+	}
 	var blockers []PlanIssue
 	mod, err := resolver.Peek(ctx, moduleName)
 	if err != nil || mod == nil {

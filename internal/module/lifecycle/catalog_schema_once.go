@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
+	"github.com/choysum-dev/choysum/pkg/meta"
 	"gorm.io/gorm"
 )
 
@@ -18,10 +19,12 @@ import (
 //
 // Memoization is keyed by the underlying *sql.DB pointer so parallel tests with
 // distinct pools do not share state, while a long-lived server pool migrates once.
+// Only successful migrates are memoized; failures retry. Before trusting a hit,
+// HasTable(meta_module_operation) is checked so a recycled *sql.DB pointer cannot
+// skip migrate on a fresh empty pool.
 
 type catalogSchemaState struct {
-	once sync.Once
-	err  error
+	done bool
 }
 
 var (
@@ -58,20 +61,45 @@ func catalogSchemaStateFor(db *gorm.DB) *catalogSchemaState {
 }
 
 // ensureCatalogSchemaMigrated AutoMigrates CatalogEntities at most once per
-// underlying sql.DB in this process, then always re-checks the effective
-// app/name unique index (cheap vs full AutoMigrate; catches live duplicates).
+// underlying sql.DB in this process (success only), then re-checks the effective
+// app/name unique index when meta_model exists.
 func ensureCatalogSchemaMigrated(db *gorm.DB) error {
 	if db == nil {
 		return fmt.Errorf("ensure catalog schema: db is nil")
 	}
 	st := catalogSchemaStateFor(db)
-	st.once.Do(func() {
-		if err := migrateCatalogEntities(db, modmeta.CatalogEntities()...); err != nil {
-			st.err = fmt.Errorf("auto migrate catalog entities: %w", err)
+
+	catalogSchemaMu.Lock()
+	already := st.done
+	catalogSchemaMu.Unlock()
+
+	if already {
+		// Pointer-keyed memo can outlive a closed pool; refuse a hit when the
+		// sentinel ops table is missing on this DB.
+		if db.Migrator().HasTable(&modmeta.ModuleOperation{}) {
+			return ensureEffectiveAppNameIndexIfModelExists(db)
 		}
-	})
-	if st.err != nil {
-		return st.err
+		catalogSchemaMu.Lock()
+		st.done = false
+		catalogSchemaMu.Unlock()
+	}
+
+	if err := migrateCatalogEntities(db, modmeta.CatalogEntities()...); err != nil {
+		return fmt.Errorf("auto migrate catalog entities: %w", err)
+	}
+	if err := ensureEffectiveAppNameIndexIfModelExists(db); err != nil {
+		return err
+	}
+
+	catalogSchemaMu.Lock()
+	st.done = true
+	catalogSchemaMu.Unlock()
+	return nil
+}
+
+func ensureEffectiveAppNameIndexIfModelExists(db *gorm.DB) error {
+	if !db.Migrator().HasTable(&meta.Model{}) {
+		return nil
 	}
 	if err := modmeta.EnsureEffectiveAppNameUniqueIndex(db); err != nil {
 		return fmt.Errorf("ensure effective app/name unique index: %w", err)
@@ -79,16 +107,16 @@ func ensureCatalogSchemaMigrated(db *gorm.DB) error {
 	return nil
 }
 
-// rememberCatalogSchemaMigrated records that CatalogEntities were already
-// applied (cold bootstrap) so a later ensureCatalogSchemaMigrated is a no-op.
+// rememberCatalogSchemaMigrated records a successful CatalogEntities migrate so
+// a later ensureCatalogSchemaMigrated is a no-op. Failures are not recorded.
 func rememberCatalogSchemaMigrated(db *gorm.DB, err error) {
-	if db == nil {
+	if db == nil || err != nil {
 		return
 	}
 	st := catalogSchemaStateFor(db)
-	st.once.Do(func() {
-		st.err = err
-	})
+	catalogSchemaMu.Lock()
+	st.done = true
+	catalogSchemaMu.Unlock()
 }
 
 // resetCatalogSchemaMigrateForTest clears process memoization (tests only).

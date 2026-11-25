@@ -82,3 +82,52 @@ func TestEnsureCatalogSchemaMigratedDistinctPoolsIndependent(t *testing.T) {
 		t.Fatalf("distinct sql.DB pools migrate calls=%d, want 2", calls)
 	}
 }
+
+func TestEnsureCatalogSchemaMigrated_StaleMemoWithoutOpsTableRemigrates(t *testing.T) {
+	// Package-level migrateCatalogEntities / memo map; not safe with t.Parallel.
+	db := newModuleSourceSnapshotSyncDB(t)
+	if err := db.AutoMigrate(&meta.Module{}, &modmeta.LockLease{}); err != nil {
+		t.Fatalf("auto migrate base tables: %v", err)
+	}
+
+	resetCatalogSchemaMigrateForTest()
+	t.Cleanup(resetCatalogSchemaMigrateForTest)
+	// Simulate recycled *sql.DB pointer: memo says done but ops table is absent.
+	rememberCatalogSchemaMigrated(db, nil)
+	if db.Migrator().HasTable(&modmeta.ModuleOperation{}) {
+		t.Fatal("fixture must not include meta_module_operation")
+	}
+
+	var calls int
+	prev := migrateCatalogEntities
+	migrateCatalogEntities = func(gdb *gorm.DB, entities ...any) error {
+		calls++
+		return prev(gdb, entities...)
+	}
+	t.Cleanup(func() { migrateCatalogEntities = prev })
+
+	if err := ensureCatalogSchemaMigrated(db); err != nil {
+		t.Fatalf("ensureCatalogSchemaMigrated: %v", err)
+	}
+	if calls != 1 {
+		t.Fatalf("stale memo remigrate calls=%d, want 1", calls)
+	}
+	if !db.Migrator().HasTable(&modmeta.ModuleOperation{}) {
+		t.Fatal("expected meta_module_operation after remigrate")
+	}
+}
+
+func TestRememberCatalogSchemaMigrated_IgnoresFailure(t *testing.T) {
+	db := newModuleSourceSnapshotSyncDB(t)
+	resetCatalogSchemaMigrateForTest()
+	t.Cleanup(resetCatalogSchemaMigrateForTest)
+
+	rememberCatalogSchemaMigrated(db, gorm.ErrInvalidDB)
+	st := catalogSchemaStateFor(db)
+	catalogSchemaMu.Lock()
+	done := st.done
+	catalogSchemaMu.Unlock()
+	if done {
+		t.Fatal("failure must not set memo done")
+	}
+}

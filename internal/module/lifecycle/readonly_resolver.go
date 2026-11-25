@@ -7,13 +7,16 @@ import (
 	"context"
 	"fmt"
 
+	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
 	"github.com/choysum-dev/choysum/internal/module/plan"
 	"github.com/choysum-dev/choysum/pkg/meta"
 )
 
 // ReadOnlyResolver implements plan.Resolver without AutoMigrate on the warm path.
-// Catalog DDL runs only when meta_module is missing (cold start), or via write
-// paths that call migrateBaseModule / ensureMetaTables explicitly.
+// Catalog DDL runs only when meta_module or meta_module_operation is missing
+// (cold / partial schema), or via write paths that call migrateBaseModule /
+// ensureMetaTables explicitly. Plan always persists a ModuleOperation row, so
+// the ops table is part of the cold-start check.
 type ReadOnlyResolver struct {
 	m *ModuleManager
 }
@@ -62,13 +65,15 @@ func (r *ReadOnlyResolver) Peek(ctx context.Context, name string) (*meta.Module,
 	return r.m.peekModuleRecord(ctx, name)
 }
 
-// ensureMetaModuleTable migrates CatalogEntities only when meta_module is absent.
+// ensureMetaModuleTable migrates CatalogEntities when meta_module or
+// meta_module_operation is absent (partial fixtures / pre-ops DBs).
 func (r *ReadOnlyResolver) ensureMetaModuleTable() error {
 	if r.m.runtimeScope == nil || r.m.runtimeScope.Session() == nil || r.m.runtimeScope.Session().DB == nil {
 		return fmt.Errorf("readonly resolver: session is unavailable")
 	}
 	db := r.m.runtimeScope.Session().DB
-	if db.Migrator().HasTable(&meta.Module{}) {
+	migrator := db.Migrator()
+	if migrator.HasTable(&meta.Module{}) && migrator.HasTable(&modmeta.ModuleOperation{}) {
 		return nil
 	}
 	return ensureCatalogSchemaMigrated(db)

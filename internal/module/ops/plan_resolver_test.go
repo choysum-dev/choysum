@@ -5,6 +5,7 @@ package ops
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	pkgmeta "github.com/choysum-dev/choysum/pkg/meta"
@@ -15,10 +16,14 @@ type countingResolver struct {
 	peeks int
 	load  map[string]*pkgmeta.Module
 	peek  map[string]*pkgmeta.Module
+	err   error
 }
 
 func (r *countingResolver) Load(name string) (*pkgmeta.Module, error) {
 	r.loads++
+	if r.err != nil {
+		return nil, r.err
+	}
 	if r.load == nil {
 		return nil, nil
 	}
@@ -27,6 +32,9 @@ func (r *countingResolver) Load(name string) (*pkgmeta.Module, error) {
 
 func (r *countingResolver) Peek(ctx context.Context, name string) (*pkgmeta.Module, error) {
 	r.peeks++
+	if r.err != nil {
+		return nil, r.err
+	}
 	if r.peek == nil {
 		return nil, nil
 	}
@@ -61,5 +69,24 @@ func TestPlanResolver_CachesLoadAndPeek(t *testing.T) {
 	}
 	if inner.peeks != 1 {
 		t.Fatalf("peeks=%d, want 1", inner.peeks)
+	}
+}
+
+func TestPlanResolver_DoesNotCacheErrors(t *testing.T) {
+	t.Parallel()
+	inner := &countingResolver{err: errors.New("transient")}
+	r := newPlanResolver(inner)
+	if _, err := r.Load("core"); err == nil {
+		t.Fatal("expected Load error")
+	}
+	inner.err = nil
+	inner.load = map[string]*pkgmeta.Module{
+		"core": {Name: "core", Version: "1.0.0", Status: pkgmeta.Installed},
+	}
+	if _, err := r.Load("core"); err != nil {
+		t.Fatalf("Load after recovery: %v", err)
+	}
+	if inner.loads != 2 {
+		t.Fatalf("loads=%d, want 2 (error not cached)", inner.loads)
 	}
 }

@@ -101,17 +101,16 @@ func TestBootstrapMetaTablesFullPathEnsuresUniqueIndex(t *testing.T) {
 	}
 }
 
-func TestBootstrapMetaTablesFullPathEnsureUniqueIndexError(t *testing.T) {
+func TestBootstrapMetaTablesSkipsUniqueIndexWhenModelMissing(t *testing.T) {
 	t.Parallel()
 	db := newModuleSourceSnapshotSyncDB(t)
 	runtimeScope := newModuleSourceSnapshotSyncScope(t.TempDir(), db)
 	manager := NewModuleManager(runtimeScope, nil)
-	// Skip catalog tables so Ensure runs against a missing meta_model.
+	// Skip catalog tables so meta_model stays absent; index ensure must no-op.
 	manager.entities = nil
 
-	err := manager.bootstrapMetaTables(runtimeScope)
-	if err == nil || !strings.Contains(err.Error(), "ensure effective app/name unique index") {
-		t.Fatalf("bootstrapMetaTables() error = %v, want unique index failure", err)
+	if err := manager.bootstrapMetaTables(runtimeScope); err != nil {
+		t.Fatalf("bootstrapMetaTables() error = %v, want nil when meta_model is absent", err)
 	}
 }
 

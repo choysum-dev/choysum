@@ -449,16 +449,13 @@ func (m *ModuleManager) bootstrapMetaTables(txScope scope.Scope) error {
 	defer stopHeartbeat()
 
 	if err := txScope.Session().AutoMigrate(m.entities...); err != nil {
-		rememberCatalogSchemaMigrated(db, xfmt.Errorf("auto migrate catalog entities: %w", err))
 		return xfmt.Errorf("auto migrate meta entities: %w", err)
 	}
-	if err := modmeta.EnsureEffectiveAppNameUniqueIndex(db); err != nil {
-		idxErr := xfmt.Errorf("ensure effective app/name unique index: %w", err)
-		rememberCatalogSchemaMigrated(db, idxErr)
-		return idxErr
+	if err := ensureEffectiveAppNameIndexIfModelExists(db); err != nil {
+		return err
 	}
-	// Cold bootstrap already applied CatalogEntities; mark the process memo so
-	// a later ensureMetaTables / migrateBaseModule on this pool is a no-op.
+	// Cold bootstrap already applied CatalogEntities; mark success only so a
+	// later ensureMetaTables / migrateBaseModule on this pool is a no-op.
 	rememberCatalogSchemaMigrated(db, nil)
 	if logger != nil {
 		logger.Debug("meta base table bootstrap completed", "duration_ms", time.Since(startedAt).Milliseconds())

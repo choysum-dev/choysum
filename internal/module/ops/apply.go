@@ -36,11 +36,14 @@ func (o *Ops) Apply(ctx context.Context, req ApplyRequest) error {
 	if len(doc.Blockers) > 0 {
 		return fmt.Errorf("ops: operation %q has blockers", id)
 	}
+	// Match Plan: read-only + request cache so baseRevision / blockers do not
+	// remigrate catalog tables on the warm path.
+	resolver := newPlanResolver(o.Resolver)
 	if row.Action != ActionSync && row.Action != ActionLoadDemo {
 		if len(doc.ModuleOrder) == 0 {
 			return fmt.Errorf("ops: operation %q has empty module order", id)
 		}
-		current := computeBaseRevision(ctx, o, o.Resolver, nil, doc.ModuleOrder)
+		current := computeBaseRevision(ctx, o, resolver, nil, doc.ModuleOrder)
 		if doc.BaseRevision == "" || current != doc.BaseRevision {
 			return fmt.Errorf("ops: baseRevision mismatch for operation %q", id)
 		}
@@ -50,7 +53,7 @@ func (o *Ops) Apply(ctx context.Context, req ApplyRequest) error {
 		for _, e := range doc.ModuleOrder {
 			planned = append(planned, e.ModuleName)
 		}
-		if blockers := o.uninstallBlockers(ctx, o.Resolver, row.ModuleName, planned); len(blockers) > 0 {
+		if blockers := o.uninstallBlockers(ctx, resolver, row.ModuleName, planned); len(blockers) > 0 {
 			return fmt.Errorf("ops: operation %q has blockers", id)
 		}
 	}
