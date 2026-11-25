@@ -42,7 +42,7 @@ SPDX-License-Identifier: Apache-2.0
         <ChoyActionButton
           v-if="!props.readonly"
           type="button"
-          size="default"
+          size="sm"
           variant="outline-primary"
           :busy="boardBusy"
           :action-id="actionIds?.create"

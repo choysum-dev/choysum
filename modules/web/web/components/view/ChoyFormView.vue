@@ -44,7 +44,7 @@ SPDX-License-Identifier: Apache-2.0
       <template v-if="isSettingsPresentation && resolvedShowActions">
         <ChoyActionButton
           type="button"
-          size="default"
+          size="sm"
           variant="outline-primary"
           data-testid="settings-save"
           :disabled="!settingsDirty"
@@ -56,7 +56,7 @@ SPDX-License-Identifier: Apache-2.0
         </ChoyActionButton>
         <ChoyActionButton
           type="button"
-          size="default"
+          size="sm"
           variant="outline"
           data-testid="settings-discard"
           :requires-connectivity="false"
@@ -72,7 +72,7 @@ SPDX-License-Identifier: Apache-2.0
       <template v-else-if="isEditing && resolvedShowActions">
         <ChoyActionButton
           type="button"
-          size="default"
+          size="sm"
           variant="outline-primary"
           :busy="controlsLocked"
           @execute="onSaveExecute"
@@ -82,7 +82,7 @@ SPDX-License-Identifier: Apache-2.0
         </ChoyActionButton>
         <ChoyActionButton
           type="button"
-          size="default"
+          size="sm"
           variant="outline"
           :requires-connectivity="false"
           :busy="controlsLocked"
@@ -104,7 +104,7 @@ SPDX-License-Identifier: Apache-2.0
           <ChoyActionButton
             v-if="viewMode === 'display' && effectiveRecordId && canEdit"
             type="button"
-            size="default"
+            size="sm"
             variant="outline-primary"
             data-testid="form-primary-edit"
             :action-id="actionIds?.edit"
@@ -196,7 +196,7 @@ SPDX-License-Identifier: Apache-2.0
       <ChoyActionButton
         v-if="showEditAsSecondary"
         type="button"
-        size="default"
+        size="sm"
         variant="outline"
         data-testid="form-secondary-edit"
         :action-id="actionIds?.edit"

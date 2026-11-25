@@ -17,7 +17,7 @@ SPDX-License-Identifier: Apache-2.0
       <ChoyActionButton
         v-if="!loading && showActivateFor(formData, slotRecordId)"
         type="button"
-        size="default"
+        size="sm"
         variant="outline-primary"
         data-testid="language-activate"
         :busy="activeBusy || reloadBusy"
@@ -30,7 +30,7 @@ SPDX-License-Identifier: Apache-2.0
       <ChoyActionButton
         v-else-if="!loading && showDeactivateFor(formData, slotRecordId)"
         type="button"
-        size="default"
+        size="sm"
         variant="outline"
         data-testid="language-deactivate"
         :busy="activeBusy || reloadBusy"
@@ -45,7 +45,7 @@ SPDX-License-Identifier: Apache-2.0
       <ChoyActionButton
         v-if="!loading && showReloadTerminologyFor(formData, slotRecordId)"
         type="button"
-        size="default"
+        size="sm"
         variant="outline"
         data-testid="language-reload-terminology"
         :busy="activeBusy || reloadBusy"

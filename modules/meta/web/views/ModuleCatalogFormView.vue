@@ -26,7 +26,7 @@ SPDX-License-Identifier: Apache-2.0
         <ChoyActionButton
           v-if="primaryAction"
           type="button"
-          size="default"
+          size="sm"
           :variant="primaryButtonVariant"
           :data-testid="`module-catalog-form-primary-${primaryAction}`"
           @execute="onPrimaryClick"
@@ -38,7 +38,7 @@ SPDX-License-Identifier: Apache-2.0
         <ChoyActionButton
           v-if="canUninstallRow && hasAction(moduleUninstallAction)"
           type="button"
-          size="default"
+          size="sm"
           variant="outline-destructive"
           data-testid="module-catalog-form-uninstall"
           @execute="onUninstallClick"
