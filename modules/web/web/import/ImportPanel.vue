@@ -481,7 +481,7 @@ watch(
   },
 );
 
-watch(catalogOptions, () => {
+watch(catalogOptions, (_next, prev) => {
   const store = mappingFormStore.value;
   if (!store) {
     return;
@@ -490,8 +490,10 @@ watch(catalogOptions, () => {
   for (const name of store.fieldNames) {
     store.setFieldSelection(name, selection);
   }
-  // Catalog changed: any prior dry-run is no longer trustworthy.
-  previewReport.value = null;
+  // Skip the first run (prev undefined): only invalidate after a real catalog refresh.
+  if (prev !== undefined) {
+    previewReport.value = null;
+  }
 });
 
 async function loadCatalog() {

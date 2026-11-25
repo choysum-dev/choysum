@@ -207,7 +207,7 @@ function openFormFromRows(ordered: TranslationRow[]): void {
   rowMeta.value = meta;
   formInitialValues.value = { ...initialValues };
   formStore.value = createUiModelStore({
-    storeId: `ui-model:field-translations:${props.recordId}:${props.fieldName}:${Date.now()}`,
+    storeId: `ui-model:field-translations:${props.recordId}:${props.fieldName}`,
     fields,
     initialValues,
   });
