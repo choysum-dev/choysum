@@ -153,11 +153,24 @@ describe('ExportPanel template save FormView / UiModel', () => {
   test('saveCurrentTemplate reads Name/Shared from the store and clears fields after save', async () => {
     const m = mountPanel();
     await flushPromises();
-    const s = asSetup(m);
+    const s = asSetup(m) as TemplateFormSetup & {
+      templateSaveFormKey: number | { value: number };
+      templateFormValues: () => { Name: string; Shared: boolean };
+      templateSaveFormViewRef:
+        | { getFormData?: () => unknown }
+        | { value: { getFormData?: () => unknown } | null }
+        | null;
+    };
     s.resetTemplateSaveForm();
+    const keyBeforeSave = Number(unwrapRef(s.templateSaveFormKey) ?? 0);
     const store = templateStore(m)!;
     store.setField('Name', 'Cols');
     store.setField('Shared', true);
+    // Simulate FormView draft (fields write there under form-root).
+    const draftApi = { getFormData: () => ({ Name: 'Cols', Shared: true }) };
+    const rawRef = s.templateSaveFormViewRef as any;
+    if (rawRef && typeof rawRef === 'object' && 'value' in rawRef) rawRef.value = draftApi;
+    else (s as any).templateSaveFormViewRef = draftApi;
     expect(store.getValues().Name).toBe('Cols');
     expect(templateStore(m)!.getField('Name')).toBe('Cols');
 
@@ -173,8 +186,23 @@ describe('ExportPanel template save FormView / UiModel', () => {
       UserId: null,
     });
     expect(unwrapRef(freshSetup(m).selectedTemplateId)).toBe('tpl-new');
+    const after = asSetup(m) as TemplateFormSetup & {
+      templateSaveFormKey: number | { value: number };
+      templateFormValues: () => { Name: string; Shared: boolean };
+      templateSaveFormViewRef:
+        | { getFormData?: () => unknown }
+        | { value: { getFormData?: () => unknown } | null }
+        | null;
+    };
+    // Remount key bumped so ChoyFormView reseeds from empty initial values.
+    expect(Number(unwrapRef(after.templateSaveFormKey) ?? 0)).toBe(keyBeforeSave + 1);
     expect(templateStore(m)!.getField('Name')).toBe('');
     expect(templateStore(m)!.getField('Shared')).toBe(false);
+    // Remount drops the old FormView instance; until the new one mounts, draft is absent.
+    const afterRef = after.templateSaveFormViewRef as any;
+    if (afterRef && typeof afterRef === 'object' && 'value' in afterRef) afterRef.value = null;
+    else (after as any).templateSaveFormViewRef = null;
+    expect(after.templateFormValues()).toEqual({ Name: '', Shared: false });
     expect(unwrapRef(freshSetup(m).busy)).toBe(false);
     m.unmount();
   });

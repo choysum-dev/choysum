@@ -3,6 +3,11 @@
 
 import { computed, nextTick, type MaybeRefOrGetter, type Ref, toValue } from 'vue';
 import { confirmChoyAction } from '@/web/web/composables/confirmChoyAction';
+import { createTranslate } from '@/web/web/i18n';
+
+const { _t: _tDiscard } = createTranslate('web', {
+  scope: 'web/composables/useChoyFormDialogShell',
+});
 
 /** FormView API slice used by dialog footers (submit / cancel after dirty confirm). */
 export type ChoyFormDialogViewApi = {
@@ -46,11 +51,11 @@ export type UseChoyFormDialogShellOptions = {
 async function defaultConfirmExternalDiscard(): Promise<boolean> {
   try {
     await confirmChoyAction(
-      'You have unsaved changes. Discard them?',
-      'Unsaved changes',
+      _tDiscard('You have unsaved changes. Discard them?'),
+      _tDiscard('Unsaved changes'),
       {
-        confirmText: 'Discard',
-        cancelText: 'Cancel',
+        confirmText: _tDiscard('Discard'),
+        cancelText: _tDiscard('Cancel'),
         destructive: true,
       },
     );

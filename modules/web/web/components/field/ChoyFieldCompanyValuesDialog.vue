@@ -360,7 +360,7 @@ function formatCaughtError(err: unknown, fallback: string): string {
   return fallback;
 }
 
-async function performSave(formData: Record<string, unknown>) {
+async function performSave(formData: Record<string, unknown>): Promise<boolean> {
   saving.value = true;
   try {
     const patch: Record<string, unknown | false> = {};
@@ -386,15 +386,20 @@ async function performSave(formData: Record<string, unknown>) {
     emit('saved', nextValue == null ? null : nextValue);
     ChoyMessage.success(_t('Company values saved'));
     closeDialog();
+    return true;
   } catch (err: unknown) {
     ChoyMessage.error(formatCaughtError(err, _t('Failed to save company values')));
+    return false;
   } finally {
     saving.value = false;
   }
 }
 
 async function onSubmit(ctx: { formData: Record<string, unknown> }) {
-  await performSave(ctx.formData || {});
+  const ok = await performSave(ctx.formData || {});
+  if (!ok) {
+    throw new Error(_t('Failed to save company values'));
+  }
   return { handled: true, skipSuccessMessage: true };
 }
 

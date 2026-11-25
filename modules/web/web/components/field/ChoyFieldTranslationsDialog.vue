@@ -282,7 +282,7 @@ watch(
   { immediate: true },
 );
 
-async function performSave(formData: Record<string, unknown>) {
+async function performSave(formData: Record<string, unknown>): Promise<boolean> {
   saving.value = true;
   try {
     const patch: Record<string, string | false> = {};
@@ -312,15 +312,20 @@ async function performSave(formData: Record<string, unknown>) {
     emit('saved', nextValue == null ? null : String(nextValue));
     ChoyMessage.success(_t('Translations saved'));
     closeDialog();
+    return true;
   } catch (err: any) {
     ChoyMessage.error(String(err?.message || err || _t('Failed to save translations')));
+    return false;
   } finally {
     saving.value = false;
   }
 }
 
 async function onSubmit(ctx: { formData: Record<string, unknown> }) {
-  await performSave(ctx.formData || {});
+  const ok = await performSave(ctx.formData || {});
+  if (!ok) {
+    throw new Error(_t('Failed to save translations'));
+  }
   return { handled: true, skipSuccessMessage: true };
 }
 
