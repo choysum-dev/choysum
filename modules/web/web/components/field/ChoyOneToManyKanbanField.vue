@@ -597,6 +597,7 @@ async function handleDialogFooterCancel() {
   const formRef = dialogFormRef.value;
   const registered = getRegisteredDialogFormApi();
   const dirty =
+    dialogForceDirty.value ||
     (typeof registered?.isDirty === 'function' && registered.isDirty()) ||
     (typeof formRef?.isDirty === 'function' && formRef.isDirty());
 
