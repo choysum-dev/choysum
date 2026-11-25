@@ -302,13 +302,15 @@ describe('ExportPanel template save FormView / UiModel', () => {
     const s = asSetup(m) as TemplateFormSetup & {
       beginActiveRpc: () => AbortSignal | undefined;
       beginFieldsRpc: () => AbortSignal | undefined;
+      endActiveRpc: (signal: AbortSignal | undefined) => void;
       isAbortError: (err: unknown) => boolean;
     };
 
-    // Success path (FE host polyfill): beginActiveRpc try body.
+    // Success path (FE host polyfill): beginActiveRpc try body + matching endActiveRpc.
     const live = s.beginActiveRpc();
     expect(live).toBeTruthy();
     expect(live!.aborted).toBe(false);
+    s.endActiveRpc(live);
 
     // DOMException AbortError branch (guard + instanceof).
     const g = globalThis as any;

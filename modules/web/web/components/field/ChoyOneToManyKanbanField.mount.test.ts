@@ -475,6 +475,19 @@ describe('ChoyOneToManyKanbanField mount coverage', () => {
     const bind = unwrapRef(s.dialogFormBind) || {};
     expect(bind.dirty).toBe(true);
 
+    // isDirty probe throws → treat as dirty and confirm-discard.
+    s.openDialog('edit', 0, { Id: '1', Name: 'Alpha' });
+    setDialogFormRef(s, {
+      isDirty: () => {
+        throw new Error('baseline missing');
+      },
+      getFormData: () => ({ Id: '1', Name: 'ProbeFail' }),
+    });
+    autoConfirmChoice = 'confirm';
+    await s.handleDialogFooterCancel();
+    await flushPromises();
+    expect(dialogVisibleOf(s)).toBe(false);
+
     // No isDirty API: fall back to FormView.cancel.
     s.openDialog('create', -1, {});
     const cancel = fnRecorder(async () => {});
