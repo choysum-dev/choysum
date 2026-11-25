@@ -58,15 +58,6 @@ function setSelectedFile(s: MappingSetup, file: File | null): void {
   (s as { selectedFile: File | null }).selectedFile = file;
 }
 
-function setSourceRef(s: MappingSetup, ref: string): void {
-  const raw = s.sourceRef as string | { value: string };
-  if (typeof raw === 'object' && raw && 'value' in raw) {
-    (raw as { value: string }).value = ref;
-    return;
-  }
-  (s as { sourceRef: string }).sourceRef = ref;
-}
-
 function ensureFilePolyfill(): void {
   const g = globalThis as any;
   if (typeof g.Blob !== 'function') {
