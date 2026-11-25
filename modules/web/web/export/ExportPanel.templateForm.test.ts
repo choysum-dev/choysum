@@ -218,9 +218,13 @@ describe('ExportPanel template save FormView / UiModel', () => {
 
   test('preparePanelOpen runs when visible flips true; templates disabled clears store', async () => {
     ensureAbortController();
+    let describeCalls = 0;
     const hub = CreateWebClient(ExportHub)() as any;
     const origDescribe = hub.describeFields;
-    hub.describeFields = async () => ({ fields: [{ path: 'Name', label: 'Name' }], defaultFields: ['Name'] });
+    hub.describeFields = async () => {
+      describeCalls += 1;
+      return { fields: [{ path: 'Name', label: 'Name' }], defaultFields: ['Name'] };
+    };
 
     const m = mountApp(ExportPanel as any, {
       props: {
@@ -232,14 +236,13 @@ describe('ExportPanel template save FormView / UiModel', () => {
       reactiveProps: true,
     });
     await flushPromises();
-    const s = m.setupState() as TemplateFormSetup & { preparePanelOpen: () => void };
-    expect(typeof s.preparePanelOpen).toBe('function');
-    s.preparePanelOpen();
-    await flushPromises();
-    expect(templateStore(m)).toBeTruthy();
+    expect(templateStore(m)).toBeNull();
+    expect(describeCalls).toBe(0);
 
     (m.props as { modelValue: boolean }).modelValue = true;
     await flushPromises();
+    expect(templateStore(m)).toBeTruthy();
+    expect(describeCalls).toBeGreaterThan(0);
     m.unmount();
 
     const bare = mountPanel({ model: 'Partner', defaultFields: ['Name'], modelValue: false });
@@ -255,5 +258,30 @@ describe('ExportPanel template save FormView / UiModel', () => {
     hub.describeFields = origDescribe;
   });
 
+
+
+  test('templateFormValues prefers FormView draft and syncTemplateStoreFromDraft mirrors it', async () => {
+    const m = mountPanel();
+    await flushPromises();
+    const s = asSetup(m) as TemplateFormSetup & {
+      templateFormValues: () => { Name: string; Shared: boolean };
+      syncTemplateStoreFromDraft: () => void;
+      templateSaveFormViewRef: { getFormData?: () => unknown } | { value: { getFormData?: () => unknown } | null } | null;
+    };
+    s.resetTemplateSaveForm();
+    const store = templateStore(m)!;
+    store.setField('Name', 'FromStore');
+    // Inject a FormView-like draft API.
+    const api = { getFormData: () => ({ Name: 'FromDraft', Shared: true }) };
+    const raw = s.templateSaveFormViewRef as any;
+    if (raw && typeof raw === 'object' && 'value' in raw) raw.value = api;
+    else (s as any).templateSaveFormViewRef = api;
+    expect(s.templateFormValues()).toEqual({ Name: 'FromDraft', Shared: true });
+    s.syncTemplateStoreFromDraft();
+    expect(store.getField('Name')).toBe('FromDraft');
+    expect(store.getField('Shared')).toBe(true);
+    expect(canSave(m)).toBe(true);
+    m.unmount();
+  });
 
 });

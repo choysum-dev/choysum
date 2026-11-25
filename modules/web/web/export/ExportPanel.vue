@@ -41,6 +41,7 @@ SPDX-License-Identifier: Apache-2.0
                 :initial-values="templateSaveFormInitialValues"
                 :submit-handler="submitTemplateForm"
                 :cancel-handler="cancelHandler"
+                @change="syncTemplateStoreFromDraft"
               >
                 <template #default>
                   <ChoyVarcharField
@@ -211,6 +212,34 @@ const selectedTemplateCanDelete = computed(() => {
   return exportTemplates.templates.value.some(item => item.Id === id && item.canDelete);
 });
 
+/** Prefer FormView draft (fields write there under form-root); fall back to UiModel store. */
+function templateFormValues(): { Name: string; Shared: boolean } {
+  const draft = templateSaveFormViewRef.value?.getFormData?.() as Record<string, unknown> | undefined;
+  if (draft && typeof draft === 'object') {
+    return {
+      Name: String(draft.Name ?? ''),
+      Shared: !!draft.Shared,
+    };
+  }
+  const values = templateSaveFormStore.value?.getValues() ?? {};
+  return {
+    Name: String(values.Name ?? ''),
+    Shared: !!values.Shared,
+  };
+}
+
+/** Mirror FormView draft into the UiModel store so canSaveTemplate stays reactive. */
+function syncTemplateStoreFromDraft() {
+  const draft = templateSaveFormViewRef.value?.getFormData?.() as Record<string, unknown> | undefined;
+  const store = templateSaveFormStore.value;
+  if (!draft || typeof draft !== 'object' || !store) return;
+  for (const name of store.fieldNames) {
+    if (Object.prototype.hasOwnProperty.call(draft, name)) {
+      store.setField(name, draft[name]);
+    }
+  }
+}
+
 const canSaveTemplate = computed(() => {
   const name = String(templateSaveFormStore.value?.getValues().Name ?? '').trim();
   return name.length > 0 && effectiveFields.value.length > 0;
@@ -218,6 +247,8 @@ const canSaveTemplate = computed(() => {
 
 let sessionToken = 0;
 let activeRpcAbort: AbortController | null = null;
+/** Separate from preview/export abort so Preview does not cancel field discovery. */
+let fieldsRpcAbort: AbortController | null = null;
 
 function isAbortError(err: unknown): boolean {
   // FE unit host may lack DOMException; guard before instanceof.
@@ -227,9 +258,28 @@ function isAbortError(err: unknown): boolean {
   return err instanceof Error && err.name === 'AbortError';
 }
 
+function noopAbortSignal(): AbortSignal {
+  return {
+    aborted: false,
+    reason: undefined,
+    onabort: null,
+    addEventListener() {},
+    removeEventListener() {},
+    dispatchEvent() {
+      return false;
+    },
+    throwIfAborted() {},
+  } as AbortSignal;
+}
+
 function abortActiveRpc() {
   activeRpcAbort?.abort();
   activeRpcAbort = null;
+}
+
+function abortFieldsRpc() {
+  fieldsRpcAbort?.abort();
+  fieldsRpcAbort = null;
 }
 
 function beginActiveRpc(): AbortSignal {
@@ -240,23 +290,30 @@ function beginActiveRpc(): AbortSignal {
   } catch {
     // FE unit host may lack AbortController; RPC still proceeds without abort.
     activeRpcAbort = null;
-    return {
-      aborted: false,
-      reason: undefined,
-      onabort: null,
-      addEventListener() {},
-      removeEventListener() {},
-      dispatchEvent() {
-        return false;
-      },
-      throwIfAborted() {},
-    } as AbortSignal;
+    return noopAbortSignal();
+  }
+}
+
+function beginFieldsRpc(): AbortSignal {
+  abortFieldsRpc();
+  try {
+    fieldsRpcAbort = new AbortController();
+    return fieldsRpcAbort.signal;
+  } catch {
+    fieldsRpcAbort = null;
+    return noopAbortSignal();
   }
 }
 
 function endActiveRpc(signal: AbortSignal) {
   if (activeRpcAbort?.signal === signal) {
     activeRpcAbort = null;
+  }
+}
+
+function endFieldsRpc(signal: AbortSignal) {
+  if (fieldsRpcAbort?.signal === signal) {
+    fieldsRpcAbort = null;
   }
 }
 
@@ -317,13 +374,14 @@ function isActiveSession(token: number): boolean {
 
 function invalidateSession() {
   abortActiveRpc();
+  abortFieldsRpc();
   sessionToken += 1;
   busy.value = false;
 }
 
 async function loadFields() {
   const token = sessionToken;
-  const signal = beginActiveRpc();
+  const signal = beginFieldsRpc();
   fieldsLoading.value = true;
   try {
     const resp = await describeExportFields(props.model, signal);
@@ -342,7 +400,7 @@ async function loadFields() {
     }
     exportError.value = err instanceof Error ? err.message : String(err);
   } finally {
-    endActiveRpc(signal);
+    endFieldsRpc(signal);
     if (isActiveSession(token)) {
       fieldsLoading.value = false;
     }
@@ -371,7 +429,7 @@ function applySelectedTemplate() {
 
 async function saveCurrentTemplate(): Promise<boolean> {
   if (busy.value) return false;
-  const values = templateSaveFormStore.value?.getValues() ?? {};
+  const values = templateFormValues();
   busy.value = true;
   exportError.value = '';
   try {
@@ -382,8 +440,8 @@ async function saveCurrentTemplate(): Promise<boolean> {
     });
     if (saved) {
       selectedTemplateId.value = saved.Id;
-      templateSaveFormStore.value?.setField('Name', '');
-      templateSaveFormStore.value?.setField('Shared', false);
+      // Recreate store + FormView baseline so the displayed draft clears with Save.
+      resetTemplateSaveForm();
       return true;
     }
     return false;
