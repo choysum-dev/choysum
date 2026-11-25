@@ -201,8 +201,9 @@ function installEpStubs() {
 function saveFavoriteName(m: { setupState: () => unknown }): string {
   const raw = (m.setupState() as { saveFavoriteFormStore?: UiModelStore | { value: UiModelStore | null } })
     .saveFavoriteFormStore;
+  // Object(raw) === raw excludes null (typeof null === 'object').
   const store =
-    raw && typeof raw === 'object' && raw !== null && 'value' in raw
+    typeof raw === 'object' && Object(raw) === raw && 'value' in raw
       ? (raw as { value: UiModelStore | null }).value
       : (raw as UiModelStore | null | undefined);
   return String(store?.getField?.('Name') ?? '');

@@ -26,10 +26,9 @@ const origError = ChoyMessage.error;
 type MountedDialog = ReturnType<typeof mountApp>;
 
 function unwrapRef<T>(v: T | { value: T } | undefined): T | undefined {
-  if (v == null) return undefined;
-  if (typeof v === 'object' && v !== null && 'value' in (v as object)) {
-    return (v as { value: T }).value;
-  }
+  // Object(v) === v excludes null (typeof null === 'object').
+  if (typeof v !== 'object' || Object(v) !== v) return v as T | undefined;
+  if ('value' in v) return (v as { value: T }).value;
   return v as T;
 }
 

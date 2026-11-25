@@ -345,7 +345,8 @@ function saveFavoriteStore(m: { setupState: () => unknown }): UiModelStore | nul
   const raw = (m.setupState() as { saveFavoriteFormStore?: UiModelStore | { value: UiModelStore | null } })
     .saveFavoriteFormStore;
   if (!raw) return null;
-  if (typeof raw === 'object' && raw !== null && 'value' in raw) {
+  // Object(raw) === raw excludes null (typeof null === 'object').
+  if (typeof raw === 'object' && Object(raw) === raw && 'value' in raw) {
     return (raw as { value: UiModelStore | null }).value;
   }
   return raw as UiModelStore;
