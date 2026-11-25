@@ -488,8 +488,13 @@ watch(catalogOptions, (_next, prev) => {
     return;
   }
   const selection = mappingSelectionItems();
+  const valid = new Set(selection.map(item => String(item.value ?? '')));
   for (const name of store.fieldNames) {
     store.setFieldSelection(name, selection);
+    const current = String(store.getField(name) ?? '');
+    if (current && !valid.has(current)) {
+      store.setField(name, '');
+    }
   }
   // Skip the first run (prev undefined): only invalidate after a real catalog refresh.
   if (prev !== undefined) {

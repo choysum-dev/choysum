@@ -250,7 +250,8 @@ describe('ImportPanel mapping FormView store', () => {
     await flushPromises();
     expect(unwrapRef((s as { previewReport: unknown | { value: unknown } }).previewReport as any)).toBeNull();
 
-    // catalogOptions change refreshes selection items and clears stale dry-run.
+    // catalogOptions change refreshes selection, clears stale mapped paths, and drops dry-run.
+    s.mappingFormStore!.setField('Full_Name', 'Name');
     if (previewRaw && typeof previewRaw === 'object' && 'value' in (previewRaw as object)) {
       (previewRaw as { value: unknown }).value = { stats: { ok: 1, error: 0, total: 1 } };
     } else {
@@ -260,6 +261,7 @@ describe('ImportPanel mapping FormView store', () => {
     await nextTick();
     await flushPromises();
     expect(s.mappingFormStore).toBeTruthy();
+    expect(s.mappingFormStore!.getField('Full_Name')).toBe('');
     expect(unwrapRef((s as { previewReport: unknown | { value: unknown } }).previewReport as any)).toBeNull();
 
     const file = new (globalThis as any).File(['a,b\n'], 'rows.csv', { type: 'text/csv' });

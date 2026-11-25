@@ -596,10 +596,16 @@ async function handleDialogFooterCancel() {
 
   const formRef = dialogFormRef.value;
   const registered = getRegisteredDialogFormApi();
-  const dirty =
-    dialogForceDirty.value ||
-    (typeof registered?.isDirty === 'function' && registered.isDirty()) ||
-    (typeof formRef?.isDirty === 'function' && formRef.isDirty());
+  const safeIsDirty = (api: { isDirty?: () => boolean } | null | undefined): boolean => {
+    if (typeof api?.isDirty !== 'function') return false;
+    try {
+      return api.isDirty();
+    } catch {
+      // Treat probe failures as dirty so Cancel still confirms rather than aborting.
+      return true;
+    }
+  };
+  const dirty = dialogForceDirty.value || safeIsDirty(registered) || safeIsDirty(formRef);
 
   if (!dirty) {
     // No isDirty API: fall back to FormView.cancel (confirms then cancelHandler).
