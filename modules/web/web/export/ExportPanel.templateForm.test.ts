@@ -260,6 +260,62 @@ describe('ExportPanel template save FormView / UiModel', () => {
 
 
 
+  test('abort helpers: AbortController path, host fallback, and DOMException AbortError', async () => {
+    ensureAbortController();
+    const m = mountPanel();
+    await flushPromises();
+    const s = asSetup(m) as TemplateFormSetup & {
+      beginActiveRpc: () => AbortSignal;
+      beginFieldsRpc: () => AbortSignal;
+      isAbortError: (err: unknown) => boolean;
+      noopAbortSignal: () => AbortSignal;
+    };
+
+    // Success path (FE host polyfill): beginActiveRpc try body.
+    const live = s.beginActiveRpc();
+    expect(live.aborted).toBe(false);
+
+    // DOMException AbortError branch (guard + instanceof).
+    const g = globalThis as any;
+    const PrevDOM = g.DOMException;
+    class FakeDOMException extends Error {
+      constructor(message?: string, name?: string) {
+        super(message);
+        this.name = name || 'Error';
+      }
+    }
+    g.DOMException = FakeDOMException;
+    try {
+      expect(s.isAbortError(new FakeDOMException('aborted', 'AbortError'))).toBe(true);
+      expect(s.isAbortError(new FakeDOMException('other', 'NotAbort'))).toBe(false);
+      const named = new Error('aborted');
+      named.name = 'AbortError';
+      expect(s.isAbortError(named)).toBe(true);
+    } finally {
+      if (PrevDOM === undefined) delete g.DOMException;
+      else g.DOMException = PrevDOM;
+    }
+
+    // Host without usable AbortController: both begin* catch → noopAbortSignal.
+    const PrevAC = g.AbortController;
+    g.AbortController = class {
+      constructor() {
+        throw new Error('AbortController unavailable');
+      }
+    };
+    try {
+      const active = s.beginActiveRpc();
+      expect(active.aborted).toBe(false);
+      const fields = s.beginFieldsRpc();
+      expect(fields.aborted).toBe(false);
+      // Direct noop for the return-object line when begin* is not the only caller.
+      expect(s.noopAbortSignal().aborted).toBe(false);
+    } finally {
+      g.AbortController = PrevAC;
+    }
+    m.unmount();
+  });
+
   test('templateFormValues prefers FormView draft and syncTemplateStoreFromDraft mirrors it', async () => {
     const m = mountPanel();
     await flushPromises();

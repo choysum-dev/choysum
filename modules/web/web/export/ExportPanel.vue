@@ -265,9 +265,7 @@ function noopAbortSignal(): AbortSignal {
     onabort: null,
     addEventListener() {},
     removeEventListener() {},
-    dispatchEvent() {
-      return false;
-    },
+    dispatchEvent() {},
     throwIfAborted() {},
   } as AbortSignal;
 }
