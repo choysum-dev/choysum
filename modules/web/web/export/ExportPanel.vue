@@ -8,7 +8,7 @@ SPDX-License-Identifier: Apache-2.0
     <ChoyDialogContent
       class="export-panel-dialog"
       :show-close-button="false"
-      :dismissible="!busy"
+      :dismissible="dialogDismissible"
       @open-auto-focus.prevent
     >
       <ChoyDialogHeader class="text-start">
@@ -30,12 +30,36 @@ SPDX-License-Identifier: Apache-2.0
               <ChoyActionButton size="sm" variant="outline" :disabled="!selectedTemplateId" :busy="busy" @execute="applySelectedTemplate">{{ loadTemplateLabel }}</ChoyActionButton>
               <ChoyActionButton size="sm" variant="destructive" :disabled="!selectedTemplateCanDelete" :busy="busy" @execute="deleteSelectedTemplate">{{ deleteTemplateLabel }}</ChoyActionButton>
             </div>
-            <div class="flex flex-wrap items-center gap-2">
-              <input v-model="templateSaveName" :placeholder="templateNameLabel" class="min-w-[180px] flex-[1_1_180px]" />
-              <label class="inline-flex items-center gap-2">
-                <input type="checkbox" v-model="templateSaveShared" />
-                {{ sharedTemplateLabel }}
-              </label>
+            <div class="flex flex-wrap items-end gap-2">
+              <ChoyFormView
+                v-if="templateSaveFormStore"
+                ref="templateSaveFormViewRef"
+                class="flex min-w-0 flex-[1_1_280px] flex-wrap items-end gap-2"
+                :store="templateSaveFormStore"
+                view-mode="create"
+                v-bind="embeddedFormChrome"
+                :initial-values="templateSaveFormInitialValues"
+                :cancel-handler="cancelHandler"
+              >
+                <template #default>
+                  <ChoyVarcharField
+                    :store="templateSaveFormStore"
+                    prop="Name"
+                    orientation="vertical"
+                    buffer-strategy="live"
+                    class="min-w-[180px] flex-[1_1_180px]"
+                    :placeholder="templateNameLabel"
+                    data-testid="export-panel-template-name"
+                  />
+                  <ChoyBooleanField
+                    :store="templateSaveFormStore"
+                    prop="Shared"
+                    orientation="horizontal"
+                    buffer-strategy="live"
+                    data-testid="export-panel-template-shared"
+                  />
+                </template>
+              </ChoyFormView>
               <ChoyActionButton size="sm" variant="outline" :disabled="!canSaveTemplate" :busy="busy" @execute="saveCurrentTemplate">{{ saveTemplateLabel }}</ChoyActionButton>
             </div>
             <p v-if="exportTemplatesLoadError" class="m-0 text-muted-foreground">{{ exportTemplatesLoadError }}</p>
@@ -61,7 +85,7 @@ SPDX-License-Identifier: Apache-2.0
       </div>
 
       <ChoyDialogFooter>
-        <ChoyButton size="sm" variant="outline" :disabled="busy" @click="visible = false">{{ cancelLabel }}</ChoyButton>
+        <ChoyButton size="sm" variant="outline" :disabled="busy" @click="onFooterCancel">{{ cancelLabel }}</ChoyButton>
         <ChoyActionButton v-if="!exportDone" size="sm" variant="outline" :busy="busy" @execute="runPreview">{{ previewActionLabel }}</ChoyActionButton>
         <ChoyActionButton v-if="!exportDone" size="sm" variant="default" :busy="busy" @execute="commitExport">{{ exportActionLabel }}</ChoyActionButton>
         <ChoyButton v-else size="sm" variant="default" @click="visible = false">{{ doneLabel }}</ChoyButton>
@@ -71,7 +95,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue';
+import { computed, nextTick, ref, shallowRef, watch } from 'vue';
 import {
   ChoyDialog,
   ChoyDialogContent,
@@ -81,6 +105,14 @@ import {
 } from '@/web/web/components/layout/choyDialog';
 import ChoyButton from '@/web/web/components/button/ChoyButton.vue';
 import ChoyActionButton from '@/web/web/components/button/ChoyActionButton.vue';
+import ChoyFormView from '@/web/web/components/view/ChoyFormView.vue';
+import ChoyVarcharField from '@/web/web/components/field/ChoyVarcharField.vue';
+import ChoyBooleanField from '@/web/web/components/field/ChoyBooleanField.vue';
+import {
+  useChoyFormDialogShell,
+  type ChoyFormDialogViewApi,
+} from '@/web/web/composables/useChoyFormDialogShell';
+import { createUiModelStore, type UiModelStore } from '@/web/web/stores/uiModelStore';
 import { describeExportFields, previewExport, runExport, ExportMode, type ExportFieldNode, type ExportReport } from '@/core/web/export/client';
 import { downloadExportCsvBytes, suggestExportFileName } from '@/core/web/export/download_csv';
 import { normalizeExportFieldPaths } from '@/core/web/export/field_paths';
@@ -136,9 +168,39 @@ const fieldTreeRef = ref<HTMLElement | null>(null);
 const exportTemplates = useExportTemplates(() => props.model);
 const { templates: exportTemplateItems, loading: exportTemplatesLoading, loadError: exportTemplatesLoadError, load: loadExportTemplates, apply: applyExportTemplate, saveCurrent: saveExportTemplate, remove: removeExportTemplate } = exportTemplates;
 const selectedTemplateId = ref('');
-const templateSaveName = ref('');
-const templateSaveShared = ref(false);
+const templateSaveFormViewRef = ref<ChoyFormDialogViewApi | null>(null);
+const templateSaveFormStore = shallowRef<UiModelStore | null>(null);
+const templateSaveFormInitialValues = shallowRef<Record<string, unknown>>({ Name: '', Shared: false });
 const pendingFieldPaths = ref<string[] | null>(null);
+
+function closeExportPanel(): void {
+  visible.value = false;
+}
+
+const {
+  embeddedFormChrome,
+  cancelHandler,
+  onFooterCancel,
+  dismissible: dialogDismissible,
+} = useChoyFormDialogShell({
+  onClose: closeExportPanel,
+  formViewRef: templateSaveFormViewRef,
+  saving: busy,
+  skipFormCancel: () => !templateSaveFormStore.value,
+});
+
+function resetTemplateSaveForm(): void {
+  const initialValues = { Name: '', Shared: false };
+  templateSaveFormInitialValues.value = { ...initialValues };
+  templateSaveFormStore.value = createUiModelStore({
+    storeId: `ui-model:export-template-save:${Date.now()}`,
+    fields: [
+      { name: 'Name', label: templateNameLabel, type: 'varchar' },
+      { name: 'Shared', label: sharedTemplateLabel, type: 'boolean' },
+    ],
+    initialValues,
+  });
+}
 
 const templatesEnabled = computed(() => String(props.model || '').includes('.'));
 
@@ -149,7 +211,7 @@ const selectedTemplateCanDelete = computed(() => {
 });
 
 const canSaveTemplate = computed(() => {
-  const name = String(templateSaveName.value || '').trim();
+  const name = String(templateSaveFormStore.value?.getValues().Name ?? '').trim();
   return name.length > 0 && effectiveFields.value.length > 0;
 });
 
@@ -291,18 +353,19 @@ function applySelectedTemplate() {
 
 async function saveCurrentTemplate() {
   if (busy.value) return;
+  const values = templateSaveFormStore.value?.getValues() ?? {};
   busy.value = true;
   exportError.value = '';
   try {
     const saved = await saveExportTemplate({
-      name: templateSaveName.value,
-      shared: templateSaveShared.value,
+      name: String(values.Name ?? ''),
+      shared: !!values.Shared,
       fields: effectiveFields.value,
     });
     if (saved) {
       selectedTemplateId.value = saved.Id;
-      templateSaveName.value = '';
-      templateSaveShared.value = false;
+      templateSaveFormStore.value?.setField('Name', '');
+      templateSaveFormStore.value?.setField('Shared', false);
     }
   } catch (err) {
     exportError.value = err instanceof Error ? err.message : String(err);
@@ -361,8 +424,11 @@ function onOpen() {
   previewReport.value = null;
   customFieldsOpen.value = [];
   selectedTemplateId.value = '';
-  templateSaveName.value = '';
-  templateSaveShared.value = false;
+  if (templatesEnabled.value) {
+    resetTemplateSaveForm();
+  } else {
+    templateSaveFormStore.value = null;
+  }
   pendingFieldPaths.value = null;
   void loadFields();
 }
@@ -386,8 +452,7 @@ function resetState() {
   fieldTree.value = [];
   selectedFieldPaths.value = [];
   selectedTemplateId.value = '';
-  templateSaveName.value = '';
-  templateSaveShared.value = false;
+  templateSaveFormStore.value = null;
   pendingFieldPaths.value = null;
 }
 
@@ -465,5 +530,15 @@ watch(
   },
   { immediate: true }
 );
+
+watch(visible, open => {
+  if (!open) {
+    resetState();
+    return;
+  }
+  if (templatesEnabled.value) {
+    resetTemplateSaveForm();
+  }
+});
 </script>
 

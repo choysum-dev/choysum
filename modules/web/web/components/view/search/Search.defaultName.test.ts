@@ -1,15 +1,19 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { h, nextTick, reactive, toRef } from 'vue';
+import { h, nextTick, provide, reactive, toRef } from 'vue';
 
 import { createTermReference } from '@/core/service/i18n';
 import { SearchNavContextKey } from '@/web/web/composables/search/searchNavContext';
 import { UseUserFiltersKey } from '@/web/web/composables/search/useUserFilters';
 import { flushPromises, fnRecorder, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
+import type { UiModelStore } from '@/web/web/stores/uiModelStore';
 import Search from './Search.vue';
 import SearchFilter from './SearchFilter.vue';
 import ChoyButton from '@/web/web/components/button/ChoyButton.vue';
+import ChoyFormView from '@/web/web/components/view/ChoyFormView.vue';
+import ChoyVarcharField from '@/web/web/components/field/ChoyVarcharField.vue';
+import ChoyBooleanField from '@/web/web/components/field/ChoyBooleanField.vue';
 import { ChoyDialog, ChoyDialogContent, ChoyDialogTitle } from '@/web/web/components/layout/choyDialog';
 import Popover from '@/web/web/components/vendor/ui/popover/Popover.vue';
 import PopoverContent from '@/web/web/components/vendor/ui/popover/PopoverContent.vue';
@@ -49,6 +53,9 @@ const stubbed = [
   PopoverContent,
   PopoverTrigger,
   SearchFilter,
+  ChoyFormView,
+  ChoyVarcharField,
+  ChoyBooleanField,
 ];
 
 function installEpStubs() {
@@ -119,6 +126,86 @@ function installEpStubs() {
     name: 'SearchFilter',
     setup: () => () => h('div', { 'data-stub': 'SearchFilter' }),
   });
+  stubSfc(ChoyFormView as any, {
+    name: 'ChoyFormView',
+    props: {
+      store: Object,
+      initialValues: Object,
+      viewMode: String,
+      submitHandler: Function,
+      cancelHandler: Function,
+    },
+    setup(props: any, { slots, attrs, expose }: any) {
+      const formData = reactive({
+        ...(props.store?.getValues?.() || {}),
+        ...(props.initialValues || {}),
+      });
+      provide('form-root', {
+        get mode() {
+          return 'create';
+        },
+        get draft() {
+          return formData;
+        },
+        setField(path: string, value: unknown) {
+          (formData as any)[path] = value;
+          props.store?.setField?.(path, value);
+        },
+        getField(path: string) {
+          return (formData as any)[path];
+        },
+        onChange() {},
+      });
+      expose({
+        submit: async () => {
+          if (typeof props.submitHandler === 'function') {
+            await props.submitHandler({
+              formData,
+              mode: 'create',
+              data: formData,
+              defaultSubmit: async () => null,
+            });
+          }
+        },
+        cancel: async () => {
+          if (typeof props.cancelHandler === 'function') {
+            await props.cancelHandler();
+          }
+        },
+      });
+      return () =>
+        h('div', { ...attrs, 'data-testid': 'search-save-favorite-form' }, [
+          slots.default?.({ formData, loading: false }),
+        ]);
+    },
+  });
+  stubSfc(ChoyVarcharField as any, {
+    name: 'ChoyVarcharField',
+    props: { store: Object, prop: String },
+    setup(props: any, { attrs }: any) {
+      return () =>
+        h('input', {
+          ...attrs,
+          class: ['fav-name', attrs.class],
+          value: String(props.store?.getField?.(props.prop) ?? ''),
+        });
+    },
+  });
+  stubSfc(ChoyBooleanField as any, {
+    name: 'ChoyBooleanField',
+    props: { store: Object, prop: String },
+    setup: () => () => h('div', { class: 'fav-check' }),
+  });
+}
+
+function saveFavoriteName(m: { setupState: () => unknown }): string {
+  const raw = (m.setupState() as { saveFavoriteFormStore?: UiModelStore | { value: UiModelStore | null } })
+    .saveFavoriteFormStore;
+  const store =
+    raw && typeof raw === 'object' && raw !== null && 'value' in raw
+      ? (raw as { value: UiModelStore | null }).value
+      : (raw as UiModelStore | null | undefined);
+  return String(store?.getField?.('Name') ?? '');
 }
 
 function restoreEpStubs() {
@@ -201,8 +288,7 @@ describe('OSearch default favorite name + scopeKey', () => {
     await flushPromises();
     expect(savedFiltersApi.lastScopeKey).toBe('/web/partners/42');
     await openSaveDialog(m);
-    const nameInput = (m.q('[role="dialog"]') as HTMLElement | null)?.querySelector('input') as HTMLInputElement | null;
-    expect(nameInput?.value).toBe('Partners');
+    expect(saveFavoriteName(m)).toBe('Partners');
     m.unmount();
   });
 
@@ -211,8 +297,7 @@ describe('OSearch default favorite name + scopeKey', () => {
     const m = mountSearch();
     await flushPromises();
     await openSaveDialog(m);
-    const nameInput = (m.q('[role="dialog"]') as HTMLElement | null)?.querySelector('input') as HTMLInputElement | null;
-    expect(nameInput?.value).toBe('Menu Label');
+    expect(saveFavoriteName(m)).toBe('Menu Label');
     m.unmount();
   });
 
@@ -221,8 +306,7 @@ describe('OSearch default favorite name + scopeKey', () => {
     const m = mountSearch();
     await flushPromises();
     await openSaveDialog(m);
-    const nameInput = (m.q('[role="dialog"]') as HTMLElement | null)?.querySelector('input') as HTMLInputElement | null;
-    expect(nameInput?.value).toBe('Route Title');
+    expect(saveFavoriteName(m)).toBe('Route Title');
     m.unmount();
   });
 
@@ -230,8 +314,7 @@ describe('OSearch default favorite name + scopeKey', () => {
     const m = mountSearch();
     await flushPromises();
     await openSaveDialog(m);
-    const nameInput = (m.q('[role="dialog"]') as HTMLElement | null)?.querySelector('input') as HTMLInputElement | null;
-    expect(nameInput?.value).toBe('demo.Widget');
+    expect(saveFavoriteName(m)).toBe('demo.Widget');
     m.unmount();
   });
 });

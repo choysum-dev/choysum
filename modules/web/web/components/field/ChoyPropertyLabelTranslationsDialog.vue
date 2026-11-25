@@ -8,45 +8,52 @@ SPDX-License-Identifier: Apache-2.0
     <ChoyDialogContent
       class="choy-property-label-translations-dialog max-w-xl"
       :show-close-button="false"
-      :dismissible="true"
+      :dismissible="dismissible"
       @open-auto-focus.prevent
     >
       <ChoyDialogHeader class="text-start">
         <ChoyDialogTitle>{{ dialogTitle }}</ChoyDialogTitle>
       </ChoyDialogHeader>
       <div class="min-h-[120px]" :aria-busy="loading || undefined">
-        <form class="flex flex-col gap-3.5" @submit.prevent>
-          <div
-            v-for="row in rows"
-            :key="row.code"
-            class="grid grid-cols-[168px_1fr] items-start gap-3"
-          >
-            <label class="leading-8 text-foreground">{{ row.label }}</label>
-            <div>
-              <ChoyInput
-                v-model="row.value"
-                class="box-border min-h-8 w-full min-w-0"
+        <ChoyFormView
+          v-if="formStore"
+          ref="formViewRef"
+          class="flex flex-col gap-3.5"
+          :store="formStore"
+          view-mode="create"
+          v-bind="embeddedFormChrome"
+          :initial-values="formInitialValues"
+          :submit-handler="onSubmit"
+          :cancel-handler="cancelHandler"
+        >
+          <template #default>
+            <div v-for="code in fieldCodes" :key="code">
+              <ChoyVarcharField
+                :store="formStore"
+                :prop="code"
+                orientation="horizontal"
+                buffer-strategy="live"
                 data-testid="choy-property-label-translation-input"
               />
               <div
-                v-if="row.code === 'en_US'"
+                v-if="code === TRANSLATED_BASE_LANG"
                 class="mt-1 text-xs leading-snug text-muted-foreground"
               >
                 {{ _t('Base language (cannot be deleted)') }}
               </div>
             </div>
-          </div>
-        </form>
+          </template>
+        </ChoyFormView>
       </div>
       <ChoyDialogFooter>
-        <ChoyButton type="button" variant="outline" @click="visible = false">{{ _t('Cancel') }}</ChoyButton>
+        <ChoyButton type="button" variant="outline" @click="onFooterCancel">{{ _t('Cancel') }}</ChoyButton>
         <ChoyActionButton
           type="button"
           data-testid="choy-property-label-translations-save"
-          :disabled="rows.length === 0"
+          :disabled="fieldCodes.length === 0"
           :busy="loading"
           :requires-connectivity="false"
-          @execute="handleSave"
+          @execute="onFooterSave"
         >
           {{ _t('Save translations') }}
         </ChoyActionButton>
@@ -56,7 +63,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, ref, shallowRef, watch } from 'vue';
 import {
   ChoyDialog,
   ChoyDialogContent,
@@ -66,11 +73,14 @@ import {
 } from '@/web/web/components/layout/choyDialog';
 import ChoyButton from '@/web/web/components/button/ChoyButton.vue';
 import ChoyActionButton from '@/web/web/components/button/ChoyActionButton.vue';
-import ChoyInput from '@/web/web/components/vendor/ui/input/Input.vue';
+import ChoyFormView from '@/web/web/components/view/ChoyFormView.vue';
+import ChoyVarcharField from '@/web/web/components/field/ChoyVarcharField.vue';
+import { useChoyFormDialogShell, type ChoyFormDialogViewApi } from '@/web/web/composables/useChoyFormDialogShell';
 import { ChoyMessage } from '../../composables/useChoyMessage';
 import { createTranslate } from '@/web/web/i18n';
 import { createModelStore } from '@/web/web/stores/registry';
 import { TRANSLATED_BASE_LANG } from '@/core/service/orm/model/properties_label_i18n';
+import { createUiModelStore, type UiModelStore } from '@/web/web/stores/uiModelStore';
 
 defineOptions({ name: 'ChoyPropertyLabelTranslationsDialog' });
 
@@ -96,9 +106,23 @@ const emit = defineEmits<{
 
 const { _t } = createTranslate('web', { scope: 'web/components/field/PropertyLabelTranslationsDialog' });
 
+const formViewRef = ref<ChoyFormDialogViewApi | null>(null);
+const formStore = shallowRef<UiModelStore | null>(null);
+const formInitialValues = shallowRef<Record<string, unknown>>({});
+const fieldCodes = ref<string[]>([]);
+
 const visible = computed({
   get: () => props.modelValue,
   set: v => emit('update:modelValue', v),
+});
+
+function closeDialog(): void {
+  visible.value = false;
+}
+
+const { embeddedFormChrome, cancelHandler, onFooterSave, onFooterCancel, dismissible } = useChoyFormDialogShell({
+  onClose: closeDialog,
+  formViewRef,
 });
 
 const dialogTitle = computed(() => {
@@ -107,13 +131,38 @@ const dialogTitle = computed(() => {
 });
 
 const loading = ref(false);
-const rows = ref<TranslationRow[]>([]);
 /** Bumped on each load / close so a late GetActiveLanguages cannot overwrite a newer open. */
 let loadGeneration = 0;
 
 function formatLanguageLabel(name: unknown, code: string): string {
   const display = String(name ?? '').trim();
   return display || code;
+}
+
+function clearForm(): void {
+  formStore.value = null;
+  formInitialValues.value = {};
+  fieldCodes.value = [];
+}
+
+function openFormFromRows(ordered: TranslationRow[]): void {
+  const initialValues: Record<string, string> = {};
+  const codes: string[] = [];
+  const fields: Array<{ name: string; label: string; type: 'varchar' }> = [];
+
+  for (const row of ordered) {
+    codes.push(row.code);
+    initialValues[row.code] = row.value;
+    fields.push({ name: row.code, label: row.label, type: 'varchar' });
+  }
+
+  fieldCodes.value = codes;
+  formInitialValues.value = { ...initialValues };
+  formStore.value = createUiModelStore({
+    storeId: `ui-model:property-label-translations:${Date.now()}`,
+    fields,
+    initialValues,
+  });
 }
 
 async function loadRows() {
@@ -159,11 +208,11 @@ async function loadRows() {
       if (b.code === TRANSLATED_BASE_LANG) return 1;
       return a.label.localeCompare(b.label);
     });
-    rows.value = ordered;
+    openFormFromRows(ordered);
   } catch (err: any) {
     if (gen !== loadGeneration) return;
     ChoyMessage.error(String(err?.message || err || _t('Failed to load translations')));
-    rows.value = [];
+    clearForm();
   } finally {
     if (gen === loadGeneration) loading.value = false;
   }
@@ -174,9 +223,8 @@ watch(
   (open, wasOpen) => {
     if (open && !wasOpen) void loadRows();
     if (!open && wasOpen) {
-      // Invalidate in-flight loads from this opening.
       loadGeneration += 1;
-      rows.value = [];
+      clearForm();
       loading.value = false;
       emit('closed');
     }
@@ -184,24 +232,42 @@ watch(
   { immediate: true },
 );
 
-function handleSave() {
-  // Load failure / still loading leaves rows empty — closing without emit
-  // avoids wiping the caller's existing label map with { en_US: '' }.
-  if (loading.value || rows.value.length === 0) {
-    visible.value = false;
-    return;
+function buildSavedMap(formData: Record<string, unknown>): Record<string, string> | null {
+  if (loading.value || fieldCodes.value.length === 0) {
+    return null;
   }
   const next: Record<string, string> = {};
-  for (const row of rows.value) {
-    const value = String(row.value ?? '');
-    if (row.code === TRANSLATED_BASE_LANG || value !== '') {
-      next[row.code] = value;
+  for (const code of fieldCodes.value) {
+    const value = String(formData[code] ?? '');
+    if (code === TRANSLATED_BASE_LANG || value !== '') {
+      next[code] = value;
     }
   }
   if (!Object.prototype.hasOwnProperty.call(next, TRANSLATED_BASE_LANG)) {
     next[TRANSLATED_BASE_LANG] = '';
   }
-  emit('saved', next);
-  visible.value = false;
+  return next;
 }
+
+function handleSave(formData?: Record<string, unknown>) {
+  const data = formData ?? formStore.value?.getValues() ?? {};
+  const next = buildSavedMap(data);
+  if (next == null) {
+    closeDialog();
+    return;
+  }
+  emit('saved', next);
+  closeDialog();
+}
+
+async function onSubmit(ctx: { formData: Record<string, unknown> }) {
+  handleSave(ctx.formData || {});
+  return { handled: true, skipSuccessMessage: true };
+}
+
+defineExpose({
+  handleSave,
+  fieldCodes,
+  formStore,
+});
 </script>

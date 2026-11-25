@@ -237,13 +237,10 @@ SPDX-License-Identifier: Apache-2.0
           :key="dialogFormKey"
           :store="dialogStore"
           :view-mode="dialogFormMode"
-          :resolve-record-id-from-route="false"
           :initial-values="dialogDraft"
-          :show-header="false"
-          :show-actions="false"
-          :show-messages="false"
           :submit-handler="dialogFormSubmitHandler"
-          v-bind="formViewProps"
+          v-bind="dialogFormBind"
+          :cancel-handler="cancelHandler"
         />
         <div
           v-else
@@ -263,7 +260,7 @@ SPDX-License-Identifier: Apache-2.0
           >{{ _t('Delete') }}</ChoyActionButton>
         </div>
         <ChoyDialogFooter class="w-auto shrink-0 border-0 p-0">
-          <ChoyButton type="button" variant="outline" @click="handleDialogCancel">{{ _t('Cancel') }}</ChoyButton>
+          <ChoyButton type="button" variant="outline" @click="onFooterCancel">{{ _t('Cancel') }}</ChoyButton>
           <ChoyActionButton v-if="dialogMode !== 'display'" type="button" :requires-connectivity="false" @execute="handleDialogSubmit">{{ _t('Save') }}</ChoyActionButton>
         </ChoyDialogFooter>
       </div>
@@ -284,6 +281,10 @@ import {
 import ChoyButton from '@/web/web/components/button/ChoyButton.vue';
 import ChoyActionButton from '@/web/web/components/button/ChoyActionButton.vue';
 import { confirmChoyAction } from '../../composables/confirmChoyAction';
+import {
+  useChoyFormDialogShell,
+  type ChoyFormDialogViewApi,
+} from '../../composables/useChoyFormDialogShell';
 import type { RuleItem } from 'async-validator';
 import type { BaseModel, FieldPath, FieldPathType, ClientModel } from '@/core/rpc';
 import type { ModelStore } from '@/web/web/stores/modelStore';
@@ -560,7 +561,7 @@ const dialogMode = ref<DialogMode>('create');
 const dialogIndex = ref(-1);
 const dialogDraft = ref<Record<string, any>>({});
 const dialogFormKey = ref(0);
-const dialogFormRef = ref<{ submit?: () => Promise<unknown>; getFormData?: () => unknown } | null>(null);
+const dialogFormRef = ref<(ChoyFormDialogViewApi & { getFormData?: () => unknown }) | null>(null);
 const dialogRegisteredFormApis = new Map<string, FormChildSubmitApi>();
 const activeDialogFormToken = ref<string | null>(null);
 const dialogFormMode = computed(() => (dialogMode.value === 'display' ? 'display' : 'create'));
@@ -569,6 +570,24 @@ const dialogTitleText = computed(() => {
   if (dialogMode.value === 'edit') return effectiveEditDialogTitle.value;
   return effectiveDisplayDialogTitle.value;
 });
+
+const {
+  embeddedFormChrome,
+  cancelHandler,
+  onFooterCancel,
+} = useChoyFormDialogShell({
+  onClose: () => {
+    dialogVisible.value = false;
+  },
+  formViewRef: dialogFormRef,
+  skipFormCancel: () => dialogMode.value === 'display',
+});
+
+/** Merge dialog chrome with host formViewProps (host wins on key clash). */
+const dialogFormBind = computed(() => ({
+  ...embeddedFormChrome,
+  ...(props.formViewProps || {}),
+}));
 
 provide(FORM_CHILD_SUBMIT_API_REGISTER_KEY, (registration: FormChildSubmitApiRegistration) => {
   const token = String(registration?.token || '').trim();
@@ -731,10 +750,6 @@ async function handleRemoveItem(index: number): Promise<boolean> {
   } catch {
     return false;
   }
-}
-
-function handleDialogCancel() {
-  dialogVisible.value = false;
 }
 
 async function handleDialogRemove() {

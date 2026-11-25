@@ -148,13 +148,7 @@ SPDX-License-Identifier: Apache-2.0
             :is="searchList"
             ref="searchViewRef"
             :store="relationStore"
-            :show-actions="false"
-            :host-page-title="false"
-            :register-action-target="false"
-            :selection-mode="'multiple'"
-            :click-to-select="true"
-            :height-mode="'container'"
-            :container-selector="'.choy-relation-picker-list'"
+            v-bind="listPickerChrome"
             :forced-condition="effectiveConditions"
             :relation-condition-source="dialogRelationConditionSource"
           />
@@ -200,6 +194,7 @@ import ChoyViewScope from '@/web/web/components/view/ChoyViewScope.vue';
 import type { SelectionExpose } from '@/web/web/components/view/listViewTypes';
 import { createModelStore } from '@/web/web/stores/registry';
 import { registerFieldPath, unregisterFieldPath, pathsToFieldSelection, ensureRootId } from '@/web/web/query/utils/registry/field';
+import { choyListPickerChromeProps } from '@/web/web/composables/choyListPickerChrome';
 import { createTranslate } from '@/web/web/i18n';
 import { controlFocusWithinRing } from '@/web/web/lib/utils';
 import type { TagClickPayload } from '@/web/web/components/field/manyToManyTagsTypes';
@@ -318,6 +313,8 @@ const relationStore = computed<ModelStore<any> | undefined>(() => {
   }
 });
 
+
+const listPickerChrome = choyListPickerChromeProps({ selectionMode: 'multiple' });
 const dialogVisible = ref(false);
 provide(RELATION_PICKER_CLOSE_KEY, () => {
   dialogVisible.value = false;

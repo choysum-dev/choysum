@@ -21,14 +21,10 @@ SPDX-License-Identifier: Apache-2.0
           class="choy-properties-definition-item-form !gap-0"
           :store="formStore"
           :view-mode="formViewMode"
-          embedded
-          :show-header="false"
-          :show-actions="false"
-          :show-messages="false"
-          :resolve-record-id-from-route="false"
+          v-bind="embeddedFormChrome"
           :initial-values="formInitialValues"
           :submit-handler="onFormSubmit"
-          :cancel-handler="onFormCancel"
+          :cancel-handler="cancelHandler"
           data-testid="choy-properties-definition-item-form"
         >
           <template #default="{ formData }">
@@ -245,6 +241,7 @@ import { Languages } from 'lucide-vue-next';
 import { TRANSLATED_BASE_LANG, unwrapPropertyLabel } from '@/core/service/orm/model/properties_label_i18n';
 import { createTranslate } from '@/web/web/i18n';
 import { confirmChoyAction } from '@/web/web/composables/confirmChoyAction';
+import { useChoyFormDialogShell } from '@/web/web/composables/useChoyFormDialogShell';
 import { useI18nStore } from '@/web/web/stores/i18nStore';
 import { createUiModelStore, type UiModelStore } from '@/web/web/stores/uiModelStore';
 import {
@@ -317,6 +314,36 @@ const formViewRef = ref<{
   submit?: () => Promise<unknown>;
   cancel?: () => void | Promise<void>;
 } | null>(null);
+
+function closeDialog() {
+  visible.value = false;
+}
+
+async function confirmDiscardUnsaved(): Promise<boolean> {
+  try {
+    await confirmChoyAction(_t('You have unsaved changes. Discard them?'), _t('Unsaved changes'), {
+      confirmText: _t('Discard'),
+      cancelText: _t('Cancel'),
+      destructive: true,
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+const {
+  embeddedFormChrome,
+  cancelHandler,
+  onFooterSave,
+  onFooterCancel,
+} = useChoyFormDialogShell({
+  onClose: closeDialog,
+  formViewRef,
+  externalDirty: () => !props.readonly && isSelectionDirty(),
+  confirmExternalDiscard: confirmDiscardUnsaved,
+  skipFormCancel: () => props.readonly,
+});
 const local = ref<DefinitionEditorDraftItem | null>(null);
 const formStore = shallowRef<UiModelStore | null>(null);
 const formInitialValues = shallowRef<Record<string, unknown>>({});
@@ -503,48 +530,6 @@ function mergeFormIntoDraft(item: DefinitionEditorDraftItem) {
   item.readonly = data.Readonly === true;
 }
 
-/** FormView cancelHandler: close after dirty confirmation (or when footer skips FormView). */
-function onFormCancel() {
-  visible.value = false;
-}
-
-async function confirmDiscardUnsaved(): Promise<boolean> {
-  try {
-    await confirmChoyAction(_t('You have unsaved changes. Discard them?'), _t('Unsaved changes'), {
-      confirmText: _t('Discard'),
-      cancelText: _t('Cancel'),
-      destructive: true,
-    });
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Footer Cancel/Close. Selection edits live on `local` (outside FormView draft),
- * so they need their own dirty check. Form-field dirtiness still goes through
- * FormView.cancel. Readonly Close has nothing to discard.
- */
-async function onFooterCancel() {
-  if (props.readonly) {
-    onFormCancel();
-    return;
-  }
-  // Selection-only (or selection+form) dirty: one confirm, then close — avoid a
-  // second FormView prompt when the form draft is also dirty.
-  if (isSelectionDirty()) {
-    if (!(await confirmDiscardUnsaved())) return;
-    onFormCancel();
-    return;
-  }
-  if (formViewRef.value?.cancel) {
-    await formViewRef.value.cancel();
-    return;
-  }
-  onFormCancel();
-}
-
 function onRequestEdit() {
   if (!props.canEdit || !props.readonly) return;
   emit('edit');
@@ -554,9 +539,10 @@ async function onApply() {
   if (props.readonly) return;
   try {
     if (formViewRef.value?.submit) {
-      await formViewRef.value.submit();
+      await onFooterSave();
       return;
     }
+    // Stub FormView without expose.submit still commits via submitHandler.
     await onFormSubmit({
       formData: formDataRef.value as any,
       mode: 'create',
