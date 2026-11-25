@@ -401,6 +401,28 @@ describe('FieldCompanyValuesDialog', () => {
     expect(onUpdateModelValue.calls.some(args => args[0] === false)).toBeTruthy();
     m.unmount();
   });
+
+  test('closing modelValue clears form and emits closed', async () => {
+    const store = fieldStore();
+    const onClosed = fnRecorder();
+    const m = mountApp(FieldCompanyValuesDialog as any, {
+      props: {
+        modelValue: true,
+        recordId: 'prod-1',
+        fieldName: 'Cost',
+        fieldLabel: 'Cost',
+        store,
+      },
+      reactiveProps: true,
+      on: { onClosed },
+      plugins: [pinia],
+    });
+    await flushPromises();
+    (m.props as { modelValue: boolean }).modelValue = false;
+    await flushPromises();
+    expect(onClosed.calls.length).toBe(1);
+    m.unmount();
+  });
   test('formatCaughtError and coercePatchValue edges via setupState', async () => {
     const store = fieldStore();
     const m = mountDialog({ store, fieldType: 'boolean', draftCompanyId: '' });

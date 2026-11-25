@@ -1,15 +1,74 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { computed, h, nextTick, ref } from 'vue';
+import { computed, h, nextTick, ref, watch } from 'vue';
 
 import type { UseField } from '@/web/web/composables/useField';
 import { flushPromises, fnRecorder, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
+import {
+  resolveConfirmChoy,
+  useConfirmChoyStore,
+} from '@/web/web/composables/confirmChoyAction';
 import ChoyFieldBase from './ChoyFieldBase.vue';
 import ChoyOneToManyKanbanField from './ChoyOneToManyKanbanField.vue';
 import ChoyViewScope from '@/web/web/components/view/ChoyViewScope.vue';
 import ChoyButton from '@/web/web/components/button/ChoyButton.vue';
 import { ChoyDialog, ChoyDialogContent, ChoyDialogTitle } from '@/web/web/components/layout/choyDialog';
+
+type DialogFormApi = {
+  isDirty?: () => boolean;
+  getFormData?: () => Record<string, unknown>;
+  cancel?: () => void | Promise<void>;
+};
+
+type KanbanDialogSetup = {
+  openDialog: (mode: 'create' | 'edit' | 'display', index: number, item: Record<string, unknown>) => void;
+  handleDialogFooterCancel: () => Promise<void>;
+  handleDialogRemove: () => Promise<void>;
+  dialogVisible: boolean | { value: boolean };
+  dialogForceDirty: boolean | { value: boolean };
+  dialogFormRef: DialogFormApi | { value: DialogFormApi | null } | null;
+  dialogFormBind: Record<string, unknown> | { value: Record<string, unknown> };
+};
+
+function unwrapRef<T>(v: T | { value: T } | null | undefined): T | undefined {
+  if (typeof v !== 'object' || Object(v) !== v) return v as T | undefined;
+  if ('value' in (v as object)) return (v as { value: T }).value;
+  return v as T;
+}
+
+function setDialogFormRef(s: KanbanDialogSetup, api: DialogFormApi | null): void {
+  const raw = s.dialogFormRef as DialogFormApi | { value: DialogFormApi | null } | null;
+  if (raw && typeof raw === 'object' && 'value' in raw) {
+    (raw as { value: DialogFormApi | null }).value = api;
+    return;
+  }
+  (s as { dialogFormRef: DialogFormApi | null }).dialogFormRef = api;
+}
+
+function dialogVisibleOf(s: KanbanDialogSetup): boolean {
+  return !!unwrapRef(s.dialogVisible);
+}
+
+function dialogForceDirtyOf(s: KanbanDialogSetup): boolean {
+  return !!unwrapRef(s.dialogForceDirty);
+}
+
+let stopConfirmWatch: (() => void) | undefined;
+let autoConfirmChoice: 'confirm' | 'cancel' | 'dismiss' = 'confirm';
+
+function installConfirmAutoResolve() {
+  stopConfirmWatch?.();
+  const store = useConfirmChoyStore();
+  stopConfirmWatch = watch(
+    () => store.open,
+    open => {
+      if (!open) return;
+      const choice = autoConfirmChoice;
+      queueMicrotask(() => resolveConfirmChoy(choice));
+    },
+  );
+}
 
 function makeBinding(opts: { items?: any[]; isEditMode?: boolean; isForm?: boolean }) {
   const items = ref(opts.items ?? [{ Id: '1', Name: 'A', Email: 'a@x' }]);
@@ -84,7 +143,14 @@ function installStubs(mode: 'edit' | 'display') {
 }
 
 describe('ChoyOneToManyKanbanField mount coverage', () => {
+  beforeEach(() => {
+    autoConfirmChoice = 'confirm';
+    installConfirmAutoResolve();
+  });
+
   afterEach(() => {
+    stopConfirmWatch?.();
+    stopConfirmWatch = undefined;
     restoreSfc(ChoyFieldBase as any);
     restoreSfc(ChoyViewScope as any);
     restoreSfc(ChoyButton as any);
@@ -344,5 +410,113 @@ describe('ChoyOneToManyKanbanField mount coverage', () => {
     };
     expect(hiddenState.kanbanCardDragClass?.(0)).toEqual({});
     hm.unmount();
+  });
+
+
+  test('cancelHandler closes dialog via shell onClose', async () => {
+    installStubs('edit');
+    const { binding } = makeBinding({ items: [{ Id: '1', Name: 'Alpha' }] });
+    const m = mountApp(ChoyOneToManyKanbanField as any, { props: { binding } });
+    await nextTick();
+    const s = m.setupState() as KanbanDialogSetup & { cancelHandler: () => void };
+    s.openDialog('edit', 0, { Id: '1', Name: 'Alpha' });
+    await nextTick();
+    expect(dialogVisibleOf(s)).toBe(true);
+    expect(typeof s.cancelHandler).toBe('function');
+    s.cancelHandler();
+    await nextTick();
+    expect(dialogVisibleOf(s)).toBe(false);
+    m.unmount();
+  });
+
+  test('handleDialogFooterCancel: display closes; clean closes; dirty discard vs remount', async () => {
+    installStubs('edit');
+    const { binding } = makeBinding({ items: [{ Id: '1', Name: 'Alpha' }] });
+    const m = mountApp(ChoyOneToManyKanbanField as any, {
+      props: { binding, confirmOnRemove: true },
+    });
+    await nextTick();
+    const s = m.setupState() as KanbanDialogSetup;
+
+    s.openDialog('display', 0, { Id: '1', Name: 'Alpha' });
+    await nextTick();
+    expect(dialogVisibleOf(s)).toBe(true);
+    await s.handleDialogFooterCancel();
+    await flushPromises();
+    expect(dialogVisibleOf(s)).toBe(false);
+
+    s.openDialog('edit', 0, { Id: '1', Name: 'Alpha' });
+    setDialogFormRef(s, { isDirty: () => false, getFormData: () => ({ Id: '1', Name: 'Alpha' }) });
+    await s.handleDialogFooterCancel();
+    await flushPromises();
+    expect(dialogVisibleOf(s)).toBe(false);
+
+    s.openDialog('edit', 0, { Id: '1', Name: 'Alpha' });
+    setDialogFormRef(s, {
+      isDirty: () => true,
+      getFormData: () => ({ Id: '1', Name: 'Edited' }),
+    });
+    autoConfirmChoice = 'confirm';
+    await s.handleDialogFooterCancel();
+    await flushPromises();
+    expect(dialogVisibleOf(s)).toBe(false);
+    expect(dialogForceDirtyOf(s)).toBe(false);
+
+    s.openDialog('edit', 0, { Id: '1', Name: 'Alpha' });
+    setDialogFormRef(s, {
+      isDirty: () => true,
+      getFormData: () => ({ Id: '1', Name: 'Kept' }),
+    });
+    autoConfirmChoice = 'dismiss';
+    await s.handleDialogFooterCancel();
+    await flushPromises();
+    expect(dialogVisibleOf(s)).toBe(true);
+    expect(dialogForceDirtyOf(s)).toBe(true);
+    const bind = unwrapRef(s.dialogFormBind) || {};
+    expect(bind.dirty).toBe(true);
+
+    // No isDirty API: fall back to FormView.cancel.
+    s.openDialog('create', -1, {});
+    const cancel = fnRecorder(async () => {});
+    setDialogFormRef(s, { cancel });
+    await s.handleDialogFooterCancel();
+    await flushPromises();
+    expect(cancel.calls.length).toBe(1);
+
+    m.unmount();
+  });
+
+  test('handleDialogRemove dismiss remounts edit dialog with force dirty', async () => {
+    installStubs('edit');
+    const removeItemAt = fnRecorder();
+    const items = ref([{ Id: '1', Name: 'Alpha' }]);
+    const fieldValue = ref(items.value.slice());
+    const base = makeBinding({ items: items.value });
+    const binding: UseField = {
+      ...base.binding,
+      fieldRef: () => fieldValue as any,
+      asMutableArray: () => ({
+        getItems: () => items.value,
+        insertItem: fnRecorder(),
+        removeItemAt,
+      }),
+    } as any;
+    const m = mountApp(ChoyOneToManyKanbanField as any, {
+      props: { binding, confirmOnRemove: true },
+    });
+    await nextTick();
+    const s = m.setupState() as KanbanDialogSetup;
+    s.openDialog('edit', 0, { Id: '1', Name: 'Alpha' });
+    setDialogFormRef(s, {
+      isDirty: () => true,
+      getFormData: () => ({ Id: '1', Name: 'InProgress' }),
+    });
+    autoConfirmChoice = 'dismiss';
+    await s.handleDialogRemove();
+    await flushPromises();
+    expect(removeItemAt.calls.length).toBe(0);
+    expect(dialogVisibleOf(s)).toBe(true);
+    expect(dialogForceDirtyOf(s)).toBe(true);
+    m.unmount();
   });
 });

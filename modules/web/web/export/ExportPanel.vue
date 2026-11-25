@@ -447,7 +447,11 @@ function preparePanelOpen() {
   }
   pendingFieldPaths.value = null;
   // Catch so FE unit hosts without an ExportHub stub do not surface unhandled rejections.
-  void loadFields().catch(() => {});
+  try {
+    void loadFields().catch(() => {});
+  } catch {
+    /* sync throw when AbortController is missing in the FE unit host */
+  }
 }
 
 watch(

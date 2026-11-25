@@ -75,6 +75,32 @@ describe('PreferencesDialog offline soft-fail chrome', () => {
     expect(props.modelValue).toBe(false);
 
     open.unmount();
+
+    // Re-open and exercise shell onFooterCancel → onClose → visible=false.
+    props.modelValue = true;
+    const again = mountApp(PreferencesDialog as any, {
+      props,
+      reactiveProps: true,
+      plugins: [pinia],
+      on: {
+        'onUpdate:modelValue': (v: boolean) => {
+          props.modelValue = v;
+        },
+      },
+    });
+    await flushPromises();
+    await nextTick();
+    const shell = again.setupState() as {
+      onFooterCancel: () => Promise<void>;
+      formViewRef: unknown;
+      embeddedFormChrome: Record<string, unknown>;
+    };
+    expect(shell.embeddedFormChrome?.embedded).toBe(true);
+    expect(typeof shell.onFooterCancel).toBe('function');
+    await shell.onFooterCancel();
+    await flushPromises();
+    expect(props.modelValue).toBe(false);
+    again.unmount();
   });
 
 });

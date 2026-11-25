@@ -5,6 +5,9 @@ import { flushPromises, fnRecorder, mountApp } from '@/web/web/__tests__/mountAp
 import { replaceStoreFactory } from '@/core/web/stores/registry';
 import type { UiModelStore } from '@/web/web/stores/uiModelStore';
 import ExportPanel from './ExportPanel.vue';
+import { ensureAbortController } from '@/core/web/testing/qjs_polyfills';
+import { CreateWebClient } from '@/core/web/rpc/client_factory';
+import { ExportHub } from '@/core/web/export/client';
 
 type TemplateFormSetup = {
   resetTemplateSaveForm: () => void;
@@ -53,6 +56,8 @@ function mountPanel(extra: Record<string, unknown> = {}) {
 function asSetup(m: ReturnType<typeof mountPanel>): TemplateFormSetup {
   return m.setupState() as TemplateFormSetup;
 }
+
+ensureAbortController();
 
 describe('ExportPanel template save FormView / UiModel', () => {
   let restoreExportTemplate: (() => void) | undefined;
@@ -171,4 +176,80 @@ describe('ExportPanel template save FormView / UiModel', () => {
     expect(unwrapRef((freshSetup(m) as { visible?: boolean | { value: boolean } }).visible)).toBe(false);
     m.unmount();
   });
+
+
+  test('submitTemplateForm returns handled on success and throws when save fails', async () => {
+    const m = mountPanel();
+    await flushPromises();
+    const s = asSetup(m) as TemplateFormSetup & {
+      submitTemplateForm: () => Promise<{ handled: boolean; skipSuccessMessage?: boolean }>;
+      exportError: string | { value: string };
+    };
+    s.resetTemplateSaveForm();
+    templateStore(m)!.setField('Name', 'Cols');
+    templateStore(m)!.setField('Shared', false);
+
+    const ok = await s.submitTemplateForm();
+    expect(ok).toEqual({ handled: true, skipSuccessMessage: true });
+
+    templateCreate.mockImplementation(async () => {
+      throw new Error('save failed');
+    });
+    templateStore(m)!.setField('Name', 'Again');
+    let thrown: unknown;
+    try {
+      await s.submitTemplateForm();
+    } catch (err) {
+      thrown = err;
+    }
+    expect(thrown instanceof Error && /save failed|Failed to save/.test(thrown.message)).toBe(true);
+    expect(String(unwrapRef(s.exportError) || '')).toContain('save failed');
+
+    templateCreate.mockImplementation(async () => null as any);
+    templateStore(m)!.setField('Name', '');
+    const saved = await s.saveCurrentTemplate();
+    expect(saved).toBe(false);
+    m.unmount();
+  });
+
+  test('preparePanelOpen runs when visible flips true; templates disabled clears store', async () => {
+    ensureAbortController();
+    const hub = CreateWebClient(ExportHub)() as any;
+    const origDescribe = hub.describeFields;
+    hub.describeFields = async () => ({ fields: [{ path: 'Name', label: 'Name' }], defaultFields: ['Name'] });
+
+    const m = mountApp(ExportPanel as any, {
+      props: {
+        model: 'partner.Partner',
+        companyId: 'c1',
+        modelValue: false,
+        defaultFields: ['Name', 'Email'],
+      },
+      reactiveProps: true,
+    });
+    await flushPromises();
+    const s = m.setupState() as TemplateFormSetup & { preparePanelOpen: () => void };
+    expect(typeof s.preparePanelOpen).toBe('function');
+    s.preparePanelOpen();
+    await flushPromises();
+    expect(templateStore(m)).toBeTruthy();
+
+    (m.props as { modelValue: boolean }).modelValue = true;
+    await flushPromises();
+    m.unmount();
+
+    const bare = mountPanel({ model: 'Partner', defaultFields: ['Name'], modelValue: false });
+    await flushPromises();
+    const bs = asSetup(bare) as TemplateFormSetup & { preparePanelOpen: () => void };
+    bs.resetTemplateSaveForm();
+    expect(templateStore(bare)).toBeTruthy();
+    bs.preparePanelOpen();
+    await flushPromises();
+    expect(templateStore(bare)).toBeNull();
+    bare.unmount();
+
+    hub.describeFields = origDescribe;
+  });
+
+
 });

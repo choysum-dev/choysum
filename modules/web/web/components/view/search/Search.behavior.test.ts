@@ -1415,6 +1415,32 @@ describe('OSearch behavior', () => {
     await nextTick();
   }
 
+  test('closeSaveFavoriteDialog and onFooterCancel close the favorite dialog', async () => {
+    const m = mountSearch();
+    await flushPromises();
+    await openSaveFavoriteDialog(m);
+    expect(m.q('[role="dialog"]')).toBeTruthy();
+    const st = m.setupState() as {
+      closeSaveFavoriteDialog?: () => void;
+      onFooterCancel?: () => Promise<void>;
+      saveFavoriteOpen?: boolean | { value: boolean };
+    };
+    expect(typeof st.closeSaveFavoriteDialog).toBe('function');
+    st.closeSaveFavoriteDialog!();
+    await flushPromises();
+    const closed =
+      typeof st.saveFavoriteOpen === 'boolean' ? st.saveFavoriteOpen : st.saveFavoriteOpen?.value;
+    expect(closed).toBe(false);
+
+    await openSaveFavoriteDialog(m);
+    await st.onFooterCancel!();
+    await flushPromises();
+    const closedAgain =
+      typeof st.saveFavoriteOpen === 'boolean' ? st.saveFavoriteOpen : st.saveFavoriteOpen?.value;
+    expect(closedAgain).toBe(false);
+    m.unmount();
+  });
+
   test('saves with isDefault and shared checkboxes enabled', async () => {
     const m = mountSearch();
     await flushPromises();
