@@ -147,13 +147,7 @@ SPDX-License-Identifier: Apache-2.0
             :is="searchList"
             ref="searchViewRef"
             :store="relationStore"
-            :show-actions="false"
-            :host-page-title="false"
-            :register-action-target="false"
-            :selection-mode="'multiple'"
-            :click-to-select="true"
-            :height-mode="'container'"
-            :container-selector="'.choy-relation-picker-list'"
+            v-bind="listPickerChrome"
             :forced-condition="effectiveConditions"
             :relation-condition-source="dialogRelationConditionSource"
           />
@@ -197,6 +191,7 @@ import ChoyViewScope from '@/web/web/components/view/ChoyViewScope.vue';
 import type { RowEventHandlerParams, SelectionExpose } from '@/web/web/components/view/listViewTypes';
 import { createModelStore } from '@/web/web/stores/registry';
 import { useProvidedOnchange } from '@/web/web/composables/useOnchange';
+import { choyListPickerChromeProps } from '@/web/web/composables/choyListPickerChrome';
 import { createTranslate } from '@/web/web/i18n';
 import { formatRelationCountSummary } from './relationCountSummary';
 import { buildRelationConditionSource } from '@/web/web/composables/relationalForField';
@@ -361,6 +356,8 @@ const tableHeightDisplay = computed(() =>
   computeTableHeight(itemCount.value, rowHeightDisplayRes.value, props.headerHeight!)
 );
 
+
+const listPickerChrome = choyListPickerChromeProps({ selectionMode: 'multiple' });
 const dialogVisible = ref(false);
 provide(RELATION_PICKER_CLOSE_KEY, () => {
   dialogVisible.value = false;

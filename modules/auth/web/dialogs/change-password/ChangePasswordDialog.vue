@@ -8,7 +8,7 @@ SPDX-License-Identifier: Apache-2.0
     <ChoyDialogContent
       class="choy-change-password-dialog max-w-md gap-4 p-5"
       :show-close-button="false"
-      :dismissible="!saving"
+      :dismissible="dismissible"
       data-testid="change-password-dialog"
     >
       <ChoyDialogHeader class="space-y-1 text-start">
@@ -20,15 +20,13 @@ SPDX-License-Identifier: Apache-2.0
 
       <!-- Local FormView (not auth.User): same command-form pattern as Login/Register. -->
       <ChoyFormView
+        ref="formViewRef"
         :store="formStore"
         view-mode="create"
-        embedded
-        :show-header="false"
-        :show-actions="false"
-        :show-messages="false"
-        :resolve-record-id-from-route="false"
+        v-bind="embeddedFormChrome"
         :initial-values="emptyValues"
         :submit-handler="onSubmit"
+        :cancel-handler="cancelHandler"
       >
         <template #default="{ formData, loading }">
           <!-- Reserve owns inter-field rhythm; gap-0 avoids stacking group gap on error slots. -->
@@ -87,7 +85,7 @@ SPDX-License-Identifier: Apache-2.0
           </ChoyFieldGroup>
 
           <ChoyDialogFooter class="mt-4">
-            <ChoyButton type="button" variant="outline" :disabled="saving || loading" @click="close">{{
+            <ChoyButton type="button" variant="outline" :disabled="saving || loading" @click="onFooterCancel">{{
               _t('Cancel')
             }}</ChoyButton>
             <ChoyActionButton
@@ -120,6 +118,7 @@ import {
   ChoyMessage,
   ChoyVarcharField,
   createUiModelStore,
+  useChoyFormDialogShell,
 } from '@/web';
 import { createTranslate } from '@/web/web/i18n';
 import { useAuthStore } from '@/auth/web/stores/auth';
@@ -130,6 +129,7 @@ import {
   changePasswordCurrentRules,
   changePasswordNewRules,
 } from './change_password';
+import type { ChoyFormDialogViewApi } from '@/web/web/composables/useChoyFormDialogShell';
 
 defineOptions({ name: 'ChangePasswordDialog' });
 
@@ -142,6 +142,7 @@ const { _t } = createTranslate('auth', {
 const authStore = useAuthStore();
 const userStore = createModelStore('auth.User');
 const saving = ref(false);
+const formViewRef = ref<ChoyFormDialogViewApi | null>(null);
 
 const emptyValues = {
   CurrentPassword: '',
@@ -173,6 +174,17 @@ const visible = computed({
 function close(): void {
   visible.value = false;
 }
+
+const {
+  embeddedFormChrome,
+  cancelHandler,
+  onFooterCancel,
+  dismissible,
+} = useChoyFormDialogShell({
+  onClose: close,
+  formViewRef,
+  saving,
+});
 
 function resetForm(): void {
   formStore.setField('CurrentPassword', '');

@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { h, nextTick } from 'vue';
+import { h, nextTick, provide, reactive } from 'vue';
 import { createPinia, setActivePinia } from 'pinia';
 
 import { ChoyMessage } from '../../composables/useChoyMessage';
@@ -9,6 +9,8 @@ import { replaceStoreFactory } from '@/web/web/stores/registry';
 import { flushPromises, fnRecorder, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
 import { ChoyDialog, ChoyDialogContent, ChoyDialogTitle } from '@/web/web/components/layout/choyDialog';
 import ChoyButton from '@/web/web/components/button/ChoyButton.vue';
+import ChoyFormView from '@/web/web/components/view/ChoyFormView.vue';
+import type { UiModelStore } from '@/web/web/stores/uiModelStore';
 import PropertyLabelTranslationsDialog from './ChoyPropertyLabelTranslationsDialog.vue';
 
 const DEFAULT_LANGS = [
@@ -16,18 +18,45 @@ const DEFAULT_LANGS = [
   { Code: 'zh_CN', Name: 'Chinese (Simplified)' },
 ];
 
-const INPUT_SEL = '[data-testid="choy-property-label-translation-input"]';
+const INPUT_SEL = 'input.choy-varchar-input';
 
 const origSuccess = ChoyMessage.success;
 const origError = ChoyMessage.error;
 
-function setInput(el: HTMLInputElement, value: string) {
-  el.value = value;
-  el.dispatchEvent(new Event('input', { bubbles: true }));
+type MountedDialog = ReturnType<typeof mountApp>;
+
+function unwrapRef<T>(v: T | { value: T } | undefined): T | undefined {
+  // Object(v) === v excludes null (typeof null === 'object').
+  if (typeof v !== 'object' || Object(v) !== v) return v as T | undefined;
+  const obj = v as object;
+  if ('value' in obj) return (obj as { value: T }).value;
+  return v as T;
 }
 
-function labelsOf(el: HTMLElement): string[] {
-  return Array.from(el.querySelectorAll('label')).map(n => (n.textContent || '').trim());
+function dialogStore(m: MountedDialog): UiModelStore | null | undefined {
+  const ss = m.setupState() as { formStore?: UiModelStore | { value: UiModelStore | null } };
+  return unwrapRef(ss.formStore) ?? null;
+}
+
+function dialogFieldCodes(m: MountedDialog): string[] {
+  const ss = m.setupState() as { fieldCodes?: string[] | { value: string[] } };
+  return unwrapRef(ss.fieldCodes) ?? [];
+}
+
+function labelsOf(m: MountedDialog): string[] {
+  const store = dialogStore(m);
+  return dialogFieldCodes(m).map(code => {
+    const meta = store?.getFieldMeta(code) as { string?: string } | undefined;
+    return String(meta?.string ?? code);
+  });
+}
+
+function fieldValueByCode(m: MountedDialog, code: string): string {
+  return String(dialogStore(m)?.getField(code) ?? '');
+}
+
+function setFieldByCode(m: MountedDialog, code: string, value: string): void {
+  dialogStore(m)?.setField(code, value);
 }
 
 describe('ChoyPropertyLabelTranslationsDialog', () => {
@@ -61,6 +90,59 @@ describe('ChoyPropertyLabelTranslationsDialog', () => {
         return () => h('div', { class: 'dialog-title' }, slots.default?.());
       },
     });
+    stubSfc(ChoyFormView as any, {
+      name: 'ChoyFormView',
+      props: {
+        store: Object,
+        initialValues: Object,
+        viewMode: String,
+        embedded: Boolean,
+        showHeader: Boolean,
+        showActions: Boolean,
+        submitHandler: Function,
+        cancelHandler: Function,
+      },
+      setup(props: any, { slots, attrs, expose }: any) {
+        const formData = reactive({ ...(props.initialValues || {}) });
+        const syncStoreField = (path: string, value: unknown) => {
+          (formData as any)[path] = value;
+          const store = props.store as UiModelStore | null | undefined;
+          store?.setField?.(path, value);
+        };
+        provide('form-root', {
+          get mode() {
+            return 'create';
+          },
+          get draft() {
+            return formData;
+          },
+          setField(path: string, value: unknown) {
+            syncStoreField(path, value);
+          },
+          getField(path: string) {
+            return (formData as any)[path];
+          },
+          onChange() {},
+        });
+        expose({
+          submit: () => {
+            const store = props.store as UiModelStore | null | undefined;
+            const merged = store?.getValues ? { ...formData, ...store.getValues() } : { ...formData };
+            return props.submitHandler?.({
+              formData: merged,
+              mode: 'create',
+              data: merged,
+              defaultSubmit: async () => null,
+            });
+          },
+          cancel: async () => {
+            await props.cancelHandler?.();
+          },
+        });
+        return () => h('div', { ...attrs, class: ['choy-form-view-stub', attrs.class] }, slots.default?.({ formData }));
+      },
+    });
+
     stubSfc(ChoyButton as any, {
       name: 'ChoyButton',
       props: {
@@ -111,6 +193,7 @@ describe('ChoyPropertyLabelTranslationsDialog', () => {
     restoreSfc(ChoyDialogContent as any);
     restoreSfc(ChoyDialogTitle as any);
     restoreSfc(ChoyButton as any);
+    restoreSfc(ChoyFormView as any);
   });
 
   function mountDialog(props: Record<string, unknown> = {}, on?: Record<string, (...args: any[]) => void>) {
@@ -128,13 +211,12 @@ describe('ChoyPropertyLabelTranslationsDialog', () => {
   test('loadRows with GetActiveLanguages success ensures en_US present', async () => {
     const m = mountDialog();
     await flushPromises();
-    const labels = labelsOf(m.el);
+    const labels = labelsOf(m);
     expect(labels[0]).toBe('English (US)');
     expect(labels).toContain('Chinese (Simplified)');
-    const inputs = m.qa(INPUT_SEL) as HTMLInputElement[];
-    expect(inputs.length).toBe(2);
-    expect(inputs[0]?.value).toBe('Hello');
-    expect(inputs[1]?.value).toBe('你好');
+    expect(dialogFieldCodes(m).length).toBe(2);
+    expect(fieldValueByCode(m, 'en_US')).toBe('Hello');
+    expect(fieldValueByCode(m, 'zh_CN')).toBe('你好');
     m.unmount();
   });
 
@@ -144,9 +226,9 @@ describe('ChoyPropertyLabelTranslationsDialog', () => {
     });
     const m = mountDialog({ translations: { en_US: 'Base' } });
     await flushPromises();
-    const labels = labelsOf(m.el);
+    const labels = labelsOf(m);
     expect(labels).toEqual(['English (US)']);
-    expect((m.q(INPUT_SEL) as HTMLInputElement)?.value).toBe('Base');
+    expect(fieldValueByCode(m, 'en_US')).toBe('Base');
     expect(messageError.calls.length).toBe(0);
     m.unmount();
   });
@@ -160,7 +242,7 @@ describe('ChoyPropertyLabelTranslationsDialog', () => {
       translations: { en_US: 'Hello', zh_CN: '你好', fr_FR: 'Bonjour' },
     });
     await flushPromises();
-    const labels = labelsOf(m.el);
+    const labels = labelsOf(m);
     expect(labels[0]).toBe('English (US)');
     expect(labels).toContain('zh_CN');
     expect(labels).toContain('fr_FR');
@@ -175,9 +257,8 @@ describe('ChoyPropertyLabelTranslationsDialog', () => {
       { onSaved, 'onUpdate:modelValue': onUpdate },
     );
     await flushPromises();
-    const inputs = m.qa(INPUT_SEL) as HTMLInputElement[];
-    setInput(inputs[0]!, '');
-    setInput(inputs[1]!, '');
+    setFieldByCode(m, 'en_US', '');
+    setFieldByCode(m, 'zh_CN', '');
     m.click('[data-testid="choy-property-label-translations-save"]');
     await nextTick();
     expect(onSaved.calls[0]?.[0]).toEqual({ en_US: '' });
@@ -192,8 +273,7 @@ describe('ChoyPropertyLabelTranslationsDialog', () => {
       { onSaved },
     );
     await flushPromises();
-    const inputs = m.qa(INPUT_SEL) as HTMLInputElement[];
-    setInput(inputs[1]!, '您好');
+    setFieldByCode(m, 'zh_CN', '您好');
     m.click('[data-testid="choy-property-label-translations-save"]');
     await nextTick();
     expect(onSaved.calls[0]?.[0]).toEqual({ en_US: 'Hello', zh_CN: '您好' });
@@ -233,12 +313,12 @@ describe('ChoyPropertyLabelTranslationsDialog', () => {
     (m.props as any).translations = { en_US: 'Second', zh_CN: '第二' };
     (m.props as any).modelValue = true;
     await flushPromises();
-    expect((m.qa(INPUT_SEL) as HTMLInputElement[])[0]?.value).toBe('Second');
+    expect(fieldValueByCode(m, 'en_US')).toBe('Second');
 
     releaseFirst();
     await flushPromises();
-    expect((m.qa(INPUT_SEL) as HTMLInputElement[])[0]?.value).toBe('Second');
-    expect((m.qa(INPUT_SEL) as HTMLInputElement[])[1]?.value).toBe('第二');
+    expect(fieldValueByCode(m, 'en_US')).toBe('Second');
+    expect(fieldValueByCode(m, 'zh_CN')).toBe('第二');
     m.unmount();
   });
 
@@ -307,7 +387,7 @@ describe('ChoyPropertyLabelTranslationsDialog', () => {
     ]);
     const m = mountDialog({ translations: {} });
     await flushPromises();
-    const labels = labelsOf(m.el);
+    const labels = labelsOf(m);
     expect(labels[0]).toBe('English (US)');
     expect(labels.indexOf('French')).toBeLessThan(labels.indexOf('German'));
     m.unmount();
@@ -349,17 +429,16 @@ describe('ChoyPropertyLabelTranslationsDialog', () => {
     const m = mountDialog({ translations: { zh_CN: '你好' } }, { onSaved });
     await flushPromises();
     const ss = m.setupState() as {
-      rows?: Array<{ code: string; label: string; value: string }> | { value: Array<{ code: string; label: string; value: string }> };
+      fieldCodes?: string[] | { value: string[] };
       handleSave?: () => void;
     };
-    // Mutate the live rows array (ref may be unwrapped on setupState).
-    const rows = Array.isArray((ss.rows as { value?: unknown } | undefined)?.value)
-      ? (ss.rows as { value: Array<{ code: string; label: string; value: string }> }).value
-      : (ss.rows as Array<{ code: string; label: string; value: string }>);
-    const baseIdx = rows.findIndex(r => r.code === 'en_US');
+    const codes = Array.isArray((ss.fieldCodes as { value?: unknown } | undefined)?.value)
+      ? (ss.fieldCodes as { value: string[] }).value
+      : (ss.fieldCodes as string[]);
+    const baseIdx = codes.findIndex(c => c === 'en_US');
     expect(baseIdx).toBeGreaterThanOrEqual(0);
-    rows.splice(baseIdx, 1);
-    expect(rows.some(r => r.code === 'en_US')).toBe(false);
+    codes.splice(baseIdx, 1);
+    expect(codes.some(c => c === 'en_US')).toBe(false);
     ss.handleSave?.();
     await nextTick();
     expect(onSaved.calls[0]?.[0]).toEqual({ zh_CN: '你好', en_US: '' });

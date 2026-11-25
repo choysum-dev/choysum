@@ -8,7 +8,7 @@ SPDX-License-Identifier: Apache-2.0
     <ChoyDialogContent
       class="import-panel-dialog"
       :show-close-button="false"
-      :dismissible="!busy"
+      :dismissible="dialogDismissible"
       @open-auto-focus.prevent
     >
       <ChoyDialogHeader class="text-start">
@@ -28,13 +28,29 @@ SPDX-License-Identifier: Apache-2.0
 
       <section v-else-if="step === 1" class="min-h-[180px]">
         <p class="mb-3 text-muted-foreground">{{ mappingHint }}</p>
-        <div v-for="row in mappingRows" :key="row.header" class="mb-2 grid grid-cols-[minmax(120px,1fr)_minmax(180px,1.4fr)] items-center gap-2">
-          <span>{{ row.header }}</span>
-          <select v-model="row.fieldPath" @change="onMappingChange">
-            <option value="">{{ sameAsHeaderLabel }}</option>
-            <option v-for="f in catalogOptions" :key="f.path" :value="f.path">{{ f.label }}</option>
-          </select>
-        </div>
+        <ChoyFormView
+          v-if="mappingFormStore"
+          ref="mappingFormViewRef"
+          class="import-panel-mapping-form flex flex-col gap-2"
+          :store="mappingFormStore"
+          view-mode="edit"
+          v-bind="embeddedFormChrome"
+          :cancel-handler="cancelHandler"
+          @change="onMappingFormChange"
+        >
+          <template #default>
+            <ChoySelectionField
+              v-for="row in mappingRows"
+              :key="row.header"
+              :store="mappingFormStore"
+              :prop="mappingPropForHeader(row.header)"
+              orientation="vertical"
+              buffer-strategy="live"
+              :clearable="true"
+              :data-testid="`import-map-${mappingPropForHeader(row.header)}`"
+            />
+          </template>
+        </ChoyFormView>
         <div v-if="previewReport" role="alert" class="mt-3">{{ previewSummary }}</div>
         <table v-if="previewMessages.length" class="mt-3">
           <thead>
@@ -65,7 +81,7 @@ SPDX-License-Identifier: Apache-2.0
       </section>
 
       <ChoyDialogFooter>
-        <ChoyButton size="sm" variant="outline" :disabled="busy" @click="visible = false">{{ cancelLabel }}</ChoyButton>
+        <ChoyButton size="sm" variant="outline" :disabled="busy" @click="onFooterCancel">{{ cancelLabel }}</ChoyButton>
         <ChoyActionButton
           v-if="step === 0"
           size="sm"
@@ -86,7 +102,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, ref, shallowRef, watch } from 'vue';
 import {
   ChoyDialog,
   ChoyDialogContent,
@@ -97,6 +113,14 @@ import {
 import ChoyButton from '@/web/web/components/button/ChoyButton.vue';
 import ChoyActionButton from '@/web/web/components/button/ChoyActionButton.vue';
 import ChoyStepper, { type ChoyStepperStep } from '@/web/web/components/layout/ChoyStepper.vue';
+import ChoyFormView from '@/web/web/components/view/ChoyFormView.vue';
+import ChoySelectionField from '@/web/web/components/field/ChoySelectionField.vue';
+import {
+  useChoyFormDialogShell,
+  type ChoyFormDialogViewApi,
+} from '@/web/web/composables/useChoyFormDialogShell';
+import { createUiModelStore, type UiModelStore } from '@/web/web/stores/uiModelStore';
+import type { SelectionItem } from '@/web/web/stores/modelStore';
 type UploadFile = { raw?: File | null; name?: string };
 import {
   describeImportFields,
@@ -128,13 +152,20 @@ const { _t } = createTranslate('web', { scope: 'web/import/ImportPanel' });
 
 const visible = defineModel<boolean>({ default: false });
 
+function closeImportPanel(): void {
+  visible.value = false;
+}
+
+const mappingFormViewRef = ref<ChoyFormDialogViewApi | null>(null);
+const mappingFormStore = shallowRef<UiModelStore | null>(null);
+const mappingPropByHeader = ref<Record<string, string>>({});
+let mappingStoreSeq = 0;
+
 const title = _t('Import');
 const defaultUploadHint = _t('Upload a UTF-8 CSV. Map columns to importable fields from the catalog.');
 const uploadDropText = _t('Drop CSV here or click to browse');
 const defaultFieldsLabel = _t('Suggested columns');
 const mappingHint = _t('Map each CSV column to an importable field. Leave blank to use the header as the field path.');
-const csvColumnLabel = _t('CSV column');
-const importFieldLabel = _t('Import field');
 const sameAsHeaderLabel = _t('Same as header');
 const rowLabel = _t('Row');
 const fieldLabel = _t('Field');
@@ -158,6 +189,19 @@ const stepperSteps = computed<ChoyStepperStep[]>(() => [
 ]);
 const stepValue = computed(() => stepperSteps.value[step.value]?.value ?? 'upload');
 const busy = ref(false);
+
+const {
+  embeddedFormChrome,
+  cancelHandler,
+  onFooterCancel,
+  dismissible: dialogDismissible,
+} = useChoyFormDialogShell({
+  onClose: closeImportPanel,
+  formViewRef: mappingFormViewRef,
+  saving: busy,
+  skipFormCancel: () => !mappingFormStore.value || step.value !== 1,
+});
+
 const selectedFile = ref<File | null>(null);
 const sourceRef = ref('');
 const headers = ref<string[]>([]);
@@ -235,7 +279,119 @@ function clearUploadDerivedState() {
   sourceRef.value = '';
   headers.value = [];
   mappingRows.value = [];
+  mappingFormStore.value = null;
+  mappingPropByHeader.value = {};
   previewReport.value = null;
+}
+
+function sanitizeHeaderFieldName(header: string, used: Set<string>): string {
+  let base = String(header || '')
+    .trim()
+    .replace(/[^\w]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .replace(/_+/g, '_');
+  if (!base) {
+    base = 'column';
+  }
+  if (/^\d/.test(base)) {
+    base = `c_${base}`;
+  }
+  let name = base;
+  let seq = 2;
+  while (used.has(name)) {
+    name = `${base}_${seq}`;
+    seq += 1;
+  }
+  used.add(name);
+  return name;
+}
+
+function mappingSelectionItems(): SelectionItem[] {
+  const items: SelectionItem[] = [{ value: '', label: sameAsHeaderLabel }];
+  for (const opt of catalogOptions.value) {
+    items.push({ value: opt.path, label: opt.label });
+  }
+  return items;
+}
+
+function mappingPropForHeader(header: string): string {
+  return mappingPropByHeader.value[header] ?? '';
+}
+
+/** Prefer FormView draft; fall back to UiModel store (read-only — no store writes). */
+function mappingFormValues(): Record<string, unknown> {
+  const draft = mappingFormViewRef.value?.getFormData?.() as Record<string, unknown> | undefined;
+  if (draft && typeof draft === 'object') {
+    return draft;
+  }
+  return mappingFormStore.value?.getValues() ?? {};
+}
+
+/** Mirror FormView draft into the UiModel store so store-backed readers stay aligned. */
+function syncStoreFromDraft(): void {
+  const draft = mappingFormViewRef.value?.getFormData?.() as Record<string, unknown> | undefined;
+  const store = mappingFormStore.value;
+  if (!draft || typeof draft !== 'object' || !store) return;
+  for (const name of store.fieldNames) {
+    if (Object.prototype.hasOwnProperty.call(draft, name)) {
+      store.setField(name, draft[name]);
+    }
+  }
+}
+
+function syncMappingRowsFromStore(): void {
+  const store = mappingFormStore.value;
+  if (!store) {
+    return;
+  }
+  const values = mappingFormValues();
+  for (const row of mappingRows.value) {
+    const prop = mappingPropForHeader(row.header);
+    if (!prop) {
+      continue;
+    }
+    row.fieldPath = String(values[prop] ?? '').trim();
+  }
+}
+
+function onMappingFormChange() {
+  syncStoreFromDraft();
+  syncMappingRowsFromStore();
+  onMappingChange();
+}
+
+function rebuildMappingFormStore(): void {
+  if (!mappingRows.value.length) {
+    mappingFormStore.value = null;
+    mappingPropByHeader.value = {};
+    return;
+  }
+  const used = new Set<string>();
+  const propByHeader: Record<string, string> = {};
+  const selection = mappingSelectionItems();
+  const fields = mappingRows.value.map(row => {
+    const prop = sanitizeHeaderFieldName(row.header, used);
+    propByHeader[row.header] = prop;
+    return {
+      name: prop,
+      label: row.header,
+      type: 'selection' as const,
+      selection,
+    };
+  });
+  const initialValues: Record<string, unknown> = {};
+  for (const row of mappingRows.value) {
+    const prop = propByHeader[row.header];
+    if (prop) {
+      initialValues[prop] = row.fieldPath ?? '';
+    }
+  }
+  mappingPropByHeader.value = propByHeader;
+  mappingFormStore.value = createUiModelStore({
+    storeId: `ui-model:import-mapping:${++mappingStoreSeq}`,
+    fields,
+    initialValues,
+  });
 }
 
 function onFileSelected(uploadFile: UploadFile) {
@@ -313,6 +469,46 @@ function onMappingChange() {
   previewReport.value = null;
 }
 
+watch(
+  () => {
+    const store = mappingFormStore.value;
+    if (!store) {
+      return null;
+    }
+    return { store, values: store.fieldNames.map(name => store.getField(name)) };
+  },
+  (next, prev) => {
+    if (!next) return;
+    syncMappingRowsFromStore();
+    // Store swap is a rebuild (new headers), not a user mapping edit.
+    if (prev?.store === next.store) {
+      onMappingChange();
+    }
+  },
+);
+
+watch(catalogOptions, (_next, prev) => {
+  const store = mappingFormStore.value;
+  if (!store) {
+    return;
+  }
+  const selection = mappingSelectionItems();
+  const valid = new Set(selection.map(item => String(item.value ?? '')));
+  for (const name of store.fieldNames) {
+    store.setFieldSelection(name, selection);
+    const current = String(store.getField(name) ?? '');
+    if (current && !valid.has(current)) {
+      store.setField(name, '');
+    }
+  }
+  // Keep mappingRows.fieldPath in sync after clearing stale store values.
+  syncMappingRowsFromStore();
+  // Skip the first run (prev undefined): only invalidate after a real catalog refresh.
+  if (prev !== undefined) {
+    previewReport.value = null;
+  }
+});
+
 async function loadCatalog() {
   catalogError.value = '';
   catalogFields.value = [];
@@ -350,20 +546,16 @@ function resetState() {
   sourceRef.value = '';
   headers.value = [];
   mappingRows.value = [];
+  mappingFormStore.value = null;
+  mappingPropByHeader.value = {};
   previewReport.value = null;
   importDone.value = false;
   importError.value = '';
 }
 
-function handleBeforeClose(done: () => void) {
-  if (busy.value) {
-    return;
-  }
-  done();
-}
-
 async function uploadAndPreview() {
   if (!selectedFile.value) return;
+  syncMappingRowsFromStore();
   const token = sessionToken;
   busy.value = true;
   importError.value = '';
@@ -388,7 +580,9 @@ async function uploadAndPreview() {
       if (!isActiveSession(token)) return;
       headers.value = headerResp.headers ?? [];
       mappingRows.value = buildMappingRows(headers.value);
+      rebuildMappingFormStore();
     }
+    syncMappingRowsFromStore();
     const previewResp = await previewImport(
       {
         targetModel: props.model,
@@ -417,6 +611,7 @@ async function uploadAndPreview() {
 
 async function commitImport() {
   if (!sourceRef.value) return;
+  syncMappingRowsFromStore();
   const token = sessionToken;
   busy.value = true;
   importError.value = '';

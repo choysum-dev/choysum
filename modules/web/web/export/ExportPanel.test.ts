@@ -3,6 +3,9 @@
 
 import { createApp } from 'vue';
 import { flushPromises } from '@/web/web/__tests__/mountApp';
+import { ensureAbortController } from '@/core/web/testing/qjs_polyfills';
+
+ensureAbortController();
 
 test('ExportPanel smoke: mounts with minimal props', async () => {
   const { default: Comp } = await import('./ExportPanel.vue');

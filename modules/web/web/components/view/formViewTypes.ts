@@ -41,6 +41,8 @@ export type FormSubmitOutcome<T extends BaseModel> = {
 export type FormChildSubmitApi = {
   submit: () => Promise<unknown>;
   getFormData: () => unknown;
+  /** True when the nested form draft differs from its baseline. */
+  isDirty?: () => boolean;
 };
 
 export type FormChildSubmitApiRegistration = {

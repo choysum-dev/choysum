@@ -8,29 +8,46 @@ SPDX-License-Identifier: Apache-2.0
     <ChoyDialogContent
       class="choy-field-company-values-dialog max-w-xl"
       :show-close-button="false"
-      :dismissible="!saving"
+      :dismissible="dismissible"
       @open-auto-focus.prevent
     >
       <ChoyDialogHeader class="text-start">
         <ChoyDialogTitle>{{ dialogTitle }}</ChoyDialogTitle>
       </ChoyDialogHeader>
       <div class="choy-field-company-values-dialog__body min-h-[120px]" :aria-busy="loading || undefined">
-        <form class="choy-field-company-values-dialog__form flex flex-col gap-3.5" @submit.prevent>
-          <div v-for="row in rows" :key="row.companyId" class="choy-field-company-values-dialog__row flex items-start gap-3">
-            <label class="choy-field-company-values-dialog__label min-w-28 shrink-0 text-start leading-8 text-foreground">{{ row.label }}</label>
-            <div class="choy-field-company-values-dialog__control min-w-0 flex-1">
-              <ChoyInput
-                v-model="row.value"
-                class="choy-field-company-values-dialog__input min-h-8 w-full"
-                :maxlength="maxLength ?? undefined"
-              /> 
+        <ChoyFormView
+          v-if="formStore"
+          ref="formViewRef"
+          class="choy-field-company-values-dialog__form flex flex-col gap-3.5"
+          :store="formStore"
+          view-mode="create"
+          v-bind="embeddedFormChrome"
+          :initial-values="formInitialValues"
+          :submit-handler="onSubmit"
+          :cancel-handler="cancelHandler"
+        >
+          <template #default>
+            <div
+              v-for="companyId in fieldCodes"
+              :key="companyId"
+              class="choy-field-company-values-dialog__row"
+            >
+              <ChoyVarcharField
+                :store="formStore"
+                :prop="companyId"
+                orientation="horizontal"
+                buffer-strategy="live"
+                class="choy-field-company-values-dialog__field"
+              />
             </div>
-          </div>
-        </form>
+          </template>
+        </ChoyFormView>
       </div>
       <ChoyDialogFooter>
-        <ChoyButton type="button" variant="outline" :disabled="saving" @click="visible = false">{{ _t('Cancel') }}</ChoyButton>
-        <ChoyActionButton type="button" :busy="saving" @execute="handleSave">
+        <ChoyButton type="button" variant="outline" :disabled="saving" @click="onFooterCancel">{{
+          _t('Cancel')
+        }}</ChoyButton>
+        <ChoyActionButton type="button" :busy="saving" @execute="onFooterSave">
           {{ _t('Save company values') }}
         </ChoyActionButton>
       </ChoyDialogFooter>
@@ -39,7 +56,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, ref, shallowRef, watch } from 'vue';
 import {
   ChoyDialog,
   ChoyDialogContent,
@@ -49,11 +66,14 @@ import {
 } from '@/web/web/components/layout/choyDialog';
 import ChoyButton from '@/web/web/components/button/ChoyButton.vue';
 import ChoyActionButton from '@/web/web/components/button/ChoyActionButton.vue';
-import ChoyInput from '@/web/web/components/vendor/ui/input/Input.vue';
+import ChoyFormView from '@/web/web/components/view/ChoyFormView.vue';
+import ChoyVarcharField from '@/web/web/components/field/ChoyVarcharField.vue';
+import { useChoyFormDialogShell, type ChoyFormDialogViewApi } from '@/web/web/composables/useChoyFormDialogShell';
 import { ChoyMessage } from '../../composables/useChoyMessage';
 import { useAuthStore } from '@/auth/web/stores/auth';
 import { createTranslate } from '@/web/web/i18n';
 import { createModelStore } from '@/web/web/stores/registry';
+import { createUiModelStore, type UiModelStore } from '@/web/web/stores/uiModelStore';
 import type { ModelStore } from '@/web/web/stores/modelStore';
 
 defineOptions({ name: 'ChoyFieldCompanyValuesDialog' });
@@ -64,6 +84,10 @@ export type ChoyCompanyValueRow = {
   value: string;
   initial: string;
   existed: boolean;
+};
+
+type CompanyValueRowMeta = Pick<ChoyCompanyValueRow, 'initial' | 'existed'> & {
+  label: string;
 };
 
 type CompanyValueRow = ChoyCompanyValueRow;
@@ -92,9 +116,26 @@ const emit = defineEmits<{
 const { _t } = createTranslate('web', { scope: 'web/components/field/FieldCompanyValuesDialog' });
 const companyStore = createModelStore('base.Company');
 
+const formViewRef = ref<ChoyFormDialogViewApi | null>(null);
+const formStore = shallowRef<UiModelStore | null>(null);
+const formInitialValues = shallowRef<Record<string, unknown>>({});
+const fieldCodes = ref<string[]>([]);
+const rowMeta = ref(new Map<string, CompanyValueRowMeta>());
+
 const visible = computed({
   get: () => props.modelValue,
   set: v => emit('update:modelValue', v),
+});
+
+function closeDialog(): void {
+  visible.value = false;
+}
+
+const saving = ref(false);
+const { embeddedFormChrome, cancelHandler, onFooterSave, onFooterCancel, dismissible } = useChoyFormDialogShell({
+  onClose: closeDialog,
+  formViewRef,
+  saving,
 });
 
 const dialogTitle = computed(() => {
@@ -103,8 +144,6 @@ const dialogTitle = computed(() => {
 });
 
 const loading = ref(false);
-const saving = ref(false);
-const rows = ref<CompanyValueRow[]>([]);
 
 function asTrimmedText(value: unknown): string {
   if (value == null) return '';
@@ -183,6 +222,41 @@ function resolveRowCompanyIds(map: Record<string, unknown>, auth: ReturnType<typ
   return uniqIds([...auth.enabledCompanyIds, ...mapKeys]);
 }
 
+function clearForm(): void {
+  formStore.value = null;
+  formInitialValues.value = {};
+  fieldCodes.value = [];
+  rowMeta.value = new Map();
+}
+
+function openFormFromRows(ordered: CompanyValueRow[]): void {
+  const initialValues: Record<string, string> = {};
+  const meta = new Map<string, CompanyValueRowMeta>();
+  const codes: string[] = [];
+  const fields: Array<{ name: string; label: string; type: 'varchar'; size?: number }> = [];
+
+  for (const row of ordered) {
+    codes.push(row.companyId);
+    initialValues[row.companyId] = row.value;
+    meta.set(row.companyId, { initial: row.initial, existed: row.existed, label: row.label });
+    fields.push({
+      name: row.companyId,
+      label: row.label,
+      type: 'varchar',
+      ...(props.maxLength != null ? { size: props.maxLength } : {}),
+    });
+  }
+
+  fieldCodes.value = codes;
+  rowMeta.value = meta;
+  formInitialValues.value = { ...initialValues };
+  formStore.value = createUiModelStore({
+    storeId: `ui-model:field-company-values:${props.recordId}:${props.fieldName}`,
+    fields,
+    initialValues,
+  });
+}
+
 async function loadRows() {
   loading.value = true;
   try {
@@ -228,10 +302,10 @@ async function loadRows() {
 
     const ordered = Array.from(byId.values());
     ordered.sort((a, b) => a.label.localeCompare(b.label));
-    rows.value = ordered;
+    openFormFromRows(ordered);
   } catch (err: unknown) {
     ChoyMessage.error(formatCaughtError(err, _t('Failed to load company values')));
-    rows.value = [];
+    clearForm();
   } finally {
     loading.value = false;
   }
@@ -245,7 +319,10 @@ watch(
   () => props.modelValue,
   (open, wasOpen) => {
     if (open && !wasOpen) void onOpened();
-    if (!open && wasOpen) emit('closed');
+    if (!open && wasOpen) {
+      clearForm();
+      emit('closed');
+    }
   },
   { immediate: true },
 );
@@ -283,20 +360,21 @@ function formatCaughtError(err: unknown, fallback: string): string {
   return fallback;
 }
 
-async function handleSave() {
+async function performSave(formData: Record<string, unknown>): Promise<boolean> {
   saving.value = true;
   try {
     const patch: Record<string, unknown | false> = {};
-    for (const row of rows.value) {
-      const next = row.value;
-      if (row.existed && next === row.initial) continue;
-      if (!row.existed && next === '') continue;
-      // Clearing any company key removes it (no undeletable base; D12 uses false for delete).
-      if (row.existed && next === '') {
-        patch[row.companyId] = false;
+    for (const companyId of fieldCodes.value) {
+      const meta = rowMeta.value.get(companyId);
+      if (!meta) continue;
+      const next = String(formData[companyId] ?? '');
+      if (meta.existed && next === meta.initial) continue;
+      if (!meta.existed && next === '') continue;
+      if (meta.existed && next === '') {
+        patch[companyId] = false;
         continue;
       }
-      patch[row.companyId] = coercePatchValue(next);
+      patch[companyId] = coercePatchValue(next);
     }
 
     if (Object.keys(patch).length) {
@@ -307,12 +385,31 @@ async function handleSave() {
     const nextValue = refreshed == null ? undefined : refreshed[props.fieldName];
     emit('saved', nextValue == null ? null : nextValue);
     ChoyMessage.success(_t('Company values saved'));
-    visible.value = false;
+    closeDialog();
+    return true;
   } catch (err: unknown) {
     ChoyMessage.error(formatCaughtError(err, _t('Failed to save company values')));
+    return false;
   } finally {
     saving.value = false;
   }
 }
-</script>
 
+async function onSubmit(ctx: { formData: Record<string, unknown> }) {
+  const ok = await performSave(ctx.formData || {});
+  if (!ok) {
+    throw new Error(_t('Failed to save company values'));
+  }
+  return { handled: true, skipSuccessMessage: true };
+}
+
+defineExpose({
+  formatCaughtError,
+  coercePatchValue,
+  resolveDraftCompanyId,
+  readAuthCompanyMeta,
+  fieldCodes,
+  rowMeta,
+  formStore,
+});
+</script>

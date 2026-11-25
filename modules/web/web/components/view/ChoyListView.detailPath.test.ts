@@ -10,6 +10,7 @@ import ChoyPagination from './ChoyPagination.vue';
 import ChoyTableHost from '@/web/web/components/internal/ChoyTableHost.vue';
 import ChoyTableColumn from '@/web/web/components/table/ChoyTableColumn.vue';
 import ListInlineEditScope from '@/web/web/components/view/ListInlineEditScope.vue';
+import { choyListPickerChromeProps } from '@/web/web/composables/choyListPickerChrome';
 import { useRecordSetStore } from '@/web/web/stores/recordSetStore';
 
 const createFeStubRouter = (VueRouter as any).createFeStubRouter as (overrides?: object) => {
@@ -539,6 +540,66 @@ test('detailPath without router emits row-click (chrome-style mount)', async () 
   });
   await flushPromises();
   expect(clicks.length).toBe(1);
+  mounted.unmount();
+  restoreSfc(ChoyTableHost);
+  restoreSfc(ChoyTableColumn);
+  restoreSfc(ChoyPagination);
+  restoreSfc(ListInlineEditScope);
+});
+
+test('picker chrome canOpenDetail survives domain detail-path override (no route push)', async () => {
+  const pinia = createPinia();
+  setActivePinia(pinia);
+  const { router } = createFeStubRouter({
+    route: { path: '/base/countries', fullPath: '/base/countries' },
+  });
+  const pushes: unknown[] = [];
+  const origPush = router.push.bind(router);
+  router.push = (to: unknown) => {
+    pushes.push(to);
+    return origPush(to);
+  };
+
+  stubSfc(ChoyTableHost, {
+    name: 'ChoyTableHost',
+    emits: ['row-click'],
+    setup: () => () => h('div', { 'data-stub': 'ChoyTableHost' }),
+  });
+  stubSfc(ChoyTableColumn, { name: 'ChoyTableColumn', setup: () => () => null });
+  stubSfc(ChoyPagination, {
+    name: 'ChoyPagination',
+    setup: () => () => h('div', { 'data-stub': 'Pagination' }),
+  });
+  stubSfc(ListInlineEditScope, {
+    name: 'ListInlineEditScope',
+    setup: (_p: any, { slots }: any) => () => h('div', slots.default?.()),
+  });
+
+  // Domain ListViews (e.g. CountryListView) bind detail-path after $attrs, so an
+  // undefined chrome detailPath is overridden. canOpenDetail:false must still win.
+  // clickToSelect:false isolates that gate from the picker select short-circuit.
+  const chrome = choyListPickerChromeProps({ selectionMode: 'single' });
+  const mounted = mountApp(ChoyListView as any, {
+    props: {
+      store: makeStore(),
+      ...chrome,
+      detailPath: '/base/countries/:id',
+      clickToSelect: false,
+      showHeader: false,
+      showPaginate: false,
+    },
+    plugins: [pinia, router as any],
+  });
+  await flushPromises();
+
+  await (mounted.setupState() as any).onRowClick({
+    rowData: { kind: 'record', key: 'a', payload: { Id: 'a', Name: 'A' } },
+    rowIndex: 0,
+    rowKey: 'a',
+  });
+  await flushPromises();
+
+  expect(pushes).toEqual([]);
   mounted.unmount();
   restoreSfc(ChoyTableHost);
   restoreSfc(ChoyTableColumn);

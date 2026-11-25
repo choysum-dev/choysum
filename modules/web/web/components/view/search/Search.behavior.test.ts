@@ -1,4 +1,4 @@
-import { h, nextTick, reactive, toRef, watch } from 'vue';
+import { h, inject, nextTick, provide, reactive, toRef, watch } from 'vue';
 import { ChoyMessage } from '../../../composables/useChoyMessage';
 import {
   resolveConfirmChoy,
@@ -10,6 +10,10 @@ import { flushPromises, fnRecorder, mountApp, restoreSfc, stubSfc } from '@/web/
 import Search from './Search.vue';
 import SearchFilter from './SearchFilter.vue';
 import ChoyButton from '@/web/web/components/button/ChoyButton.vue';
+import ChoyFormView from '@/web/web/components/view/ChoyFormView.vue';
+import ChoyVarcharField from '@/web/web/components/field/ChoyVarcharField.vue';
+import ChoyBooleanField from '@/web/web/components/field/ChoyBooleanField.vue';
+import type { UiModelStore } from '@/web/web/stores/uiModelStore';
 import { ChoyDialog, ChoyDialogContent, ChoyDialogTitle } from '@/web/web/components/layout/choyDialog';
 import Popover from '@/web/web/components/vendor/ui/popover/Popover.vue';
 import PopoverContent from '@/web/web/components/vendor/ui/popover/PopoverContent.vue';
@@ -50,6 +54,9 @@ const stubbed = [
   Popover,
   PopoverContent,
   SearchFilter,
+  ChoyFormView,
+  ChoyVarcharField,
+  ChoyBooleanField,
 ];
 
 function installConfirmAutoResolve() {
@@ -152,6 +159,103 @@ function installEpStubs() {
         ]);
     },
   });
+  stubSfc(ChoyFormView as any, {
+    name: 'ChoyFormView',
+    props: {
+      store: Object,
+      initialValues: Object,
+      viewMode: String,
+      embedded: Boolean,
+      showHeader: Boolean,
+      showActions: Boolean,
+      submitHandler: Function,
+      cancelHandler: Function,
+    },
+    setup(props: any, { slots, attrs, expose }: any) {
+      const formData = reactive({
+        ...(props.store?.getValues?.() || {}),
+        ...(props.initialValues || {}),
+      });
+      const syncStoreField = (path: string, value: unknown) => {
+        (formData as any)[path] = value;
+        const store = props.store as UiModelStore | null | undefined;
+        store?.setField?.(path, value);
+      };
+      provide('form-root', {
+        get mode() {
+          return 'create';
+        },
+        get draft() {
+          return formData;
+        },
+        setField(path: string, value: unknown) {
+          syncStoreField(path, value);
+        },
+        getField(path: string) {
+          return (formData as any)[path];
+        },
+        onChange() {},
+      });
+      expose({
+        submit: () => {
+          const store = props.store as UiModelStore | null | undefined;
+          const merged = store?.getValues ? { ...formData, ...store.getValues() } : { ...formData };
+          return props.submitHandler?.({
+            formData: merged,
+            mode: 'create',
+            data: merged,
+            defaultSubmit: async () => null,
+          });
+        },
+        cancel: async () => {
+          await props.cancelHandler?.();
+        },
+      });
+      return () => h('div', { ...attrs, class: ['choy-form-view-stub', attrs.class] }, slots.default?.({ formData }));
+    },
+  });
+  stubSfc(ChoyVarcharField as any, {
+    name: 'ChoyVarcharField',
+    props: { store: Object, prop: String },
+    setup(props: any, { attrs }: any) {
+      const form = inject<any>('form-root');
+      return () =>
+        h('input', {
+          ...attrs,
+          class: ['fav-name', attrs.class],
+          value: String(form?.getField?.(props.prop) ?? ''),
+          onInput: (e: Event) =>
+            form?.setField?.(props.prop, (e.target as HTMLInputElement).value),
+        });
+    },
+  });
+  stubSfc(ChoyBooleanField as any, {
+    name: 'ChoyBooleanField',
+    props: { store: Object, prop: String },
+    setup(props: any, { attrs }: any) {
+      const form = inject<any>('form-root');
+      const store = props.store as UiModelStore | undefined;
+      const meta = store?.getFieldMeta?.(props.prop) as { string?: string } | undefined;
+      const label = String(meta?.string ?? props.prop);
+      return () =>
+        h(
+          'label',
+          { class: 'inline-flex items-center gap-2 text-sm', ...attrs },
+          [
+            h('input', {
+              type: 'checkbox',
+              checked: form?.getField?.(props.prop) === true,
+              onClick: (e: Event) => {
+                const next = form?.getField?.(props.prop) !== true;
+                form?.setField?.(props.prop, next);
+                (e.target as HTMLInputElement).checked = next;
+              },
+            }),
+            ` ${label}`,
+          ],
+        );
+    },
+  });
 }
 
 function restoreEpStubs() {
@@ -216,6 +320,36 @@ function setInputValue(el: Element | null, value: string) {
   const input = el as HTMLInputElement;
   input.value = value;
   input.dispatchEvent(new Event('input', { bubbles: true }));
+}
+
+function saveFavoriteNameInput(m: { q: (s: string) => Element | null }): HTMLInputElement | null {
+  const host = m.q('[data-testid=choy-search-fav-name]');
+  if (host?.tagName === 'INPUT') return host as HTMLInputElement;
+  if (host) {
+    const inner = host.querySelector('input');
+    if (inner) return inner as HTMLInputElement;
+  }
+  return (m.q('.fav-name') as HTMLInputElement | null) ?? null;
+}
+
+async function openSaveFavoriteDialog(m: {
+  qa: (s: string) => Element[];
+  q: (s: string) => Element | null;
+}): Promise<void> {
+  const saveOpen = btnByText(m, 'Save current filters');
+  (saveOpen as HTMLElement).click();
+  await flushPromises();
+}
+
+function saveFavoriteStore(m: { setupState: () => unknown }): UiModelStore | null {
+  const raw = (m.setupState() as { saveFavoriteFormStore?: UiModelStore | { value: UiModelStore | null } })
+    .saveFavoriteFormStore;
+  if (!raw) return null;
+  // Object(raw) === raw excludes null (typeof null === 'object').
+  if (typeof raw === 'object' && Object(raw) === raw && 'value' in raw) {
+    return (raw as { value: UiModelStore | null }).value;
+  }
+  return raw as UiModelStore;
 }
 
 describe('OSearch behavior', () => {
@@ -823,20 +957,18 @@ describe('OSearch behavior', () => {
       typeof st.menuVisible === 'boolean' ? st.menuVisible : st.menuVisible?.value;
     expect(menuAfterDelete).toBe(true);
 
-    const saveOpen = btnByText(m, 'Save current filters');
-    (saveOpen as HTMLElement).click();
-    await nextTick();
+    await openSaveFavoriteDialog(m);
     expect(m.q('[role="dialog"]')).toBeTruthy();
 
     const saveBtn = m.qa('button').find(b => (b.textContent || '').trim() === 'Save');
-    setInputValue(((m.q('[role="dialog"]') as HTMLElement | null)?.querySelector('input') as HTMLInputElement | null), '');
+    setInputValue(saveFavoriteNameInput(m), '');
     await nextTick();
     (saveBtn as HTMLElement).click();
     await nextTick();
     expect(msgWarning.calls.length).toBeGreaterThan(0);
     expect(savedFiltersApi.saveCurrent.calls.length).toBe(0);
 
-    setInputValue(((m.q('[role="dialog"]') as HTMLElement | null)?.querySelector('input') as HTMLInputElement | null), 'NewFav');
+    setInputValue(saveFavoriteNameInput(m), 'NewFav');
     await nextTick();
     (saveBtn as HTMLElement).click();
     await flushPromises();
@@ -906,10 +1038,8 @@ describe('OSearch behavior', () => {
     savedFiltersApi.saveCurrent.mockImplementation(async () => {
       throw 'save blew up';
     });
-    const saveOpen = btnByText(m, 'Save current filters');
-    (saveOpen as HTMLElement).click();
-    await nextTick();
-    setInputValue(((m.q('[role="dialog"]') as HTMLElement | null)?.querySelector('input') as HTMLInputElement | null), 'FailFav');
+    await openSaveFavoriteDialog(m);
+    setInputValue(saveFavoriteNameInput(m), 'FailFav');
     await nextTick();
     const saveBtn = m.qa('button').find(b => (b.textContent || '').trim() === 'Save');
     (saveBtn as HTMLElement).click();
@@ -944,10 +1074,8 @@ describe('OSearch behavior', () => {
     savedFiltersApi.saveCurrent.mockImplementation(async () => {
       throw new Error('save failed');
     });
-    const saveOpen = btnByText(m, 'Save current filters');
-    (saveOpen as HTMLElement).click();
-    await nextTick();
-    setInputValue(((m.q('[role="dialog"]') as HTMLElement | null)?.querySelector('input') as HTMLInputElement | null), 'ErrFav');
+    await openSaveFavoriteDialog(m);
+    setInputValue(saveFavoriteNameInput(m), 'ErrFav');
     await nextTick();
     const saveBtn = m.qa('button').find(b => (b.textContent || '').trim() === 'Save');
     (saveBtn as HTMLElement).click();
@@ -966,10 +1094,8 @@ describe('OSearch behavior', () => {
     );
     const m = mountSearch();
     await flushPromises();
-    const saveOpen = btnByText(m, 'Save current filters');
-    (saveOpen as HTMLElement).click();
-    await nextTick();
-    setInputValue(((m.q('[role="dialog"]') as HTMLElement | null)?.querySelector('input') as HTMLInputElement | null), 'Once');
+    await openSaveFavoriteDialog(m);
+    setInputValue(saveFavoriteNameInput(m), 'Once');
     await nextTick();
     const saveBtn = m.qa('button').find(b => (b.textContent || '').trim() === 'Save') as HTMLElement;
     saveBtn.click();
@@ -1243,34 +1369,87 @@ describe('OSearch behavior', () => {
   });
 
   function favCheckboxRoot(labelEl: Element): HTMLElement {
-    return labelEl.querySelector('[data-slot="checkbox"]') as HTMLElement;
+    const slot = labelEl.querySelector('[data-slot="checkbox"]');
+    if (slot) return slot as HTMLElement;
+    const walk = (root: Element): HTMLInputElement | null => {
+      const children = ((root as unknown as { children?: Element[] }).children) || [];
+      for (const child of children) {
+        if (child.tagName === 'INPUT' && (child as HTMLInputElement).type === 'checkbox') {
+          return child as HTMLInputElement;
+        }
+        const nested = walk(child);
+        if (nested) return nested;
+      }
+      return null;
+    };
+    const input = walk(labelEl);
+    return (input || labelEl) as HTMLElement;
   }
 
   function favCheckboxOn(labelEl: Element): boolean {
     const el = favCheckboxRoot(labelEl);
-    return (
-      el?.getAttribute('data-state') === 'checked' ||
-      el?.getAttribute('aria-checked') === 'true'
-    );
+    if (el?.getAttribute('data-state') === 'checked' || el?.getAttribute('aria-checked') === 'true') {
+      return true;
+    }
+    return (el as HTMLInputElement)?.checked === true;
   }
 
-  async function setFavCheckbox(labelEl: Element, on: boolean): Promise<void> {
+  function favPropFromLabel(labelEl: Element): 'IsDefault' | 'Shared' | null {
+    const text = labelEl.textContent || '';
+    if (text.includes('Use by default')) return 'IsDefault';
+    if (text.includes('Share with all users')) return 'Shared';
+    return null;
+  }
+
+  async function setFavCheckbox(m: { setupState: () => unknown }, labelEl: Element, on: boolean): Promise<void> {
+    const prop = favPropFromLabel(labelEl);
+    const store = saveFavoriteStore(m);
+    if (prop && store) {
+      if (store.getField(prop) === on) return;
+      store.setField(prop, on);
+      await nextTick();
+      return;
+    }
     if (favCheckboxOn(labelEl) === on) return;
     favCheckboxRoot(labelEl).click();
     await nextTick();
   }
 
+  test('closeSaveFavoriteDialog and onFooterCancel close the favorite dialog', async () => {
+    const m = mountSearch();
+    await flushPromises();
+    await openSaveFavoriteDialog(m);
+    expect(m.q('[role="dialog"]')).toBeTruthy();
+    const st = m.setupState() as {
+      closeSaveFavoriteDialog?: () => void;
+      onFooterCancel?: () => Promise<void>;
+      saveFavoriteOpen?: boolean | { value: boolean };
+    };
+    expect(typeof st.closeSaveFavoriteDialog).toBe('function');
+    st.closeSaveFavoriteDialog!();
+    await flushPromises();
+    const closed =
+      typeof st.saveFavoriteOpen === 'boolean' ? st.saveFavoriteOpen : st.saveFavoriteOpen?.value;
+    expect(closed).toBe(false);
+
+    await openSaveFavoriteDialog(m);
+    await st.onFooterCancel!();
+    await flushPromises();
+    const closedAgain =
+      typeof st.saveFavoriteOpen === 'boolean' ? st.saveFavoriteOpen : st.saveFavoriteOpen?.value;
+    expect(closedAgain).toBe(false);
+    m.unmount();
+  });
+
   test('saves with isDefault and shared checkboxes enabled', async () => {
     const m = mountSearch();
     await flushPromises();
-    const saveOpen = btnByText(m, 'Save current filters');
-    (saveOpen as HTMLElement).click();
-    await nextTick();
-    setInputValue(((m.q('[role="dialog"]') as HTMLElement | null)?.querySelector('input') as HTMLInputElement | null), 'DefaultOnly');
+    await openSaveFavoriteDialog(m);
+    setInputValue(saveFavoriteNameInput(m), 'DefaultOnly');
     await nextTick();
     const defaultCheck = m.qa('.fav-check').find(l => (l.textContent || '').includes('Use by default'));
     expect(defaultCheck).toBeTruthy();
-    await setFavCheckbox(defaultCheck!, true);
+    await setFavCheckbox(m, defaultCheck!, true);
     const saveBtn = m.qa('button').find(b => (b.textContent || '').trim() === 'Save') as HTMLElement;
     saveBtn.click();
     await flushPromises();
@@ -1281,13 +1460,12 @@ describe('OSearch behavior', () => {
     });
 
     savedFiltersApi.saveCurrent.mockClear();
-    (saveOpen as HTMLElement).click();
-    await nextTick();
-    setInputValue(((m.q('[role="dialog"]') as HTMLElement | null)?.querySelector('input') as HTMLInputElement | null), 'SharedOnly');
+    await openSaveFavoriteDialog(m);
+    setInputValue(saveFavoriteNameInput(m), 'SharedOnly');
     await nextTick();
     const sharedCheck = m.qa('.fav-check').find(l => (l.textContent || '').includes('Share with all users'));
     expect(sharedCheck).toBeTruthy();
-    await setFavCheckbox(sharedCheck!, true);
+    await setFavCheckbox(m, sharedCheck!, true);
     (m.qa('button').find(b => (b.textContent || '').trim() === 'Save') as HTMLElement).click();
     await flushPromises();
     expect(savedFiltersApi.saveCurrent.calls[0]![0]).toEqual({
@@ -1323,19 +1501,19 @@ describe('OSearch behavior', () => {
     expect(m.qa('.choy-search__menu-item-delete').length).toBe(1);
 
     (m.q('.choy-search__menu-item-edit') as HTMLElement).click();
-    await nextTick();
+    await flushPromises();
     const dialog = m.q('[role="dialog"]');
     expect(dialog).toBeTruthy();
     expect(dialog!.querySelector('[data-title]')?.getAttribute('data-title')).toBe('Edit favorite');
-    expect((((m.q('[role="dialog"]') as HTMLElement | null)?.querySelector('input') as HTMLInputElement | null) as HTMLInputElement).value).toBe('Company Management');
+    expect((saveFavoriteNameInput(m)?.value ?? '')).toBe('Company Management');
     const defaultCheck = m.qa('.fav-check').find(l => (l.textContent || '').includes('Use by default'));
     const sharedCheck = m.qa('.fav-check').find(l => (l.textContent || '').includes('Share with all users'));
-    expect(favCheckboxOn(defaultCheck!)).toBe(true);
-    expect(favCheckboxOn(sharedCheck!)).toBe(true);
+    expect(saveFavoriteStore(m)?.getField('IsDefault')).toBe(true);
+    expect(saveFavoriteStore(m)?.getField('Shared')).toBe(true);
 
-    setInputValue(((m.q('[role="dialog"]') as HTMLElement | null)?.querySelector('input') as HTMLInputElement | null), 'Renamed Fav');
+    setInputValue(saveFavoriteNameInput(m), 'Renamed Fav');
     await nextTick();
-    await setFavCheckbox(sharedCheck!, false);
+    await setFavCheckbox(m, sharedCheck!, false);
     const beforeReady = (m.emitted['defaults-ready'] || []).length;
     (m.qa('button').find(b => (b.textContent || '').trim() === 'Save') as HTMLElement).click();
     await flushPromises();

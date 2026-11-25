@@ -8,7 +8,7 @@ SPDX-License-Identifier: Apache-2.0
     <ChoyDialogContent
       class="choy-preferences-dialog flex max-h-[90vh] w-full max-w-lg flex-col gap-0 overflow-hidden p-5"
       :show-close-button="false"
-      :dismissible="!saving"
+      :dismissible="dismissible"
       data-testid="preferences-dialog"
     >
       <ChoyDialogHeader class="shrink-0 space-y-0 text-start">
@@ -24,18 +24,16 @@ SPDX-License-Identifier: Apache-2.0
 
         <ChoyFormView
           v-else
+          ref="formViewRef"
           class="mt-3 flex min-h-0 flex-1 flex-col overflow-hidden"
           :store="userStore"
           :record-id="userId"
           :initial-values="preferencesInitialValues"
           view-mode="edit"
-          embedded
-          :show-header="false"
-          :show-actions="false"
-          :show-messages="false"
-          :resolve-record-id-from-route="false"
+          v-bind="embeddedFormChrome"
           :submit-handler="onPreferencesSubmit"
-          @surface-cancel="visible = false"
+          :cancel-handler="cancelHandler"
+          @surface-cancel="cancelHandler"
         >
           <template #default="{ formData, loading }">
             <SelfProfileDraftSeeder
@@ -204,7 +202,7 @@ SPDX-License-Identifier: Apache-2.0
             </ChoyTabs>
 
             <ChoyDialogFooter class="mt-2 shrink-0 border-t border-border pt-2">
-              <ChoyButton type="button" variant="outline" :disabled="saving" @click="visible = false">{{
+              <ChoyButton type="button" variant="outline" :disabled="saving" @click="onFooterCancel">{{
                 _t('Cancel')
               }}</ChoyButton>
               <ChoyActionButton type="submit" :busy="saving || loading">{{
@@ -237,7 +235,9 @@ import {
   ChoyTabs,
   ChoyVarcharField,
   openDialog,
+  useChoyFormDialogShell,
 } from '@/web';
+import type { ChoyFormDialogViewApi } from '@/web/web/composables/useChoyFormDialogShell';
 import { createTranslate } from '@/web/web/i18n';
 import { useAuthStore } from '@/auth/web/stores/auth';
 import { afterLangChange, useI18nStore } from '@/web/web/stores/i18nStore';
@@ -296,6 +296,22 @@ const visible = computed({
   },
 });
 
+const formViewRef = ref<ChoyFormDialogViewApi | null>(null);
+const saving = ref(false);
+
+const {
+  embeddedFormChrome,
+  cancelHandler,
+  onFooterCancel,
+  dismissible,
+} = useChoyFormDialogShell({
+  onClose: () => {
+    visible.value = false;
+  },
+  formViewRef,
+  saving,
+});
+
 let suppressFormSubmitUntil = 0;
 function armTabSwitch(event: MouseEvent): void {
   const el = event.target as HTMLElement | null;
@@ -334,7 +350,6 @@ const seedTheme = ref('');
 const seedDensity = ref('');
 const languageFromSession = ref(false);
 const timezoneFromBrowser = ref(false);
-const saving = ref(false);
 const activeTab = ref('general');
 
 /** Readonly identity under name fields: username · email (whichever is set). */

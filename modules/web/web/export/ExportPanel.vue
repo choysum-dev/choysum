@@ -8,7 +8,7 @@ SPDX-License-Identifier: Apache-2.0
     <ChoyDialogContent
       class="export-panel-dialog"
       :show-close-button="false"
-      :dismissible="!busy"
+      :dismissible="dialogDismissible"
       @open-auto-focus.prevent
     >
       <ChoyDialogHeader class="text-start">
@@ -30,12 +30,39 @@ SPDX-License-Identifier: Apache-2.0
               <ChoyActionButton size="sm" variant="outline" :disabled="!selectedTemplateId" :busy="busy" @execute="applySelectedTemplate">{{ loadTemplateLabel }}</ChoyActionButton>
               <ChoyActionButton size="sm" variant="destructive" :disabled="!selectedTemplateCanDelete" :busy="busy" @execute="deleteSelectedTemplate">{{ deleteTemplateLabel }}</ChoyActionButton>
             </div>
-            <div class="flex flex-wrap items-center gap-2">
-              <input v-model="templateSaveName" :placeholder="templateNameLabel" class="min-w-[180px] flex-[1_1_180px]" />
-              <label class="inline-flex items-center gap-2">
-                <input type="checkbox" v-model="templateSaveShared" />
-                {{ sharedTemplateLabel }}
-              </label>
+            <div class="flex flex-wrap items-end gap-2">
+              <ChoyFormView
+                v-if="templateSaveFormStore"
+                :key="templateSaveFormKey"
+                ref="templateSaveFormViewRef"
+                class="flex min-w-0 flex-[1_1_280px] flex-wrap items-end gap-2"
+                :store="templateSaveFormStore"
+                view-mode="create"
+                v-bind="embeddedFormChrome"
+                :initial-values="templateSaveFormInitialValues"
+                :submit-handler="submitTemplateForm"
+                :cancel-handler="cancelHandler"
+                @change="syncTemplateStoreFromDraft"
+              >
+                <template #default>
+                  <ChoyVarcharField
+                    :store="templateSaveFormStore"
+                    prop="Name"
+                    orientation="vertical"
+                    buffer-strategy="live"
+                    class="min-w-[180px] flex-[1_1_180px]"
+                    :placeholder="templateNameLabel"
+                    data-testid="export-panel-template-name"
+                  />
+                  <ChoyBooleanField
+                    :store="templateSaveFormStore"
+                    prop="Shared"
+                    orientation="horizontal"
+                    buffer-strategy="live"
+                    data-testid="export-panel-template-shared"
+                  />
+                </template>
+              </ChoyFormView>
               <ChoyActionButton size="sm" variant="outline" :disabled="!canSaveTemplate" :busy="busy" @execute="saveCurrentTemplate">{{ saveTemplateLabel }}</ChoyActionButton>
             </div>
             <p v-if="exportTemplatesLoadError" class="m-0 text-muted-foreground">{{ exportTemplatesLoadError }}</p>
@@ -61,7 +88,7 @@ SPDX-License-Identifier: Apache-2.0
       </div>
 
       <ChoyDialogFooter>
-        <ChoyButton size="sm" variant="outline" :disabled="busy" @click="visible = false">{{ cancelLabel }}</ChoyButton>
+        <ChoyButton size="sm" variant="outline" :disabled="busy" @click="onFooterCancel">{{ cancelLabel }}</ChoyButton>
         <ChoyActionButton v-if="!exportDone" size="sm" variant="outline" :busy="busy" @execute="runPreview">{{ previewActionLabel }}</ChoyActionButton>
         <ChoyActionButton v-if="!exportDone" size="sm" variant="default" :busy="busy" @execute="commitExport">{{ exportActionLabel }}</ChoyActionButton>
         <ChoyButton v-else size="sm" variant="default" @click="visible = false">{{ doneLabel }}</ChoyButton>
@@ -71,7 +98,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, ref, shallowRef, watch } from 'vue';
 import {
   ChoyDialog,
   ChoyDialogContent,
@@ -81,6 +108,14 @@ import {
 } from '@/web/web/components/layout/choyDialog';
 import ChoyButton from '@/web/web/components/button/ChoyButton.vue';
 import ChoyActionButton from '@/web/web/components/button/ChoyActionButton.vue';
+import ChoyFormView from '@/web/web/components/view/ChoyFormView.vue';
+import ChoyVarcharField from '@/web/web/components/field/ChoyVarcharField.vue';
+import ChoyBooleanField from '@/web/web/components/field/ChoyBooleanField.vue';
+import {
+  useChoyFormDialogShell,
+  type ChoyFormDialogViewApi,
+} from '@/web/web/composables/useChoyFormDialogShell';
+import { createUiModelStore, type UiModelStore } from '@/web/web/stores/uiModelStore';
 import { describeExportFields, previewExport, runExport, ExportMode, type ExportFieldNode, type ExportReport } from '@/core/web/export/client';
 import { downloadExportCsvBytes, suggestExportFileName } from '@/core/web/export/download_csv';
 import { normalizeExportFieldPaths } from '@/core/web/export/field_paths';
@@ -136,9 +171,42 @@ const fieldTreeRef = ref<HTMLElement | null>(null);
 const exportTemplates = useExportTemplates(() => props.model);
 const { templates: exportTemplateItems, loading: exportTemplatesLoading, loadError: exportTemplatesLoadError, load: loadExportTemplates, apply: applyExportTemplate, saveCurrent: saveExportTemplate, remove: removeExportTemplate } = exportTemplates;
 const selectedTemplateId = ref('');
-const templateSaveName = ref('');
-const templateSaveShared = ref(false);
+const templateSaveFormViewRef = ref<ChoyFormDialogViewApi | null>(null);
+const templateSaveFormStore = shallowRef<UiModelStore | null>(null);
+const templateSaveFormInitialValues = shallowRef<Record<string, unknown>>({ Name: '', Shared: false });
+/** Bump on each reset so ChoyFormView remounts onto the replacement store / empty draft. */
+const templateSaveFormKey = ref(0);
 const pendingFieldPaths = ref<string[] | null>(null);
+
+function closeExportPanel(): void {
+  visible.value = false;
+}
+
+const {
+  embeddedFormChrome,
+  cancelHandler,
+  onFooterCancel,
+  dismissible: dialogDismissible,
+} = useChoyFormDialogShell({
+  onClose: closeExportPanel,
+  formViewRef: templateSaveFormViewRef,
+  saving: busy,
+  skipFormCancel: () => !templateSaveFormStore.value,
+});
+
+function resetTemplateSaveForm(): void {
+  templateSaveFormKey.value += 1;
+  const initialValues = { Name: '', Shared: false };
+  templateSaveFormInitialValues.value = { ...initialValues };
+  templateSaveFormStore.value = createUiModelStore({
+    storeId: `ui-model:export-template-save:${templateSaveFormKey.value}`,
+    fields: [
+      { name: 'Name', label: templateNameLabel, type: 'varchar' },
+      { name: 'Shared', label: sharedTemplateLabel, type: 'boolean' },
+    ],
+    initialValues,
+  });
+}
 
 const templatesEnabled = computed(() => String(props.model || '').includes('.'));
 
@@ -148,16 +216,47 @@ const selectedTemplateCanDelete = computed(() => {
   return exportTemplates.templates.value.some(item => item.Id === id && item.canDelete);
 });
 
+/** Prefer FormView draft (fields write there under form-root); fall back to UiModel store. */
+function templateFormValues(): { Name: string; Shared: boolean } {
+  const draft = templateSaveFormViewRef.value?.getFormData?.() as Record<string, unknown> | undefined;
+  if (draft && typeof draft === 'object') {
+    return {
+      Name: String(draft.Name ?? ''),
+      Shared: !!draft.Shared,
+    };
+  }
+  const values = templateSaveFormStore.value?.getValues() ?? {};
+  return {
+    Name: String(values.Name ?? ''),
+    Shared: !!values.Shared,
+  };
+}
+
+/** Mirror FormView draft into the UiModel store so canSaveTemplate stays reactive. */
+function syncTemplateStoreFromDraft() {
+  const draft = templateSaveFormViewRef.value?.getFormData?.() as Record<string, unknown> | undefined;
+  const store = templateSaveFormStore.value;
+  if (!draft || typeof draft !== 'object' || !store) return;
+  for (const name of store.fieldNames) {
+    if (Object.prototype.hasOwnProperty.call(draft, name)) {
+      store.setField(name, draft[name]);
+    }
+  }
+}
+
 const canSaveTemplate = computed(() => {
-  const name = String(templateSaveName.value || '').trim();
+  const name = String(templateSaveFormStore.value?.getValues().Name ?? '').trim();
   return name.length > 0 && effectiveFields.value.length > 0;
 });
 
 let sessionToken = 0;
 let activeRpcAbort: AbortController | null = null;
+/** Separate from preview/export abort so Preview does not cancel field discovery. */
+let fieldsRpcAbort: AbortController | null = null;
 
 function isAbortError(err: unknown): boolean {
-  if (err instanceof DOMException && err.name === 'AbortError') {
+  // FE unit host may lack DOMException; guard before instanceof.
+  if (typeof DOMException !== 'undefined' && err instanceof DOMException && err.name === 'AbortError') {
     return true;
   }
   return err instanceof Error && err.name === 'AbortError';
@@ -168,15 +267,44 @@ function abortActiveRpc() {
   activeRpcAbort = null;
 }
 
-function beginActiveRpc(): AbortSignal {
-  abortActiveRpc();
-  activeRpcAbort = new AbortController();
-  return activeRpcAbort.signal;
+function abortFieldsRpc() {
+  fieldsRpcAbort?.abort();
+  fieldsRpcAbort = null;
 }
 
-function endActiveRpc(signal: AbortSignal) {
-  if (activeRpcAbort?.signal === signal) {
+/** AbortSignal when AbortController exists; undefined means RPC proceeds without abort. */
+function beginActiveRpc(): AbortSignal | undefined {
+  abortActiveRpc();
+  try {
+    activeRpcAbort = new AbortController();
+    return activeRpcAbort.signal;
+  } catch {
+    // FE unit host may lack AbortController; callers pass optional signal.
     activeRpcAbort = null;
+    return undefined;
+  }
+}
+
+function beginFieldsRpc(): AbortSignal | undefined {
+  abortFieldsRpc();
+  try {
+    fieldsRpcAbort = new AbortController();
+    return fieldsRpcAbort.signal;
+  } catch {
+    fieldsRpcAbort = null;
+    return undefined;
+  }
+}
+
+function endActiveRpc(signal: AbortSignal | undefined) {
+  if (signal != null && activeRpcAbort?.signal === signal) {
+    activeRpcAbort = null;
+  }
+}
+
+function endFieldsRpc(signal: AbortSignal | undefined) {
+  if (signal != null && fieldsRpcAbort?.signal === signal) {
+    fieldsRpcAbort = null;
   }
 }
 
@@ -237,13 +365,14 @@ function isActiveSession(token: number): boolean {
 
 function invalidateSession() {
   abortActiveRpc();
+  abortFieldsRpc();
   sessionToken += 1;
   busy.value = false;
 }
 
 async function loadFields() {
   const token = sessionToken;
-  const signal = beginActiveRpc();
+  const signal = beginFieldsRpc();
   fieldsLoading.value = true;
   try {
     const resp = await describeExportFields(props.model, signal);
@@ -262,7 +391,7 @@ async function loadFields() {
     }
     exportError.value = err instanceof Error ? err.message : String(err);
   } finally {
-    endActiveRpc(signal);
+    endFieldsRpc(signal);
     if (isActiveSession(token)) {
       fieldsLoading.value = false;
     }
@@ -289,26 +418,41 @@ function applySelectedTemplate() {
   applyFieldPaths(paths);
 }
 
-async function saveCurrentTemplate() {
-  if (busy.value) return;
+async function saveCurrentTemplate(): Promise<boolean> {
+  if (busy.value) return false;
+  const values = templateFormValues();
   busy.value = true;
   exportError.value = '';
   try {
     const saved = await saveExportTemplate({
-      name: templateSaveName.value,
-      shared: templateSaveShared.value,
+      name: String(values.Name ?? ''),
+      shared: !!values.Shared,
       fields: effectiveFields.value,
     });
     if (saved) {
       selectedTemplateId.value = saved.Id;
-      templateSaveName.value = '';
-      templateSaveShared.value = false;
+      // Recreate store + FormView baseline so the displayed draft clears with Save.
+      resetTemplateSaveForm();
+      return true;
     }
+    return false;
   } catch (err) {
     exportError.value = err instanceof Error ? err.message : String(err);
+    return false;
   } finally {
     busy.value = false;
   }
+}
+
+/** Enter in the template name field — same path as Save template (skip UiModel Create). */
+async function submitTemplateForm() {
+  const ok = await saveCurrentTemplate();
+  if (!ok) {
+    // Throw so FormView takes the catch/action-error path (do not return handled:false —
+    // that would run the default Create on the UiModel store).
+    throw new Error(exportError.value || 'Failed to save export template');
+  }
+  return { handled: true, skipSuccessMessage: true };
 }
 
 async function deleteSelectedTemplate() {
@@ -353,7 +497,8 @@ function onFieldsToggle(ev: Event) {
   customFieldsOpen.value = open ? ['fields'] : [];
 }
 
-function onOpen() {
+/** Reset per-open state and load exportable fields (also used when mounted open). */
+function preparePanelOpen() {
   invalidateSession();
   busy.value = false;
   exportError.value = '';
@@ -361,10 +506,14 @@ function onOpen() {
   previewReport.value = null;
   customFieldsOpen.value = [];
   selectedTemplateId.value = '';
-  templateSaveName.value = '';
-  templateSaveShared.value = false;
+  if (templatesEnabled.value) {
+    resetTemplateSaveForm();
+  } else {
+    templateSaveFormStore.value = null;
+  }
   pendingFieldPaths.value = null;
-  void loadFields();
+  // Catch so FE unit hosts without an ExportHub stub do not surface unhandled rejections.
+  void loadFields().catch(() => {});
 }
 
 watch(
@@ -386,8 +535,7 @@ function resetState() {
   fieldTree.value = [];
   selectedFieldPaths.value = [];
   selectedTemplateId.value = '';
-  templateSaveName.value = '';
-  templateSaveShared.value = false;
+  templateSaveFormStore.value = null;
   pendingFieldPaths.value = null;
 }
 
@@ -465,5 +613,21 @@ watch(
   },
   { immediate: true }
 );
+
+watch(visible, open => {
+  if (!open) {
+    resetState();
+    return;
+  }
+  preparePanelOpen();
+});
+
+onMounted(() => {
+  // Mounted already-open: same path as visible false→true (loadFields is caught when
+  // the FE unit host has no ExportHub / AbortController).
+  if (visible.value) {
+    preparePanelOpen();
+  }
+});
 </script>
 

@@ -90,14 +90,7 @@ SPDX-License-Identifier: Apache-2.0
             :is="searchView"
             ref="searchViewRef"
             :store="relationStore"
-            :show-actions="false"
-            :host-page-title="false"
-            :show-selection-column="false"
-            :register-action-target="false"
-            :selection-mode="'single'"
-            :click-to-select="true"
-            :height-mode="'container'"
-            :container-selector="'.choy-relation-picker-list'"
+            v-bind="listPickerChrome"
             :forced-condition="dialogEffectiveConditions"
             :relation-condition-source="dialogRelationConditionSource"
             @selection-change="onDialogSelectionChange"
@@ -146,6 +139,7 @@ import type { NarrowAggProp, NonNumericAggFns } from '@/web/web/composables/useF
 import ChoyViewScope from '@/web/web/components/view/ChoyViewScope.vue';
 import type { SelectionExpose } from '@/web/web/components/view/listViewTypes';
 import { useProvidedOnchange } from '@/web/web/composables/useOnchange';
+import { choyListPickerChromeProps } from '@/web/web/composables/choyListPickerChrome';
 import { createTranslate } from '@/web/web/i18n';
 import type { ValueClickPayload } from '@/web/web/components/field/manyToOneTypes';
 import { shouldShowNameCreateEntry } from '@/web/web/components/field/nameCreateVisibility';
@@ -510,6 +504,8 @@ function pickOnchangeConditions(rowRef?: any): QueryCondition<any>[] {
     .filter(Boolean);
 }
 
+
+const listPickerChrome = choyListPickerChromeProps({ selectionMode: 'single' });
 const dialogVisible = ref(false);
 provide(RELATION_PICKER_CLOSE_KEY, () => {
   dialogVisible.value = false;

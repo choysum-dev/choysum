@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { h } from 'vue';
+import { h, provide, reactive } from 'vue';
 import { ChoyMessage } from '../../composables/useChoyMessage';
 import { createPinia, setActivePinia } from 'pinia';
 
@@ -10,6 +10,8 @@ import { replaceStoreFactory } from '@/web/web/stores/registry';
 import { flushPromises, fnRecorder, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
 import { ChoyDialog, ChoyDialogContent, ChoyDialogTitle } from '@/web/web/components/layout/choyDialog';
 import ChoyButton from '@/web/web/components/button/ChoyButton.vue';
+import ChoyFormView from '@/web/web/components/view/ChoyFormView.vue';
+import type { UiModelStore } from '@/web/web/stores/uiModelStore';
 import FieldCompanyValuesDialog from './ChoyFieldCompanyValuesDialog.vue';
 
 const DEFAULT_COMPANY_ROWS = [
@@ -23,31 +25,51 @@ const DEFAULT_AUTH_METADATA = {
   activeCompanyId: 'comp_main',
 };
 
-const ROW_SEL = '.choy-field-company-values-dialog__row';
-const INPUT_SEL = 'input.choy-field-company-values-dialog__input';
+const INPUT_SEL = 'input.choy-varchar-input';
 
 const origSuccess = ChoyMessage.success;
 const origError = ChoyMessage.error;
 
-function setInput(el: HTMLInputElement, value: string) {
-  el.value = value;
-  el.dispatchEvent(new Event('input', { bubbles: true }));
+type MountedDialog = ReturnType<typeof mountApp>;
+
+function unwrapRef<T>(v: T | { value: T } | undefined): T | undefined {
+  // Object(v) === v excludes null (typeof null === 'object').
+  if (typeof v !== 'object' || Object(v) !== v) return v as T | undefined;
+  const obj = v as object;
+  if ('value' in obj) return (obj as { value: T }).value;
+  return v as T;
 }
 
-function inputByLabel(el: HTMLElement, label: string): HTMLInputElement {
-  const row = Array.from(el.querySelectorAll(ROW_SEL)).find(n => {
-    const lab = n.querySelector('.choy-field-company-values-dialog__label');
-    return (lab?.textContent || '').trim() === label;
-  });
-  if (!row) throw new Error('missing ' + label);
-  return row.querySelector(INPUT_SEL) as HTMLInputElement;
+function dialogStore(m: MountedDialog): UiModelStore | null | undefined {
+  const ss = m.setupState() as { formStore?: UiModelStore | { value: UiModelStore | null } };
+  return unwrapRef(ss.formStore) ?? null;
 }
 
-function labelsOf(el: HTMLElement): string[] {
-  return Array.from(el.querySelectorAll(ROW_SEL)).map(n => {
-    const lab = n.querySelector('.choy-field-company-values-dialog__label');
-    return (lab?.textContent || '').trim();
-  });
+function dialogFieldCodes(m: MountedDialog): string[] {
+  const ss = m.setupState() as { fieldCodes?: string[] | { value: string[] } };
+  return unwrapRef(ss.fieldCodes) ?? [];
+}
+
+function labelsOf(m: MountedDialog): string[] {
+  const ss = m.setupState() as { rowMeta?: Map<string, { label: string }> | { value: Map<string, { label: string }> } };
+  const meta = unwrapRef(ss.rowMeta);
+  return dialogFieldCodes(m).map(code => meta?.get(code)?.label ?? code);
+}
+
+function setFieldByLabel(m: MountedDialog, label: string, value: string): void {
+  const labels = labelsOf(m);
+  const idx = labels.findIndex(l => l === label);
+  if (idx < 0) throw new Error('missing ' + label);
+  const code = dialogFieldCodes(m)[idx];
+  dialogStore(m)?.setField(code, value);
+}
+
+function fieldValueByLabel(m: MountedDialog, label: string): string {
+  const labels = labelsOf(m);
+  const idx = labels.findIndex(l => l === label);
+  if (idx < 0) throw new Error('missing ' + label);
+  const code = dialogFieldCodes(m)[idx];
+  return String(dialogStore(m)?.getField(code) ?? '');
 }
 
 describe('FieldCompanyValuesDialog', () => {
@@ -87,6 +109,59 @@ describe('FieldCompanyValuesDialog', () => {
         return () => h('div', { class: 'dialog-title' }, slots.default?.());
       },
     });
+    stubSfc(ChoyFormView as any, {
+      name: 'ChoyFormView',
+      props: {
+        store: Object,
+        initialValues: Object,
+        viewMode: String,
+        embedded: Boolean,
+        showHeader: Boolean,
+        showActions: Boolean,
+        submitHandler: Function,
+        cancelHandler: Function,
+      },
+      setup(props: any, { slots, attrs, expose }: any) {
+        const formData = reactive({ ...(props.initialValues || {}) });
+        const syncStoreField = (path: string, value: unknown) => {
+          (formData as any)[path] = value;
+          const store = props.store as UiModelStore | null | undefined;
+          store?.setField?.(path, value);
+        };
+        provide('form-root', {
+          get mode() {
+            return 'create';
+          },
+          get draft() {
+            return formData;
+          },
+          setField(path: string, value: unknown) {
+            syncStoreField(path, value);
+          },
+          getField(path: string) {
+            return (formData as any)[path];
+          },
+          onChange() {},
+        });
+        expose({
+          submit: () => {
+            const store = props.store as UiModelStore | null | undefined;
+            const merged = store?.getValues ? { ...formData, ...store.getValues() } : { ...formData };
+            return props.submitHandler?.({
+              formData: merged,
+              mode: 'create',
+              data: merged,
+              defaultSubmit: async () => null,
+            });
+          },
+          cancel: async () => {
+            await props.cancelHandler?.();
+          },
+        });
+        return () => h('div', { ...attrs, class: ['choy-form-view-stub', attrs.class] }, slots.default?.({ formData }));
+      },
+    });
+
     stubSfc(ChoyButton as any, {
       name: 'ChoyButton',
       props: {
@@ -135,6 +210,7 @@ describe('FieldCompanyValuesDialog', () => {
     restoreSfc(ChoyDialogContent as any);
     restoreSfc(ChoyDialogTitle as any);
     restoreSfc(ChoyButton as any);
+    restoreSfc(ChoyFormView as any);
   });
 
   function mountDialog(props: Record<string, unknown> = {}, on?: Record<string, (...args: any[]) => void>) {
@@ -167,11 +243,11 @@ describe('FieldCompanyValuesDialog', () => {
     await flushPromises();
 
     expect(store.GetFieldCompanyValues.calls[0]).toEqual(['prod-1', 'Cost']);
-    const labels = labelsOf(m.el);
+    const labels = labelsOf(m);
     expect(labels).toContain('Main Company');
     expect(labels).toContain('EU Company');
 
-    setInput(inputByLabel(m.el, 'EU Company'), '11.5');
+    setFieldByLabel(m, 'EU Company', '11.5');
     m.click('[data-test="save"]');
     await flushPromises();
 
@@ -189,7 +265,7 @@ describe('FieldCompanyValuesDialog', () => {
     const m = mountDialog({ store }, { onSaved });
     await flushPromises();
 
-    setInput(inputByLabel(m.el, 'Main Company'), '');
+    setFieldByLabel(m, 'Main Company', '');
     m.click('[data-test="save"]');
     await flushPromises();
 
@@ -209,7 +285,7 @@ describe('FieldCompanyValuesDialog', () => {
     });
     await flushPromises();
 
-    expect(inputByLabel(m.el, 'Main Company').value).toBe('99');
+    expect(fieldValueByLabel(m, 'Main Company')).toBe('99');
     m.click('[data-test="save"]');
     await flushPromises();
 
@@ -243,7 +319,7 @@ describe('FieldCompanyValuesDialog', () => {
     const m = mountDialog({ store, fieldLabel: undefined });
     await flushPromises();
 
-    const labels = labelsOf(m.el);
+    const labels = labelsOf(m);
     expect(labels).toContain('Main Company');
     expect(labels).toContain('EU Company');
     expect(labels.length).toBe(2);
@@ -273,8 +349,8 @@ describe('FieldCompanyValuesDialog', () => {
     });
     await flushPromises();
 
-    setInput(inputByLabel(m.el, 'EU'), 'yes');
-    setInput(inputByLabel(m.el, 'Main'), '0');
+    setFieldByLabel(m, 'EU', 'yes');
+    setFieldByLabel(m, 'Main', '0');
     m.click('[data-test="save"]');
     await flushPromises();
 
@@ -297,7 +373,7 @@ describe('FieldCompanyValuesDialog', () => {
     const m = mountDialog({ store }, { onSaved, 'onUpdate:modelValue': onUpdateModelValue });
     await flushPromises();
 
-    setInput(inputByLabel(m.el, 'EU Company'), '9');
+    setFieldByLabel(m, 'EU Company', '9');
     m.click('[data-test="save"]');
     await flushPromises();
 
@@ -323,6 +399,28 @@ describe('FieldCompanyValuesDialog', () => {
     expect(store.Browse.calls.length).toBe(1);
     expect(onSaved.calls.length).toBe(1);
     expect(onUpdateModelValue.calls.some(args => args[0] === false)).toBeTruthy();
+    m.unmount();
+  });
+
+  test('closing modelValue clears form and emits closed', async () => {
+    const store = fieldStore();
+    const onClosed = fnRecorder();
+    const m = mountApp(FieldCompanyValuesDialog as any, {
+      props: {
+        modelValue: true,
+        recordId: 'prod-1',
+        fieldName: 'Cost',
+        fieldLabel: 'Cost',
+        store,
+      },
+      reactiveProps: true,
+      on: { onClosed },
+      plugins: [pinia],
+    });
+    await flushPromises();
+    (m.props as { modelValue: boolean }).modelValue = false;
+    await flushPromises();
+    expect(onClosed.calls.length).toBe(1);
     m.unmount();
   });
   test('formatCaughtError and coercePatchValue edges via setupState', async () => {

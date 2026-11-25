@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { h } from 'vue';
+import { h, provide, reactive } from 'vue';
 import { ChoyMessage } from '../../composables/useChoyMessage';
 import { createPinia, setActivePinia } from 'pinia';
 
@@ -10,6 +10,8 @@ import { replaceStoreFactory } from '@/web/web/stores/registry';
 import { flushPromises, fnRecorder, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
 import { ChoyDialog, ChoyDialogContent, ChoyDialogTitle } from '@/web/web/components/layout/choyDialog';
 import ChoyButton from '@/web/web/components/button/ChoyButton.vue';
+import ChoyFormView from '@/web/web/components/view/ChoyFormView.vue';
+import type { UiModelStore } from '@/web/web/stores/uiModelStore';
 import FieldTranslationsDialog from './ChoyFieldTranslationsDialog.vue';
 
 const DEFAULT_LANGS = [
@@ -17,31 +19,51 @@ const DEFAULT_LANGS = [
   { Code: 'zh_CN', Name: 'Chinese (Simplified)' },
 ];
 
-const ROW_SEL = '.choy-field-translations-dialog__row';
-const INPUT_SEL = 'input.choy-field-translations-dialog__input';
+const INPUT_SEL = 'input.choy-varchar-input';
 
 const origSuccess = ChoyMessage.success;
 const origError = ChoyMessage.error;
 
-function setInput(el: HTMLInputElement, value: string) {
-  el.value = value;
-  el.dispatchEvent(new Event('input', { bubbles: true }));
+type MountedDialog = ReturnType<typeof mountApp>;
+
+function unwrapRef<T>(v: T | { value: T } | undefined): T | undefined {
+  // Object(v) === v excludes null (typeof null === 'object').
+  if (typeof v !== 'object' || Object(v) !== v) return v as T | undefined;
+  const obj = v as object;
+  if ('value' in obj) return (obj as { value: T }).value;
+  return v as T;
 }
 
-function inputByLabel(el: HTMLElement, label: string): HTMLInputElement {
-  const row = Array.from(el.querySelectorAll(ROW_SEL)).find(n => {
-    const lab = n.querySelector('.choy-field-translations-dialog__label');
-    return (lab?.textContent || '').trim() === label;
-  });
-  if (!row) throw new Error('missing ' + label);
-  return row.querySelector(INPUT_SEL) as HTMLInputElement;
+function dialogStore(m: MountedDialog): UiModelStore | null | undefined {
+  const ss = m.setupState() as { formStore?: UiModelStore | { value: UiModelStore | null } };
+  return unwrapRef(ss.formStore) ?? null;
 }
 
-function labelsOf(el: HTMLElement): string[] {
-  return Array.from(el.querySelectorAll(ROW_SEL)).map(n => {
-    const lab = n.querySelector('.choy-field-translations-dialog__label');
-    return (lab?.textContent || '').trim();
-  });
+function dialogFieldCodes(m: MountedDialog): string[] {
+  const ss = m.setupState() as { fieldCodes?: string[] | { value: string[] } };
+  return unwrapRef(ss.fieldCodes) ?? [];
+}
+
+function labelsOf(m: MountedDialog): string[] {
+  const ss = m.setupState() as { rowMeta?: Map<string, { label: string }> | { value: Map<string, { label: string }> } };
+  const meta = unwrapRef(ss.rowMeta);
+  return dialogFieldCodes(m).map(code => meta?.get(code)?.label ?? code);
+}
+
+function setFieldByLabel(m: MountedDialog, label: string, value: string): void {
+  const labels = labelsOf(m);
+  const idx = labels.findIndex(l => l === label);
+  if (idx < 0) throw new Error('missing ' + label);
+  const code = dialogFieldCodes(m)[idx];
+  dialogStore(m)?.setField(code, value);
+}
+
+function fieldValueByLabel(m: MountedDialog, label: string): string {
+  const labels = labelsOf(m);
+  const idx = labels.findIndex(l => l === label);
+  if (idx < 0) throw new Error('missing ' + label);
+  const code = dialogFieldCodes(m)[idx];
+  return String(dialogStore(m)?.getField(code) ?? '');
 }
 
 describe('FieldTranslationsDialog', () => {
@@ -77,6 +99,59 @@ describe('FieldTranslationsDialog', () => {
         return () => h('div', { class: 'dialog-title' }, slots.default?.());
       },
     });
+    stubSfc(ChoyFormView as any, {
+      name: 'ChoyFormView',
+      props: {
+        store: Object,
+        initialValues: Object,
+        viewMode: String,
+        embedded: Boolean,
+        showHeader: Boolean,
+        showActions: Boolean,
+        submitHandler: Function,
+        cancelHandler: Function,
+      },
+      setup(props: any, { slots, attrs, expose }: any) {
+        const formData = reactive({ ...(props.initialValues || {}) });
+        const syncStoreField = (path: string, value: unknown) => {
+          (formData as any)[path] = value;
+          const store = props.store as UiModelStore | null | undefined;
+          store?.setField?.(path, value);
+        };
+        provide('form-root', {
+          get mode() {
+            return 'create';
+          },
+          get draft() {
+            return formData;
+          },
+          setField(path: string, value: unknown) {
+            syncStoreField(path, value);
+          },
+          getField(path: string) {
+            return (formData as any)[path];
+          },
+          onChange() {},
+        });
+        expose({
+          submit: () => {
+            const store = props.store as UiModelStore | null | undefined;
+            const merged = store?.getValues ? { ...formData, ...store.getValues() } : { ...formData };
+            return props.submitHandler?.({
+              formData: merged,
+              mode: 'create',
+              data: merged,
+              defaultSubmit: async () => null,
+            });
+          },
+          cancel: async () => {
+            await props.cancelHandler?.();
+          },
+        });
+        return () => h('div', { ...attrs, class: ['choy-form-view-stub', attrs.class] }, slots.default?.({ formData }));
+      },
+    });
+
     stubSfc(ChoyButton as any, {
       name: 'ChoyButton',
       props: {
@@ -128,6 +203,7 @@ describe('FieldTranslationsDialog', () => {
     restoreSfc(ChoyDialogContent as any);
     restoreSfc(ChoyDialogTitle as any);
     restoreSfc(ChoyButton as any);
+    restoreSfc(ChoyFormView as any);
   });
 
   function mountDialog(props: Record<string, unknown> = {}, on?: Record<string, (...args: any[]) => void>) {
@@ -160,12 +236,12 @@ describe('FieldTranslationsDialog', () => {
     await flushPromises();
 
     expect(store.GetFieldTranslations.calls[0]).toEqual(['lang-1', 'Name']);
-    const labels = labelsOf(m.el);
+    const labels = labelsOf(m);
     expect(labels).toContain('English (US)');
     expect(labels).toContain('Chinese (Simplified)');
     expect(labels.some(l => l.includes('(zh_CN)'))).toBeFalsy();
 
-    setInput(inputByLabel(m.el, 'Chinese (Simplified)'), '您好');
+    setFieldByLabel(m, 'Chinese (Simplified)', '您好');
     m.click('[data-test="save"]');
     await flushPromises();
 
@@ -183,7 +259,7 @@ describe('FieldTranslationsDialog', () => {
     const m = mountDialog({ store }, { onSaved });
     await flushPromises();
 
-    setInput(inputByLabel(m.el, 'Chinese (Simplified)'), '');
+    setFieldByLabel(m, 'Chinese (Simplified)', '');
     m.click('[data-test="save"]');
     await flushPromises();
 
@@ -207,8 +283,8 @@ describe('FieldTranslationsDialog', () => {
     });
     await flushPromises();
 
-    expect(inputByLabel(m.el, 'English (US)').value).toBe('English (US)');
-    expect(inputByLabel(m.el, 'Chinese (Simplified)').value).toBe('英语（美国）111');
+    expect(fieldValueByLabel(m, 'English (US)')).toBe('English (US)');
+    expect(fieldValueByLabel(m, 'Chinese (Simplified)')).toBe('英语（美国）111');
 
     m.click('[data-test="save"]');
     await flushPromises();
@@ -244,7 +320,7 @@ describe('FieldTranslationsDialog', () => {
     const m = mountDialog({ store, fieldLabel: undefined });
     await flushPromises();
 
-    const labels = labelsOf(m.el);
+    const labels = labelsOf(m);
     expect(labels[0]).toBe('English (US)');
     expect(labels).toContain('zh_CN');
     expect((m.q('.dialog-title')?.textContent || '').trim()).toMatch(/Translate/);
@@ -258,7 +334,7 @@ describe('FieldTranslationsDialog', () => {
     const m = mountDialog({ store });
     await flushPromises();
 
-    setInput(inputByLabel(m.el, 'English (US)'), '');
+    setFieldByLabel(m, 'English (US)', '');
     m.click('[data-test="save"]');
     await flushPromises();
 
@@ -279,12 +355,35 @@ describe('FieldTranslationsDialog', () => {
     m.unmount();
   });
 
+  test('closing modelValue clears form and emits closed', async () => {
+    const store = fieldStore();
+    const onClosed = fnRecorder();
+    const m = mountApp(FieldTranslationsDialog as any, {
+      props: {
+        modelValue: true,
+        recordId: 'lang-1',
+        fieldName: 'Name',
+        fieldLabel: 'Name',
+        store,
+      },
+      reactiveProps: true,
+      on: { onClosed },
+      plugins: [pinia],
+    });
+    await flushPromises();
+    (m.props as { modelValue: boolean }).modelValue = false;
+    await flushPromises();
+    expect(onClosed.calls.length).toBe(1);
+    m.unmount();
+  });
+
   test('reflects maxLength on inputs', async () => {
     const store = fieldStore();
     const m = mountDialog({ store, maxLength: 40 });
     await flushPromises();
 
-    expect(m.q(INPUT_SEL)?.getAttribute('maxlength')).toBe('40');
+    const meta = dialogStore(m)?.getFieldMeta('en_US') as { size?: number } | undefined;
+    expect(meta?.size).toBe(40);
     m.unmount();
   });
   test('resolveDraftLang catch and save error via setupState', async () => {
@@ -301,7 +400,7 @@ describe('FieldTranslationsDialog', () => {
     const m = mountDialog({ store, draftLang: '' });
     await flushPromises();
     // fr_FR vs de_DE ordering hits label.localeCompare (neither side is en_US).
-    const labels = labelsOf(m.el);
+    const labels = labelsOf(m);
     expect(labels.indexOf('French')).toBeGreaterThan(0);
     expect(labels.indexOf('German')).toBeGreaterThan(0);
     const ss = m.setupState() as any;
@@ -312,7 +411,7 @@ describe('FieldTranslationsDialog', () => {
     setActivePinia(undefined as any);
     expect(ss.resolveDraftLang()).toBe('');
     setActivePinia(pinia);
-    setInput(inputByLabel(m.el, 'French'), 'Salut');
+    setFieldByLabel(m, 'French', 'Salut');
     m.click('[data-test="save"]');
     await flushPromises();
     expect(messageError.calls.length).toBeGreaterThanOrEqual(1);

@@ -376,6 +376,20 @@ export type {
   DialogMode,
   DialogOpenOptions,
 } from './composables/dialogService';
+export {
+  CHOY_FORM_DIALOG_EMBEDDED_CHROME,
+  useChoyFormDialogShell,
+} from './composables/useChoyFormDialogShell';
+export type {
+  ChoyFormDialogViewApi,
+  UseChoyFormDialogShellOptions,
+} from './composables/useChoyFormDialogShell';
+export { choyListPickerChromeProps } from './composables/choyListPickerChrome';
+export type {
+  ChoyListPickerChromeOptions,
+  ChoyListPickerChromeProps,
+  ChoyListPickerSelectionMode,
+} from './composables/choyListPickerChrome';
 export { choyControlHeightPx } from './lib/choyControlHeight';
 export {
   applyChoyThemePreference,

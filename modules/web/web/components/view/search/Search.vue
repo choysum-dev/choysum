@@ -346,41 +346,60 @@ SPDX-License-Identifier: Apache-2.0
     </ChoyDialog>
 
     <ChoyDialog v-model:open="saveFavoriteOpen">
-      <ChoyDialogContent class="max-w-md" :show-close-button="false" :dismissible="!saveFavoriteSaving">
+      <ChoyDialogContent class="max-w-md" :show-close-button="false" :dismissible="dismissible">
         <ChoyDialogHeader class="text-start">
           <ChoyDialogTitle>{{ saveFavoriteDialogTitle }}</ChoyDialogTitle>
         </ChoyDialogHeader>
-      <form class="flex flex-col gap-3" @submit.prevent>
-        <div class="flex flex-col gap-1.5">
-          <label class="text-sm font-medium text-foreground" for="choy-search-fav-name">{{ _t('Name') }}</label>
-          <Input
-            id="choy-search-fav-name"
-            class="fav-name"
-            v-model="saveFavoriteName"
-            :placeholder="_t('Favorite name')"
-            @keydown.enter.prevent="onConfirmSaveFavorite"
-          />
-        </div>
-        <label class="fav-check flex items-center gap-2 text-sm text-foreground">
-          <Checkbox v-model="saveFavoriteIsDefault" />
-          {{ _t('Use by default') }}
-        </label>
-        <label class="fav-check flex items-center gap-2 text-sm text-foreground">
-          <Checkbox v-model="saveFavoriteShared" />
-          {{ _t('Share with all users') }}
-        </label>
-      </form>
-      <ChoyDialogFooter>
-        <ChoyButton size="sm" variant="outline" :disabled="saveFavoriteSaving" @click="saveFavoriteOpen = false">{{ _t('Cancel') }}</ChoyButton>
-        <ChoyActionButton size="sm" variant="default" :busy="saveFavoriteSaving" @execute="onConfirmSaveFavorite">{{ _t('Save') }}</ChoyActionButton>
-      </ChoyDialogFooter>
+        <ChoyFormView
+          v-if="saveFavoriteFormStore"
+          ref="saveFavoriteFormViewRef"
+          class="flex flex-col gap-3"
+          :store="saveFavoriteFormStore"
+          view-mode="create"
+          v-bind="embeddedFormChrome"
+          :initial-values="saveFavoriteFormInitialValues"
+          :submit-handler="onSubmitSaveFavorite"
+          :cancel-handler="cancelHandler"
+        >
+          <template #default>
+            <ChoyVarcharField
+              :store="saveFavoriteFormStore"
+              prop="Name"
+              orientation="vertical"
+              buffer-strategy="live"
+              class="fav-name"
+              data-testid="choy-search-fav-name"
+              :placeholder="_t('Favorite name')"
+            />
+            <div class="fav-check">
+              <ChoyBooleanField
+                :store="saveFavoriteFormStore"
+                prop="IsDefault"
+                orientation="horizontal"
+                buffer-strategy="live"
+              />
+            </div>
+            <div class="fav-check">
+              <ChoyBooleanField
+                :store="saveFavoriteFormStore"
+                prop="Shared"
+                orientation="horizontal"
+                buffer-strategy="live"
+              />
+            </div>
+          </template>
+        </ChoyFormView>
+        <ChoyDialogFooter>
+          <ChoyButton size="sm" variant="outline" :disabled="saveFavoriteSaving" @click="onFooterCancel">{{ _t('Cancel') }}</ChoyButton>
+          <ChoyActionButton size="sm" variant="default" :busy="saveFavoriteSaving" @execute="onFooterSave">{{ _t('Save') }}</ChoyActionButton>
+        </ChoyDialogFooter>
       </ChoyDialogContent>
     </ChoyDialog>
   </div>
 </template>
 
 <script setup lang="ts" generic="T extends BaseModel">
-import { ref, computed, watch, nextTick, onMounted, inject } from 'vue';
+import { ref, computed, watch, nextTick, onMounted, inject, shallowRef } from 'vue';
 import { ChoyMessage } from '../../../composables/useChoyMessage';
 import { confirmChoyAction, confirmChoyChoice } from '../../../composables/confirmChoyAction';
 import type { BaseModel } from '@/core/rpc';
@@ -427,8 +446,14 @@ import {
   ChoyDialogHeader,
   ChoyDialogTitle,
 } from '@/web/web/components/layout/choyDialog';
-import Checkbox from '@/web/web/components/vendor/ui/checkbox/Checkbox.vue';
-import Input from '@/web/web/components/vendor/ui/input/Input.vue';
+import ChoyFormView from '@/web/web/components/view/ChoyFormView.vue';
+import ChoyVarcharField from '@/web/web/components/field/ChoyVarcharField.vue';
+import ChoyBooleanField from '@/web/web/components/field/ChoyBooleanField.vue';
+import {
+  useChoyFormDialogShell,
+  type ChoyFormDialogViewApi,
+} from '@/web/web/composables/useChoyFormDialogShell';
+import { createUiModelStore, type UiModelStore } from '@/web/web/stores/uiModelStore';
 import {
   InputGroup,
   InputGroupAddon,
@@ -667,13 +692,51 @@ const {
 
 const saveFavoriteOpen = ref(false);
 const editingFavoriteId = ref<string | null>(null);
-const saveFavoriteName = ref('');
-const saveFavoriteIsDefault = ref(false);
-const saveFavoriteShared = ref(false);
 const saveFavoriteSaving = ref(false);
+const saveFavoriteFormViewRef = ref<ChoyFormDialogViewApi | null>(null);
+const saveFavoriteFormStore = shallowRef<UiModelStore | null>(null);
+const saveFavoriteFormInitialValues = shallowRef<Record<string, unknown>>({});
 const saveFavoriteDialogTitle = computed(() =>
   editingFavoriteId.value ? _t('Edit favorite') : _t('Save current filters')
 );
+
+function closeSaveFavoriteDialog(): void {
+  saveFavoriteOpen.value = false;
+}
+
+const {
+  embeddedFormChrome,
+  cancelHandler,
+  onFooterSave,
+  onFooterCancel,
+  dismissible,
+} = useChoyFormDialogShell({
+  onClose: closeSaveFavoriteDialog,
+  formViewRef: saveFavoriteFormViewRef,
+  saving: saveFavoriteSaving,
+});
+
+function saveFavoriteFormFields() {
+  return [
+    { name: 'Name', label: _t('Name'), type: 'varchar' as const },
+    { name: 'IsDefault', label: _t('Use by default'), type: 'boolean' as const },
+    { name: 'Shared', label: _t('Share with all users'), type: 'boolean' as const },
+  ];
+}
+
+function openSaveFavoriteForm(initial: { name: string; isDefault: boolean; shared: boolean }) {
+  const initialValues = {
+    Name: initial.name,
+    IsDefault: initial.isDefault,
+    Shared: initial.shared,
+  };
+  saveFavoriteFormInitialValues.value = { ...initialValues };
+  saveFavoriteFormStore.value = createUiModelStore({
+    storeId: `ui-model:search-save-favorite:${Date.now()}`,
+    fields: saveFavoriteFormFields(),
+    initialValues,
+  });
+}
 
 /** Remove only the chip this favorite contributed (by id); no-op when none was added. */
 function removeActiveFavoriteChip(fav: ActiveFavorite) {
@@ -766,25 +829,31 @@ function onOpenSaveFavorite() {
   menuVisible.value = false;
   editingFavoriteId.value = null;
   // Align with Odoo CustomFavoriteItem seeding, but keep Name language-stable (term src / model id).
-  saveFavoriteName.value = resolveDefaultFavoriteName(store);
-  saveFavoriteIsDefault.value = false;
-  saveFavoriteShared.value = false;
+  openSaveFavoriteForm({
+    name: resolveDefaultFavoriteName(store),
+    isDefault: false,
+    shared: false,
+  });
   saveFavoriteOpen.value = true;
 }
 
 function onEditFavorite(it: { id: string; name: string; isDefault: boolean; shared: boolean }) {
   menuVisible.value = false;
   editingFavoriteId.value = it.id;
-  saveFavoriteName.value = it.name;
-  saveFavoriteIsDefault.value = !!it.isDefault;
-  saveFavoriteShared.value = !!it.shared;
+  openSaveFavoriteForm({
+    name: it.name,
+    isDefault: !!it.isDefault,
+    shared: !!it.shared,
+  });
   saveFavoriteOpen.value = true;
 }
 
-async function onConfirmSaveFavorite() {
+async function confirmSaveFavoriteFromFormData(formData: Record<string, unknown>) {
   if (isConnectivityUnreachable()) return;
   if (saveFavoriteSaving.value) return;
-  const name = saveFavoriteName.value.trim();
+  const name = String(formData.Name ?? '').trim();
+  const isDefault = !!formData.IsDefault;
+  const shared = !!formData.Shared;
   if (!name) {
     ChoyMessage.warning(_t('Enter a favorite name'));
     return;
@@ -795,26 +864,32 @@ async function onConfirmSaveFavorite() {
     if (editId) {
       await updateFavoriteMeta(editId, {
         name,
-        isDefault: saveFavoriteIsDefault.value,
-        shared: saveFavoriteShared.value,
+        isDefault,
+        shared,
       });
       ChoyMessage.success(_t('Favorite updated'));
     } else {
       await saveFavoriteCurrent({
         name,
-        isDefault: saveFavoriteIsDefault.value,
-        shared: saveFavoriteShared.value,
+        isDefault,
+        shared,
       });
       ChoyMessage.success(_t('Favorite saved'));
     }
     saveFavoriteOpen.value = false;
     editingFavoriteId.value = null;
+    saveFavoriteFormStore.value = null;
     emit('defaults-ready', defaultsForOpen.value as NamedFilter[]);
   } catch (e: any) {
     ChoyMessage.error(e instanceof Error ? e.message : String(e));
   } finally {
     saveFavoriteSaving.value = false;
   }
+}
+
+async function onSubmitSaveFavorite(ctx: { formData: Record<string, unknown> }) {
+  await confirmSaveFavoriteFromFormData(ctx.formData || {});
+  return { handled: true, skipSuccessMessage: true };
 }
 
 onMounted(async () => {

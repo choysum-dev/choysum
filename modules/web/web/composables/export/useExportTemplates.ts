@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { computed, ref } from 'vue';
-import { createModelStore as defaultCreateModelStore } from '@/web/web/stores/registry';
+import { createModelStore as defaultCreateModelStore } from '@/core/web/stores/registry';
 import { actorUserId as defaultActorUserId } from '@/web/web/composables/search/actorUserId';
 import { resolveUserFilterUserId } from '@/web/web/composables/search/userFilterDefaults';
 import type ExportTemplate from '@/web/service/models/export_template';
