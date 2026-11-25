@@ -231,7 +231,7 @@ test('ModuleCatalogFormView.vue primary and uninstall actions open the drawer fo
     UpdateAvailable: true,
   });
   await flushPromises();
-  expect((emphasizedUpgrade.vm as any).primaryButtonVariant).toBe('default');
+  expect((emphasizedUpgrade.vm as any).primaryButtonVariant).toBe('outline');
   emphasizedUpgrade.unmount();
 
   const uninstall = mountShow({

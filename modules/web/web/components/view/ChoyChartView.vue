@@ -35,7 +35,7 @@ SPDX-License-Identifier: Apache-2.0
           v-if="showCreate"
           type="button"
           size="default"
-          variant="default"
+          variant="outline"
           :busy="boardBusy"
           :action-id="actionIds?.create"
           :has-action="hasAction"

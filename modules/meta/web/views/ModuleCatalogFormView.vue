@@ -412,14 +412,8 @@ const primaryActionLabel = computed(() => {
   if (primaryAction.value === 'progress') return _t('View Progress');
   return '';
 });
-/** Emphasize Upgrade only when catalog detected a newer source version. */
-const primaryButtonVariant = computed(() => {
-  if (primaryAction.value === 'upgrade' && currentRow.value.UpdateAvailable !== true) {
-    return 'outline' as const;
-  }
-  if (primaryAction.value === 'progress') return 'outline' as const;
-  return 'default' as const;
-});
+/** Form primary CTA (Install / Upgrade / Progress) uses outline. */
+const primaryButtonVariant = computed(() => 'outline' as const);
 const canUninstallRow = computed(() => {
   if (!hasMatchedRow.value) return false;
   const rec = currentRow.value;
