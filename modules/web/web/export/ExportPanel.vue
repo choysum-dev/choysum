@@ -262,18 +262,6 @@ function isAbortError(err: unknown): boolean {
   return err instanceof Error && err.name === 'AbortError';
 }
 
-function noopAbortSignal(): AbortSignal {
-  return {
-    aborted: false,
-    reason: undefined,
-    onabort: null,
-    addEventListener() {},
-    removeEventListener() {},
-    dispatchEvent() {},
-    throwIfAborted() {},
-  } as AbortSignal;
-}
-
 function abortActiveRpc() {
   activeRpcAbort?.abort();
   activeRpcAbort = null;
@@ -284,37 +272,38 @@ function abortFieldsRpc() {
   fieldsRpcAbort = null;
 }
 
-function beginActiveRpc(): AbortSignal {
+/** AbortSignal when AbortController exists; undefined means RPC proceeds without abort. */
+function beginActiveRpc(): AbortSignal | undefined {
   abortActiveRpc();
   try {
     activeRpcAbort = new AbortController();
     return activeRpcAbort.signal;
   } catch {
-    // FE unit host may lack AbortController; RPC still proceeds without abort.
+    // FE unit host may lack AbortController; callers pass optional signal.
     activeRpcAbort = null;
-    return noopAbortSignal();
+    return undefined;
   }
 }
 
-function beginFieldsRpc(): AbortSignal {
+function beginFieldsRpc(): AbortSignal | undefined {
   abortFieldsRpc();
   try {
     fieldsRpcAbort = new AbortController();
     return fieldsRpcAbort.signal;
   } catch {
     fieldsRpcAbort = null;
-    return noopAbortSignal();
+    return undefined;
   }
 }
 
-function endActiveRpc(signal: AbortSignal) {
-  if (activeRpcAbort?.signal === signal) {
+function endActiveRpc(signal: AbortSignal | undefined) {
+  if (signal != null && activeRpcAbort?.signal === signal) {
     activeRpcAbort = null;
   }
 }
 
-function endFieldsRpc(signal: AbortSignal) {
-  if (fieldsRpcAbort?.signal === signal) {
+function endFieldsRpc(signal: AbortSignal | undefined) {
+  if (signal != null && fieldsRpcAbort?.signal === signal) {
     fieldsRpcAbort = null;
   }
 }

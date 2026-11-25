@@ -75,6 +75,24 @@ describe('useChoyFormDialogShell', () => {
     await shell.onFooterSave();
   });
 
+  test('onFooterSave retries submit after nextTick when ref populates late', async () => {
+    let submitCalls = 0;
+    const formViewRef = ref<ChoyFormDialogViewApi | null>(null);
+    const shell = useChoyFormDialogShell({
+      onClose: () => {},
+      formViewRef,
+    });
+    const pending = shell.onFooterSave();
+    formViewRef.value = {
+      submit: async () => {
+        submitCalls += 1;
+        return { ok: true };
+      },
+    };
+    await pending;
+    expect(submitCalls).toBe(1);
+  });
+
   test('onFooterCancel uses formView.cancel when present', async () => {
     let cancelCalls = 0;
     let closed = 0;

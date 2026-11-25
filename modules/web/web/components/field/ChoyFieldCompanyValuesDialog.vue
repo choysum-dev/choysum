@@ -251,7 +251,7 @@ function openFormFromRows(ordered: CompanyValueRow[]): void {
   rowMeta.value = meta;
   formInitialValues.value = { ...initialValues };
   formStore.value = createUiModelStore({
-    storeId: `ui-model:field-company-values:${props.recordId}:${props.fieldName}:${Date.now()}`,
+    storeId: `ui-model:field-company-values:${props.recordId}:${props.fieldName}`,
     fields,
     initialValues,
   });

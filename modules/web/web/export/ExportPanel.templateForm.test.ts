@@ -272,15 +272,15 @@ describe('ExportPanel template save FormView / UiModel', () => {
     const m = mountPanel();
     await flushPromises();
     const s = asSetup(m) as TemplateFormSetup & {
-      beginActiveRpc: () => AbortSignal;
-      beginFieldsRpc: () => AbortSignal;
+      beginActiveRpc: () => AbortSignal | undefined;
+      beginFieldsRpc: () => AbortSignal | undefined;
       isAbortError: (err: unknown) => boolean;
-      noopAbortSignal: () => AbortSignal;
     };
 
     // Success path (FE host polyfill): beginActiveRpc try body.
     const live = s.beginActiveRpc();
-    expect(live.aborted).toBe(false);
+    expect(live).toBeTruthy();
+    expect(live!.aborted).toBe(false);
 
     // DOMException AbortError branch (guard + instanceof).
     const g = globalThis as any;
@@ -303,7 +303,7 @@ describe('ExportPanel template save FormView / UiModel', () => {
       else g.DOMException = PrevDOM;
     }
 
-    // Host without usable AbortController: both begin* catch → noopAbortSignal.
+    // Host without usable AbortController: both begin* return undefined (RPC not abortable).
     const PrevAC = g.AbortController;
     g.AbortController = class {
       constructor() {
@@ -311,12 +311,8 @@ describe('ExportPanel template save FormView / UiModel', () => {
       }
     };
     try {
-      const active = s.beginActiveRpc();
-      expect(active.aborted).toBe(false);
-      const fields = s.beginFieldsRpc();
-      expect(fields.aborted).toBe(false);
-      // Direct noop for the return-object line when begin* is not the only caller.
-      expect(s.noopAbortSignal().aborted).toBe(false);
+      expect(s.beginActiveRpc()).toBeUndefined();
+      expect(s.beginFieldsRpc()).toBeUndefined();
     } finally {
       g.AbortController = PrevAC;
     }

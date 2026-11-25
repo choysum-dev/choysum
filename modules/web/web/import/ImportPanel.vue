@@ -490,6 +490,8 @@ watch(catalogOptions, () => {
   for (const name of store.fieldNames) {
     store.setFieldSelection(name, selection);
   }
+  // Catalog changed: any prior dry-run is no longer trustworthy.
+  previewReport.value = null;
 });
 
 async function loadCatalog() {

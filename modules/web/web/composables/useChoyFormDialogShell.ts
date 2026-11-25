@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { computed, type MaybeRefOrGetter, type Ref, toValue } from 'vue';
+import { computed, nextTick, type MaybeRefOrGetter, type Ref, toValue } from 'vue';
 import { confirmChoyAction } from '@/web/web/composables/confirmChoyAction';
 
 /** FormView API slice used by dialog footers (submit / cancel after dirty confirm). */
@@ -76,6 +76,12 @@ export function useChoyFormDialogShell(opts: UseChoyFormDialogShellOptions) {
     if (api?.submit) {
       await api.submit();
       return;
+    }
+    // Ref not yet populated (form still mounting); retry once after the next tick.
+    await nextTick();
+    const retry = opts.formViewRef.value;
+    if (retry?.submit) {
+      await retry.submit();
     }
   }
 
