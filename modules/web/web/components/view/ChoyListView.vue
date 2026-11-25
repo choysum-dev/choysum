@@ -52,7 +52,7 @@ SPDX-License-Identifier: Apache-2.0
 
           <ChoyActionButton
             v-if="deleteAction && canDelete"
-            size="sm"
+            size="default"
             variant="outline-destructive"
             :busy="deleteLoading"
             :action-id="actionIds?.delete"
@@ -71,7 +71,7 @@ SPDX-License-Identifier: Apache-2.0
         <ChoyActionButton
           v-if="editable && isEditing"
           type="button"
-          size="sm"
+          size="default"
           variant="outline-primary"
           :busy="inlineSaving"
           @execute="handleInlineSave"
@@ -83,7 +83,7 @@ SPDX-License-Identifier: Apache-2.0
         <ChoyActionButton
           v-if="editable && isEditing"
           type="button"
-          size="sm"
+          size="default"
           variant="outline"
           :requires-connectivity="false"
           @execute="handleInlineDiscard"
@@ -104,7 +104,7 @@ SPDX-License-Identifier: Apache-2.0
           <ChoyActionButton
             v-if="resolvedCreateAction && canCreate"
             type="button"
-            size="sm"
+            size="default"
             variant="outline-primary"
             :action-id="actionIds?.create"
             :has-action="hasAction"

@@ -176,7 +176,7 @@ const slots = useSlots();
 const attrs = useAttrs();
 
 const defaultPageTitleClass =
-  'min-w-0 max-w-[10rem] truncate text-base font-semibold text-foreground sm:max-w-[14rem]';
+  'min-w-0 max-w-[12rem] truncate text-lg font-semibold leading-8 text-foreground sm:max-w-[16rem]';
 
 /** Default title chrome + optional BEM / extra classes from the product view. */
 const resolvedPageTitleClass = computed(() => cn(defaultPageTitleClass, props.pageTitleClass));

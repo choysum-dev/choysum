@@ -25,7 +25,7 @@ SPDX-License-Identifier: Apache-2.0
         <ChoyActionButton
           v-if="hasAction(moduleSyncAction)"
           type="button"
-          size="sm"
+          size="default"
           variant="outline-primary"
           data-testid="module-catalog-sync"
           :busy="syncBusy"
@@ -45,7 +45,7 @@ SPDX-License-Identifier: Apache-2.0
         <ChoyActionButton
           v-if="hasAction(moduleLoadDemoAction) && hasPendingDemo"
           type="button"
-          size="sm"
+          size="default"
           variant="outline"
           data-testid="module-catalog-load-demo"
           @execute="onLoadDemo"

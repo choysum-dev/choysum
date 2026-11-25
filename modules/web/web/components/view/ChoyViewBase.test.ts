@@ -227,6 +227,7 @@ describe('ChoyViewBase', () => {
     const title = mounted.q('[data-slot=page-title]') as HTMLElement | null;
     expect(title?.className || '').toContain('choy-list-view__page-title');
     expect(title?.className || '').toContain('truncate');
+    expect(title?.className || '').toContain('text-lg');
     expect(title?.className || '').toContain('font-semibold');
     // Thirds ActionBar pads center when product view omits #center.
     expect(mounted.q('[data-slot=view-action-bar-center]')).not.toBeNull();
