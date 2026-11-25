@@ -561,6 +561,8 @@ const dialogMode = ref<DialogMode>('create');
 const dialogIndex = ref(-1);
 const dialogDraft = ref<Record<string, any>>({});
 const dialogFormKey = ref(0);
+/** Keep Cancel confirming after rejected-discard remount (dirty values become create baseline). */
+const dialogForceDirty = ref(false);
 const dialogFormRef = ref<(ChoyFormDialogViewApi & { getFormData?: () => unknown }) | null>(null);
 const dialogRegisteredFormApis = new Map<string, FormChildSubmitApi>();
 const activeDialogFormToken = ref<string | null>(null);
@@ -636,7 +638,10 @@ async function handleDialogFooterCancel() {
       },
     );
   } catch {
+    // Remount shows edited values; force dirty so a second Cancel still confirms
+    // (create baseline would otherwise equal the restored draft).
     openDialog(mode, index, reopenDraft);
+    dialogForceDirty.value = true;
   }
 }
 
@@ -644,6 +649,7 @@ async function handleDialogFooterCancel() {
 const dialogFormBind = computed(() => ({
   ...embeddedFormChrome,
   ...(props.formViewProps || {}),
+  ...(dialogForceDirty.value ? { dirty: true as const } : {}),
 }));
 
 provide(FORM_CHILD_SUBMIT_API_REGISTER_KEY, (registration: FormChildSubmitApiRegistration) => {
@@ -742,6 +748,7 @@ function resolveCardSubtitle(item: any): string {
 }
 
 function openDialog(mode: DialogMode, index: number, item: any) {
+  dialogForceDirty.value = false;
   dialogMode.value = mode;
   dialogIndex.value = index;
   dialogDraft.value = deepClonePreserve((item || {}) as any);

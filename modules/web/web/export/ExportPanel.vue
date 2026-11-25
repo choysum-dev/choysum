@@ -39,6 +39,7 @@ SPDX-License-Identifier: Apache-2.0
                 view-mode="create"
                 v-bind="embeddedFormChrome"
                 :initial-values="templateSaveFormInitialValues"
+                :submit-handler="submitTemplateForm"
                 :cancel-handler="cancelHandler"
               >
                 <template #default>
@@ -372,6 +373,12 @@ async function saveCurrentTemplate() {
   } finally {
     busy.value = false;
   }
+}
+
+/** Enter in the template name field — same path as Save template (skip UiModel Create). */
+async function submitTemplateForm() {
+  await saveCurrentTemplate();
+  return { handled: true, skipSuccessMessage: true };
 }
 
 async function deleteSelectedTemplate() {

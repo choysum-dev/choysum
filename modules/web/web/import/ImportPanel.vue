@@ -446,11 +446,15 @@ watch(
     if (!store) {
       return null;
     }
-    return store.fieldNames.map(name => store.getField(name));
+    return { store, values: store.fieldNames.map(name => store.getField(name)) };
   },
-  () => {
+  (next, prev) => {
+    if (!next) return;
     syncMappingRowsFromStore();
-    onMappingChange();
+    // Store swap is a rebuild (new headers), not a user mapping edit.
+    if (prev?.store === next.store) {
+      onMappingChange();
+    }
   },
 );
 
