@@ -125,9 +125,9 @@ func TestRememberCatalogSchemaMigrated_IgnoresFailure(t *testing.T) {
 
 	rememberCatalogSchemaMigrated(db, gorm.ErrInvalidDB)
 	st := catalogSchemaStateFor(db)
-	catalogSchemaMu.Lock()
+	st.mu.Lock()
 	done := st.done
-	catalogSchemaMu.Unlock()
+	st.mu.Unlock()
 	if done {
 		t.Fatal("failure must not set memo done")
 	}

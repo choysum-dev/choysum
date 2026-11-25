@@ -240,7 +240,12 @@ func TestCoverage_PlanPaths(t *testing.T) {
 	}
 
 	// snapshotVersions with nil scope + both origins
-	_, _ = (&Ops{}).snapshotVersions(context.Background(), "core")
+	_, _, _ = (&Ops{}).snapshotVersions(context.Background(), "core")
+	failCache := map[string]snapVersions{}
+	_, _ = (&Ops{}).snapshotVersionsCached(context.Background(), failCache, "core")
+	if len(failCache) != 0 {
+		t.Fatalf("failed snapshot read must not populate cache: %#v", failCache)
+	}
 	now := time.Now().UTC()
 	if err := db.Create(&modmeta.ModuleSourceSnapshot{
 		ModuleName: "core", SourceType: originLocal, SourceRef: "local", Available: true,
@@ -254,9 +259,14 @@ func TestCoverage_PlanPaths(t *testing.T) {
 	}).Error; err != nil {
 		t.Fatal(err)
 	}
-	localV, regV := o.snapshotVersions(context.Background(), "core")
-	if localV != "1.0.0" || regV != "1.1.0" {
-		t.Fatalf("snapshots %q %q", localV, regV)
+	localV, regV, ok := o.snapshotVersions(context.Background(), "core")
+	if !ok || localV != "1.0.0" || regV != "1.1.0" {
+		t.Fatalf("snapshots ok=%v %q %q", ok, localV, regV)
+	}
+	okCache := map[string]snapVersions{}
+	l2, r2 := o.snapshotVersionsCached(context.Background(), okCache, "core")
+	if l2 != "1.0.0" || r2 != "1.1.0" || len(okCache) != 1 {
+		t.Fatalf("cache miss/hit: %q %q %#v", l2, r2, okCache)
 	}
 
 	// marshal failure on Plan

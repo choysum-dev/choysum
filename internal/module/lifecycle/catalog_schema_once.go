@@ -21,9 +21,11 @@ import (
 // distinct pools do not share state, while a long-lived server pool migrates once.
 // Only successful migrates are memoized; failures retry. Before trusting a hit,
 // HasTable(meta_module_operation) is checked so a recycled *sql.DB pointer cannot
-// skip migrate on a fresh empty pool.
+// skip migrate on a fresh empty pool. Per-pool mu serializes check+migrate so
+// concurrent cold callers do not race AutoMigrate.
 
 type catalogSchemaState struct {
+	mu   sync.Mutex
 	done bool
 }
 
@@ -72,20 +74,16 @@ func ensureCatalogSchemaMigrated(db *gorm.DB) error {
 		return fmt.Errorf("ensure catalog schema: db is nil")
 	}
 	st := catalogSchemaStateFor(db)
+	st.mu.Lock()
+	defer st.mu.Unlock()
 
-	catalogSchemaMu.Lock()
-	already := st.done
-	catalogSchemaMu.Unlock()
-
-	if already {
+	if st.done {
 		// Pointer-keyed memo can outlive a closed pool; refuse a hit when the
 		// sentinel ops table is missing on this DB.
 		if db.Migrator().HasTable(&modmeta.ModuleOperation{}) {
 			return ensureEffectiveAppNameIndexIfModelExists(db)
 		}
-		catalogSchemaMu.Lock()
 		st.done = false
-		catalogSchemaMu.Unlock()
 	}
 
 	if err := migrateCatalogEntities(db, modmeta.CatalogEntities()...); err != nil {
@@ -95,9 +93,7 @@ func ensureCatalogSchemaMigrated(db *gorm.DB) error {
 		return err
 	}
 
-	catalogSchemaMu.Lock()
 	st.done = true
-	catalogSchemaMu.Unlock()
 	return nil
 }
 
@@ -118,9 +114,9 @@ func rememberCatalogSchemaMigrated(db *gorm.DB, err error) {
 		return
 	}
 	st := catalogSchemaStateFor(db)
-	catalogSchemaMu.Lock()
+	st.mu.Lock()
 	st.done = true
-	catalogSchemaMu.Unlock()
+	st.mu.Unlock()
 }
 
 // resetCatalogSchemaMigrateForTest clears process memoization (tests only).

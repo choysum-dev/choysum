@@ -346,23 +346,27 @@ func (o *Ops) snapshotVersionsCached(ctx context.Context, snapCache map[string]s
 			return hit.localV, hit.registryV
 		}
 	}
-	localV, registryV = o.snapshotVersions(ctx, name)
-	if snapCache != nil {
+	localV, registryV, ok := o.snapshotVersions(ctx, name)
+	// Cache successful reads only (including empty rows). Transient session /
+	// query failures must not poison later enrichment in the same Plan.
+	if snapCache != nil && ok {
 		snapCache[key] = snapVersions{localV: localV, registryV: registryV}
 	}
 	return localV, registryV
 }
 
-func (o *Ops) snapshotVersions(ctx context.Context, name string) (localV, registryV string) {
+func (o *Ops) snapshotVersions(ctx context.Context, name string) (localV, registryV string, ok bool) {
 	sess, err := o.session(ctx)
 	if err != nil {
-		return "", ""
+		return "", "", false
 	}
 	var rows []modmeta.ModuleSourceSnapshot
-	_ = sess.WithContext(ctx).
+	if err := sess.WithContext(ctx).
 		Where("module_name = ? AND available = ?", name, true).
 		Order("source_type ASC, source_ref ASC").
-		Find(&rows).Error
+		Find(&rows).Error; err != nil {
+		return "", "", false
+	}
 	for _, row := range rows {
 		v := ""
 		if row.Version.Valid {
@@ -379,7 +383,7 @@ func (o *Ops) snapshotVersions(ctx context.Context, name string) (localV, regist
 			}
 		}
 	}
-	return localV, registryV
+	return localV, registryV, true
 }
 
 func (o *Ops) uninstallBlockers(ctx context.Context, resolver plan.Resolver, rootName string, planned []string) []PlanIssue {
