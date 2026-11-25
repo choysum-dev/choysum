@@ -412,8 +412,8 @@ const primaryActionLabel = computed(() => {
   if (primaryAction.value === 'progress') return _t('View Progress');
   return '';
 });
-/** Form primary CTA (Install / Upgrade / Progress) uses outline. */
-const primaryButtonVariant = computed(() => 'outline' as const);
+/** Form primary CTA (Install / Upgrade / Progress) uses branded outline. */
+const primaryButtonVariant = computed(() => 'outline-primary' as const);
 const canUninstallRow = computed(() => {
   if (!hasMatchedRow.value) return false;
   const rec = currentRow.value;

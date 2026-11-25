@@ -72,7 +72,7 @@ SPDX-License-Identifier: Apache-2.0
           v-if="editable && isEditing"
           type="button"
           size="default"
-          variant="outline"
+          variant="outline-primary"
           :busy="inlineSaving"
           @execute="handleInlineSave"
         >
@@ -105,7 +105,7 @@ SPDX-License-Identifier: Apache-2.0
             v-if="resolvedCreateAction && canCreate"
             type="button"
             size="default"
-            variant="outline"
+            variant="outline-primary"
             :action-id="actionIds?.create"
             :has-action="hasAction"
             @execute="handleCreate"
@@ -232,7 +232,7 @@ SPDX-License-Identifier: Apache-2.0
                     <ChoyActionButton
                       type="button"
                       size="default"
-                      variant="outline"
+                      variant="outline-primary"
                       :action-id="actionIds?.create"
                       :has-action="hasAction"
                       @execute="handleCreate"

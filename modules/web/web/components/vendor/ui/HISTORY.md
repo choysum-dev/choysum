@@ -36,6 +36,18 @@ new HISTORY entry describing what was re-copied vs re-patched.
 
 ## Entries (newest first)
 
+### 2026-11-25 — Button `outline-primary` variant
+
+- **What:** Added `outline-primary` beside `outline` / `outline-destructive`
+  (`border-primary` + `text-primary`, soft primary hover fill). Wired in
+  `button/index.ts` `buttonVariants` and `Button.vue` variant maps.
+- **Why not product-only class:** View Action Bar primary CTAs need a stable
+  kit variant (same pattern as `outline-destructive`); one-off `class` on every
+  host would drift and skip L2 composers that use `buttonVariants`.
+- **Do not regress:** Keep `outline` as neutral `border-input`; do not fold
+  primary chrome into default `outline`. Replay both `index.ts` and `Button.vue`
+  if upstream re-copies Button.
+
 ### 2026-11-19 — AlertDialogHeader `sm:text-left` → `sm:text-start`
 
 - **What:** `AlertDialogHeader.vue` default classes now use logical

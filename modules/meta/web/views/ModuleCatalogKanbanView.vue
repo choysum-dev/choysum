@@ -49,7 +49,7 @@ SPDX-License-Identifier: Apache-2.0
           v-if="hasAction(moduleSyncAction)"
           type="button"
           size="default"
-          variant="outline"
+          variant="outline-primary"
           data-testid="module-catalog-sync"
           :busy="syncBusy"
           :aria-busy="syncBusy || undefined"

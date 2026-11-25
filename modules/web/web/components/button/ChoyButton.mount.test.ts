@@ -150,6 +150,22 @@ describe('ChoyButton mount', () => {
       w.unmount();
     }
   });
+
+  test('outline-primary uses theme primary border and text', async () => {
+    const w = mountApp(ChoyButton as any, {
+      props: { variant: 'outline-primary', 'data-testid': 'outline-primary-btn' },
+      slots: { default: () => 'Edit' },
+    });
+    try {
+      await flushPromises();
+      const cls = (w.q('[data-testid="outline-primary-btn"]') as HTMLButtonElement | null)?.className || '';
+      expect(cls).toContain('border-primary');
+      expect(cls).toContain('text-primary');
+      expect(` ${cls} `.includes(' border-0 ')).toBe(false);
+    } finally {
+      w.unmount();
+    }
+  });
 });
 
 describe('Button host click guard', () => {

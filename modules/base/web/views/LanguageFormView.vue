@@ -18,7 +18,7 @@ SPDX-License-Identifier: Apache-2.0
         v-if="!loading && showActivateFor(formData, slotRecordId)"
         type="button"
         size="default"
-        variant="outline"
+        variant="outline-primary"
         data-testid="language-activate"
         :busy="activeBusy || reloadBusy"
         :aria-busy="activeBusy || undefined"

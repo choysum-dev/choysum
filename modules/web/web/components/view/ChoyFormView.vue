@@ -45,7 +45,7 @@ SPDX-License-Identifier: Apache-2.0
         <ChoyActionButton
           type="button"
           size="default"
-          variant="outline"
+          variant="outline-primary"
           data-testid="settings-save"
           :disabled="!settingsDirty"
           :busy="controlsLocked"
@@ -73,7 +73,7 @@ SPDX-License-Identifier: Apache-2.0
         <ChoyActionButton
           type="button"
           size="default"
-          variant="outline"
+          variant="outline-primary"
           :busy="controlsLocked"
           @execute="onSaveExecute"
         >
@@ -105,7 +105,7 @@ SPDX-License-Identifier: Apache-2.0
             v-if="viewMode === 'display' && effectiveRecordId && canEdit"
             type="button"
             size="default"
-            variant="outline"
+            variant="outline-primary"
             data-testid="form-primary-edit"
             :action-id="actionIds?.edit"
             :has-action="hasAction"
