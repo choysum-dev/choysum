@@ -240,7 +240,17 @@ function beginActiveRpc(): AbortSignal {
   } catch {
     // FE unit host may lack AbortController; RPC still proceeds without abort.
     activeRpcAbort = null;
-    return { aborted: false } as AbortSignal;
+    return {
+      aborted: false,
+      reason: undefined,
+      onabort: null,
+      addEventListener() {},
+      removeEventListener() {},
+      dispatchEvent() {
+        return false;
+      },
+      throwIfAborted() {},
+    } as AbortSignal;
   }
 }
 

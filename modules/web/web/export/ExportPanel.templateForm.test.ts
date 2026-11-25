@@ -16,7 +16,7 @@ type TemplateFormSetup = {
   canSaveTemplate: boolean | { value: boolean };
   selectedFieldPaths: string[] | { value: string[] };
   selectedTemplateId: string | { value: string };
-  saveCurrentTemplate: () => Promise<void>;
+  saveCurrentTemplate: () => Promise<boolean>;
   onFooterCancel: () => Promise<void>;
   busy: boolean | { value: boolean };
 };
