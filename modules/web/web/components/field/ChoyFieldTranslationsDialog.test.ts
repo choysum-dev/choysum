@@ -29,7 +29,8 @@ type MountedDialog = ReturnType<typeof mountApp>;
 function unwrapRef<T>(v: T | { value: T } | undefined): T | undefined {
   // Object(v) === v excludes null (typeof null === 'object').
   if (typeof v !== 'object' || Object(v) !== v) return v as T | undefined;
-  if ('value' in v) return (v as { value: T }).value;
+  const obj = v as object;
+  if ('value' in obj) return (obj as { value: T }).value;
   return v as T;
 }
 

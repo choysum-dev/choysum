@@ -36,6 +36,7 @@ SPDX-License-Identifier: Apache-2.0
           view-mode="edit"
           v-bind="embeddedFormChrome"
           :cancel-handler="cancelHandler"
+          @change="onMappingFormChange"
         >
           <template #default>
             <ChoySelectionField
@@ -316,12 +317,29 @@ function mappingPropForHeader(header: string): string {
   return mappingPropByHeader.value[header] ?? '';
 }
 
+function mappingFormValues(): Record<string, unknown> {
+  const draft = mappingFormViewRef.value?.getFormData?.() as Record<string, unknown> | undefined;
+  const store = mappingFormStore.value;
+  if (draft && typeof draft === 'object') {
+    // Mirror controller draft into UiModelStore so store readers stay aligned.
+    if (store) {
+      for (const name of store.fieldNames) {
+        if (Object.prototype.hasOwnProperty.call(draft, name)) {
+          store.setField(name, draft[name]);
+        }
+      }
+    }
+    return draft;
+  }
+  return store?.getValues() ?? {};
+}
+
 function syncMappingRowsFromStore(): void {
   const store = mappingFormStore.value;
   if (!store) {
     return;
   }
-  const values = store.getValues();
+  const values = mappingFormValues();
   for (const row of mappingRows.value) {
     const prop = mappingPropForHeader(row.header);
     if (!prop) {
@@ -329,6 +347,11 @@ function syncMappingRowsFromStore(): void {
     }
     row.fieldPath = String(values[prop] ?? '').trim();
   }
+}
+
+function onMappingFormChange() {
+  syncMappingRowsFromStore();
+  onMappingChange();
 }
 
 function rebuildMappingFormStore(): void {

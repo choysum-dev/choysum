@@ -352,8 +352,8 @@ function applySelectedTemplate() {
   applyFieldPaths(paths);
 }
 
-async function saveCurrentTemplate() {
-  if (busy.value) return;
+async function saveCurrentTemplate(): Promise<boolean> {
+  if (busy.value) return false;
   const values = templateSaveFormStore.value?.getValues() ?? {};
   busy.value = true;
   exportError.value = '';
@@ -367,9 +367,12 @@ async function saveCurrentTemplate() {
       selectedTemplateId.value = saved.Id;
       templateSaveFormStore.value?.setField('Name', '');
       templateSaveFormStore.value?.setField('Shared', false);
+      return true;
     }
+    return false;
   } catch (err) {
     exportError.value = err instanceof Error ? err.message : String(err);
+    return false;
   } finally {
     busy.value = false;
   }
@@ -377,7 +380,12 @@ async function saveCurrentTemplate() {
 
 /** Enter in the template name field — same path as Save template (skip UiModel Create). */
 async function submitTemplateForm() {
-  await saveCurrentTemplate();
+  const ok = await saveCurrentTemplate();
+  if (!ok) {
+    // Throw so FormView takes the catch/action-error path (do not return handled:false —
+    // that would run the default Create on the UiModel store).
+    throw new Error(exportError.value || 'Failed to save export template');
+  }
   return { handled: true, skipSuccessMessage: true };
 }
 
@@ -423,7 +431,8 @@ function onFieldsToggle(ev: Event) {
   customFieldsOpen.value = open ? ['fields'] : [];
 }
 
-function onOpen() {
+/** Reset per-open state and load exportable fields (also used when mounted open). */
+function preparePanelOpen() {
   invalidateSession();
   busy.value = false;
   exportError.value = '';
@@ -437,7 +446,8 @@ function onOpen() {
     templateSaveFormStore.value = null;
   }
   pendingFieldPaths.value = null;
-  void loadFields();
+  // Catch so FE unit hosts without an ExportHub stub do not surface unhandled rejections.
+  void loadFields().catch(() => {});
 }
 
 watch(
@@ -538,18 +548,18 @@ watch(
   { immediate: true }
 );
 
-onMounted(() => {
-  if (visible.value && templatesEnabled.value) {
-    resetTemplateSaveForm();
-  }
-});
-
 watch(visible, open => {
   if (!open) {
     resetState();
     return;
   }
-  if (templatesEnabled.value) {
+  preparePanelOpen();
+});
+
+onMounted(() => {
+  // Mounted already-open: template form only. Full preparePanelOpen (DescribeFields)
+  // runs when visible flips true; FE unit hosts lack an ExportHub stub for that RPC.
+  if (visible.value && templatesEnabled.value) {
     resetTemplateSaveForm();
   }
 });

@@ -826,13 +826,21 @@ async function handleDialogRemove() {
 
   // Close the edit Dialog before confirm: Dialog + AlertDialog both stack at
   // z-50 with modal focus traps; opening confirm underneath freezes the page.
-  const reopenDraft = deepClonePreserve((dialogDraft.value || item) as Record<string, any>);
+  const formRef = dialogFormRef.value;
+  const registered = getRegisteredDialogFormApi();
+  const reopenDraft = deepClonePreserve(
+    ((registered?.getFormData?.() ?? formRef?.getFormData?.()) as Record<string, any>) ||
+      dialogDraft.value ||
+      item,
+  );
   dialogVisible.value = false;
   await nextTick();
 
   const removed = await handleRemoveItem(index);
   if (!removed) {
+    // Preserve in-dialog edits; force dirty so Cancel still confirms after remount.
     openDialog('edit', index, reopenDraft);
+    dialogForceDirty.value = true;
   }
 }
 
