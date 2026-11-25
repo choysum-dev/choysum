@@ -180,6 +180,7 @@ describe('ChoyActionButton', () => {
   });
 
   test('hides when actionId denied in hide mode', async () => {
+    let runs = 0;
     const w = mountApp(ChoyActionButton as any, {
       props: {
         actionId: 'denied.action',
@@ -187,12 +188,21 @@ describe('ChoyActionButton', () => {
         actionMode: 'hide',
         'data-testid': 'act-hide',
       },
+      on: {
+        onExecute: () => {
+          runs += 1;
+        },
+      },
       slots: { default: () => 'Go' },
     });
     try {
       await flushPromises();
       expect(w.q('[data-testid="act-hide"]')).toBeNull();
       expect(w.setupState()?.aclVisible).toBe(false);
+      // Exposed handler must still reject (child is unmounted; DOM cannot click).
+      const onClick = w.setupState()?.onClick as ((e: Event) => Promise<void>) | undefined;
+      await onClick?.(new Event('click'));
+      expect(runs).toBe(0);
     } finally {
       w.unmount();
     }

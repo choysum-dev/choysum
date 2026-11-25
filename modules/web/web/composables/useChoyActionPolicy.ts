@@ -93,7 +93,9 @@ export function useChoyActionPolicy(
     if (opts?.stopPropagation || effectiveDisabled.value) {
       e?.stopPropagation?.();
     }
-    if (effectiveDisabled.value) {
+    // Live ACL: hide-mode denials leave effectiveDisabled false (child unmounted),
+    // but exposed onClick/onSelect must still reject programmatic activate.
+    if (effectiveDisabled.value || !isActionAllowedNow()) {
       e?.preventDefault?.();
       return;
     }

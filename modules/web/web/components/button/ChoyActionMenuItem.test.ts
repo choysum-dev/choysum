@@ -112,6 +112,7 @@ describe('ChoyActionMenuItem', () => {
   });
 
   test('hides when actionId denied in hide mode', async () => {
+    let runs = 0;
     const w = mountApp(ChoyActionMenuItem as any, {
       props: {
         actionId: 'denied.action',
@@ -119,12 +120,20 @@ describe('ChoyActionMenuItem', () => {
         actionMode: 'hide',
         'data-testid': 'ami-hide',
       },
+      on: {
+        onExecute: () => {
+          runs += 1;
+        },
+      },
       slots: { default: () => 'Go' },
     });
     try {
       await flushPromises();
       expect(w.q('[data-testid="ami-hide"]')).toBeNull();
       expect(w.setupState()?.aclVisible).toBe(false);
+      const onSelect = w.setupState()?.onSelect as ((e: Event) => Promise<void>) | undefined;
+      await onSelect?.(new Event('select'));
+      expect(runs).toBe(0);
     } finally {
       w.unmount();
     }
