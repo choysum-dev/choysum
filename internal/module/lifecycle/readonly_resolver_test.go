@@ -5,6 +5,8 @@ package lifecycle
 
 import (
 	"context"
+	"errors"
+	"strings"
 	"testing"
 
 	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
@@ -123,6 +125,9 @@ func TestAsReadOnlyResolver(t *testing.T) {
 	if AsReadOnlyResolver(nil) != nil {
 		t.Fatal("nil in => nil out")
 	}
+	if NewReadOnlyResolver(nil) != nil {
+		t.Fatal("NewReadOnlyResolver(nil) => nil")
+	}
 	db := newModuleSourceSnapshotSyncDB(t)
 	if err := db.AutoMigrate(&meta.Module{}, &modmeta.LockLease{}); err != nil {
 		t.Fatalf("migrate: %v", err)
@@ -136,6 +141,46 @@ func TestAsReadOnlyResolver(t *testing.T) {
 	if AsReadOnlyResolver(ro) != ro {
 		t.Fatal("idempotent wrap")
 	}
+	passthrough := &stubPlanResolver{}
+	if AsReadOnlyResolver(passthrough) != passthrough {
+		t.Fatal("non-manager resolver must pass through")
+	}
+
+	var nilRO *ReadOnlyResolver
+	if _, err := nilRO.Load("x"); err == nil {
+		t.Fatal("nil ReadOnlyResolver.Load want error")
+	}
+	if _, err := nilRO.Peek(context.Background(), "x"); err == nil {
+		t.Fatal("nil ReadOnlyResolver.Peek want error")
+	}
+	bare := &ReadOnlyResolver{m: &ModuleManager{}}
+	if err := bare.ensureMetaModuleTable(); err == nil || !strings.Contains(err.Error(), "session is unavailable") {
+		t.Fatalf("ensureMetaModuleTable empty manager = %v", err)
+	}
+
+	resetCatalogSchemaMigrateForTest()
+	t.Cleanup(resetCatalogSchemaMigrateForTest)
+	prev := migrateCatalogEntities
+	migrateCatalogEntities = func(*gorm.DB, ...any) error {
+		return errors.New("migrate boom")
+	}
+	t.Cleanup(func() { migrateCatalogEntities = prev })
+	emptyDB := newModuleSourceSnapshotSyncDB(t)
+	failing := NewReadOnlyResolver(NewModuleManager(newModuleSourceSnapshotSyncScope(t.TempDir(), emptyDB), nil))
+	failing.m.bootstrapOnce.Do(func() {})
+	if _, err := failing.Load("core"); err == nil || !strings.Contains(err.Error(), "migrate boom") {
+		t.Fatalf("Load cold migrate failure = %v", err)
+	}
+	if _, err := failing.Peek(context.Background(), "core"); err == nil || !strings.Contains(err.Error(), "migrate boom") {
+		t.Fatalf("Peek cold migrate failure = %v", err)
+	}
+}
+
+type stubPlanResolver struct{}
+
+func (stubPlanResolver) Load(string) (*meta.Module, error) { return nil, nil }
+func (stubPlanResolver) Peek(context.Context, string) (*meta.Module, error) {
+	return nil, nil
 }
 
 func TestLoad_DoesNotMigrateBaseModule(t *testing.T) {

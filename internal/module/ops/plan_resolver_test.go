@@ -8,6 +8,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/choysum-dev/choysum/internal/module/plan"
 	pkgmeta "github.com/choysum-dev/choysum/pkg/meta"
 )
 
@@ -88,5 +89,37 @@ func TestPlanResolver_DoesNotCacheErrors(t *testing.T) {
 	}
 	if inner.loads != 2 {
 		t.Fatalf("loads=%d, want 2 (error not cached)", inner.loads)
+	}
+}
+
+func TestPlanResolver_NilReceiverAndNilResolverFallbacks(t *testing.T) {
+	t.Parallel()
+	var nilPR *planResolver
+	if mod, err := nilPR.Load("x"); mod != nil || err != nil {
+		t.Fatalf("nil planResolver.Load => (%v,%v)", mod, err)
+	}
+	if mod, err := nilPR.Peek(context.Background(), "x"); mod != nil || err != nil {
+		t.Fatalf("nil planResolver.Peek => (%v,%v)", mod, err)
+	}
+
+	o := &Ops{}
+	if _, _, err := o.resolveRootModule(context.Background(), nil, "core", originLocal); err == nil {
+		t.Fatal("resolveRootModule with nil resolvers want error")
+	}
+	inner := &countingResolver{
+		load: map[string]*pkgmeta.Module{
+			"core": {Name: "core", Version: "1.0.0", Status: pkgmeta.Installed},
+		},
+	}
+	o.Resolver = inner
+	if _, _, err := o.resolveRootModule(context.Background(), nil, "core", originLocal); err != nil {
+		t.Fatalf("resolveRootModule fallback: %v", err)
+	}
+	_ = o.enrichPlanDocument(context.Background(), nil, nil, ActionInstall, "core", originLocal, plan.Plan{}, nil)
+	_, _ = o.versionsForModule(context.Background(), nil, nil, "core", originLocal)
+	_ = computeBaseRevision(context.Background(), o, nil, nil, []ModuleOrderEntry{{ModuleName: "core"}})
+	o.Resolver = nil
+	if issues := o.uninstallBlockers(context.Background(), nil, "core", nil); len(issues) != 1 || issues[0].Code != "DEPENDENCY_LOOKUP_FAILED" {
+		t.Fatalf("uninstallBlockers nil resolver => %#v", issues)
 	}
 }

@@ -4,6 +4,7 @@
 package lifecycle
 
 import (
+	"strings"
 	"testing"
 
 	modmeta "github.com/choysum-dev/choysum/internal/module/meta"
@@ -129,5 +130,21 @@ func TestRememberCatalogSchemaMigrated_IgnoresFailure(t *testing.T) {
 	catalogSchemaMu.Unlock()
 	if done {
 		t.Fatal("failure must not set memo done")
+	}
+}
+
+func TestCatalogSchemaKeyAndEnsureNilDB(t *testing.T) {
+	if got := catalogSchemaKey(nil); got != "nil" {
+		t.Fatalf("catalogSchemaKey(nil)=%q, want nil", got)
+	}
+	if err := ensureCatalogSchemaMigrated(nil); err == nil || !strings.Contains(err.Error(), "db is nil") {
+		t.Fatalf("ensureCatalogSchemaMigrated(nil)=%v, want db is nil", err)
+	}
+
+	// gorm.DB without an opened pool falls back to the gorm:%p key.
+	gdb := &gorm.DB{}
+	key := catalogSchemaKey(gdb)
+	if !strings.HasPrefix(key, "gorm:") {
+		t.Fatalf("catalogSchemaKey(empty gorm)=%q, want gorm: prefix", key)
 	}
 }

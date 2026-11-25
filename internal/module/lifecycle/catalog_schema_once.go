@@ -41,6 +41,10 @@ func catalogSchemaKey(db *gorm.DB) string {
 	if db == nil {
 		return "nil"
 	}
+	// Empty / unopened *gorm.DB has no Config; db.DB() would panic.
+	if db.Config == nil {
+		return fmt.Sprintf("gorm:%p", db)
+	}
 	sqlDB, err := db.DB()
 	if err != nil || sqlDB == nil {
 		return fmt.Sprintf("gorm:%p", db)

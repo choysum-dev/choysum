@@ -114,6 +114,73 @@ func TestBootstrapMetaTablesSkipsUniqueIndexWhenModelMissing(t *testing.T) {
 	}
 }
 
+func TestBootstrapMetaTablesPropagatesUniqueIndexError(t *testing.T) {
+	t.Parallel()
+	db := newModuleSourceSnapshotSyncDB(t)
+	if err := db.AutoMigrate(&meta.Model{}); err != nil {
+		t.Fatalf("migrate meta_model: %v", err)
+	}
+	seedDuplicateLiveModelsForTest(t, db)
+
+	runtimeScope := newModuleSourceSnapshotSyncScope(t.TempDir(), db)
+	manager := NewModuleManager(runtimeScope, nil)
+	err := manager.bootstrapMetaTables(runtimeScope)
+	if err == nil || !strings.Contains(err.Error(), "ensure effective app/name unique index") {
+		t.Fatalf("bootstrapMetaTables() error = %v, want unique index failure", err)
+	}
+}
+
+func TestPeekLoadMigrateNilGuardsAndPreloads(t *testing.T) {
+	t.Parallel()
+	var nilMgr *ModuleManager
+	if _, err := nilMgr.peekModuleRecord(context.Background(), "x"); err == nil {
+		t.Fatal("nil peekModuleRecord want error")
+	}
+	if _, err := nilMgr.loadModuleRecord("x"); err == nil {
+		t.Fatal("nil loadModuleRecord want error")
+	}
+	db := newModuleSourceSnapshotSyncDB(t)
+	scopeNoSession := newModuleSourceSnapshotSyncScope(t.TempDir(), db)
+	scopeNoSession.session = nil
+	bare := NewModuleManager(scopeNoSession, nil)
+	bare.bootstrapOnce.Do(func() {})
+	if _, err := bare.peekModuleRecord(nil, "missing-local-module"); err != nil {
+		_ = err // nil ctx normalize + origin miss
+	}
+	if err := bare.migrateBaseModule(); err == nil || !strings.Contains(err.Error(), "session is unavailable") {
+		t.Fatalf("migrateBaseModule nil session = %v", err)
+	}
+
+	db2 := newModuleSourceSnapshotSyncDB(t)
+	if err := db2.AutoMigrate(modmeta.CatalogEntities()...); err != nil {
+		t.Fatalf("catalog migrate: %v", err)
+	}
+	core := &meta.Module{Name: "core", Version: "1.0.0", Status: meta.Installed}
+	auth := &meta.Module{Name: "auth", Version: "1.0.0", Status: meta.Installed, Dependencies: []*meta.Module{core}}
+	if err := db2.Create(core).Error; err != nil {
+		t.Fatalf("seed core: %v", err)
+	}
+	if err := db2.Create(auth).Error; err != nil {
+		t.Fatalf("seed auth: %v", err)
+	}
+	runtimeScope := newModuleSourceSnapshotSyncScope(t.TempDir(), db2)
+	manager := NewModuleManager(runtimeScope, nil)
+	manager.bootstrapOnce.Do(func() {})
+	if _, err := manager.peekModuleRecord(nil, "missing-local-module"); err != nil {
+		_ = err // origin miss is fine; covers nil-ctx normalize
+	}
+	loaded, err := manager.loadModuleRecord("auth")
+	if err != nil {
+		t.Fatalf("loadModuleRecord(auth): %v", err)
+	}
+	if loaded == nil || len(loaded.Dependencies) == 0 {
+		t.Fatalf("expected Dependencies preload, got %#v", loaded)
+	}
+	if _, err := manager.loadModuleRecord("core"); err != nil {
+		t.Fatalf("loadModuleRecord(core): %v", err)
+	}
+}
+
 func TestModuleManagerMigrateBaseModuleEnsureUniqueIndexError(t *testing.T) {
 	t.Parallel()
 	db := newModuleSourceSnapshotSyncDB(t)
