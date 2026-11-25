@@ -33,6 +33,7 @@ SPDX-License-Identifier: Apache-2.0
             <div class="flex flex-wrap items-end gap-2">
               <ChoyFormView
                 v-if="templateSaveFormStore"
+                :key="templateSaveFormKey"
                 ref="templateSaveFormViewRef"
                 class="flex min-w-0 flex-[1_1_280px] flex-wrap items-end gap-2"
                 :store="templateSaveFormStore"
@@ -173,6 +174,8 @@ const selectedTemplateId = ref('');
 const templateSaveFormViewRef = ref<ChoyFormDialogViewApi | null>(null);
 const templateSaveFormStore = shallowRef<UiModelStore | null>(null);
 const templateSaveFormInitialValues = shallowRef<Record<string, unknown>>({ Name: '', Shared: false });
+/** Bump on each reset so ChoyFormView remounts onto the replacement store / empty draft. */
+const templateSaveFormKey = ref(0);
 const pendingFieldPaths = ref<string[] | null>(null);
 
 function closeExportPanel(): void {
@@ -192,6 +195,7 @@ const {
 });
 
 function resetTemplateSaveForm(): void {
+  templateSaveFormKey.value += 1;
   const initialValues = { Name: '', Shared: false };
   templateSaveFormInitialValues.value = { ...initialValues };
   templateSaveFormStore.value = createUiModelStore({

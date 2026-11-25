@@ -101,8 +101,15 @@ describe('ExportPanel template save FormView / UiModel', () => {
   test('resetTemplateSaveForm opens Name and Shared on a fresh UiModel store', async () => {
     const m = mountPanel();
     await flushPromises();
-    const s = asSetup(m);
+    const s = asSetup(m) as TemplateFormSetup & {
+      templateSaveFormKey: number | { value: number };
+    };
+    const keyBefore = Number(unwrapRef(s.templateSaveFormKey) ?? 0);
     s.resetTemplateSaveForm();
+    const after = asSetup(m) as TemplateFormSetup & {
+      templateSaveFormKey: number | { value: number };
+    };
+    expect(Number(unwrapRef(after.templateSaveFormKey) ?? 0)).toBe(keyBefore + 1);
     const store = templateStore(m);
     expect(store).toBeTruthy();
     expect(store!.getField('Name')).toBe('');
