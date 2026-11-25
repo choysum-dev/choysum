@@ -7,6 +7,8 @@ SPDX-License-Identifier: Apache-2.0
   <!--
     Column host: toolbar row + Vue-owned search-fit row (narrow SearchFit teleports here).
     data-slot=view-action-bar stays on the toolbar so width observers keep measuring it.
+
+    Leading contract: [identity] [actions: platform → domain → overflow] | find | present
   -->
   <div
     class="choy-view-action-bar-host flex min-w-0 w-full flex-col"
@@ -30,7 +32,7 @@ SPDX-License-Identifier: Apache-2.0
     >
       <!-- Keep the first thirds-grid column even when actions are empty so center/right do not shift. -->
       <div
-        v-if="$slots['system-actions'] || $slots['user-actions'] || props.layout === 'thirds'"
+        v-if="showLeading()"
         data-slot="view-action-bar-leading"
         :class="
           cn(
@@ -39,21 +41,42 @@ SPDX-License-Identifier: Apache-2.0
           )
         "
       >
-        <ChoyActionTray v-if="$slots['system-actions']" :aria-label="props.systemActionsLabel">
-          <slot name="system-actions" />
-        </ChoyActionTray>
-        <template v-if="$slots['system-actions'] && $slots['user-actions']">
-          <Separator
-            orientation="vertical"
-            class="mx-0 !h-4 w-px shrink-0"
-          />
-        </template>
-        <ChoyActionTray
-          v-if="$slots['user-actions']"
-          :aria-label="props.userActionsLabel"
+        <div
+          v-if="$slots.identity"
+          data-slot="view-action-bar-identity"
+          class="flex min-w-0 shrink-0 items-center gap-2"
         >
-          <slot name="user-actions" />
-        </ChoyActionTray>
+          <slot name="identity" />
+        </div>
+
+        <div
+          v-if="showActionsCluster()"
+          data-slot="view-action-bar-actions"
+          class="flex min-w-0 flex-nowrap items-center gap-3"
+        >
+          <ChoyActionTray v-if="$slots['system-actions']" :aria-label="props.systemActionsLabel">
+            <slot name="system-actions" />
+          </ChoyActionTray>
+          <template v-if="$slots['system-actions'] && $slots['user-actions']">
+            <Separator
+              orientation="vertical"
+              class="mx-0 !h-4 w-px shrink-0"
+            />
+          </template>
+          <ChoyActionTray
+            v-if="$slots['user-actions']"
+            :aria-label="props.userActionsLabel"
+          >
+            <slot name="user-actions" />
+          </ChoyActionTray>
+          <div
+            v-if="$slots['actions-overflow']"
+            data-slot="view-action-bar-overflow"
+            class="flex shrink-0 items-center"
+          >
+            <slot name="actions-overflow" />
+          </div>
+        </div>
       </div>
       <!--
         Thirds layout reserves the middle column even with no #center so trailing
@@ -82,7 +105,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { provide, ref, type Ref } from 'vue';
+import { provide, ref, useSlots, type Ref } from 'vue';
 import ChoyActionTray from '../layout/ChoyActionTray.vue';
 import { Separator } from '../vendor/ui/separator';
 import { cn, type ClassValue } from '../../lib/utils';
@@ -105,9 +128,18 @@ const props = withDefaults(
   },
 );
 
+const slots = useSlots();
 const searchFitRowRef = ref<HTMLElement | null>(null);
 // Template-ref Element typings diverge from lib.dom HTMLElement under QuickJS.
 provide(ChoySearchFitRowKey, searchFitRowRef as unknown as Ref<HTMLElement | null>);
+
+function showActionsCluster(): boolean {
+  return !!(slots['system-actions'] || slots['user-actions'] || slots['actions-overflow']);
+}
+
+function showLeading(): boolean {
+  return !!(slots.identity || showActionsCluster() || props.layout === 'thirds');
+}
 
 /** True when the consumer clears the bottom hairline (no pb air needed). */
 function isBorderless(value: ClassValue | undefined): boolean {

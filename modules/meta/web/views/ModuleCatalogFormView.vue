@@ -21,8 +21,8 @@ SPDX-License-Identifier: Apache-2.0
     <ChoyFormView
       v-bind="{ store, recordId, viewMode: 'display' as const, showHeader }"
     >
-      <!-- Install / Upgrade / Uninstall after the title/⋮ cluster (List/Kanban CTA parity). -->
-      <template #secondary-actions>
+      <!-- Domain main CTA (Install/Upgrade); Uninstall is destructive secondary. -->
+      <template #system-actions>
         <ChoyActionButton
           v-if="primaryAction"
           type="button"
@@ -33,6 +33,8 @@ SPDX-License-Identifier: Apache-2.0
         >
           {{ primaryActionLabel }}
         </ChoyActionButton>
+      </template>
+      <template #secondary-actions>
         <ChoyActionButton
           v-if="canUninstallRow && hasAction(moduleUninstallAction)"
           type="button"

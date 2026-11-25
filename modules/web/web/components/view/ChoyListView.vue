@@ -25,54 +25,96 @@ SPDX-License-Identifier: Apache-2.0
     @retry="onSurfaceRetry"
     @cancel="onSurfaceCancel"
   >
-    <template v-if="showActions || editable" #system-actions>
-      <!-- Keep Save/Discard outside the overridable slot so custom toolbars cannot hide them. -->
-      <ChoyActionButton
-        v-if="editable && isEditing"
-        type="button"
-        size="default"
-        variant="default"
-        :busy="inlineSaving"
-        @execute="handleInlineSave"
-      >
-        <Check class="size-4" aria-hidden="true" />
-        {{ _t('Save') }}
-      </ChoyActionButton>
+    <template v-if="showActions || editable || hasSelection" #system-actions>
+      <!-- Selection state: batch actions own the primary cluster; find keeps Search. -->
+      <template v-if="hasSelection">
+        <div
+          data-anchor="choy.list.selection-bar"
+          class="flex min-w-0 flex-nowrap items-center gap-2"
+          role="toolbar"
+          :aria-label="_t('Selection actions')"
+        >
+          <div class="flex min-w-0 items-center gap-1">
+            <span class="truncate text-sm text-muted-foreground tabular-nums">
+              {{ _t('%s selected', selectedItems.length) }}
+            </span>
+            <ChoyButton
+              type="button"
+              variant="ghost"
+              size="icon"
+              class="size-control shrink-0 text-muted-foreground"
+              :aria-label="_t('Clear selection')"
+              @click="clearSelection"
+            >
+              <X class="size-4" aria-hidden="true" />
+            </ChoyButton>
+          </div>
 
-      <ChoyActionButton
-        v-if="editable && isEditing"
-        type="button"
-        size="default"
-        variant="outline"
-        :requires-connectivity="false"
-        @execute="handleInlineDiscard"
-      >
-        <X class="size-4" aria-hidden="true" />
-        {{ _t('Discard') }}
-      </ChoyActionButton>
+          <ChoyActionButton
+            v-if="deleteAction && canDelete"
+            size="default"
+            variant="outline-destructive"
+            :busy="deleteLoading"
+            :action-id="actionIds?.delete"
+            :has-action="hasAction"
+            @execute="handleDelete"
+          >
+            <Trash2 class="size-4" aria-hidden="true" />
+            {{ _t('Delete') }}
+          </ChoyActionButton>
 
-      <slot
-        v-if="showActions"
-        name="system-actions"
-        :selected-items="selectedItems"
-        :is-editing="isEditing"
-        :inline-saving="inlineSaving"
-        :save="handleInlineSave"
-        :discard="handleInlineDiscard"
-      >
+          <slot name="selection-actions" :selected-items="selectedItems" :clear="clearSelection" />
+        </div>
+      </template>
+      <template v-else>
+        <!-- Keep Save/Discard outside the overridable slot so custom toolbars cannot hide them. -->
         <ChoyActionButton
-          v-if="resolvedCreateAction && canCreate"
+          v-if="editable && isEditing"
           type="button"
           size="default"
           variant="default"
-          :action-id="actionIds?.create"
-          :has-action="hasAction"
-          @execute="handleCreate"
+          :busy="inlineSaving"
+          @execute="handleInlineSave"
         >
-          <Plus class="size-4" aria-hidden="true" />
-          {{ _t('New') }}
+          <Check class="size-4" aria-hidden="true" />
+          {{ _t('Save') }}
         </ChoyActionButton>
-      </slot>
+
+        <ChoyActionButton
+          v-if="editable && isEditing"
+          type="button"
+          size="default"
+          variant="outline"
+          :requires-connectivity="false"
+          @execute="handleInlineDiscard"
+        >
+          <X class="size-4" aria-hidden="true" />
+          {{ _t('Discard') }}
+        </ChoyActionButton>
+
+        <slot
+          v-if="showActions"
+          name="system-actions"
+          :selected-items="selectedItems"
+          :is-editing="isEditing"
+          :inline-saving="inlineSaving"
+          :save="handleInlineSave"
+          :discard="handleInlineDiscard"
+        >
+          <ChoyActionButton
+            v-if="resolvedCreateAction && canCreate"
+            type="button"
+            size="default"
+            variant="default"
+            :action-id="actionIds?.create"
+            :has-action="hasAction"
+            @execute="handleCreate"
+          >
+            <Plus class="size-4" aria-hidden="true" />
+            {{ _t('New') }}
+          </ChoyActionButton>
+        </slot>
+      </template>
     </template>
 
     <template v-if="showRefreshInOverflow || !!slots['overflow-actions']" #overflow-actions>
@@ -84,58 +126,19 @@ SPDX-License-Identifier: Apache-2.0
       <slot name="overflow-actions" :selected-items="selectedItems" />
     </template>
 
-    <template v-if="showActions" #secondary-actions>
+    <template v-if="showActions && !hasSelection" #secondary-actions>
       <slot name="secondary-actions" :selected-items="selectedItems" />
     </template>
 
-    <template v-if="showActions && !!slots['user-actions']" #user-actions>
+    <template v-if="showActions && !hasSelection && !!slots['user-actions']" #user-actions>
       <slot name="user-actions" :selected-items="selectedItems" />
     </template>
 
-    <!-- Selection replaces Search in the center column. Search stays mounted. -->
+    <!-- Find zone: Search only (selection lives in the actions cluster). -->
     <template #center>
-      <div
-        v-show="hasSelection"
-        data-anchor="choy.list.selection-bar"
-        class="flex min-w-0 w-full flex-nowrap items-center gap-2 overflow-x-auto"
-        role="toolbar"
-        :aria-label="_t('Selection actions')"
-      >
-        <div class="flex min-w-0 items-center gap-1">
-          <span class="truncate text-sm text-muted-foreground tabular-nums">
-            {{ _t('%s selected', selectedItems.length) }}
-          </span>
-          <ChoyButton
-            type="button"
-            variant="ghost"
-            size="icon"
-            class="size-control shrink-0 text-muted-foreground"
-            :aria-label="_t('Clear selection')"
-            @click="clearSelection"
-          >
-            <X class="size-4" aria-hidden="true" />
-          </ChoyButton>
-        </div>
-
-        <ChoyActionButton
-          v-if="deleteAction && canDelete"
-          size="default"
-          variant="outline-destructive"
-          :busy="deleteLoading"
-          :action-id="actionIds?.delete"
-          :has-action="hasAction"
-          @execute="handleDelete"
-        >
-          <Trash2 class="size-4" aria-hidden="true" />
-          {{ _t('Delete') }}
-        </ChoyActionButton>
-
-        <slot name="selection-actions" :selected-items="selectedItems" :clear="clearSelection" />
-      </div>
       <ChoySearchFit
         v-if="resolvedSearchView"
-        v-show="!hasSelection"
-        :field-visible="!hasSelection"
+        :field-visible="true"
       >
         <component :is="resolvedSearchView" class="min-w-0 w-full" :store="store" @query-update="onSearch" />
       </ChoySearchFit>
@@ -714,7 +717,7 @@ const selection = useTableSelection(
   props.selectionMode
 );
 
-// Selected items; bulk actions render in the center selection bar (Odoo-style).
+// Selected items; bulk actions replace the primary cluster (find keeps Search).
 const selectedItems = ref<any[]>([]);
 const hasSelection = computed(() => selectedItems.value.length > 0);
 

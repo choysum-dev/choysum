@@ -46,6 +46,19 @@ describe('ChoyViewBase', () => {
     expect(mounted.q('[data-testid=right]')?.textContent).toBe('Right');
     expect(mounted.q('[data-testid=body]')?.textContent).toBe('Body');
     expect(mounted.q('[data-slot=view-body-host]')).not.toBeNull();
+
+    // Identity before actions: title precedes primary / secondary in the leading column.
+    const leading = mounted.q('[data-slot=view-action-bar-leading]') as HTMLElement | null;
+    expect(leading).not.toBeNull();
+    expect(mounted.q('[data-slot=view-action-bar-identity]')).not.toBeNull();
+    expect(mounted.q('[data-slot=view-action-bar-actions]')).not.toBeNull();
+    const text = (leading!.textContent || '').replace(/\s+/g, ' ');
+    const titleIdx = text.indexOf('Partners');
+    const newIdx = text.indexOf('New');
+    const moreIdx = text.indexOf('More');
+    expect(titleIdx).toBeGreaterThanOrEqual(0);
+    expect(newIdx).toBeGreaterThan(titleIdx);
+    expect(moreIdx).toBeGreaterThan(newIdx);
     mounted.unmount();
   });
 
@@ -155,7 +168,7 @@ describe('ChoyViewBase', () => {
     }
   });
 
-  test('mounts page title actions when showTitleOverflow and overflow slot', async () => {
+  test('mounts page title actions at actions-overflow end when showTitleOverflow', async () => {
     setActivePinia(createPinia());
     const mounted = mountApp(ChoyViewBase as any, {
       props: {
@@ -165,6 +178,7 @@ describe('ChoyViewBase', () => {
         pageTitleActionsIo: { actionImport: false, actionExport: false },
       },
       slots: {
+        'system-actions': () => h('button', { 'data-testid': 'primary' }, 'New'),
         'overflow-actions': () => h('div', { 'data-testid': 'overflow-item' }, 'Refresh'),
         default: () => h('div', 'body'),
       },
@@ -172,6 +186,14 @@ describe('ChoyViewBase', () => {
     await flushPromises();
     expect(mounted.q('.choy-page__title-actions')).not.toBeNull();
     expect(mounted.q('[data-testid=overflow-item]')?.textContent).toBe('Refresh');
+    expect(mounted.q('[data-slot=view-action-bar-overflow]')).not.toBeNull();
+    const actions = mounted.q('[data-slot=view-action-bar-actions]') as HTMLElement | null;
+    expect(actions).not.toBeNull();
+    const text = (actions!.textContent || '').replace(/\s+/g, ' ');
+    const primaryIdx = text.indexOf('New');
+    // Overflow menu trigger is last in the actions cluster (⋮ / more).
+    expect(primaryIdx).toBeGreaterThanOrEqual(0);
+    expect(mounted.q('[data-testid=page-io-menu-trigger]')).not.toBeNull();
     mounted.unmount();
   });
 

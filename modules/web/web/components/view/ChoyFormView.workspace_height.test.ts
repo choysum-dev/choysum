@@ -41,12 +41,17 @@ function mountForm(props: Record<string, unknown> = {}, extra: Record<string, un
   });
 }
 
-/** Action-tray chrome order for the minimal DOM (no compound querySelector). */
-function actionTrayOrder(tray: Element): string[] {
+/** Leading-column chrome order for the minimal DOM (no compound querySelector). */
+function actionBarLeadingOrder(root: Element): string[] {
   const out: string[] = [];
   const walk = (node: Element) => {
     const testId = node.getAttribute('data-testid');
-    if (testId === 'form-primary-new' || testId === 'form-secondary-edit' || testId === 'form-secondary-reset') {
+    if (
+      testId === 'form-primary-edit' ||
+      testId === 'form-primary-new' ||
+      testId === 'form-secondary-edit' ||
+      testId === 'form-secondary-reset'
+    ) {
       out.push(testId);
       return;
     }
@@ -63,7 +68,7 @@ function actionTrayOrder(tray: Element): string[] {
       walk(child as Element);
     }
   };
-  walk(tray);
+  walk(root);
   return out;
 }
 
@@ -112,7 +117,7 @@ describe('ChoyFormView workspace height', () => {
     mounted.unmount();
   });
 
-  test('display left chrome is primary → title → secondary', async () => {
+  test('display left chrome is title → Edit primary (New in ⋮)', async () => {
     const store = loginStore();
     const { router } = createFeStubRouter({
       route: { name: 'login', path: '/web/login', fullPath: '/web/login', params: {}, query: {}, meta: {} },
@@ -147,20 +152,75 @@ describe('ChoyFormView workspace height', () => {
     const mounted = mountApp(Host, { plugins: [createPinia(), router] });
     await flushPromises();
 
-    const tray = mounted.q('[data-testid=choy-action-tray]') as HTMLElement | null;
-    expect(tray).not.toBeNull();
-    const order = actionTrayOrder(tray!);
-    const newIdx = order.indexOf('form-primary-new');
+    const leading = mounted.q('[data-slot=view-action-bar-leading]') as HTMLElement | null;
+    expect(leading).not.toBeNull();
+    const order = actionBarLeadingOrder(leading!);
     const titleIdx = order.indexOf('page-title');
-    const editIdx = order.indexOf('form-secondary-edit');
-    expect(newIdx).toBeGreaterThanOrEqual(0);
-    expect(titleIdx).toBeGreaterThan(newIdx);
+    const editIdx = order.indexOf('form-primary-edit');
+    expect(titleIdx).toBeGreaterThanOrEqual(0);
     expect(editIdx).toBeGreaterThan(titleIdx);
+    expect(order.indexOf('form-primary-new')).toBe(-1);
+    expect(mounted.q('[data-testid=form-overflow-new]')).not.toBeNull();
+    expect(mounted.q('[data-slot=view-action-bar-overflow]')).not.toBeNull();
 
     mounted.unmount();
   });
 
-  test('create left chrome is Save/Cancel → title → ⋮ (Reset in overflow)', async () => {
+  test('display with domain primary keeps Edit secondary and lifecycle in ⋮', async () => {
+    const store = loginStore();
+    const { router } = createFeStubRouter({
+      route: { name: 'login', path: '/web/login', fullPath: '/web/login', params: {}, query: {}, meta: {} },
+    });
+    const Host = defineComponent({
+      setup() {
+        return () =>
+          h(
+            ChoyPage as any,
+            { store, title: 'Module' },
+            {
+              default: () =>
+                h(
+                  ChoyFormView as any,
+                  {
+                    store,
+                    viewMode: 'display',
+                    recordId: 'mod-1',
+                    resolveRecordIdFromRoute: false,
+                    showHeader: true,
+                    showActions: true,
+                    showMessages: false,
+                    createAction: '/modules/new',
+                    actionIds: {
+                      create: 'meta.action.create',
+                      edit: 'meta.action.edit',
+                      copy: 'meta.action.copy',
+                      delete: 'meta.action.delete',
+                    },
+                    hasAction: () => true,
+                  },
+                  {
+                    'system-actions': () =>
+                      h('button', { type: 'button', 'data-testid': 'domain-primary' }, 'Install'),
+                  },
+                ),
+            },
+          );
+      },
+    });
+    const mounted = mountApp(Host, { plugins: [createPinia(), router] });
+    await flushPromises();
+
+    expect(mounted.q('[data-testid=domain-primary]')?.textContent).toBe('Install');
+    expect(mounted.q('[data-testid=form-primary-edit]')).toBeNull();
+    expect(mounted.q('[data-testid=form-secondary-edit]')).not.toBeNull();
+    expect(mounted.q('[data-testid=form-overflow-new]')).not.toBeNull();
+    expect(mounted.q('[data-testid=form-overflow-copy]')).not.toBeNull();
+    expect(mounted.q('[data-testid=form-overflow-delete]')).not.toBeNull();
+
+    mounted.unmount();
+  });
+
+  test('create left chrome is title → Save/Cancel → ⋮ (Reset in overflow)', async () => {
     const store = loginStore();
     const { router } = createFeStubRouter({
       route: { name: 'login', path: '/web/login', fullPath: '/web/login', params: {}, query: {}, meta: {} },
@@ -188,17 +248,18 @@ describe('ChoyFormView workspace height', () => {
     const mounted = mountApp(Host, { plugins: [createPinia(), router] });
     await flushPromises();
 
-    const tray = mounted.q('[data-testid=choy-action-tray]') as HTMLElement | null;
-    expect(tray).not.toBeNull();
-    const order = actionTrayOrder(tray!);
+    const leading = mounted.q('[data-slot=view-action-bar-leading]') as HTMLElement | null;
+    expect(leading).not.toBeNull();
+    const order = actionBarLeadingOrder(leading!);
     const saveIdx = order.findIndex(t => t.includes('Save') || t.includes('保存'));
     const cancelIdx = order.findIndex(t => t.includes('Cancel') || t.includes('取消'));
     const titleIdx = order.indexOf('page-title');
-    expect(saveIdx).toBeGreaterThanOrEqual(0);
+    expect(titleIdx).toBeGreaterThanOrEqual(0);
+    expect(saveIdx).toBeGreaterThan(titleIdx);
     expect(cancelIdx).toBeGreaterThan(saveIdx);
-    expect(titleIdx).toBeGreaterThan(cancelIdx);
     expect(order.includes('form-secondary-reset')).toBe(false);
     expect(mounted.q('[data-testid=page-io-menu-trigger]')).not.toBeNull();
+    expect(mounted.q('[data-slot=view-action-bar-overflow]')).not.toBeNull();
 
     mounted.unmount();
   });

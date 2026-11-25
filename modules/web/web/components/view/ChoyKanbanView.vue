@@ -10,8 +10,7 @@ SPDX-License-Identifier: Apache-2.0
     chrome-anchor="choy.kanban.view-chrome"
     :show-header="
       showHeader &&
-      (!!slots.header ||
-        !!slots.search ||
+      (!!slots.search ||
         !!slots['header-right'] ||
         showActions ||
         !!pageTitle ||
@@ -69,11 +68,8 @@ SPDX-License-Identifier: Apache-2.0
       <slot name="secondary-actions" />
     </template>
 
-    <template v-if="slots['user-actions'] || slots.header" #user-actions>
+    <template v-if="slots['user-actions']" #user-actions>
       <slot name="user-actions" />
-      <div v-if="slots.header" class="min-w-0">
-        <slot name="header" />
-      </div>
     </template>
 
     <template v-if="slots.search" #center>

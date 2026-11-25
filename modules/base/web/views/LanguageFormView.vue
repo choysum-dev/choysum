@@ -13,7 +13,7 @@ SPDX-License-Identifier: Apache-2.0
     @update-success="reloadActiveLanguagesAfterLanguageSave"
     @create-success="reloadActiveLanguagesAfterLanguageSave"
   >
-    <template #secondary-actions="{ formData, recordId: slotRecordId, loading }">
+    <template #system-actions="{ formData, recordId: slotRecordId, loading }">
       <ChoyActionButton
         v-if="!loading && showActivateFor(formData, slotRecordId)"
         type="button"
@@ -39,6 +39,8 @@ SPDX-License-Identifier: Apache-2.0
         <CircleOff class="size-4" aria-hidden="true" />
         {{ _t('Deactivate') }}
       </ChoyActionButton>
+    </template>
+    <template #secondary-actions="{ formData, recordId: slotRecordId, loading }">
       <ChoyActionButton
         v-if="!loading && showReloadTerminologyFor(formData, slotRecordId)"
         type="button"

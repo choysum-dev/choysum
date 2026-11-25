@@ -32,10 +32,11 @@ SPDX-License-Identifier: Apache-2.0
     @cancel="onFormSurfaceCancel"
   >
     <!--
-      Left chrome contract (List / Kanban / Form):
-      [primary] [page title][⋮] [secondary…]
-      create/edit: primary=Save/Cancel, Reset in ⋮ (no trailing secondary).
-      display: primary=New; after title: #secondary-actions then Edit/Copy/Delete.
+      Action Bar contract:
+      [identity: title] [主 → 次 → ⋯] | [找] | [看]
+      create/edit: primary=Save/Cancel; Reset/New/Copy/Delete in ⋮; domain suppressed.
+      display + domain #system-actions: domain is main CTA; Edit secondary; New in ⋮.
+      display default: Edit is main CTA; New/Copy/Delete/Refresh in ⋮.
       settings: primary=Save/Discard only (no CRUD / Reset overflow).
     -->
     <template v-if="resolvedShowActions" #system-actions>
@@ -67,7 +68,7 @@ SPDX-License-Identifier: Apache-2.0
           {{ settingsDiscardLabel }}
         </ChoyActionButton>
       </template>
-      <!-- Primary: Save/Cancel while editing; New (or #system-actions) in display. -->
+      <!-- Editing: Save/Cancel own the primary cluster; domain system-actions stay hidden. -->
       <template v-else-if="isEditing && resolvedShowActions">
         <ChoyActionButton
           type="button"
@@ -91,25 +92,39 @@ SPDX-License-Identifier: Apache-2.0
           {{ _t('Cancel') }}
         </ChoyActionButton>
       </template>
-      <slot v-else-if="resolvedShowActions" name="system-actions">
-        <ChoyActionButton
-          v-if="viewMode === 'display' && effectiveRecordId && resolvedCreateAction && canCreate"
-          type="button"
-          size="default"
-          variant="default"
-          data-testid="form-primary-new"
-          :action-id="actionIds?.create"
-          :has-action="hasAction"
-          @execute="handleCreate"
+      <!-- Display: domain #system-actions is the main CTA when provided; else Edit. -->
+      <template v-else-if="resolvedShowActions">
+        <slot
+          name="system-actions"
+          :form-data="exposedFormData"
+          :record-id="effectiveRecordId"
+          :view-mode="viewMode"
+          :loading="loading"
         >
-          <Plus class="size-4" aria-hidden="true" />
-          {{ _t('New') }}
-        </ChoyActionButton>
-      </slot>
+          <ChoyActionButton
+            v-if="viewMode === 'display' && effectiveRecordId && canEdit"
+            type="button"
+            size="default"
+            variant="default"
+            data-testid="form-primary-edit"
+            :action-id="actionIds?.edit"
+            :has-action="hasAction"
+            @execute="handleEdit"
+          >
+            <Pencil class="size-4" aria-hidden="true" />
+            {{ _t('Edit') }}
+          </ChoyActionButton>
+        </slot>
+      </template>
     </template>
 
     <template
-      v-if="showRefreshInOverflow || showResetInOverflow || $slots['overflow-actions']"
+      v-if="
+        showRefreshInOverflow ||
+        showResetInOverflow ||
+        showFormLifecycleInOverflow ||
+        $slots['overflow-actions']
+      "
       #overflow-actions
     >
       <ChoyViewOverflowRefreshItem
@@ -127,6 +142,37 @@ SPDX-License-Identifier: Apache-2.0
         <RotateCcw class="size-4" aria-hidden="true" />
         {{ _t('Reset') }}
       </ChoyActionMenuItem>
+      <ChoyActionMenuItem
+        v-if="showOverflowNew"
+        data-testid="form-overflow-new"
+        :action-id="actionIds?.create"
+        :has-action="hasAction"
+        @execute="handleCreate"
+      >
+        <Plus class="size-4" aria-hidden="true" />
+        {{ _t('New') }}
+      </ChoyActionMenuItem>
+      <ChoyActionMenuItem
+        v-if="showOverflowCopy"
+        data-testid="form-overflow-copy"
+        :action-id="actionIds?.copy"
+        :has-action="hasAction"
+        @execute="handleCopy"
+      >
+        <Copy class="size-4" aria-hidden="true" />
+        {{ _t('Copy') }}
+      </ChoyActionMenuItem>
+      <ChoyActionMenuItem
+        v-if="showOverflowDelete"
+        data-testid="form-overflow-delete"
+        class="text-destructive focus:text-destructive"
+        :action-id="actionIds?.delete"
+        :has-action="hasAction"
+        @execute="handleDelete"
+      >
+        <Trash2 class="size-4" aria-hidden="true" />
+        {{ _t('Delete') }}
+      </ChoyActionMenuItem>
       <slot name="overflow-actions" />
     </template>
 
@@ -135,25 +181,20 @@ SPDX-License-Identifier: Apache-2.0
         !isSettingsPresentation &&
         resolvedShowActions &&
         viewMode === 'display' &&
-        (!!slots['secondary-actions'] || !!effectiveRecordId)
+        (!!slots['secondary-actions'] || showEditAsSecondary)
       "
       #secondary-actions
     >
-    <!--
-      Same tray as title/⋮ (List/Kanban secondary-actions parity) — no ActionBar separator.
-      Product CTAs (e.g. Activate) render before Edit/Copy/Delete.
-    -->
-    <slot
-      name="secondary-actions"
-      :form-data="exposedFormData"
-      :record-id="effectiveRecordId"
-      :view-mode="viewMode"
-      :loading="loading"
-    />
-    <!-- Built-in secondary: Edit/Copy/Delete after product #secondary-actions. -->
-    <template v-if="effectiveRecordId">
+      <slot
+        name="secondary-actions"
+        :form-data="exposedFormData"
+        :record-id="effectiveRecordId"
+        :view-mode="viewMode"
+        :loading="loading"
+      />
+      <!-- When domain owns the primary CTA, Edit stays exposed as outline secondary. -->
       <ChoyActionButton
-        v-if="canEdit"
+        v-if="showEditAsSecondary"
         type="button"
         size="default"
         variant="outline"
@@ -165,37 +206,13 @@ SPDX-License-Identifier: Apache-2.0
         <Pencil class="size-4" aria-hidden="true" />
         {{ _t('Edit') }}
       </ChoyActionButton>
-      <ChoyActionButton
-        v-if="canCopy"
-        type="button"
-        size="default"
-        variant="outline"
-        data-testid="form-secondary-copy"
-        :action-id="actionIds?.copy"
-        :has-action="hasAction"
-        @execute="handleCopy"
-      >
-        <Copy class="size-4" aria-hidden="true" />
-        {{ _t('Copy') }}
-      </ChoyActionButton>
-      <ChoyActionButton
-        v-if="canDelete"
-        type="button"
-        size="default"
-        variant="outline-destructive"
-        data-testid="form-secondary-delete"
-        :action-id="actionIds?.delete"
-        :has-action="hasAction"
-        @execute="handleDelete"
-      >
-        <Trash2 class="size-4" aria-hidden="true" />
-        {{ _t('Delete') }}
-      </ChoyActionButton>
-    </template>
     </template>
 
     <!-- Only register when filled — empty tray would paint a dangling ActionBar separator. -->
-    <template v-if="resolvedShowActions && !!slots['user-actions']" #user-actions>
+    <template
+      v-if="resolvedShowActions && !isEditing && !!slots['user-actions']"
+      #user-actions
+    >
       <slot
         name="user-actions"
         :form-data="exposedFormData"
@@ -419,12 +436,19 @@ const isSettingsPresentation = computed(() => props.presentation === 'settings')
 // =============================
 defineSlots<{
   breadcrumb(): any;
-  /** Primary actions before the page title (default: New in display). */
-  'system-actions'(): any;
   /**
-   * Display-only CTAs after the title/⋮ cluster, before Edit/Copy/Delete.
-   * Same tray as List/Kanban `#secondary-actions` — no ActionBar separator.
-   * `recordId` is the effective identity (prop, else route peek) — same as Edit/Copy/Delete.
+   * Display main CTA cluster (domain primary such as Install/Activate).
+   * Default when empty: Edit. Hidden while create/edit (Save/Cancel own the tray).
+   */
+  'system-actions'(props: {
+    formData: Partial<ClientModel<T>>;
+    recordId?: string;
+    viewMode: ViewMode;
+    loading: boolean;
+  }): any;
+  /**
+   * Display-only secondary CTAs after the main cluster (before Edit when domain owns primary).
+   * `recordId` is the effective identity (prop, else route peek).
    */
   'secondary-actions'(props: {
     formData: Partial<ClientModel<T>>;
@@ -846,6 +870,46 @@ const showResetInOverflow = computed(
     resolvedShowHeader.value &&
     isEditing.value,
 );
+/** Domain filled `#system-actions` — that button is the display main CTA; Edit becomes secondary. */
+const hasDomainPrimary = computed(
+  () =>
+    !isSettingsPresentation.value &&
+    viewMode.value === 'display' &&
+    !!slots['system-actions'],
+);
+const showEditAsSecondary = computed(
+  () =>
+    hasDomainPrimary.value &&
+    !!effectiveRecordId.value &&
+    canEdit.value,
+);
+const showOverflowNew = computed(
+  () =>
+    !isSettingsPresentation.value &&
+    resolvedShowActions.value &&
+    viewMode.value === 'display' &&
+    !!resolvedCreateAction.value &&
+    canCreate.value,
+);
+const showOverflowCopy = computed(
+  () =>
+    !isSettingsPresentation.value &&
+    resolvedShowActions.value &&
+    viewMode.value === 'display' &&
+    !!effectiveRecordId.value &&
+    canCopy.value,
+);
+const showOverflowDelete = computed(
+  () =>
+    !isSettingsPresentation.value &&
+    resolvedShowActions.value &&
+    viewMode.value === 'display' &&
+    !!effectiveRecordId.value &&
+    canDelete.value,
+);
+const showFormLifecycleInOverflow = computed(
+  () => showOverflowNew.value || showOverflowCopy.value || showOverflowDelete.value,
+);
 const { showRefreshInOverflow, showTitleOverflow } = useViewTitleOverflow({
   pageTitleActionsIo,
   showRefresh: () =>
@@ -856,7 +920,7 @@ const { showRefreshInOverflow, showTitleOverflow } = useViewTitleOverflow({
     viewMode.value === 'display' &&
     !!effectiveRecordId.value,
   showReset: showResetInOverflow,
-  hasOverflowSlot: () => !!slots['overflow-actions'],
+  hasOverflowSlot: () => !!slots['overflow-actions'] || showFormLifecycleInOverflow.value,
   enabled: () => !isSettingsPresentation.value,
 });
 

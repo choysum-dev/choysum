@@ -15,8 +15,8 @@ SPDX-License-Identifier: Apache-2.0
   6. collection: Search first-frame + #search or embedded Search
   7. export from kit + chrome/mount unit test
 
-  Left chrome contract (List / Kanban / Form):
-  [primary / #system-actions] [page title][⋮] [#secondary-actions…]
+  Left chrome contract (List / Kanban / Form / Chart):
+  [identity: title] [主 → 次 → 领域] [⋯] | [找] | [看]
 -->
 <template>
   <ChoyViewContainer :class="containerClass" v-bind="attrs">
@@ -28,20 +28,28 @@ SPDX-License-Identifier: Apache-2.0
           :system-actions-label="systemActionsLabel"
           :user-actions-label="userActionsLabel"
         >
-          <template v-if="showSystemTray()" #system-actions>
-            <slot name="system-actions" />
-            <slot name="primary" />
-
+          <template v-if="pageTitle" #identity>
             <h1
-              v-if="pageTitle"
               :id="pageTitleId || undefined"
               data-slot="page-title"
               :class="resolvedPageTitleClass"
             >
               {{ pageTitle }}
             </h1>
+          </template>
+
+          <template v-if="showSystemTray()" #system-actions>
+            <slot name="system-actions" />
+            <slot name="primary" />
+            <slot name="secondary-actions" />
+          </template>
+
+          <template v-if="slots['user-actions']" #user-actions>
+            <slot name="user-actions" />
+          </template>
+
+          <template v-if="showTitleOverflow" #actions-overflow>
             <ChoyPageTitleActions
-              v-if="showTitleOverflow"
               :has-io-menu="!!pageTitleActionsIo"
               :action-import="pageTitleActionsIo?.actionImport ?? false"
               :action-export="pageTitleActionsIo?.actionExport ?? false"
@@ -55,12 +63,6 @@ SPDX-License-Identifier: Apache-2.0
                 <slot name="overflow-actions" />
               </template>
             </ChoyPageTitleActions>
-
-            <slot name="secondary-actions" />
-          </template>
-
-          <template v-if="slots['user-actions']" #user-actions>
-            <slot name="user-actions" />
           </template>
 
           <!-- ActionBar thirds pads an empty center when this slot is omitted. -->
@@ -139,7 +141,7 @@ const props = withDefaults(
     pageTitleId?: string | null;
     pageTitleClass?: ClassValue;
     pageTitleActionsIo?: ChoyViewBaseTitleActionsIo | null;
-    /** When true, mount ChoyPageTitleActions (IO ⋮ / overflow). */
+    /** When true, mount ChoyPageTitleActions (IO ⋮ / overflow) at the actions cluster end. */
     showTitleOverflow?: boolean;
     store?: { storeId?: string; fullModelName?: string; state?: { result?: { total?: number } } };
     busy?: boolean;
@@ -191,8 +193,6 @@ const containerClass = computed(() => cn('gap-5', props.class));
 function showSystemTray(): boolean {
   return (
     props.showActions ||
-    !!props.pageTitle ||
-    !!props.showTitleOverflow ||
     !!slots['system-actions'] ||
     !!slots.primary ||
     !!slots['secondary-actions']
@@ -202,6 +202,8 @@ function showSystemTray(): boolean {
 function showHeaderRegion(): boolean {
   if (!props.showHeader) return false;
   return (
+    !!props.pageTitle ||
+    !!props.showTitleOverflow ||
     showSystemTray() ||
     !!slots['user-actions'] ||
     !!slots.center ||
