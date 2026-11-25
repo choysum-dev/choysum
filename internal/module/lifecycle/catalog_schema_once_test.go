@@ -147,4 +147,10 @@ func TestCatalogSchemaKeyAndEnsureNilDB(t *testing.T) {
 	if !strings.HasPrefix(key, "gorm:") {
 		t.Fatalf("catalogSchemaKey(empty gorm)=%q, want gorm: prefix", key)
 	}
+	// Config present but no ConnPool: db.DB() errors → same gorm:%p fallback.
+	gdb2 := &gorm.DB{Config: &gorm.Config{}}
+	key2 := catalogSchemaKey(gdb2)
+	if !strings.HasPrefix(key2, "gorm:") {
+		t.Fatalf("catalogSchemaKey(config-only)=%q, want gorm: prefix", key2)
+	}
 }
