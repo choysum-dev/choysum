@@ -159,6 +159,7 @@ function closeImportPanel(): void {
 const mappingFormViewRef = ref<ChoyFormDialogViewApi | null>(null);
 const mappingFormStore = shallowRef<UiModelStore | null>(null);
 const mappingPropByHeader = ref<Record<string, string>>({});
+let mappingStoreSeq = 0;
 
 const title = _t('Import');
 const defaultUploadHint = _t('Upload a UTF-8 CSV. Map columns to importable fields from the catalog.');
@@ -382,7 +383,7 @@ function rebuildMappingFormStore(): void {
   }
   mappingPropByHeader.value = propByHeader;
   mappingFormStore.value = createUiModelStore({
-    storeId: `ui-model:import-mapping:${Date.now()}`,
+    storeId: `ui-model:import-mapping:${++mappingStoreSeq}`,
     fields,
     initialValues,
   });

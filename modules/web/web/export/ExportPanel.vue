@@ -199,7 +199,7 @@ function resetTemplateSaveForm(): void {
   const initialValues = { Name: '', Shared: false };
   templateSaveFormInitialValues.value = { ...initialValues };
   templateSaveFormStore.value = createUiModelStore({
-    storeId: `ui-model:export-template-save:${Date.now()}`,
+    storeId: `ui-model:export-template-save:${templateSaveFormKey.value}`,
     fields: [
       { name: 'Name', label: templateNameLabel, type: 'varchar' },
       { name: 'Shared', label: sharedTemplateLabel, type: 'boolean' },

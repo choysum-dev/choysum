@@ -110,6 +110,7 @@ const formViewRef = ref<ChoyFormDialogViewApi | null>(null);
 const formStore = shallowRef<UiModelStore | null>(null);
 const formInitialValues = shallowRef<Record<string, unknown>>({});
 const fieldCodes = ref<string[]>([]);
+let formStoreSeq = 0;
 
 const visible = computed({
   get: () => props.modelValue,
@@ -159,7 +160,7 @@ function openFormFromRows(ordered: TranslationRow[]): void {
   fieldCodes.value = codes;
   formInitialValues.value = { ...initialValues };
   formStore.value = createUiModelStore({
-    storeId: `ui-model:property-label-translations:${Date.now()}`,
+    storeId: `ui-model:property-label-translations:${++formStoreSeq}`,
     fields,
     initialValues,
   });
