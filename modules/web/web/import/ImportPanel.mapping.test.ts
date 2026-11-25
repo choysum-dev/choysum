@@ -262,6 +262,7 @@ describe('ImportPanel mapping FormView store', () => {
     await flushPromises();
     expect(s.mappingFormStore).toBeTruthy();
     expect(s.mappingFormStore!.getField('Full_Name')).toBe('');
+    expect(s.mappingRows.find(r => r.header === 'Full Name')?.fieldPath ?? '').toBe('');
     expect(unwrapRef((s as { previewReport: unknown | { value: unknown } }).previewReport as any)).toBeNull();
 
     const file = new (globalThis as any).File(['a,b\n'], 'rows.csv', { type: 'text/csv' });

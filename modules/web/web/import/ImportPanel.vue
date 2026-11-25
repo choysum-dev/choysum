@@ -496,6 +496,8 @@ watch(catalogOptions, (_next, prev) => {
       store.setField(name, '');
     }
   }
+  // Keep mappingRows.fieldPath in sync after clearing stale store values.
+  syncMappingRowsFromStore();
   // Skip the first run (prev undefined): only invalidate after a real catalog refresh.
   if (prev !== undefined) {
     previewReport.value = null;
