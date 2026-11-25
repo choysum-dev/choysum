@@ -95,7 +95,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, ref, shallowRef, watch } from 'vue';
+import { computed, nextTick, onMounted, ref, shallowRef, watch } from 'vue';
 import {
   ChoyDialog,
   ChoyDialogContent,
@@ -530,6 +530,12 @@ watch(
   },
   { immediate: true }
 );
+
+onMounted(() => {
+  if (visible.value && templatesEnabled.value) {
+    resetTemplateSaveForm();
+  }
+});
 
 watch(visible, open => {
   if (!open) {

@@ -14,7 +14,7 @@ describe('choyListPickerChromeProps', () => {
       heightMode: 'container',
       containerSelector: '.choy-relation-picker-list',
       selectionMode: 'single',
-      detailPath: undefined,
+      canOpenDetail: false,
       showSelectionColumn: false,
     });
   });
@@ -23,7 +23,7 @@ describe('choyListPickerChromeProps', () => {
     const props = choyListPickerChromeProps({ selectionMode: 'multiple' });
     expect(props.showSelectionColumn).toBeUndefined();
     expect(props.selectionMode).toBe('multiple');
-    expect(props.detailPath).toBeUndefined();
+    expect(props.canOpenDetail).toBe(false);
     expect(props.showActions).toBe(false);
 
     const forced = choyListPickerChromeProps({

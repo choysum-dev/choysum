@@ -883,6 +883,7 @@ onMounted(() => {
     api: {
       submit: handleSubmit as () => Promise<unknown>,
       getFormData: () => toRaw(exposedFormData.value) as any,
+      isDirty: isFormDirty,
     },
   });
 });
@@ -958,6 +959,8 @@ defineExpose({
   reset: handleReset,
   copy: handleCopy,
   getFormData: () => toRaw(exposedFormData.value) as any,
+  /** Whether the draft differs from the create/edit baseline. */
+  isDirty: isFormDirty,
   /** Effective record id (prop, else route peek). */
   getRecordId: () => effectiveRecordId.value,
   getViewMode: () => viewMode.value,

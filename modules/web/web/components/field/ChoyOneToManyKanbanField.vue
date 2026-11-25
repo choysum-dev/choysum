@@ -260,7 +260,7 @@ SPDX-License-Identifier: Apache-2.0
           >{{ _t('Delete') }}</ChoyActionButton>
         </div>
         <ChoyDialogFooter class="w-auto shrink-0 border-0 p-0">
-          <ChoyButton type="button" variant="outline" @click="onFooterCancel">{{ _t('Cancel') }}</ChoyButton>
+          <ChoyButton type="button" variant="outline" @click="handleDialogFooterCancel">{{ _t('Cancel') }}</ChoyButton>
           <ChoyActionButton v-if="dialogMode !== 'display'" type="button" :requires-connectivity="false" @execute="handleDialogSubmit">{{ _t('Save') }}</ChoyActionButton>
         </ChoyDialogFooter>
       </div>
@@ -574,7 +574,6 @@ const dialogTitleText = computed(() => {
 const {
   embeddedFormChrome,
   cancelHandler,
-  onFooterCancel,
 } = useChoyFormDialogShell({
   onClose: () => {
     dialogVisible.value = false;
@@ -582,6 +581,64 @@ const {
   formViewRef: dialogFormRef,
   skipFormCancel: () => dialogMode.value === 'display',
 });
+
+/**
+ * Footer Cancel: close the edit Dialog before discard confirm when dirty
+ * (same stacking rule as Delete). Clean drafts close without a prompt.
+ */
+async function handleDialogFooterCancel() {
+  if (dialogMode.value === 'display') {
+    dialogVisible.value = false;
+    return;
+  }
+
+  const formRef = dialogFormRef.value;
+  const registered = getRegisteredDialogFormApi();
+  const dirty =
+    (typeof registered?.isDirty === 'function' && registered.isDirty()) ||
+    (typeof formRef?.isDirty === 'function' && formRef.isDirty());
+
+  if (!dirty) {
+    // No isDirty API: fall back to FormView.cancel (confirms then cancelHandler).
+    if (
+      typeof registered?.isDirty !== 'function' &&
+      typeof formRef?.isDirty !== 'function' &&
+      formRef?.cancel
+    ) {
+      await formRef.cancel();
+      return;
+    }
+    dialogVisible.value = false;
+    return;
+  }
+
+  const mode = dialogMode.value;
+  const index = dialogIndex.value;
+  const reopenDraft = deepClonePreserve(
+    ((registered?.getFormData?.() ?? formRef?.getFormData?.()) as Record<string, any>) ||
+      dialogDraft.value ||
+      {},
+  );
+
+  // Close before confirm: Dialog + AlertDialog both stack at z-50 with modal
+  // focus traps; opening confirm underneath freezes the page.
+  dialogVisible.value = false;
+  await nextTick();
+
+  try {
+    await confirmChoyAction(
+      _t('You have unsaved changes. Discard them?'),
+      _t('Unsaved changes'),
+      {
+        confirmText: _t('Discard'),
+        cancelText: _t('Cancel'),
+        destructive: true,
+      },
+    );
+  } catch {
+    openDialog(mode, index, reopenDraft);
+  }
+}
 
 /** Merge dialog chrome with host formViewProps (host wins on key clash). */
 const dialogFormBind = computed(() => ({

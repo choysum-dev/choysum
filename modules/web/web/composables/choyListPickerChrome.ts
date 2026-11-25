@@ -3,8 +3,8 @@
 
 /**
  * Shared ListView chrome for relation-picker dialogs (M2O / M2M / Ref / Tags).
- * Disables page actions, title host, action-target registration, and detailPath
- * navigation; sizes the list to the dialog container.
+ * Disables page actions, title host, action-target registration, and detail
+ * navigation (via canOpenDetail); sizes the list to the dialog container.
  */
 
 export type ChoyListPickerSelectionMode = 'single' | 'multiple';
@@ -25,8 +25,11 @@ export type ChoyListPickerChromeProps = {
   heightMode: 'container';
   containerSelector: string;
   selectionMode: ChoyListPickerSelectionMode;
-  /** Explicit undefined so domain ListView detailPath defaults do not navigate away. */
-  detailPath: undefined;
+  /**
+   * Domain ListViews often set a static detail-path after v-bind="$attrs", which
+   * overrides an undefined detailPath. canOpenDetail false still blocks navigation.
+   */
+  canOpenDetail: false;
   showSelectionColumn?: false;
 };
 
@@ -44,7 +47,7 @@ export function choyListPickerChromeProps(
     heightMode: 'container',
     containerSelector: opts.containerSelector || DEFAULT_CONTAINER,
     selectionMode: opts.selectionMode,
-    detailPath: undefined,
+    canOpenDetail: false,
   };
   const hideSelectionColumn =
     opts.showSelectionColumn === false ||

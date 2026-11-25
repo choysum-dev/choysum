@@ -8,6 +8,9 @@ import { confirmChoyAction } from '@/web/web/composables/confirmChoyAction';
 export type ChoyFormDialogViewApi = {
   submit?: () => Promise<unknown>;
   cancel?: () => void | Promise<void>;
+  /** True when the embedded form draft differs from its baseline. */
+  isDirty?: () => boolean;
+  getFormData?: () => unknown;
 };
 
 /** Chrome props for embedded FormView inside ChoyDialog (no page header/actions/messages). */
