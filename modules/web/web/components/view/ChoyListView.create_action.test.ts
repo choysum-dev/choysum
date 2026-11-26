@@ -460,6 +460,35 @@ describe('ListView create action', () => {
     unmount();
   });
 
+  test('softRefreshDetailPathCollection reapplies through KeepAlive helper', async () => {
+    const { plugins } = buildPageMountGlobal({
+      route: { name: 'PartnerList', path: '/partner/partners', fullPath: '/partner/partners' },
+      router: { push },
+    });
+    const store = makeStore();
+    const { unmount, setupState } = mountApp(ChoyListView as any, {
+      props: {
+        store,
+        detailPath: '/partner/partners/:id',
+        createAction: '',
+        showHeader: false,
+        showActions: false,
+        showPaginate: false,
+      },
+      plugins,
+    });
+    await flushPromises();
+    const ss = setupState() as {
+      softRefreshDetailPathCollection?: () => Promise<void>;
+    };
+    expect(typeof ss.softRefreshDetailPathCollection).toBe('function');
+    const before = store.Search.calls.length;
+    await ss.softRefreshDetailPathCollection?.();
+    await flushPromises();
+    expect(store.Search.calls.length).toBeGreaterThan(before);
+    unmount();
+  });
+
   test('softRefresh rethrows when apply fails', async () => {
     const { plugins } = buildPageMountGlobal({
       route: { name: 'PartnerList', path: '/partner/partners', fullPath: '/partner/partners' },

@@ -222,6 +222,9 @@ const menuAriaLabel = computed(() =>
   visibleItems.value.length && !slots.default ? _t('Import and export') : _t('More actions'),
 );
 
+/** True while the open state was entered via hover (not click/keyboard). */
+let openedByHover = false;
+
 function clearCloseTimer() {
   if (closeTimer != null) {
     clearTimeout(closeTimer);
@@ -232,16 +235,21 @@ function clearCloseTimer() {
 function openFromHover() {
   if (!props.hoverOpen) return;
   clearCloseTimer();
+  openedByHover = true;
   menuOpen.value = true;
 }
 
+function closeFromHover() {
+  menuOpen.value = false;
+  openedByHover = false;
+  closeTimer = null;
+}
+
 function scheduleHoverClose() {
-  if (!props.hoverOpen) return;
+  // Click/keyboard-opened menus must not dismiss on a brief pointer leave.
+  if (!props.hoverOpen || !openedByHover) return;
   clearCloseTimer();
-  closeTimer = setTimeout(() => {
-    menuOpen.value = false;
-    closeTimer = null;
-  }, 160);
+  closeTimer = setTimeout(closeFromHover, 160);
 }
 
 function onTriggerEnter() {

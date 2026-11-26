@@ -613,6 +613,14 @@ function scheduleVirtualMeasure(): void {
 let scrollParentObserver: ResizeObserver | null = null;
 let scrollParentLastHeight = 0;
 
+function setScrollParentLastHeight(height: number): void {
+  scrollParentLastHeight = height;
+}
+
+function remasureScrollParent(): void {
+  dataTableMaybeMeasure(true, virtualizer.value);
+}
+
 function bindScrollParentObserver(el: HTMLElement | null): void {
   scrollParentObserver?.disconnect();
   scrollParentObserver = null;
@@ -621,13 +629,9 @@ function bindScrollParentObserver(el: HTMLElement | null): void {
   const onResize = createDataTableScrollParentResizeHandler({
     isVirtualized: () => isVirtualized.value,
     getLastHeight: () => scrollParentLastHeight,
-    setLastHeight: (height) => {
-      scrollParentLastHeight = height;
-    },
+    setLastHeight: setScrollParentLastHeight,
     getElement: () => el,
-    remasure: () => {
-      dataTableMaybeMeasure(true, virtualizer.value);
-    },
+    remasure: remasureScrollParent,
   });
   scrollParentObserver = new ResizeObserver(onResize);
   scrollParentObserver.observe(el);

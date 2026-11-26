@@ -455,13 +455,25 @@ describe('ChoyPageIoMenu', () => {
     const ss = mounted.setupState() as {
       onTriggerLeave?: () => void;
       onContentLeave?: () => void;
+      closeFromHover?: () => void;
+      scheduleHoverClose?: () => void;
       openFromHover?: () => void;
     };
-    // Cover leave handlers (scheduled close uses real timers; open path is what we assert).
     ss.onTriggerLeave?.();
     ss.onContentLeave?.();
+    // Drive close body directly (avoids flaky real timers under QuickJS).
+    ss.closeFromHover?.();
+    await flushPromises();
+    expect(readOpen()).toBe(false);
+    // Re-open via hover, then scheduleHoverClose with openedByHover still true.
     ss.openFromHover?.();
     expect(readOpen()).toBe(true);
+    ss.scheduleHoverClose?.();
+    ss.closeFromHover?.();
+    expect(readOpen()).toBe(false);
+    // Without openedByHover, scheduleHoverClose is a no-op.
+    ss.scheduleHoverClose?.();
+    expect(readOpen()).toBe(false);
     mounted.unmount();
   });
 

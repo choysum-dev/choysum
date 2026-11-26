@@ -32,6 +32,30 @@ const rows: Row[] = [
 ];
 
 describe('DataTable chrome', () => {
+  test('scroll-parent height helpers remasure while preserving scrollTop wiring', async () => {
+    const mounted = mountApp(DataTable as any, {
+      props: {
+        columns,
+        data: rows,
+        height: 120,
+        virtualize: false,
+        enableRowSelection: false,
+      },
+    });
+    await flushPromises();
+    const ss = mounted.setupState() as {
+      setScrollParentLastHeight?: (height: number) => void;
+      remasureScrollParent?: () => void;
+      scrollParentLastHeight?: number;
+    };
+    expect(typeof ss.setScrollParentLastHeight).toBe('function');
+    expect(typeof ss.remasureScrollParent).toBe('function');
+    ss.setScrollParentLastHeight?.(240);
+    expect(ss.scrollParentLastHeight).toBe(240);
+    ss.remasureScrollParent?.();
+    mounted.unmount();
+  });
+
   test('column meta.align end applies justify-end on header and body cells', async () => {
     const numericColumns: ColumnDef<Row, unknown>[] = [
       {

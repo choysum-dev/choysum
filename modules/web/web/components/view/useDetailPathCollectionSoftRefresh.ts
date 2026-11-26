@@ -69,7 +69,10 @@ export function useDetailPathCollectionSoftRefresh(
     watchEffect(() => {
       if (!pendingRefreshAfterSettle.value) return;
       if (!opts.hasSettled()) return;
-      tryRefresh();
+      // Clear before runRefresh so this effect does not re-enter tryRefresh.
+      pendingRefreshAfterSettle.value = false;
+      if (toValue(opts.detailPath) == null) return;
+      runRefresh();
     });
   }
 

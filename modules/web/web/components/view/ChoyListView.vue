@@ -899,14 +899,16 @@ function afterLayoutRecompute() {
   return nextTick().then(recomputeTableHeight);
 }
 
+async function softRefreshDetailPathCollection(): Promise<void> {
+  await controller.apply({ forcedCondition: props.forcedCondition as any });
+  await afterLayoutRecompute();
+}
+
 // KeepAlive return from Form: silent re-apply (stale busy); skips mount activate.
 useDetailPathCollectionSoftRefresh({
   detailPath: () => props.detailPath,
   hasSettled: () => !!controller.vm.hasAppliedOnce || !!firstApplied.value,
-  refresh: async () => {
-    await controller.apply({ forcedCondition: props.forcedCondition as any });
-    await afterLayoutRecompute();
-  },
+  refresh: softRefreshDetailPathCollection,
 });
 
 // =============================
@@ -968,8 +970,12 @@ async function loadData() {
   }
 }
 
+/** Nested softRefresh must not clear suppress while an outer apply is in flight. */
+let softRefreshDepth = 0;
+
 /** Silent re-apply for domain workflow CTAs; keeps selection (unlike loadData). */
 async function softRefresh() {
+  softRefreshDepth += 1;
   suppressSelectionResetOnItems = true;
   try {
     await controller.apply({ forcedCondition: props.forcedCondition as any });
@@ -982,7 +988,10 @@ async function softRefresh() {
     emit('action-error', { action: 'refresh', error: err });
     throw err;
   } finally {
-    suppressSelectionResetOnItems = false;
+    softRefreshDepth = Math.max(0, softRefreshDepth - 1);
+    if (softRefreshDepth === 0) {
+      suppressSelectionResetOnItems = false;
+    }
   }
 }
 
