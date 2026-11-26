@@ -600,62 +600,13 @@ html.dark .choy-shell[data-shell-mode='app'],
 }
 
 /*
- * Collapsed icon rail: center the size-8 mark in a 2rem hit target so hover
- * fill is a square around the glyph (start pad would leave empty air on the
- * trailing side only). Footer pill is not mounted.
+ * Collapsed icon rail: keep marks start-aligned with the same chrome pad as
+ * expanded. Centering a 2rem hit target while width still animates from the
+ * wide panel slides the logo/avatar toward the middle, then back — L1 rail
+ * tiles never do that because they stay pinned to the start edge.
+ * With --sidebar-width-icon (3rem) + start pad + end margin (0.5rem each),
+ * the remaining 2rem is exactly the size-8 mark, so final geometry stays centered.
  */
-.choy-shell[data-shell-mode='app']
-  [data-slot='sidebar'][data-collapsible='icon']
-  [data-slot='sidebar-header'],
-.choy-shell[data-shell-mode='app']
-  [data-slot='sidebar'][data-collapsible='icon']
-  [data-slot='sidebar-footer'] {
-  padding-inline: 0 !important;
-  margin-inline-end: 0 !important;
-  justify-content: center !important;
-}
-
-.choy-shell[data-shell-mode='app']
-  [data-slot='sidebar'][data-collapsible='icon']
-  [data-testid='choy-shell-sidebar-header'],
-.choy-shell[data-shell-mode='app']
-  [data-slot='sidebar'][data-collapsible='icon']
-  [data-testid='choy-shell-sidebar-footer'],
-.choy-shell[data-shell-mode='app']
-  [data-slot='sidebar'][data-collapsible='icon']
-  [data-testid='auth-sidebar-user-menu'],
-.choy-shell[data-shell-mode='app']
-  [data-slot='sidebar'][data-collapsible='icon']
-  [data-testid='auth-sidebar-user-menu'] > .auth-sidebar-user-menu__identity {
-  width: auto !important;
-  max-width: 100%;
-  justify-content: center !important;
-}
-
-.choy-shell[data-shell-mode='app']
-  [data-slot='sidebar'][data-collapsible='icon']
-  [data-testid='choy-shell-sidebar-header']
-  [data-slot='tooltip-trigger'],
-.choy-shell[data-shell-mode='app']
-  [data-slot='sidebar'][data-collapsible='icon']
-  [data-testid='choy-shell-sidebar-footer']
-  [data-slot='tooltip-trigger'],
-.choy-shell[data-shell-mode='app']
-  [data-slot='sidebar'][data-collapsible='icon']
-  [data-testid='choy-shell-sidebar-header']
-  [data-slot='tooltip-trigger']
-  > div,
-.choy-shell[data-shell-mode='app']
-  [data-slot='sidebar'][data-collapsible='icon']
-  [data-testid='choy-shell-sidebar-footer']
-  [data-slot='tooltip-trigger']
-  > div {
-  width: auto !important;
-  height: auto !important;
-  min-height: 0 !important;
-  justify-content: center !important;
-}
-
 .choy-shell[data-shell-mode='app']
   [data-slot='sidebar'][data-collapsible='icon']
   [data-testid='company-switch-trigger'],
@@ -668,7 +619,7 @@ html.dark .choy-shell[data-shell-mode='app'],
   min-height: 2rem !important;
   padding: 0 !important;
   margin: 0 !important;
-  justify-content: center !important;
+  justify-content: flex-start !important;
 }
 
 .choy-shell[data-shell-mode='app'] [data-testid='company-switch-logo-wrap'],
