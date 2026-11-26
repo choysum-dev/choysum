@@ -172,7 +172,7 @@ describe('ChoyFormView workspace height', () => {
     mounted.unmount();
   });
 
-  test('display with contextual-actions centered; platform Edit soft-primary; lifecycle in ⋮', async () => {
+  test('display with statusbar-buttons under Action Bar; platform Edit soft-primary; lifecycle in ⋮', async () => {
     const store = loginStore();
     const { router } = createFeStubRouter({
       route: { name: 'login', path: '/web/login', fullPath: '/web/login', params: {}, query: {}, meta: {} },
@@ -205,8 +205,10 @@ describe('ChoyFormView workspace height', () => {
                     hasAction: () => true,
                   },
                   {
-                    'contextual-actions': () =>
+                    'statusbar-buttons': () =>
                       h('button', { type: 'button', 'data-testid': 'domain-primary' }, 'Install'),
+                    'statusbar-status': () =>
+                      h('div', { 'data-testid': 'domain-status' }, 'Installed'),
                   },
                 ),
             },
@@ -217,17 +219,22 @@ describe('ChoyFormView workspace height', () => {
     await flushPromises();
 
     expect(mounted.q('[data-testid=domain-primary]')?.textContent).toBe('Install');
-    // Contextual actions sit in the centered find column (List selection pattern).
-    const contextualBar = mounted.q('[data-testid=form-contextual-actions]') as HTMLElement | null;
-    expect(contextualBar).not.toBeNull();
-    expect(contextualBar!.querySelector('[data-testid=domain-primary]')).not.toBeNull();
-    expect(contextualBar!.className || '').toContain('justify-center');
+    const statusbar = mounted.q('[data-testid=form-statusbar]') as HTMLElement | null;
+    expect(statusbar).not.toBeNull();
+    expect(statusbar!.querySelector('[data-testid=form-statusbar-buttons]')).not.toBeNull();
+    expect(statusbar!.querySelector('[data-testid=domain-primary]')).not.toBeNull();
+    expect(statusbar!.querySelector('[data-testid=form-statusbar-status]')).not.toBeNull();
+    expect(statusbar!.querySelector('[data-testid=domain-status]')).not.toBeNull();
+    // Statusbar lives in view-header with Action Bar (gap separates chrome from body).
+    expect(mounted.q('[data-slot=view-header]')?.querySelector('[data-testid=form-statusbar]')).not.toBeNull();
+    expect(mounted.q('[data-slot=view-body]')?.querySelector('[data-testid=form-statusbar]')).toBeNull();
+    // Domain CTAs leave Action Bar center empty (List selection still owns center).
+    expect(mounted.q('[data-testid=form-contextual-actions]')).toBeNull();
     const center = mounted.q('[data-slot=view-action-bar-center]') as HTMLElement | null;
-    expect(center).not.toBeNull();
-    expect(center!.querySelector('[data-testid=form-contextual-actions]')).not.toBeNull();
-    // Platform Edit stays in the left system tray (not inside the center bar).
+    expect(center?.querySelector('[data-testid=domain-primary]') ?? null).toBeNull();
+    // Platform Edit stays in the left system tray (not inside the statusbar).
     expect(mounted.q('[data-testid=form-primary-edit]')).not.toBeNull();
-    expect(contextualBar!.querySelector('[data-testid=form-primary-edit]')).toBeNull();
+    expect(statusbar!.querySelector('[data-testid=form-primary-edit]')).toBeNull();
     expect(mounted.q('[data-testid=form-secondary-edit]')).toBeNull();
     expect(mounted.q('[data-testid=form-overflow-new]')).not.toBeNull();
     expect(mounted.q('[data-testid=form-overflow-copy]')).not.toBeNull();

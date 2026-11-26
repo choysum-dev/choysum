@@ -21,28 +21,23 @@ SPDX-License-Identifier: Apache-2.0
     <ChoyFormView
       v-bind="{ store, recordId, viewMode: 'display' as const, showHeader }"
     >
-      <!-- Contextual actions → Form #center (no platform Edit on this read-only form). -->
-      <template #contextual-actions>
-        <ChoyActionButton
+      <!-- Domain workflow → Form statusbar buttons (read-only form: no platform Edit). -->
+      <template #statusbar-buttons>
+        <ChoyStatusbarButton
           v-if="primaryAction"
-          type="button"
-          size="default"
-          :variant="primaryButtonVariant"
           :data-testid="`module-catalog-form-primary-${primaryAction}`"
           @execute="onPrimaryClick"
         >
           {{ primaryActionLabel }}
-        </ChoyActionButton>
-        <ChoyActionButton
+        </ChoyStatusbarButton>
+        <ChoyStatusbarButton
           v-if="canUninstallRow && hasAction(moduleUninstallAction)"
-          type="button"
-          size="default"
-          variant="soft-destructive"
+          variant="outline-destructive"
           data-testid="module-catalog-form-uninstall"
           @execute="onUninstallClick"
         >
           {{ _t('Uninstall') }}
-        </ChoyActionButton>
+        </ChoyStatusbarButton>
       </template>
 
       <div data-anchor="choy.form.sheet" class="flex min-h-full flex-col gap-0">
@@ -323,7 +318,7 @@ import ModuleCatalogOpProgressStrip from './ModuleCatalogOpProgressStrip.vue';
 import {
   ChoyBadge,
   ChoyBooleanField,
-  ChoyActionButton,
+  ChoyStatusbarButton,
   ChoyCol,
   ChoyDatetimeField,
   ChoyFormView,
@@ -410,8 +405,6 @@ const primaryActionLabel = computed(() => {
   if (primaryAction.value === 'progress') return _t('View Progress');
   return '';
 });
-/** Form primary CTA (Install / Upgrade / Progress) uses branded outline. */
-const primaryButtonVariant = computed(() => 'soft-primary' as const);
 const canUninstallRow = computed(() => {
   if (!hasMatchedRow.value) return false;
   const rec = currentRow.value;
@@ -592,7 +585,6 @@ defineExpose({
   drawerRegistryNewer,
   primaryAction,
   primaryActionLabel,
-  primaryButtonVariant,
   progressBusy,
   progressTitle,
   progressHeadline,

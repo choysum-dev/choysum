@@ -82,9 +82,10 @@ describe('cn', () => {
     expect(softPrimary.filter((t) => t === 'bg-primary/10')).toHaveLength(0);
 
     const softDestructive = tokens(buttonVariants({ variant: 'soft-destructive' }));
-    expect(softDestructive).toContain('bg-destructive/10');
     expect(softDestructive).toContain('text-destructive');
+    expect(softDestructive).toContain('hover:bg-destructive/10');
     expect(softDestructive).not.toContain('border-destructive');
+    expect(softDestructive.filter((t) => t === 'bg-destructive/10')).toHaveLength(0);
 
     // Calendar nav: later bg-transparent replaces outline bg-background.
     const calendarNav = tokens(

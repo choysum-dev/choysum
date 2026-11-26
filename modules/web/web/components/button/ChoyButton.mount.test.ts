@@ -184,7 +184,7 @@ describe('ChoyButton mount', () => {
     }
   });
 
-  test('soft-destructive is borderless danger fill', async () => {
+  test('soft-destructive is borderless danger text (fill only on hover)', async () => {
     const w = mountApp(ChoyButton as any, {
       props: { variant: 'soft-destructive', 'data-testid': 'soft-destructive-btn' },
       slots: { default: () => 'Delete' },
@@ -192,8 +192,9 @@ describe('ChoyButton mount', () => {
     try {
       await flushPromises();
       const cls = (w.q('[data-testid="soft-destructive-btn"]') as HTMLButtonElement | null)?.className || '';
-      expect(cls).toContain('bg-destructive/10');
       expect(cls).toContain('text-destructive');
+      expect(cls).toContain('hover:bg-destructive/10');
+      expect(` ${cls} `.includes(' bg-destructive/10 ')).toBe(false);
       expect(cls).not.toContain('border-destructive');
     } finally {
       w.unmount();

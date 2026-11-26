@@ -34,9 +34,9 @@ SPDX-License-Identifier: Apache-2.0
     <!--
       Action Bar contract:
       [identity: title] [主 → 次 → ⋯] | [找] | [看]
-      create/edit: platform Save/Cancel; Reset/New/Copy/Delete in ⋮; contextual center hidden.
-      display: platform Edit; #contextual-actions (+ #user-actions alias) → #center (like List selection).
-      settings: Save/Discard only (no CRUD / Reset overflow).
+      create/edit: platform Save/Cancel; Reset/New/Copy/Delete in ⋮; statusbar hidden.
+      display: platform Edit; domain flow → optional statusbar (#statusbar-buttons | #statusbar-status).
+      settings: Save/Discard only (no CRUD / Reset overflow / statusbar).
     -->
     <template v-if="resolvedShowActions" #system-actions>
       <!-- Settings chrome: Save/Discard; dirty gates enablement. -->
@@ -106,7 +106,7 @@ SPDX-License-Identifier: Apache-2.0
           <Pencil class="size-4" aria-hidden="true" />
           {{ _t('Edit') }}
         </ChoyActionButton>
-        <!-- Optional platform extras only — domain CTAs use #contextual-actions → center. -->
+        <!-- Optional platform extras only — domain CTAs use #statusbar-buttons. -->
         <slot
           name="system-actions"
           :form-data="exposedFormData"
@@ -203,40 +203,59 @@ SPDX-License-Identifier: Apache-2.0
     </template>
 
     <!--
-      Contextual actions in the find/center column (Form has no Search) — same
-      centered toolbar as List selection. Hidden while editing so Save/Cancel stay left.
-      #user-actions is a deprecated alias for #contextual-actions.
+      Optional Form statusbar under Action Bar (Odoo-aligned):
+      statusbar = #statusbar-buttons | #statusbar-status.
+      Hidden while editing / settings; omitted when both sides empty.
+      #contextual-actions / #user-actions → buttons (deprecated).
+      #statusbar → status (deprecated).
     -->
-    <template
-      v-if="
-        !isSettingsPresentation &&
-        resolvedShowActions &&
-        !isEditing &&
-        (!!slots['contextual-actions'] || !!slots['user-actions'])
-      "
-      #center
-    >
+    <template v-if="showFormStatusbar" #header-extra>
       <div
-        data-anchor="choy.form.contextual-actions"
-        data-testid="form-contextual-actions"
-        class="flex min-w-0 w-full flex-nowrap items-center justify-center gap-2 overflow-x-auto"
-        role="toolbar"
-        :aria-label="_t('Contextual actions')"
+        data-anchor="choy.form.statusbar"
+        data-testid="form-statusbar"
+        class="flex min-h-control-sm min-w-0 w-full flex-nowrap items-center justify-between gap-3"
+        role="region"
+        :aria-label="_t('Status bar')"
       >
-        <slot
-          name="contextual-actions"
-          :form-data="exposedFormData"
-          :record-id="effectiveRecordId"
-          :view-mode="viewMode"
-          :loading="loading"
-        />
-        <slot
-          name="user-actions"
-          :form-data="exposedFormData"
-          :record-id="effectiveRecordId"
-          :view-mode="viewMode"
-          :loading="loading"
-        />
+        <div
+          v-if="hasStatusbarButtons"
+          data-anchor="choy.form.statusbar-buttons"
+          data-testid="form-statusbar-buttons"
+          class="flex min-w-0 flex-nowrap items-center gap-2 overflow-x-auto"
+          role="toolbar"
+          :aria-label="_t('Document actions')"
+        >
+          <slot
+            name="statusbar-buttons"
+            :form-data="exposedFormData"
+            :record-id="effectiveRecordId"
+            :view-mode="viewMode"
+            :loading="loading"
+          />
+          <slot
+            name="contextual-actions"
+            :form-data="exposedFormData"
+            :record-id="effectiveRecordId"
+            :view-mode="viewMode"
+            :loading="loading"
+          />
+          <slot
+            name="user-actions"
+            :form-data="exposedFormData"
+            :record-id="effectiveRecordId"
+            :view-mode="viewMode"
+            :loading="loading"
+          />
+        </div>
+        <div
+          v-if="hasStatusbarStatus"
+          data-anchor="choy.form.statusbar-status"
+          data-testid="form-statusbar-status"
+          class="ml-auto flex min-w-0 shrink-0 items-center justify-end overflow-x-auto"
+        >
+          <slot name="statusbar-status" />
+          <slot name="statusbar" />
+        </div>
       </div>
     </template>
 
@@ -249,7 +268,6 @@ SPDX-License-Identifier: Apache-2.0
           @select="onSettingsViewSelect"
         />
       </template>
-      <slot v-else name="statusbar" />
       <slot v-if="!isSettingsPresentation" name="button-box" />
       <ChoyFormPager
         v-if="!isSettingsPresentation && formRecordPager.visible.value"
@@ -456,7 +474,7 @@ const isSettingsPresentation = computed(() => props.presentation === 'settings')
 defineSlots<{
   breadcrumb(): any;
   /**
-   * Optional platform extras after Edit (display). Prefer domain CTAs in #contextual-actions.
+   * Optional platform extras after Edit (display). Prefer domain CTAs in #statusbar-buttons.
    * Hidden while create/edit (Save/Cancel own the platform tray).
    */
   'system-actions'(props: {
@@ -475,7 +493,20 @@ defineSlots<{
     loading: boolean;
   }): any;
   /**
-   * Contextual actions (Install/Activate/…). Centered in ActionBar #center.
+   * Domain workflow actions on the Form statusbar (left).
+   */
+  'statusbar-buttons'(props: {
+    formData: Partial<ClientModel<T>>;
+    recordId?: string;
+    viewMode: ViewMode;
+    loading: boolean;
+  }): any;
+  /**
+   * Status stage ribbon on the Form statusbar (right).
+   */
+  'statusbar-status'(): any;
+  /**
+   * @deprecated Prefer #statusbar-buttons (still rendered on statusbar left).
    */
   'contextual-actions'(props: {
     formData: Partial<ClientModel<T>>;
@@ -484,7 +515,7 @@ defineSlots<{
     loading: boolean;
   }): any;
   /**
-   * @deprecated Alias of #contextual-actions.
+   * @deprecated Alias of #statusbar-buttons / #contextual-actions.
    */
   'user-actions'(props: {
     formData: Partial<ClientModel<T>>;
@@ -492,6 +523,9 @@ defineSlots<{
     viewMode: ViewMode;
     loading: boolean;
   }): any;
+  /**
+   * @deprecated Prefer #statusbar-status.
+   */
   statusbar(): any;
   'button-box'(): any;
   'header-right'(): any;
@@ -892,6 +926,22 @@ async function onSettingsViewSelect(value: string) {
 }
 
 const isEditing = computed(() => viewMode.value === 'edit' || viewMode.value === 'create');
+
+const hasStatusbarButtons = computed(
+  () =>
+    !!slots['statusbar-buttons'] ||
+    !!slots['contextual-actions'] ||
+    !!slots['user-actions'],
+);
+const hasStatusbarStatus = computed(() => !!slots['statusbar-status'] || !!slots.statusbar);
+/** Form statusbar under Action Bar: display only; omit when both sides empty. */
+const showFormStatusbar = computed(
+  () =>
+    !isSettingsPresentation.value &&
+    !isEditing.value &&
+    (hasStatusbarButtons.value || hasStatusbarStatus.value),
+);
+
 /** Reset lives in ⋮ during create/edit so the left bar stays [Save][Cancel][title][⋮]. */
 const showResetInOverflow = computed(
   () =>

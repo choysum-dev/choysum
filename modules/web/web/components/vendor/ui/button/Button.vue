@@ -90,10 +90,10 @@ const variantClass: Record<ButtonVariant, string> = {
   // Distinct chrome for danger actions that stay outline.
   'outline-destructive':
     'border border-destructive/40 bg-background text-destructive shadow-xs hover:bg-destructive/10 hover:text-destructive',
-  // Action Bar accents: main = brand text only; danger = soft fill.
+  // Action Bar accents: text-only at rest (match soft-primary / soft-destructive).
   'soft-primary': 'text-primary hover:bg-primary/10 hover:text-primary',
   'soft-destructive':
-    'bg-destructive/10 text-destructive hover:bg-destructive/15 hover:text-destructive',
+    'text-destructive hover:bg-destructive/10 hover:text-destructive',
   link: 'text-primary underline-offset-4 hover:underline',
 };
 

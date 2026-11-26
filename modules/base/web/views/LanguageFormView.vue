@@ -13,13 +13,10 @@ SPDX-License-Identifier: Apache-2.0
     @update-success="reloadActiveLanguagesAfterLanguageSave"
     @create-success="reloadActiveLanguagesAfterLanguageSave"
   >
-    <!-- Contextual actions (Form centers these in #center, like List selection). -->
-    <template #contextual-actions="{ formData, recordId: slotRecordId, loading }">
-      <ChoyActionButton
+    <!-- Domain workflow → Form statusbar buttons. -->
+    <template #statusbar-buttons="{ formData, recordId: slotRecordId, loading }">
+      <ChoyStatusbarButton
         v-if="!loading && showActivateFor(formData, slotRecordId)"
-        type="button"
-        size="default"
-        variant="soft-primary"
         data-testid="language-activate"
         :busy="activeBusy || reloadBusy"
         :aria-busy="activeBusy || undefined"
@@ -27,12 +24,10 @@ SPDX-License-Identifier: Apache-2.0
       >
         <CircleCheck class="size-4" aria-hidden="true" />
         {{ _t('Activate') }}
-      </ChoyActionButton>
-      <ChoyActionButton
+      </ChoyStatusbarButton>
+      <ChoyStatusbarButton
         v-else-if="!loading && showDeactivateFor(formData, slotRecordId)"
-        type="button"
-        size="default"
-        variant="ghost"
+        variant="outline-destructive"
         data-testid="language-deactivate"
         :busy="activeBusy || reloadBusy"
         :aria-busy="activeBusy || undefined"
@@ -40,12 +35,9 @@ SPDX-License-Identifier: Apache-2.0
       >
         <CircleOff class="size-4" aria-hidden="true" />
         {{ _t('Deactivate') }}
-      </ChoyActionButton>
-      <ChoyActionButton
+      </ChoyStatusbarButton>
+      <ChoyStatusbarButton
         v-if="!loading && showReloadTerminologyFor(formData, slotRecordId)"
-        type="button"
-        size="default"
-        variant="ghost"
         data-testid="language-reload-terminology"
         :busy="activeBusy || reloadBusy"
         :aria-busy="reloadBusy || undefined"
@@ -53,7 +45,7 @@ SPDX-License-Identifier: Apache-2.0
       >
         <Languages class="size-4" aria-hidden="true" />
         {{ _t('Update translations') }}
-      </ChoyActionButton>
+      </ChoyStatusbarButton>
     </template>
 
     <template #default="{ viewMode: mode }">
@@ -176,7 +168,7 @@ import { ChoyMessage } from '@/web/web/composables/useChoyMessage';
 import { useI18nStore } from '@/web/web/stores/i18nStore';
 import {
   ChoyBooleanField,
-  ChoyActionButton,
+  ChoyStatusbarButton,
   ChoyCol,
   ChoyFormView,
   ChoyGrid,

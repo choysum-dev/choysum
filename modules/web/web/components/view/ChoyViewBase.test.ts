@@ -78,7 +78,7 @@ describe('ChoyViewBase', () => {
     mounted.unmount();
   });
 
-  test('renders header-extra between action bar and busy host', async () => {
+  test('renders header-extra inside view-header under action bar (not in body)', async () => {
     setActivePinia(createPinia());
     const mounted = mountApp(ChoyViewBase as any, {
       props: { showActions: true },
@@ -89,18 +89,16 @@ describe('ChoyViewBase', () => {
       },
     });
     await flushPromises();
+    const header = mounted.q('[data-slot=view-header]') as HTMLElement | null;
     const extra = mounted.q('[data-slot=view-header-extra]') as HTMLElement | null;
     expect(extra?.querySelector('[data-testid=extra]')?.textContent).toBe('Controls');
-    const containerBody = mounted.q('[data-slot=view-body]') as HTMLElement | null;
-    const children = Array.from(containerBody?.children || []);
-    const extraIdx = children.findIndex((el) => el.getAttribute('data-slot') === 'view-header-extra');
-    const busyIdx = children.findIndex((el) => el.getAttribute('data-slot') === 'view-body-host');
-    expect(extraIdx).toBeGreaterThanOrEqual(0);
-    expect(busyIdx).toBeGreaterThan(extraIdx);
+    expect(header?.querySelector('[data-slot=view-header-extra]')).not.toBeNull();
+    expect(mounted.q('[data-slot=view-body]')?.querySelector('[data-slot=view-header-extra]')).toBeNull();
+    expect(mounted.q('[data-slot=view-body-host]')).not.toBeNull();
     mounted.unmount();
   });
 
-  test('showHeader=false still renders header-extra (Chart controls parity)', async () => {
+  test('showHeader=false still renders header-extra in view-header (Chart controls parity)', async () => {
     setActivePinia(createPinia());
     const mounted = mountApp(ChoyViewBase as any, {
       props: { showHeader: false },
@@ -110,8 +108,10 @@ describe('ChoyViewBase', () => {
       },
     });
     await flushPromises();
-    expect(mounted.q('[data-slot=view-header]')).toBeNull();
-    expect(mounted.q('[data-testid=extra]')?.textContent).toBe('Controls');
+    const header = mounted.q('[data-slot=view-header]') as HTMLElement | null;
+    expect(header).not.toBeNull();
+    expect(header?.querySelector('[data-testid=extra]')?.textContent).toBe('Controls');
+    expect(mounted.q('[data-slot=view-action-bar]')).toBeNull();
     expect(mounted.q('[data-testid=body]')?.textContent).toBe('Body');
     mounted.unmount();
   });

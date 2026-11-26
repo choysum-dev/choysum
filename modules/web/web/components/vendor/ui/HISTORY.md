@@ -40,12 +40,12 @@ new HISTORY entry describing what was re-copied vs re-patched.
 
 - **What:** Added Action Bar accents `soft-primary`
   (`text-primary`, hover `bg-primary/10`) and `soft-destructive`
-  (`bg-destructive/10 text-destructive`) beside the outline-* pair. Wired in
-  `button/index.ts` `buttonVariants` and `Button.vue` variant maps. Main CTA
-  is text-only at rest (no fill/stroke); danger keeps a soft fill.
+  (`text-destructive`, hover `bg-destructive/10`) beside the outline-* pair.
+  Wired in `button/index.ts` `buttonVariants` and `Button.vue` variant maps.
+  Both are text-only at rest (no fill/stroke); danger differs by color only.
 - **Why not product-only class:** View Action Bar wants light hierarchy
-  (main text-primary, secondary ghost, danger soft fill); kit variants keep
-  L1/L3 and `buttonVariants` consumers in sync.
+  (main text-primary, secondary ghost, danger text-destructive); kit variants
+  keep L1/L3 and `buttonVariants` consumers in sync.
 - **Do not regress:** Keep `outline-primary` / `outline-destructive` for hosts
   that need a stroke; soft variants must stay `border-0` (base recipe). Replay
   both `index.ts` and `Button.vue` if upstream re-copies Button.

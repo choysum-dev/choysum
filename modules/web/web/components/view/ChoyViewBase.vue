@@ -21,8 +21,13 @@ SPDX-License-Identifier: Apache-2.0
 -->
 <template>
   <ChoyViewContainer :class="containerClass" v-bind="attrs">
-    <template v-if="showHeaderRegion()" #header>
-      <div :data-anchor="chromeAnchor || undefined">
+    <!--
+      Action Bar + optional header-extra (Form statusbar / Chart controls) share
+      view-header so container gap-5 separates chrome from body — not Action Bar
+      from statusbar.
+    -->
+    <template v-if="showChromeHeader()" #header>
+      <div v-if="showHeaderRegion()" :data-anchor="chromeAnchor || undefined">
         <ChoyViewActionBar
           layout="thirds"
           class="gap-2 border-b-0 [border-bottom-width:0px]"
@@ -71,8 +76,8 @@ SPDX-License-Identifier: Apache-2.0
 
           <!--
             Leading secondary tray (ActionBar #user-actions slot name is legacy).
-            Host #contextual-actions / #user-actions go to #center via each engine —
-            do not park them here.
+            Host #contextual-actions go to #center (List/Kanban/Chart) or Form
+            statusbar — do not park them in this leading tray.
           -->
           <template v-if="showLeadingSecondary()" #user-actions>
             <slot name="secondary-actions" />
@@ -88,11 +93,15 @@ SPDX-License-Identifier: Apache-2.0
           </template>
         </ChoyViewActionBar>
       </div>
-    </template>
 
-    <div v-if="slots['header-extra']" data-slot="view-header-extra" class="min-w-0 shrink-0">
-      <slot name="header-extra" />
-    </div>
+      <div
+        v-if="slots['header-extra']"
+        data-slot="view-header-extra"
+        class="min-w-0 shrink-0 pt-2"
+      >
+        <slot name="header-extra" />
+      </div>
+    </template>
 
     <ChoyViewBusyHost
       v-bind="busyHostAttrs"
@@ -226,5 +235,10 @@ function showHeaderRegion(): boolean {
     !!slots.center ||
     !!slots['header-right']
   );
+}
+
+/** Action Bar and/or header-extra (statusbar / Chart controls) as one chrome block. */
+function showChromeHeader(): boolean {
+  return showHeaderRegion() || !!slots['header-extra'];
 }
 </script>

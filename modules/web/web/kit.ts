@@ -29,6 +29,11 @@ export type { ChoyStepperStep } from './components/layout/ChoyStepper.vue';
 export { default as ChoyButton } from './components/button/ChoyButton.vue';
 export { default as ChoyButtonGroup } from './components/button/ChoyButtonGroup.vue';
 export { default as ChoyActionButton } from './components/button/ChoyActionButton.vue';
+export { default as ChoyStatusbarButton } from './components/button/ChoyStatusbarButton.vue';
+export type {
+  ChoyStatusbarVariant,
+  ChoyStatusbarButtonSize,
+} from './components/button/ChoyStatusbarButton.vue';
 export { default as ChoyActionMenuItem } from './components/button/ChoyActionMenuItem.vue';
 export type { ChoyActionConfirm } from './composables/useChoyActionPolicy';
 export { default as ChoyInput } from './components/vendor/ui/input/Input.vue';
