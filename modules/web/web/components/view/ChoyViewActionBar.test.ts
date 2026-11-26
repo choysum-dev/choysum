@@ -93,13 +93,15 @@ describe('ChoyViewActionBar', () => {
     mounted.unmount();
   });
 
-  test('identity precedes actions; overflow anchors at actions end', async () => {
+  test('identity (title + ⋯) precedes actions cluster', async () => {
     const mounted = mountApp(ChoyViewActionBar as any, {
       props: { layout: 'thirds' },
       slots: {
-        identity: () => h('h1', { 'data-testid': 'title' }, 'Partners'),
+        identity: () => [
+          h('h1', { 'data-testid': 'title' }, 'Partners'),
+          h('button', { 'data-testid': 'more' }, '⋯'),
+        ],
         'system-actions': () => h('button', { 'data-testid': 'sys' }, 'New'),
-        'actions-overflow': () => h('button', { 'data-testid': 'more' }, '⋯'),
       },
     });
     await flushPromises();
@@ -107,18 +109,17 @@ describe('ChoyViewActionBar', () => {
     expect(leading).not.toBeNull();
     expect(mounted.q('[data-slot=view-action-bar-identity]')).not.toBeNull();
     expect(mounted.q('[data-slot=view-action-bar-actions]')).not.toBeNull();
-    expect(mounted.q('[data-slot=view-action-bar-overflow]')).not.toBeNull();
     expect(mounted.q('[data-testid=title]')?.textContent).toBe('Partners');
     expect(mounted.q('[data-testid=sys]')?.textContent).toBe('New');
     expect(mounted.q('[data-testid=more]')?.textContent).toBe('⋯');
-    // Leading text order: identity title before actions (New) before overflow (⋯).
+    // Leading text order: title → ⋯ (identity) → New (actions).
     const text = (leading!.textContent || '').replace(/\s+/g, ' ');
     const titleIdx = text.indexOf('Partners');
-    const newIdx = text.indexOf('New');
     const moreIdx = text.indexOf('⋯');
+    const newIdx = text.indexOf('New');
     expect(titleIdx).toBeGreaterThanOrEqual(0);
-    expect(newIdx).toBeGreaterThan(titleIdx);
-    expect(moreIdx).toBeGreaterThan(newIdx);
+    expect(moreIdx).toBeGreaterThan(titleIdx);
+    expect(newIdx).toBeGreaterThan(moreIdx);
     mounted.unmount();
   });
 });

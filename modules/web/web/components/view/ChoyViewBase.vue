@@ -16,7 +16,7 @@ SPDX-License-Identifier: Apache-2.0
   7. export from kit + chrome/mount unit test
 
   Left chrome contract (List / Kanban / Form / Chart):
-  [identity: title] [主 → 次 → 领域] [⋯] | [找] | [看]
+  [identity: fixed-width title][⋯] [主 → 次 → 领域] | [找] | [看]
 -->
 <template>
   <ChoyViewContainer :class="containerClass" v-bind="attrs">
@@ -28,14 +28,35 @@ SPDX-License-Identifier: Apache-2.0
           :system-actions-label="systemActionsLabel"
           :user-actions-label="userActionsLabel"
         >
-          <template v-if="pageTitle" #identity>
+          <template v-if="pageTitle || showTitleOverflow" #identity>
             <h1
+              v-if="pageTitle"
               :id="pageTitleId || undefined"
               data-slot="page-title"
               :class="resolvedPageTitleClass"
             >
               {{ pageTitle }}
             </h1>
+            <div
+              v-if="showTitleOverflow"
+              data-slot="view-action-bar-overflow"
+              class="flex shrink-0 items-center"
+            >
+              <ChoyPageTitleActions
+                :has-io-menu="!!pageTitleActionsIo"
+                :action-import="pageTitleActionsIo?.actionImport ?? false"
+                :action-export="pageTitleActionsIo?.actionExport ?? false"
+                :action-import-upload-hint="pageTitleActionsIo?.actionImportUploadHint"
+                :action-import-column-mapping="pageTitleActionsIo?.actionImportColumnMapping"
+                :action-list-ref="(pageTitleActionsIo?.actionListRef as any)"
+                :action-company-id="pageTitleActionsIo?.actionCompanyId"
+                :store="store"
+              >
+                <template v-if="slots['overflow-actions']" #overflow>
+                  <slot name="overflow-actions" />
+                </template>
+              </ChoyPageTitleActions>
+            </div>
           </template>
 
           <template v-if="showSystemTray()" #system-actions>
@@ -46,23 +67,6 @@ SPDX-License-Identifier: Apache-2.0
 
           <template v-if="slots['user-actions']" #user-actions>
             <slot name="user-actions" />
-          </template>
-
-          <template v-if="showTitleOverflow" #actions-overflow>
-            <ChoyPageTitleActions
-              :has-io-menu="!!pageTitleActionsIo"
-              :action-import="pageTitleActionsIo?.actionImport ?? false"
-              :action-export="pageTitleActionsIo?.actionExport ?? false"
-              :action-import-upload-hint="pageTitleActionsIo?.actionImportUploadHint"
-              :action-import-column-mapping="pageTitleActionsIo?.actionImportColumnMapping"
-              :action-list-ref="(pageTitleActionsIo?.actionListRef as any)"
-              :action-company-id="pageTitleActionsIo?.actionCompanyId"
-              :store="store"
-            >
-              <template v-if="slots['overflow-actions']" #overflow>
-                <slot name="overflow-actions" />
-              </template>
-            </ChoyPageTitleActions>
           </template>
 
           <!-- ActionBar thirds pads an empty center when this slot is omitted. -->
@@ -175,8 +179,9 @@ const emit = defineEmits<{
 const slots = useSlots();
 const attrs = useAttrs();
 
+/** Fixed title track so ⋯ sits immediately after a stable width (truncate long labels). */
 const defaultPageTitleClass =
-  'min-w-0 max-w-[12rem] truncate text-lg font-semibold leading-8 text-foreground sm:max-w-[16rem]';
+  'w-[10rem] shrink-0 truncate text-lg font-semibold leading-8 text-foreground sm:w-[14rem]';
 
 /** Default title chrome + optional BEM / extra classes from the product view. */
 const resolvedPageTitleClass = computed(() => cn(defaultPageTitleClass, props.pageTitleClass));

@@ -168,7 +168,7 @@ describe('ChoyViewBase', () => {
     }
   });
 
-  test('mounts page title actions at actions-overflow end when showTitleOverflow', async () => {
+  test('mounts page title actions beside fixed-width title when showTitleOverflow', async () => {
     setActivePinia(createPinia());
     const mounted = mountApp(ChoyViewBase as any, {
       props: {
@@ -186,14 +186,13 @@ describe('ChoyViewBase', () => {
     await flushPromises();
     expect(mounted.q('.choy-page__title-actions')).not.toBeNull();
     expect(mounted.q('[data-testid=overflow-item]')?.textContent).toBe('Refresh');
-    expect(mounted.q('[data-slot=view-action-bar-overflow]')).not.toBeNull();
-    const actions = mounted.q('[data-slot=view-action-bar-actions]') as HTMLElement | null;
-    expect(actions).not.toBeNull();
-    const text = (actions!.textContent || '').replace(/\s+/g, ' ');
-    const primaryIdx = text.indexOf('New');
-    // Overflow menu trigger is last in the actions cluster (⋮ / more).
-    expect(primaryIdx).toBeGreaterThanOrEqual(0);
+    const identity = mounted.q('[data-slot=view-action-bar-identity]') as HTMLElement | null;
+    expect(identity).not.toBeNull();
+    expect(identity!.querySelector('[data-slot=page-title]')).not.toBeNull();
+    expect(identity!.querySelector('[data-slot=view-action-bar-overflow]')).not.toBeNull();
     expect(mounted.q('[data-testid=page-io-menu-trigger]')).not.toBeNull();
+    const title = mounted.q('[data-slot=page-title]') as HTMLElement | null;
+    expect(title?.className || '').toContain('w-[10rem]');
     mounted.unmount();
   });
 
@@ -227,6 +226,7 @@ describe('ChoyViewBase', () => {
     const title = mounted.q('[data-slot=page-title]') as HTMLElement | null;
     expect(title?.className || '').toContain('choy-list-view__page-title');
     expect(title?.className || '').toContain('truncate');
+    expect(title?.className || '').toContain('w-[10rem]');
     expect(title?.className || '').toContain('text-lg');
     expect(title?.className || '').toContain('font-semibold');
     // Thirds ActionBar pads center when product view omits #center.
