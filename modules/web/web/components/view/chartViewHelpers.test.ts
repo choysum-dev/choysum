@@ -784,6 +784,7 @@ test('resolveChartBarLayout widens few-category bars', () => {
   expect(resolveChartBarLayout(3, 600).barMaxWidth).toBe(Math.floor(200 * 0.62));
   // Cap still binds when fill would exceed tierCap.
   expect(resolveChartBarLayout(3, 3000).barMaxWidth).toBe(480);
+  expect(resolveChartBarLayout(365, 600).barMaxWidth).toBeGreaterThan(0);
 });
 
 test('chartCategoryAxisIsTemporal reads object granularity and field:gran', () => {

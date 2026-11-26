@@ -84,15 +84,16 @@ describe('useDetailPathCollectionSoftRefresh', () => {
     mounted.unmount();
   });
 
-  test('skips soft-refresh when collection has not settled', async () => {
+  test('defers soft-refresh until collection settles after reactivate', async () => {
     const calls: number[] = [];
     const showCached = ref(true);
+    const settled = ref(false);
     const CachedPage = defineComponent({
       name: 'UnsettlePage',
       setup() {
         useDetailPathCollectionSoftRefresh({
           detailPath: '/sandbox/records/:id',
-          hasSettled: () => false,
+          hasSettled: () => settled.value,
           refresh: () => {
             calls.push(1);
           },
@@ -117,6 +118,11 @@ describe('useDetailPathCollectionSoftRefresh', () => {
     await flushPromises();
     await nextTick();
     expect(calls.length).toBe(0);
+
+    settled.value = true;
+    await flushPromises();
+    await nextTick();
+    expect(calls.length).toBe(1);
     mounted.unmount();
   });
 });

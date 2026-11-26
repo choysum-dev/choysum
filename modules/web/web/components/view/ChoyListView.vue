@@ -8,7 +8,7 @@ SPDX-License-Identifier: Apache-2.0
     class="choy-list-view gap-2"
     chrome-anchor="choy.list.view-chrome"
     :show-header="showHeader"
-    :show-actions="showActions"
+    :show-actions="showActions || editable"
     :page-title="pageTitle"
     :page-title-id="pageTitleId"
     page-title-class="choy-list-view__page-title"
@@ -324,6 +324,7 @@ import { useVirtualizationAdapter } from '@/web/web/composables/virtualizationAd
 import { awaitFieldSelection } from '@/web/web/query/utils/registry/fieldReady';
 import ChoySearchView from '@/web/web/components/view/ChoySearchView.vue';
 import { shouldDeferToSearchFirstFrame } from '@/web/web/components/view/viewFirstFrame';
+import { reconcileListSelection } from '@/web/web/components/view/listSelectionReconcile';
 import { useSearchFirstFrameHost } from '@/web/web/components/view/search/searchFirstFrame';
 import {
   canShowAction,
@@ -735,6 +736,12 @@ function clearSelection() {
   emit('selection-change', { rows: [], ids: [] });
 }
 
+function reconcileSelectionToFreshRows(): void {
+  // Prefer controller nodes (post-apply); fall back to flattened table rows.
+  const rows = ((items.value?.length ? items.value : tableItems.value) || []) as any[];
+  selectedItems.value = reconcileListSelection(selectedItems.value as any[], rows) as ClientModel<T[]>;
+}
+
 function onSelectionChange(rows: any[]) {
   // In group-tree mode, keep only the actual record Ids of detail rows
   const ids = (rows || [])
@@ -969,6 +976,7 @@ async function softRefresh() {
     await afterLayoutRecompute();
     // Let items watch from apply flush while still suppressed.
     await nextTick();
+    reconcileSelectionToFreshRows();
   } catch (e: unknown) {
     const err = e instanceof Error ? e : new Error(String(e));
     emit('action-error', { action: 'refresh', error: err });
@@ -1032,6 +1040,7 @@ function onSearch(payload: QueryUpdatePayload<T>) {
 // =============================
 // Pagination only updates state and emits events
 function onPaginateState({ limit, offset }: { limit: number; offset: number }) {
+  clearSelection();
   // Still emit paginate externally for legacy listeners
   const page = Math.floor(offset / Math.max(1, limit)) + 1;
   const pageSize = limit;

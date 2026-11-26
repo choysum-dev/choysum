@@ -244,13 +244,12 @@ import {
   dataTableColumnJustifyClass,
   dataTableIsGroupLikeRow,
   dataTableIsVirtualized,
+  createDataTableScrollParentResizeHandler,
   dataTableMaybeMeasure,
   dataTableMeasureRow,
-  dataTablePreserveScrollTop,
   dataTableRowKind,
   dataTableScrollElement,
   dataTableSelectionIdsEqual,
-  dataTableShouldRemeasureOnScrollParentResize,
   dataTableVirtualizerCount,
   decodeDataTableRowKey,
   encodeDataTableRowKey,
@@ -619,18 +618,18 @@ function bindScrollParentObserver(el: HTMLElement | null): void {
   scrollParentObserver = null;
   if (!el || typeof ResizeObserver === 'undefined') return;
   scrollParentLastHeight = el.clientHeight;
-  scrollParentObserver = new ResizeObserver(() => {
-    if (!isVirtualized.value) return;
-    const nextHeight = el.clientHeight;
-    if (!dataTableShouldRemeasureOnScrollParentResize(scrollParentLastHeight, nextHeight)) {
-      return;
-    }
-    scrollParentLastHeight = nextHeight;
-    // Clearing the size cache during animated width changes (sidebar) drifts scrollTop.
-    dataTablePreserveScrollTop(el, () => {
+  const onResize = createDataTableScrollParentResizeHandler({
+    isVirtualized: () => isVirtualized.value,
+    getLastHeight: () => scrollParentLastHeight,
+    setLastHeight: (height) => {
+      scrollParentLastHeight = height;
+    },
+    getElement: () => el,
+    remasure: () => {
       dataTableMaybeMeasure(true, virtualizer.value);
-    });
+    },
   });
+  scrollParentObserver = new ResizeObserver(onResize);
   scrollParentObserver.observe(el);
 }
 

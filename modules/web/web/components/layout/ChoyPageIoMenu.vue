@@ -9,14 +9,14 @@ SPDX-License-Identifier: Apache-2.0
     v-model:open="menuOpen"
     :modal="!hoverOpen"
   >
-    <DropdownMenuTrigger as-child>
-      <!-- Host owns hover when hoverOpen; click still goes through the slotted control. -->
-      <div
-        class="inline-flex min-w-0 max-w-full"
-        data-slot="page-io-menu-trigger-host"
-        @pointerenter="onTriggerEnter"
-        @pointerleave="onTriggerLeave"
-      >
+    <!-- Hover host outside trigger so dismiss returns focus to the slotted button. -->
+    <div
+      class="inline-flex min-w-0 max-w-full"
+      data-slot="page-io-menu-trigger-host"
+      @pointerenter="onTriggerEnter"
+      @pointerleave="onTriggerLeave"
+    >
+      <DropdownMenuTrigger as-child>
         <slot name="trigger" :open="menuOpen" :aria-label="menuAriaLabel">
           <ChoyButton
             type="button"
@@ -28,8 +28,8 @@ SPDX-License-Identifier: Apache-2.0
             <EllipsisVertical class="size-4" aria-hidden="true" />
           </ChoyButton>
         </slot>
-      </div>
-    </DropdownMenuTrigger>
+      </DropdownMenuTrigger>
+    </div>
     <DropdownMenuContent
       :align="contentAlign"
       @pointerenter="onContentEnter"

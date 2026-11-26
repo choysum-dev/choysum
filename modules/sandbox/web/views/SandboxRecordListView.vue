@@ -85,6 +85,7 @@ import type SandboxRecord from '@/sandbox/service/models/sandbox_record';
 import { useListViewExpose } from '@/web/web/composables/useListView';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { usePermission } from '@/auth/web/composables/usePermission';
+import { ViewWorkflowPartialError } from '@/web/web/composables/viewWorkflowAction';
 import {
   ChoyActionButton,
   ChoyBooleanField,
@@ -154,9 +155,22 @@ async function markSelected(selectedItems: unknown, next: SandboxWorkflowState):
   const ids = selectedSandboxIdsFor(sandboxWorkflowSourceState(next), selectedItems);
   if (!ids.length) return;
   await runBulkWorkflow(async () => {
+    let succeeded = 0;
+    const failures: unknown[] = [];
     for (const id of ids) {
-      // UpdateById does not run @Onchange; mirror Progress like Form statusbar.
-      await store.UpdateById(id, { State: next, Progress: next } as Partial<SandboxRecord>);
+      try {
+        // UpdateById does not run @Onchange; mirror Progress like Form statusbar.
+        await store.UpdateById(id, { State: next, Progress: next } as Partial<SandboxRecord>);
+        succeeded += 1;
+      } catch (err) {
+        failures.push(err);
+      }
+    }
+    if (!succeeded && failures.length) {
+      throw failures[0];
+    }
+    if (failures.length) {
+      throw new ViewWorkflowPartialError(_t('Failed to update some records'));
     }
   });
 }

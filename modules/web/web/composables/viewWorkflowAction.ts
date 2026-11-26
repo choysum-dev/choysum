@@ -6,6 +6,21 @@ import { ChoyMessage } from '@/web/web/composables/useChoyMessage';
 
 export type ViewWorkflowErrorMessage = string | ((err: unknown) => string);
 
+/** Thrown when a bulk workflow made partial progress before failing. */
+export class ViewWorkflowPartialError extends Error {
+  readonly partialSuccess = true;
+
+  constructor(message: string) {
+    super(message);
+    this.name = 'ViewWorkflowPartialError';
+  }
+}
+
+export function isViewWorkflowPartialError(err: unknown): boolean {
+  if (err instanceof ViewWorkflowPartialError) return true;
+  return (err as { partialSuccess?: boolean })?.partialSuccess === true;
+}
+
 export type RunViewWorkflowActionOpts = {
   busy: Ref<boolean>;
   call: () => void | Promise<void>;
@@ -58,6 +73,13 @@ export async function runViewWorkflowAction(opts: RunViewWorkflowActionOpts): Pr
     toastError(
       resolveErrorMessage(err, opts.errorMessage, opts.fallbackErrorMessage || 'Action failed'),
     );
+    if (isViewWorkflowPartialError(err) && opts.afterSuccess) {
+      try {
+        await opts.afterSuccess();
+      } catch {
+        // Surface sync failure should not mask the original workflow error.
+      }
+    }
   } finally {
     opts.busy.value = false;
   }

@@ -10,6 +10,7 @@ import {
   dataTableIsGroupLikeRow,
   dataTableIsVirtualized,
   dataTableMaybeMeasure,
+  createDataTableScrollParentResizeHandler,
   dataTablePreserveScrollTop,
   dataTableShouldRemeasureOnScrollParentResize,
   dataTableMeasureRow,
@@ -331,6 +332,39 @@ describe('dataTableHelpers', () => {
       measured += 1;
     });
     expect(measured).toBe(2);
+    let lastH = 200;
+    let remasures = 0;
+    const el = { clientHeight: 200, scrollTop: 64 };
+    const onResize = createDataTableScrollParentResizeHandler({
+      isVirtualized: () => true,
+      getLastHeight: () => lastH,
+      setLastHeight: (h) => {
+        lastH = h;
+      },
+      getElement: () => el,
+      remasure: () => {
+        remasures += 1;
+        el.scrollTop = 99;
+      },
+    });
+    onResize(); // same height → no remasure
+    expect(remasures).toBe(0);
+    el.clientHeight = 240;
+    onResize();
+    expect(remasures).toBe(1);
+    expect(lastH).toBe(240);
+    expect(el.scrollTop).toBe(64);
+    const skipped = createDataTableScrollParentResizeHandler({
+      isVirtualized: () => false,
+      getLastHeight: () => 0,
+      setLastHeight: () => undefined,
+      getElement: () => el,
+      remasure: () => {
+        remasures += 1;
+      },
+    });
+    skipped();
+    expect(remasures).toBe(1);
     let rowMeasured = 0;
     dataTableMeasureRow(parent, true, { measureElement: () => { rowMeasured += 1; } });
     dataTableMeasureRow(null, true, { measureElement: () => { rowMeasured += 1; } });

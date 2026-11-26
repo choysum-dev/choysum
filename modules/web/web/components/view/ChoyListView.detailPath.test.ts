@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { h } from 'vue';
+import { defineComponent, h, KeepAlive, nextTick, ref } from 'vue';
 import { createPinia, setActivePinia } from 'pinia';
 import * as VueRouter from 'vue-router';
 import { flushPromises, mountApp, restoreSfc, stubSfc } from '@/web/web/__tests__/mountApp';
@@ -600,6 +600,77 @@ test('picker chrome canOpenDetail survives domain detail-path override (no route
   await flushPromises();
 
   expect(pushes).toEqual([]);
+  mounted.unmount();
+  restoreSfc(ChoyTableHost);
+  restoreSfc(ChoyTableColumn);
+  restoreSfc(ChoyPagination);
+  restoreSfc(ListInlineEditScope);
+});
+
+test('detailPath KeepAlive reactivate soft-refreshes via useDetailPathCollectionSoftRefresh', async () => {
+  const pinia = createPinia();
+  setActivePinia(pinia);
+  const { router } = createFeStubRouter({
+    route: { path: '/base/countries', fullPath: '/base/countries' },
+  });
+  const store = makeStore();
+  stubSfc(ChoyTableHost, {
+    name: 'ChoyTableHost',
+    emits: ['row-click'],
+    setup: () => () => h('div', { 'data-stub': 'ChoyTableHost' }),
+  });
+  stubSfc(ChoyTableColumn, { name: 'ChoyTableColumn', setup: () => () => null });
+  stubSfc(ChoyPagination, {
+    name: 'ChoyPagination',
+    setup: () => () => h('div', { 'data-stub': 'Pagination' }),
+  });
+  stubSfc(ListInlineEditScope, {
+    name: 'ListInlineEditScope',
+    setup: (_p: any, { slots }: any) => () => h('div', slots.default?.()),
+  });
+
+  const showList = ref(true);
+  const searches: number[] = [];
+  const origSearch = store.Search;
+  store.Search = async (...args: unknown[]) => {
+    searches.push(1);
+    return origSearch(...args);
+  };
+
+  const ListPage = defineComponent({
+    name: 'DetailPathListPage',
+    setup() {
+      return () =>
+        h(ChoyListView as any, {
+          store,
+          detailPath: '/base/countries/:id',
+          showHeader: false,
+          showPaginate: false,
+        });
+    },
+  });
+  const Host = defineComponent({
+    setup() {
+      return () =>
+        h(KeepAlive, null, {
+          default: () => (showList.value ? h(ListPage) : h('div', { 'data-stub': 'form' }, 'form')),
+        });
+    },
+  });
+
+  const mounted = mountApp(Host as any, { plugins: [pinia, router as any] });
+  await flushPromises();
+  await nextTick();
+  expect(searches.length).toBeGreaterThanOrEqual(1);
+
+  showList.value = false;
+  await nextTick();
+  showList.value = true;
+  await flushPromises();
+  await nextTick();
+  await nextTick();
+  expect(searches.length).toBeGreaterThanOrEqual(2);
+
   mounted.unmount();
   restoreSfc(ChoyTableHost);
   restoreSfc(ChoyTableColumn);

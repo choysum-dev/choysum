@@ -430,6 +430,30 @@ export function dataTablePreserveScrollTop(
   el.scrollTop = top;
 }
 
+/**
+ * ResizeObserver callback for the virtual scroll parent: remasure only when
+ * height changes, and keep scrollTop stable across spacer updates.
+ */
+export function createDataTableScrollParentResizeHandler(opts: {
+  isVirtualized: () => boolean;
+  getLastHeight: () => number;
+  setLastHeight: (height: number) => void;
+  getElement: () => { clientHeight: number; scrollTop: number } | null | undefined;
+  remasure: () => void;
+}): () => void {
+  return () => {
+    if (!opts.isVirtualized()) return;
+    const el = opts.getElement();
+    if (!el) return;
+    const nextHeight = el.clientHeight;
+    if (!dataTableShouldRemeasureOnScrollParentResize(opts.getLastHeight(), nextHeight)) {
+      return;
+    }
+    opts.setLastHeight(nextHeight);
+    dataTablePreserveScrollTop(el, opts.remasure);
+  };
+}
+
 export function dataTableMeasureRow(
   el: Element | null,
   virtualized: boolean,

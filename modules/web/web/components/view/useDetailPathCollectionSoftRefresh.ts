@@ -5,7 +5,9 @@ import {
   getCurrentInstance,
   onActivated,
   onDeactivated,
+  ref,
   toValue,
+  watchEffect,
   type MaybeRefOrGetter,
 } from 'vue';
 
@@ -32,12 +34,9 @@ export function useDetailPathCollectionSoftRefresh(
   softRefreshIfDetailHost: () => void;
 } {
   let wasDeactivated = false;
+  const pendingRefreshAfterSettle = ref(false);
 
-  function softRefreshIfDetailHost(): void {
-    if (toValue(opts.detailPath) == null) return;
-    if (!wasDeactivated) return;
-    wasDeactivated = false;
-    if (!opts.hasSettled()) return;
+  function runRefresh(): void {
     try {
       void Promise.resolve(opts.refresh()).catch(() => undefined);
     } catch {
@@ -45,11 +44,33 @@ export function useDetailPathCollectionSoftRefresh(
     }
   }
 
+  function tryRefresh(): void {
+    if (toValue(opts.detailPath) == null) return;
+    if (!opts.hasSettled()) {
+      pendingRefreshAfterSettle.value = true;
+      return;
+    }
+    pendingRefreshAfterSettle.value = false;
+    runRefresh();
+  }
+
+  function softRefreshIfDetailHost(): void {
+    if (toValue(opts.detailPath) == null) return;
+    if (!wasDeactivated) return;
+    wasDeactivated = false;
+    tryRefresh();
+  }
+
   if (getCurrentInstance()) {
     onDeactivated(() => {
       wasDeactivated = true;
     });
     onActivated(softRefreshIfDetailHost);
+    watchEffect(() => {
+      if (!pendingRefreshAfterSettle.value) return;
+      if (!opts.hasSettled()) return;
+      tryRefresh();
+    });
   }
 
   return { softRefreshIfDetailHost };

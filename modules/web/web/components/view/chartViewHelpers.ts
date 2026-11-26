@@ -616,7 +616,7 @@ export function resolveChartBarLayout(
     const fromBand = Math.floor(band * tier.fillRatio);
     const floor = Math.floor(band * 0.4);
     return {
-      barMaxWidth: Math.min(tier.tierCap, Math.max(fromBand, floor)),
+      barMaxWidth: Math.max(1, Math.min(tier.tierCap, Math.max(fromBand, floor))),
       barPadding: tier.barPadding,
       groupPadding: tier.groupPadding,
     };

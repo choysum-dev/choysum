@@ -26,7 +26,7 @@ SPDX-License-Identifier: Apache-2.0
           class="group inline-flex min-h-control min-w-0 max-w-full items-center gap-1.5 rounded-md px-2.5 text-start outline-none transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring/50"
           :class="open ? 'bg-accent' : undefined"
           :title="menuTitle || undefined"
-          :aria-label="ariaLabel"
+          :aria-label="menuTitle || ariaLabel"
           :aria-expanded="open"
           :aria-haspopup="true"
         >

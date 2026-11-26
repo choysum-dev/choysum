@@ -43,7 +43,9 @@ export function useListViewExpose<T>() {
   }
 
   function softRefresh() {
-    return (listRef.value as ListViewLoadExpose | null | undefined)?.softRefresh?.();
+    const child = listRef.value as ListViewLoadExpose | null | undefined;
+    if (typeof child?.softRefresh === 'function') return child.softRefresh();
+    return child?.load?.();
   }
 
   function clearSelection() {

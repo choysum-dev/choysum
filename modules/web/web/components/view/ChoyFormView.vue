@@ -213,7 +213,7 @@ SPDX-License-Identifier: Apache-2.0
       #contextual-actions / #user-actions → buttons (deprecated).
       #statusbar → status (deprecated).
     -->
-    <template v-if="showFormStatusbar" #header-extra>
+    <template v-if="showFormStatusbar()" #header-extra>
       <div
         data-anchor="choy.form.statusbar"
         data-testid="form-statusbar"
@@ -222,7 +222,7 @@ SPDX-License-Identifier: Apache-2.0
         :aria-label="_t('Status bar')"
       >
         <div
-          v-if="hasStatusbarButtons"
+          v-if="hasStatusbarButtons()"
           data-anchor="choy.form.statusbar-buttons"
           data-testid="form-statusbar-buttons"
           class="flex min-w-0 flex-nowrap items-center gap-2 overflow-x-auto"
@@ -244,6 +244,7 @@ SPDX-License-Identifier: Apache-2.0
             :loading="loading"
           />
           <slot
+            v-if="resolvedShowActions"
             name="user-actions"
             :form-data="exposedFormData"
             :record-id="effectiveRecordId"
@@ -252,7 +253,7 @@ SPDX-License-Identifier: Apache-2.0
           />
         </div>
         <div
-          v-if="hasStatusbarStatus"
+          v-if="hasStatusbarStatus()"
           data-anchor="choy.form.statusbar-status"
           data-testid="form-statusbar-status"
           class="ml-auto flex min-w-0 shrink-0 items-center justify-end overflow-x-auto"
@@ -943,20 +944,28 @@ async function onSettingsViewSelect(value: string) {
 
 const isEditing = computed(() => viewMode.value === 'edit' || viewMode.value === 'create');
 
-const hasStatusbarButtons = computed(
-  () =>
+/**
+ * Slot presence is read during render (not via computed) so production builds
+ * re-evaluate when a parent adds/removes conditional named slots.
+ */
+function hasStatusbarButtons(): boolean {
+  return (
     !!slots['statusbar-buttons'] ||
     !!slots['contextual-actions'] ||
-    !!slots['user-actions'],
-);
-const hasStatusbarStatus = computed(() => !!slots['statusbar-status'] || !!slots.statusbar);
+    (resolvedShowActions.value && !!slots['user-actions'])
+  );
+}
+function hasStatusbarStatus(): boolean {
+  return !!slots['statusbar-status'] || !!slots.statusbar;
+}
 /** Form statusbar under Action Bar: display only; omit when both sides empty. */
-const showFormStatusbar = computed(
-  () =>
+function showFormStatusbar(): boolean {
+  return (
     !isSettingsPresentation.value &&
     !isEditing.value &&
-    (hasStatusbarButtons.value || hasStatusbarStatus.value),
-);
+    (hasStatusbarButtons() || hasStatusbarStatus())
+  );
+}
 
 /** Reset lives in ⋮ during create/edit so the left bar stays [Save][Cancel][title][⋮]. */
 const showResetInOverflow = computed(

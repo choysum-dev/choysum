@@ -954,6 +954,14 @@ watch(
   { immediate: true },
 );
 
+watch(
+  localChartType,
+  () => {
+    void nextTick(() => syncPlotHeight());
+  },
+  { flush: 'post' },
+);
+
 const metricLabel = computed(() => {
   const hit = resolvedMetrics.value.find((m) => m.alias === localMetric.value);
   return hit?.label || localMetric.value || 'Value';

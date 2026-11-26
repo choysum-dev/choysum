@@ -450,9 +450,9 @@ async function markState(slotRecordId: string | undefined, next: WorkflowState):
   const id = String(slotRecordId || '').trim();
   if (!id) return;
   // UpdateById does not run @Onchange; mirror Progress so statusbar matches State.
-  await runStateWorkflow(() =>
-    store.UpdateById(id, { State: next, Progress: next } as Partial<SandboxRecord>),
-  );
+  await runStateWorkflow(async () => {
+    await store.UpdateById(id, { State: next, Progress: next } as Partial<SandboxRecord>);
+  });
 }
 
 const defaultLineRecord = computed((): Partial<SandboxLine> => ({

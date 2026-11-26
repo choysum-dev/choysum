@@ -4,9 +4,11 @@
 import { ref } from 'vue';
 import { ChoyMessage } from '@/web/web/composables/useChoyMessage';
 import {
+  isViewWorkflowPartialError,
   runViewWorkflowAction,
   useFormWorkflowAction,
   useListWorkflowAction,
+  ViewWorkflowPartialError,
 } from './viewWorkflowAction';
 
 const origError = ChoyMessage.error;
@@ -62,6 +64,48 @@ describe('runViewWorkflowAction', () => {
     expect(messageCalls).toContain('Custom fail');
   });
 
+  test('runs afterSuccess on partial workflow failure', async () => {
+    const busy = ref(false);
+    let after = 0;
+    await runViewWorkflowAction({
+      busy,
+      call: async () => {
+        throw new ViewWorkflowPartialError('partial');
+      },
+      afterSuccess: async () => {
+        after += 1;
+      },
+      errorMessage: 'Partial fail',
+    });
+    expect(after).toBe(1);
+    expect(messageCalls).toContain('Partial fail');
+    expect(busy.value).toBe(false);
+  });
+
+  test('isViewWorkflowPartialError accepts class and duck-typed partialSuccess', () => {
+    expect(isViewWorkflowPartialError(new ViewWorkflowPartialError('x'))).toBe(true);
+    expect(isViewWorkflowPartialError({ partialSuccess: true, message: 'x' })).toBe(true);
+    expect(isViewWorkflowPartialError(new Error('nope'))).toBe(false);
+    expect(isViewWorkflowPartialError(null)).toBe(false);
+  });
+
+  test('runs afterSuccess for duck-typed partialSuccess errors', async () => {
+    const busy = ref(false);
+    let after = 0;
+    await runViewWorkflowAction({
+      busy,
+      call: async () => {
+        throw { partialSuccess: true, message: 'duck partial' };
+      },
+      afterSuccess: async () => {
+        after += 1;
+      },
+      errorMessage: 'Duck fail',
+    });
+    expect(after).toBe(1);
+    expect(messageCalls).toContain('Duck fail');
+  });
+
   test('no-ops when already busy', async () => {
     const busy = ref(true);
     let calls = 0;
@@ -72,6 +116,68 @@ describe('runViewWorkflowAction', () => {
       },
     });
     expect(calls).toBe(0);
+  });
+
+  test('resolveErrorMessage uses function, string, and fallbacks', async () => {
+    const busy = ref(false);
+    await runViewWorkflowAction({
+      busy,
+      call: async () => {
+        throw new Error('rpc');
+      },
+      errorMessage: (err) => (err instanceof Error ? `fn:${err.message}` : 'fn:other'),
+    });
+    expect(messageCalls).toContain('fn:rpc');
+
+    messageCalls.length = 0;
+    await runViewWorkflowAction({
+      busy,
+      call: async () => {
+        throw new Error('rpc2');
+      },
+      errorMessage: () => {
+        throw new Error('formatter blew up');
+      },
+      fallbackErrorMessage: 'fallback',
+    });
+    expect(messageCalls).toContain('rpc2');
+
+    messageCalls.length = 0;
+    await runViewWorkflowAction({
+      busy,
+      call: async () => {
+        throw { message: ' boxed ' };
+      },
+      errorMessage: '  string override  ',
+    });
+    expect(messageCalls).toContain('string override');
+
+    messageCalls.length = 0;
+    await runViewWorkflowAction({
+      busy,
+      call: async () => {
+        throw 'plain';
+      },
+      fallbackErrorMessage: 'fallback',
+    });
+    expect(messageCalls).toContain('plain');
+  });
+
+  test('partial failure still runs afterSuccess when sync throws', async () => {
+    const busy = ref(false);
+    let after = 0;
+    await runViewWorkflowAction({
+      busy,
+      call: async () => {
+        throw new ViewWorkflowPartialError('partial');
+      },
+      afterSuccess: async () => {
+        after += 1;
+        throw new Error('sync blew up');
+      },
+    });
+    expect(after).toBe(1);
+    expect(busy.value).toBe(false);
   });
 });
 
@@ -114,6 +220,48 @@ describe('useFormWorkflowAction', () => {
     const { run } = useFormWorkflowAction({ formRef, reload: 'none' });
     await run(async () => undefined);
     expect(reloads).toBe(0);
+  });
+
+  test('create mode and refresh fallback paths', async () => {
+    let refresh = 0;
+    const formRef = ref({
+      getViewMode: () => 'create' as const,
+      reloadDisplay: async () => {
+        refresh += 1;
+      },
+      refresh: async () => {
+        refresh += 10;
+      },
+    });
+    const { run } = useFormWorkflowAction({ formRef });
+    await run(async () => undefined);
+    expect(refresh).toBe(0);
+
+    const formRef2 = ref({
+      getViewMode: () => 'display' as const,
+      refresh: async () => {
+        refresh += 1;
+      },
+    });
+    const { run: run2 } = useFormWorkflowAction({ formRef: formRef2 });
+    await run2(async () => undefined);
+    expect(refresh).toBe(1);
+  });
+
+  test('onSuccess runs after display reload', async () => {
+    let onSuccess = 0;
+    const formRef = ref({
+      getViewMode: () => 'display' as const,
+      reloadDisplay: async () => undefined,
+    });
+    const { run } = useFormWorkflowAction({
+      formRef,
+      onSuccess: async () => {
+        onSuccess += 1;
+      },
+    });
+    await run(async () => undefined);
+    expect(onSuccess).toBe(1);
   });
 });
 
@@ -163,5 +311,48 @@ describe('useListWorkflowAction', () => {
       throw new Error('nope');
     });
     expect(soft).toBe(0);
+  });
+
+  test('falls back to load then refresh when softRefresh is missing', async () => {
+    let load = 0;
+    let refresh = 0;
+    const listRef = ref({
+      load: async () => {
+        load += 1;
+      },
+      refresh: async () => {
+        refresh += 1;
+      },
+    });
+    const { run } = useListWorkflowAction({ listRef });
+    await run(async () => undefined);
+    expect(load).toBe(1);
+    expect(refresh).toBe(0);
+
+    const listRef2 = ref({
+      refresh: async () => {
+        refresh += 1;
+      },
+    });
+    const { run: run2 } = useListWorkflowAction({ listRef: listRef2 });
+    await run2(async () => undefined);
+    expect(refresh).toBe(1);
+  });
+
+  test('clearSelection only when enabled and softRefresh missing still loads', async () => {
+    let cleared = 0;
+    let load = 0;
+    const listRef = ref({
+      load: async () => {
+        load += 1;
+      },
+      clearSelection: () => {
+        cleared += 1;
+      },
+    });
+    const { run } = useListWorkflowAction({ listRef, clearSelection: true });
+    await run(async () => undefined);
+    expect(load).toBe(1);
+    expect(cleared).toBe(1);
   });
 });

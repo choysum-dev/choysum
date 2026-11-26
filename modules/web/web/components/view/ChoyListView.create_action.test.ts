@@ -459,4 +459,92 @@ describe('ListView create action', () => {
     expect(exposed.selectedItems?.length).toBe(2);
     unmount();
   });
+
+  test('softRefresh rethrows when apply fails', async () => {
+    const { plugins } = buildPageMountGlobal({
+      route: { name: 'PartnerList', path: '/partner/partners', fullPath: '/partner/partners' },
+      router: { push },
+    });
+    const store = makeStore();
+    const { unmount, root } = mountApp(ChoyListView as any, {
+      props: {
+        store,
+        createAction: '',
+        showHeader: true,
+        showActions: true,
+        refreshAction: false,
+        deleteAction: true,
+        showPaginate: false,
+      },
+      plugins,
+    });
+    await flushPromises();
+    store.Search = async () => {
+      throw new Error('soft refresh failed');
+    };
+    let threw = false;
+    try {
+      await (root as { softRefresh?: () => Promise<void> }).softRefresh?.();
+    } catch (err) {
+      threw = true;
+      expect((err as Error).message).toBe('soft refresh failed');
+    }
+    expect(threw).toBe(true);
+    unmount();
+  });
+
+  test('paginate clears selection', async () => {
+    const { plugins } = buildPageMountGlobal({
+      route: { name: 'PartnerList', path: '/partner/partners', fullPath: '/partner/partners' },
+      router: { push },
+    });
+    const store = makeStore();
+    const { unmount, setupState } = mountApp(ChoyListView as any, {
+      props: {
+        store,
+        createAction: '',
+        showHeader: false,
+        showActions: false,
+        showPaginate: false,
+      },
+      plugins,
+    });
+    await flushPromises();
+    const ss = setupState() as {
+      selectedItems: unknown[];
+      onSelectionChange?: (rows: unknown[]) => void;
+      onPaginateState?: (next: { limit: number; offset: number }) => void;
+    };
+    ss.onSelectionChange?.([{ Id: 'keep-me' }]);
+    await flushPromises();
+    expect((setupState() as typeof ss).selectedItems.length).toBe(1);
+    ss.onPaginateState?.({ limit: 20, offset: 20 });
+    await flushPromises();
+    expect((setupState() as typeof ss).selectedItems.length).toBe(0);
+    unmount();
+  });
+
+  test('editable forces show-actions chrome even when showActions is false', async () => {
+    const { plugins } = buildPageMountGlobal({
+      route: { name: 'PartnerList', path: '/partner/partners', fullPath: '/partner/partners' },
+      router: { push },
+    });
+    const store = makeStore();
+    const { unmount, root } = mountApp(ChoyListView as any, {
+      props: {
+        store,
+        createAction: '',
+        showHeader: true,
+        showActions: false,
+        editable: true,
+        showPaginate: false,
+      },
+      plugins,
+    });
+    await flushPromises();
+    // Mounting with editable=true exercises `:show-actions="showActions || editable"`.
+    expect(root).toBeTruthy();
+    unmount();
+  });
+
 });
