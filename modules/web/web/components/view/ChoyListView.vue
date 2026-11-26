@@ -25,7 +25,7 @@ SPDX-License-Identifier: Apache-2.0
     @retry="onSurfaceRetry"
     @cancel="onSurfaceCancel"
   >
-    <template v-if="(showActions || editable) && !hasSelection" #system-actions>
+    <template v-if="showActions || editable" #system-actions>
       <!-- Keep Save/Discard outside the overridable slot so custom toolbars cannot hide them. -->
       <ChoyActionButton
         v-if="editable && isEditing"
@@ -84,17 +84,17 @@ SPDX-License-Identifier: Apache-2.0
       <slot name="overflow-actions" :selected-items="selectedItems" />
     </template>
 
-    <template v-if="showActions && !hasSelection" #secondary-actions>
+    <template v-if="showActions" #secondary-actions>
       <slot name="secondary-actions" :selected-items="selectedItems" />
     </template>
 
-    <template v-if="showActions && !hasSelection && !!slots['user-actions']" #user-actions>
+    <template v-if="showActions && !!slots['user-actions']" #user-actions>
       <slot name="user-actions" :selected-items="selectedItems" />
     </template>
 
     <!--
       Find zone: Search by default. With a selection, hide Search and show batch
-      actions centered in the same column (title / ⋯ stay in identity+overflow).
+      actions centered in the same column. Left cluster (New / secondary / ⋯) stays.
     -->
     <template #center>
       <div
