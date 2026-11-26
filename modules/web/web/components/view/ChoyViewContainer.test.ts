@@ -19,6 +19,7 @@ describe('ChoyViewContainer', () => {
     expect(root).not.toBeNull();
     expect(root?.className || '').toContain('gap-3');
     const header = mounted.q('[data-slot=view-header]') as HTMLElement | null;
+    expect(header!.className).toContain('gap-2');
     expect(header?.querySelector('[data-testid=hdr]')?.textContent).toBe('H');
     expect(mounted.q('[data-slot=view-body]')?.getAttribute('data-anchor')).toBe('choy.view.sheet');
     expect(mounted.q('[data-testid=body]')?.textContent).toBe('B');

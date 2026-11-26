@@ -89,9 +89,10 @@ describe('ChoyFormView workspace height', () => {
 
     const root = mounted.q('[data-slot="view-container"]') as HTMLElement | null;
     expect(root).not.toBeNull();
-    // Form overrides ViewBase gap-5 so statusbar sits closer to the sheet body.
-    expect(root!.className).toContain('gap-2');
+    // Form overrides ViewBase gap so the control ribbon sits on the sheet top.
+    expect(root!.className).toContain('gap-1');
     expect(root!.className.split(/\s+/)).not.toContain('gap-5');
+    expect(root!.className.split(/\s+/)).not.toContain('gap-2');
 
     const shell = mounted.q('[data-slot="view-body"]') as HTMLElement | null;
     expect(shell).not.toBeNull();
@@ -245,9 +246,18 @@ describe('ChoyFormView workspace height', () => {
     expect(statusbar!.querySelector('[data-testid=domain-primary]')).not.toBeNull();
     expect(statusbar!.querySelector('[data-testid=form-statusbar-status]')).not.toBeNull();
     expect(statusbar!.querySelector('[data-testid=domain-status]')).not.toBeNull();
-    // Statusbar lives in view-header with Action Bar (gap separates chrome from body).
-    expect(mounted.q('[data-slot=view-header]')?.querySelector('[data-testid=form-statusbar]')).not.toBeNull();
+    // Statusbar stays in view-header (control ribbon); sheet border-t is paper top.
+    // view-header gap owns Action Bar ↔ statusbar; header-extra has no vertical pad.
+    const header = mounted.q('[data-slot=view-header]') as HTMLElement | null;
+    expect(header).not.toBeNull();
+    expect(header!.className).toContain('gap-2');
+    expect(header!.querySelector('[data-testid=form-statusbar]')).not.toBeNull();
     expect(mounted.q('[data-slot=view-body]')?.querySelector('[data-testid=form-statusbar]')).toBeNull();
+    const headerExtra = mounted.q('[data-slot=view-header-extra]') as HTMLElement | null;
+    expect(headerExtra).not.toBeNull();
+    expect(headerExtra!.className.split(/\s+/)).not.toContain('pt-1');
+    expect(headerExtra!.className.split(/\s+/)).not.toContain('pb-2');
+    expect(headerExtra!.className.split(/\s+/)).not.toContain('pb-1.5');
     // Domain CTAs leave Action Bar center empty (List selection still owns center).
     expect(mounted.q('[data-testid=form-contextual-actions]')).toBeNull();
     const center = mounted.q('[data-slot=view-action-bar-center]') as HTMLElement | null;

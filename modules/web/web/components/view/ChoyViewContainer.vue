@@ -18,7 +18,15 @@ SPDX-License-Identifier: Apache-2.0
       )
     "
   >
-    <div v-if="regionHasContent('header')" data-slot="view-header" class="shrink-0">
+    <!--
+      flex + gap owns Action Bar ↔ header-extra rhythm (Form statusbar /
+      Chart controls). Children should not add vertical padding for that gap.
+    -->
+    <div
+      v-if="regionHasContent('header')"
+      data-slot="view-header"
+      class="flex shrink-0 flex-col gap-2"
+    >
       <slot name="header" />
     </div>
     <div

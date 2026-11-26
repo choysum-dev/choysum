@@ -93,6 +93,9 @@ describe('ChoyViewBase', () => {
     const extra = mounted.q('[data-slot=view-header-extra]') as HTMLElement | null;
     expect(extra?.querySelector('[data-testid=extra]')?.textContent).toBe('Controls');
     expect(header?.querySelector('[data-slot=view-header-extra]')).not.toBeNull();
+    expect(header!.className).toContain('gap-2');
+    expect(extra!.className.split(/\s+/)).not.toContain('pt-1');
+    expect(extra!.className.split(/\s+/)).not.toContain('pb-2');
     expect(mounted.q('[data-slot=view-body]')?.querySelector('[data-slot=view-header-extra]')).toBeNull();
     expect(mounted.q('[data-slot=view-body-host]')).not.toBeNull();
     mounted.unmount();

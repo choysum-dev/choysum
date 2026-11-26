@@ -671,12 +671,12 @@ const resolvedResolveRecordIdFromRoute = computed<boolean>(() =>
   hasResolveRecordIdFromRouteProp ? props.resolveRecordIdFromRoute === true : !isEmbedded.value
 );
 /**
- * Inset <main> is already the paper (shell). Page Form only adds in-paper rhythm:
- * tight chrome↔body gap, hairline on body top, content padding — no second card.
- * Embedded stays flat (dialogs must not double-frame).
+ * Inset <main> is already the paper (shell). Page Form: Action Bar + statusbar
+ * share view-header as a control ribbon; gap-1 + sheet border-t = paper top.
+ * No second card. Embedded stays flat.
  */
 const formViewBaseClass = computed(() =>
-  !isEmbedded.value ? 'choy-form-view gap-2' : 'choy-form-view',
+  !isEmbedded.value ? 'choy-form-view gap-1' : 'choy-form-view',
 );
 const formSheetHostClass = computed(() =>
   cn(

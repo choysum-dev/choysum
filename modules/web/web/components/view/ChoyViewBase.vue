@@ -23,8 +23,7 @@ SPDX-License-Identifier: Apache-2.0
   <ChoyViewContainer :class="containerClass" v-bind="attrs">
     <!--
       Action Bar + optional header-extra (Form statusbar / Chart controls) share
-      view-header so container gap-5 separates chrome from body — not Action Bar
-      from statusbar.
+      view-header; vertical rhythm is view-header gap (not padding on extra).
     -->
     <template v-if="showChromeHeader()" #header>
       <div v-if="showHeaderRegion()" :data-anchor="chromeAnchor || undefined">
@@ -97,7 +96,7 @@ SPDX-License-Identifier: Apache-2.0
       <div
         v-if="slots['header-extra']"
         data-slot="view-header-extra"
-        class="min-w-0 shrink-0 pt-2"
+        class="min-w-0 shrink-0"
       >
         <slot name="header-extra" />
       </div>
