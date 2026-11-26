@@ -128,7 +128,11 @@ describe('ChoyChartView chrome', () => {
 
     ctrlVm.hasAppliedOnce = true;
     await nextTick();
-    expect(mounted.q('[data-testid=choy-empty]')).not.toBeNull();
+    const empty = mounted.q('[data-testid=choy-empty]') as HTMLElement | null;
+    expect(empty).not.toBeNull();
+    expect(empty!.className).toContain('items-center');
+    expect(empty!.className).toContain('justify-center');
+    expect(mounted.q('[data-region=chart-empty]')).not.toBeNull();
 
     // Soft-fail Cancel dismisses prep/controller errors without requiring Retry.
     ctrlVm.error = new Error('soft fail');
@@ -161,6 +165,62 @@ describe('ChoyChartView chrome', () => {
     expect(trays.length).toBe(1);
     expect(trays[0]?.getAttribute('aria-label')).toBe('System actions');
     expect(mounted.q('[data-slot=view-action-bar]')?.getAttribute('data-layout')).toBe('thirds');
+
+    mounted.unmount();
+  });
+
+  test('pie uses a capped centered square host; controls stay justify-between', async () => {
+    const store = {
+      storeId: 'web.chart.chrome.pie',
+      state: { queryState: { appliedGroups: ['IsActive'] } },
+    } as any;
+    const mounted = mountApp(ChoyChartView as any, {
+      props: {
+        store,
+        autoBootstrap: false,
+        chartType: 'pie',
+        metrics: [{ alias: 'count', label: 'Count' }],
+      },
+    });
+    await flushPromises();
+
+    const controls = mounted.q('[data-region=chart-controls]') as HTMLElement | null;
+    expect(controls?.className || '').toContain('justify-between');
+    expect(mounted.q('[data-testid=choy-chart-stack]')).toBeNull();
+    expect(mounted.q('[data-testid=choy-chart-sort-group]')).toBeNull();
+    expect(mounted.q('[data-testid=choy-chart-type-group]')).not.toBeNull();
+
+    const exposed = mounted.root as {
+      syncPlotHeight: () => void;
+      pieSide: { value: number } | number;
+      rebuildFromSnapshot: () => void;
+      controller: { vm: Record<string, unknown> };
+    };
+    exposed.controller.vm.result = {
+      kind: 'group',
+      rows: [
+        { kind: 'group', depth: 0, key: 'true', label: 'true', count: 10 },
+        { kind: 'group', depth: 0, key: 'false', label: 'false', count: 2 },
+      ],
+    };
+    exposed.controller.vm.hasAppliedOnce = true;
+    exposed.rebuildFromSnapshot();
+    await nextTick();
+
+    const frame = mounted.q('[data-region=chart-pie-frame]') as HTMLElement | null;
+    expect(frame).not.toBeNull();
+    expect(frame!.className).toContain('items-center');
+    expect(frame!.className).toContain('justify-center');
+    const plot = mounted.q('[data-region=chart-pie-plot]') as HTMLElement | null;
+    expect(plot).not.toBeNull();
+    // Diameter cap math is unit-tested in resolvePiePlotSize; here assert the
+    // square host is wired from pieSide (min side until the body is measured).
+    const side =
+      typeof exposed.pieSide === 'number' ? exposed.pieSide : Number(exposed.pieSide?.value);
+    expect(side).toBeGreaterThanOrEqual(280);
+    expect(side).toBeLessThanOrEqual(480);
+    expect(plot!.style.width).toBe(`${side}px`);
+    expect(plot!.style.height).toBe(`${side}px`);
 
     mounted.unmount();
   });

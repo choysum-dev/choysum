@@ -370,32 +370,44 @@ SPDX-License-Identifier: Apache-2.0
           </div>
         </div>
 
-        <VisSingleContainer
+        <div
           v-else-if="spec.kind === 'pie'"
-          :data="pieRows"
-          :height="plotHeight"
-          class="h-full min-h-[280px] w-full"
+          class="flex min-h-0 w-full flex-1 items-center justify-center"
+          data-region="chart-pie-frame"
         >
-          <!-- arcWidth 0 → solid pie (Odoo graph); non-zero would be a donut ring. -->
-          <!-- Solid pie: hide Unovis donut track (showBackground) so no gray outer ring. -->
-          <VisDonut
-            :value="(d: { value: number }) => d.value"
-            :color="(d: { color: string }) => d.color"
-            :arc-width="0"
-            :show-background="false"
-            :pad-angle="0"
-            :corner-radius="0"
-            :events="donutEvents"
-          />
-          <VisTooltip
-            :triggers="pieTooltipTriggers"
-            class-name="choy-chart-tooltip"
-            :container="visTooltipContainer"
-            horizontal-placement="auto"
-            vertical-placement="top"
-            :follow-cursor="true"
-          />
-        </VisSingleContainer>
+          <div
+            class="relative shrink-0"
+            data-region="chart-pie-plot"
+            :style="{ width: `${pieSide}px`, height: `${pieSide}px` }"
+          >
+            <VisSingleContainer
+              :data="pieRows"
+              :width="pieSide"
+              :height="pieSide"
+              class="h-full w-full"
+            >
+              <!-- arcWidth 0 → solid pie (Odoo graph); non-zero would be a donut ring. -->
+              <!-- Solid pie: hide Unovis donut track (showBackground) so no gray outer ring. -->
+              <VisDonut
+                :value="(d: { value: number }) => d.value"
+                :color="(d: { color: string }) => d.color"
+                :arc-width="0"
+                :show-background="false"
+                :pad-angle="0"
+                :corner-radius="0"
+                :events="donutEvents"
+              />
+              <VisTooltip
+                :triggers="pieTooltipTriggers"
+                class-name="choy-chart-tooltip"
+                :container="visTooltipContainer"
+                horizontal-placement="auto"
+                vertical-placement="top"
+                :follow-cursor="true"
+              />
+            </VisSingleContainer>
+          </div>
+        </div>
 
         <ChartLegendContent
           :class="
@@ -423,7 +435,8 @@ SPDX-License-Identifier: Apache-2.0
 
       <ChoyEmpty
         v-else-if="controller.vm.hasAppliedOnce && !boardBusy && chartSurfaceError == null"
-        class="min-h-[280px] w-full flex-1 border-none"
+        class="flex min-h-0 w-full flex-1 items-center justify-center border-none"
+        data-region="chart-empty"
         :description="resolvedEmptyLabel"
       />
     </div>
@@ -529,6 +542,7 @@ import {
   resolveChartBarLayout,
   resolveChartFloatingTooltipPosition,
   resolveChartPlotHeight,
+  resolvePiePlotSize,
   resolveChartTooltipViewportSize,
   resolveChartXDomain,
   resolveStackedYDomain,
@@ -652,6 +666,10 @@ const registryMetrics = ref<ChoyChartMetricOption[]>([]);
 
 const chartBodyRef = ref<HTMLElement | null>(null);
 const plotHeight = ref(CHOY_CHART_MIN_PLOT_HEIGHT);
+/** Measured XY plot host width for width-aware bar density. */
+const plotWidthRef = ref(0);
+/** Square pie side (capped / centered); kept separate from bar/line plotHeight. */
+const pieSide = ref(CHOY_CHART_MIN_PLOT_HEIGHT);
 let chartBodyObserver: ResizeObserver | null = null;
 
 function chartBodyEl(): HTMLElement | null {
@@ -662,10 +680,18 @@ function chartBodyEl(): HTMLElement | null {
 function syncPlotHeight(): void {
   const el = chartBodyEl();
   const h = el?.clientHeight ?? 0;
-  // Pie legend is absolute (top-end overlay); do not reserve a bottom band.
-  const legendReserve =
-    localChartType.value === 'pie' ? 0 : undefined;
-  plotHeight.value = resolveChartPlotHeight(h, { legendReserve });
+  const w = el?.clientWidth ?? 0;
+  const xyHost = xyPlotHostRef.value;
+  const xyW =
+    xyHost instanceof HTMLElement && xyHost.clientWidth > 0 ? xyHost.clientWidth : w;
+  plotWidthRef.value = Math.max(0, Math.floor(xyW));
+  if (localChartType.value === 'pie') {
+    // Pie legend is absolute; size a capped square and center it in the body.
+    pieSide.value = resolvePiePlotSize(w, h).side;
+    plotHeight.value = pieSide.value;
+    return;
+  }
+  plotHeight.value = resolveChartPlotHeight(h);
 }
 
 const localStacked = ref(props.stacked);
@@ -1016,9 +1042,12 @@ const spec = computed<ChoyChartSpec | null>(() => {
 const xyRows = computed(() => (spec.value && spec.value.kind !== 'pie' ? chartSpecToXyRows(spec.value) : []));
 const pieRows = computed(() => (spec.value?.kind === 'pie' ? chartSpecToPieRows(spec.value) : []));
 
-/** Few categories → wider bars / less padding (closer to Odoo graph density). */
+/** Few categories → wider bars; plot width tightens density on wide sheets. */
 const barLayout = computed(() =>
-  resolveChartBarLayout(spec.value?.kind === 'bar' ? spec.value.categories.length : 0),
+  resolveChartBarLayout(
+    spec.value?.kind === 'bar' ? spec.value.categories.length : 0,
+    plotWidthRef.value || undefined,
+  ),
 );
 
 /** Bar: band centers. Line: first category at x=0 (flush to the Y-axis, like Odoo). */
@@ -1846,6 +1875,8 @@ defineExpose({
   boardBusy,
   controller,
   plotHeight,
+  pieSide,
+  plotWidthRef,
   /** Test / debug hook: run the line-plot hover path with a synthetic pointer. */
   onXyPointerMove,
   clearLinePlotHover,
