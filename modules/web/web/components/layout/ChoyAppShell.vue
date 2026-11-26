@@ -59,8 +59,8 @@ SPDX-License-Identifier: Apache-2.0
         </Sidebar>
       </template>
       <!--
-        Inset main: margin + radius + white surface. Header, canvas, and footer
-        are in-flow siblings; vertical rhythm is gap on this element.
+        Inset main: muted canvas flush to shell body (no margin/radius/shadow).
+        Header, canvas, and footer are in-flow siblings; gap sets vertical rhythm.
         data-testid=choy-shell-scroll marks the ancestor adaptive height measures.
       -->
       <SidebarInset
@@ -226,32 +226,27 @@ const sidebarSide = computed<'left' | 'right'>(() => {
   --choy-shell-chrome: oklch(0.965 0 0);
   --choy-shell-pane: oklch(0.985 0 0);
   /*
-   * Workspace canvas behind List/Kanban/Form sheets — deeper than sidebar chrome
-   * so white view-body sheets and ActionBar-on-gray read clearly.
+   * Workspace behind the inset; inset uses pane. Floating paper is view-body
+   * (sheetSurface) — see modules/web/docs/choy-view-sheet.md.
    */
   /* Same as sidebar header/footer chrome so inset gutters match the rail poles. */
   --choy-shell-workspace: var(--choy-shell-chrome);
-  /* Inset main gutters + radius (dashboard-01-like; tune without touching kit). */
-  --choy-shell-inset-margin-y: 0.5rem;
-  --choy-shell-inset-margin-x: 0.5rem;
+  /* Shared with the sidebar rail panel; inset main itself is flush (no margin/radius). */
   --choy-shell-inset-radius: var(--radius-xl, 0.75rem);
-  --choy-shell-inset-bg: oklch(1 0 0);
+  /* Same as sidebar nav-pane (lighter than chrome poles); view-body is paper. */
+  --choy-shell-inset-bg: var(--choy-shell-pane);
   /*
    * Inset chrome = control + chrome-padding (header top pad only; bottom is 0 —
-   * header↔canvas uses section-gap).
-   * Sidebar outer pad = inset-margin-y + chrome-padding so the company logo
-   * top aligns with menu-trigger (inset card margin + header pad).
+   * header↔canvas uses section-gap). Sidebar logo top matches menu-trigger.
    */
   /* max(2rem, control): compact control can be <2rem; marks stay size-8. */
   --choy-layout-chrome-height: calc(
     max(2rem, var(--choy-control-height)) + var(--choy-layout-chrome-padding)
   );
   --choy-layout-header-height: var(--choy-layout-chrome-height);
+  /* Same band as [data-slot=sidebar-footer] (also chrome-height). */
   --choy-layout-footer-height: var(--choy-layout-chrome-height);
-  /* Logo top = inset-margin-y + chrome-padding so it meets menu-trigger. */
-  --choy-layout-sidebar-header-pad-top: calc(
-    var(--choy-shell-inset-margin-y) + var(--choy-layout-chrome-padding)
-  );
+  --choy-layout-sidebar-header-pad-top: var(--choy-layout-chrome-padding);
   --choy-layout-sidebar-header-height: calc(
     max(2rem, var(--choy-control-height)) + var(--choy-layout-sidebar-header-pad-top)
   );
@@ -267,7 +262,7 @@ html.dark .choy-shell[data-shell-mode='app'],
   --choy-shell-chrome: oklch(0.18 0 0);
   --choy-shell-pane: oklch(0.205 0 0);
   --choy-shell-workspace: var(--choy-shell-chrome);
-  --choy-shell-inset-bg: var(--choy-color-card);
+  --choy-shell-inset-bg: var(--choy-shell-pane);
   --choy-shell-chrome-hover: var(--choy-color-sidebar-accent);
 }
 
@@ -290,7 +285,7 @@ html.dark .choy-shell[data-shell-mode='app'],
   /*
    * Flush to the shell body so company logo / user avatar measure equal air
    * from the rail's top-left and bottom-left corners. Inset <main> keeps its
-   * own margin-y for the floating white card (dashboard-01).
+   * flush inset (paper radius/margin live on view-body).
    */
   top: 0 !important;
   bottom: 0 !important;
@@ -438,14 +433,15 @@ html.dark .choy-shell[data-shell-mode='app'],
 }
 
 /*
- * The pane is the rounded menu surface. Its block padding is the air between
- * that edge and the scroller, so the first item does not sit on the radius.
- * Radius is one step under inset <main> — xl reads oversized on this narrow column.
+ * The pane is the rounded menu surface. Block pad = air to the scroller;
+ * end margin reveals sidebar chrome so the pane reads as a nested card
+ * against main (same pane fill). Radius stays md on this narrow column.
  */
 .choy-shell[data-shell-mode='app'] [data-testid='choy-shell-nav-pane'] {
   background-color: var(--choy-shell-pane) !important;
   box-sizing: border-box;
   padding-block: var(--choy-layout-section-gap) !important;
+  margin-inline-end: var(--choy-layout-section-gap) !important;
   border-radius: var(--radius-md, 0.5rem);
 }
 
@@ -454,21 +450,19 @@ html.dark .choy-shell[data-shell-mode='app'],
 }
 
 /*
- * Outer shell body is workspace gray; inset <main> is the white surface
- * (margin + radius). Inner scroll/canvas/footer inherit — no second bg.
+ * Shell body = chrome; inset main = pane (same as sidebar nav-pane), flush,
+ * no radius/shadow — floating paper is view-body. Action Bar sits on pane.
+ * Kill kit SidebarInset peer inset m-2 / rounded-xl / shadow-sm.
  */
 .choy-shell[data-shell-mode='app'] .choy-shell__body {
   background-color: var(--choy-shell-workspace);
 }
 
 .choy-shell[data-shell-mode='app'] [data-slot='sidebar-inset'] {
-  margin-block: var(--choy-shell-inset-margin-y) !important;
-  margin-inline-end: var(--choy-shell-inset-margin-x) !important;
-  margin-inline-start: var(--choy-shell-inset-margin-x) !important;
-  border-radius: var(--choy-shell-inset-radius) !important;
+  margin: 0 !important;
+  border-radius: 0 !important;
   background-color: var(--choy-shell-inset-bg) !important;
-  /* Match dashboard-01 inset main (shadow-sm). */
-  box-shadow: var(--shadow-sm) !important;
+  box-shadow: none !important;
   overflow: hidden !important;
   min-height: 0 !important;
   /* Header ↔ canvas ↔ footer. Inline gutters live on children (see below). */
@@ -477,19 +471,9 @@ html.dark .choy-shell[data-shell-mode='app'],
 }
 
 /*
- * Collapsed icon rail: drop the start gutter so chrome is one column.
- * Otherwise the 0.5rem seam next to a 3rem rail shifts perceived icon center.
- * data-collapsible=icon is only set while the kit peer is collapsed.
- */
-.choy-shell[data-shell-mode='app']
-  [data-slot='sidebar'][data-collapsible='icon']
-  ~ [data-slot='sidebar-inset'] {
-  margin-inline-start: 0 !important;
-}
-
-/*
  * Header: chrome-padding on top + inline, no bottom (section-gap separates
- * canvas). Footer mirrors with bottom pad. Canvas keeps content-padding.
+ * canvas). Footer mirrors with bottom pad. Canvas has no inline pad — the
+ * floating paper (view-body) owns horizontal gutters.
  */
 .choy-shell[data-shell-mode='app'] .choy-app-header {
   padding: var(--choy-layout-chrome-padding) var(--choy-layout-chrome-padding) 0 !important;
@@ -503,14 +487,13 @@ html.dark .choy-shell[data-shell-mode='app'],
 
 .choy-shell[data-shell-mode='app'] [data-testid='choy-shell-canvas'] {
   background-color: transparent !important;
-  padding-inline: var(--choy-layout-content-padding) !important;
+  padding-inline: 0 !important;
   box-sizing: border-box;
 }
 
 /*
- * Sidebar header: top 1rem (meets menu-trigger), left chrome-padding (8px).
- * Footer: left/bottom chrome-padding (8px). End pad 0 so company chevrons
- * and the connectivity pill share the nav-split trailing edge.
+ * Sidebar header/footer: start chrome-padding; end margin matches nav-pane so
+ * hover pills share the pane's trailing edge (chrome gutter shows past it).
  */
 .choy-shell[data-shell-mode='app'] [data-slot='sidebar-header'],
 .choy-shell[data-shell-mode='app'] [data-slot='sidebar-footer'] {
@@ -522,6 +505,7 @@ html.dark .choy-shell[data-shell-mode='app'],
   gap: 0 !important;
   padding-inline-start: var(--choy-layout-chrome-padding) !important;
   padding-inline-end: 0 !important;
+  margin-inline-end: var(--choy-layout-section-gap) !important;
   border: 0 !important;
   background-color: var(--choy-shell-chrome) !important;
   background-image: none !important;
@@ -627,6 +611,7 @@ html.dark .choy-shell[data-shell-mode='app'],
   [data-slot='sidebar'][data-collapsible='icon']
   [data-slot='sidebar-footer'] {
   padding-inline: 0 !important;
+  margin-inline-end: 0 !important;
   justify-content: center !important;
 }
 

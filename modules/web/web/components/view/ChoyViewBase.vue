@@ -20,10 +20,11 @@ SPDX-License-Identifier: Apache-2.0
   Title is the overflow/IO menu trigger (click); no standalone ⋯.
 -->
 <template>
-  <ChoyViewContainer :class="containerClass" v-bind="attrs">
+  <ChoyViewContainer :class="containerClass" :sheet-surface="sheetSurface" v-bind="attrs">
     <!--
       Action Bar + optional header-extra (Form statusbar / Chart controls) share
       view-header; vertical rhythm is view-header gap (not padding on extra).
+      Paper shell / in-paper density: sheetSurface + sheetPad (see choy-view-sheet.md).
     -->
     <template v-if="showChromeHeader()" #header>
       <div v-if="showHeaderRegion()" :data-anchor="chromeAnchor || undefined">
@@ -103,10 +104,10 @@ SPDX-License-Identifier: Apache-2.0
     </template>
 
     <ChoyViewBusyHost
-      v-bind="busyHostAttrs"
+      v-bind="resolvedBusyHostAttrs"
       :busy="busy"
       :mode="mode"
-      :class="busyHostClass"
+      :class="resolvedBusyHostClass"
       :busy-label="busyLabel"
       :error="error"
       :has-frame="hasFrame"
@@ -147,6 +148,9 @@ export type ChoyViewBaseTitleActionsIo = {
   actionCompanyId?: string;
 };
 
+/** In-paper density on view-body-host (see choy-view-sheet.md). */
+export type ChoyViewSheetPad = 'form' | 'flush' | 'none';
+
 const props = withDefaults(
   defineProps<{
     /** When false, header ActionBar is omitted. */
@@ -175,6 +179,16 @@ const props = withDefaults(
     hasFrame?: boolean;
     hasSettled?: boolean;
     errorFallbackTitle?: string;
+    /**
+     * Floating paper on view-body. Off for embedded / dialog hosts.
+     * Default true (page views).
+     */
+    sheetSurface?: boolean;
+    /**
+     * In-paper density on view-body-host.
+     * form = four-side pad; flush|none = no pad (tables / boards / embedded).
+     */
+    sheetPad?: ChoyViewSheetPad;
   }>(),
   {
     showHeader: true,
@@ -185,6 +199,8 @@ const props = withDefaults(
     hasFrame: false,
     hasSettled: false,
     busyHostAttrs: () => ({}),
+    sheetSurface: true,
+    sheetPad: 'flush',
   },
 );
 
@@ -210,6 +226,21 @@ const systemActionsLabel = computed(() => props.systemActionsLabel || _t('System
 const userActionsLabel = computed(() => props.userActionsLabel || _t('User actions'));
 
 const containerClass = computed(() => cn('gap-5', props.class));
+
+const sheetSurface = computed(() => props.sheetSurface !== false);
+const sheetPad = computed<ChoyViewSheetPad>(() => props.sheetPad || 'flush');
+
+/** form preset only — flush/none leave host padding to the product view. */
+const sheetPadClass = computed(() =>
+  sheetPad.value === 'form' ? 'p-[var(--choy-view-sheet-pad)]' : undefined,
+);
+
+const resolvedBusyHostClass = computed(() => cn(sheetPadClass.value, props.busyHostClass));
+
+const resolvedBusyHostAttrs = computed(() => ({
+  ...(props.busyHostAttrs || {}),
+  'data-sheet-pad': sheetPad.value,
+}));
 
 /**
  * Slot presence is read during render (not via computed) so Vue 3.5 production

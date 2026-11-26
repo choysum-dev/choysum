@@ -89,15 +89,21 @@ describe('ChoyFormView workspace height', () => {
 
     const root = mounted.q('[data-slot="view-container"]') as HTMLElement | null;
     expect(root).not.toBeNull();
-    // Form overrides ViewBase gap so the control ribbon sits on the sheet top.
-    expect(root!.className).toContain('gap-1');
+    // Form overrides ViewBase gap; gap-2 matches sheet gutter (section-gap).
+    expect(root!.className).toContain('gap-2');
     expect(root!.className.split(/\s+/)).not.toContain('gap-5');
-    expect(root!.className.split(/\s+/)).not.toContain('gap-2');
+    expect(root!.className.split(/\s+/)).not.toContain('gap-1');
 
     const shell = mounted.q('[data-slot="view-body"]') as HTMLElement | null;
     expect(shell).not.toBeNull();
     expect(shell!.className).toContain('overflow-hidden');
-    expect(shell!.className.includes('bg-card')).toBe(false);
+    // Paper shell on view-body; in-paper density on host (sheetPad=form).
+    expect(shell!.getAttribute('data-sheet-surface')).toBe('true');
+    expect(shell!.className.includes('bg-card')).toBe(true);
+    expect(shell!.className).toContain('rounded-md');
+    expect(shell!.className).toContain('border-border');
+    expect(shell!.className).toContain('shadow-xs');
+    expect(shell!.className).toContain('mx-[var(--choy-view-sheet-gutter)]');
     expect(shell!.getAttribute('data-anchor')).toBe('choy.view.sheet');
 
     const body = mounted.q('[data-anchor="choy.form-view"]') as HTMLElement | null;
@@ -105,13 +111,11 @@ describe('ChoyFormView workspace height', () => {
     expect(body!.className).toContain('min-h-0');
     expect(body!.className).toContain('flex-1');
     expect(body!.className).toContain('overflow-y-auto');
-    // Inset main is the paper — no nested card; hairline + vertical pad only.
     expect(body!.className).toContain('choy-form-view__sheet');
-    expect(body!.className).toContain('border-t');
-    expect(body!.className).toContain('border-border');
-    expect(body!.className).not.toContain('rounded-md');
-    expect(body!.className).not.toContain('shadow-sm');
+    expect(body!.className).toContain('p-[var(--choy-view-sheet-pad)]');
+    expect(body!.className).not.toContain('border-t');
     expect(body!.getAttribute('data-testid')).toBe('form-sheet');
+    expect(body!.getAttribute('data-sheet-pad')).toBe('form');
     expect(body!.className.split(/\s+/)).not.toContain('p-5');
 
     mounted.unmount();
@@ -122,10 +126,16 @@ describe('ChoyFormView workspace height', () => {
     await flushPromises();
     const root = mounted.q('[data-slot="view-container"]') as HTMLElement | null;
     expect(root!.className).toContain('gap-5');
+    const sheet = mounted.q('[data-slot="view-body"]') as HTMLElement | null;
+    expect(sheet!.getAttribute('data-sheet-surface')).toBe('false');
+    expect(sheet!.className.includes('bg-card')).toBe(false);
+    expect(sheet!.className).not.toContain('border-border');
+    expect(sheet!.className).not.toContain('mx-[var(--choy-view-sheet-gutter)]');
     const body = mounted.q('[data-anchor="choy.form-view"]') as HTMLElement | null;
     expect(body).not.toBeNull();
     expect(body!.className).not.toContain('choy-form-view__sheet');
-    expect(body!.className).not.toContain('border-t');
+    expect(body!.className).not.toContain('p-[var(--choy-view-sheet-pad)]');
+    expect(body!.getAttribute('data-sheet-pad')).toBe('none');
     mounted.unmount();
   });
 
@@ -246,7 +256,7 @@ describe('ChoyFormView workspace height', () => {
     expect(statusbar!.querySelector('[data-testid=domain-primary]')).not.toBeNull();
     expect(statusbar!.querySelector('[data-testid=form-statusbar-status]')).not.toBeNull();
     expect(statusbar!.querySelector('[data-testid=domain-status]')).not.toBeNull();
-    // Statusbar stays in view-header (control ribbon); sheet border-t is paper top.
+    // Statusbar stays in view-header (control ribbon on muted canvas).
     // view-header gap owns Action Bar ↔ statusbar; header-extra has no vertical pad.
     const header = mounted.q('[data-slot=view-header]') as HTMLElement | null;
     expect(header).not.toBeNull();

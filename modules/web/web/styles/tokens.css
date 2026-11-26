@@ -95,6 +95,14 @@ html {
   --choy-layout-content-padding: 1rem;
   /* Vertical rhythm between header, canvas, and footer. Tighter than the inline gutter. */
   --choy-layout-section-gap: 0.5rem;
+  /*
+   * View sheet contract (see modules/web/docs/choy-view-sheet.md):
+   * gutter = paper vs canvas (same rhythm as nav-pane end margin);
+   * pad = in-paper density; radius matches nav-pane.
+   */
+  --choy-view-sheet-gutter: var(--choy-layout-section-gap);
+  --choy-view-sheet-pad: var(--choy-layout-content-padding);
+  --choy-view-sheet-radius: var(--choy-radius-md);
 
   --choy-motion-duration-fast: 120ms;
   --choy-motion-duration-normal: 200ms;
@@ -289,6 +297,8 @@ html[data-density='compact'] {
   --choy-layout-content-padding: 0.75rem;
   --choy-layout-section-gap: 0.375rem;
   --choy-layout-chrome-padding: 0.375rem;
+  --choy-view-sheet-gutter: var(--choy-layout-section-gap);
+  --choy-view-sheet-pad: var(--choy-layout-content-padding);
   --choy-control-height: 28px;
   --choy-control-height-sm: 24px;
   --choy-control-height-lg: 32px;

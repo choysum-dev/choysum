@@ -19,6 +19,8 @@ SPDX-License-Identifier: Apache-2.0
     :store="store"
     :busy="boardBusy"
     :mode="chartBusyMode"
+    :sheet-surface="true"
+    sheet-pad="flush"
     busy-host-class="relative flex min-h-0 min-w-0 w-full flex-1 flex-col"
     :busy-host-attrs="{ 'data-region': 'chart-body' }"
     :error="chartSurfaceError"

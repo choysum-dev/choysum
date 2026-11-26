@@ -25,6 +25,8 @@ SPDX-License-Identifier: Apache-2.0
     :store="boundStore"
     :busy="boardBusy"
     :mode="boardBusyMode"
+    :sheet-surface="true"
+    sheet-pad="flush"
     busy-host-class="choy-kanban-view__body flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-hidden"
     :error="boardSurfaceError"
     :has-frame="boardHasFrame"

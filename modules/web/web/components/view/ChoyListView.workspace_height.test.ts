@@ -93,8 +93,16 @@ describe('ChoyListView workspace height', () => {
 
     const sheet = mounted.q('[data-anchor="choy.view.sheet"]') as HTMLElement | null;
     expect(sheet).not.toBeNull();
-    // White surface is shell inset <main>; view-body is scroll region only.
-    expect(sheet!.className.includes('bg-card')).toBe(false);
+    // Paper shell on view-body; List uses flush (no in-paper pad).
+    expect(sheet!.getAttribute('data-sheet-surface')).toBe('true');
+    expect(sheet!.className.includes('bg-card')).toBe(true);
+    expect(sheet!.className).toContain('rounded-md');
+    expect(sheet!.className).toContain('border-border');
+    expect(sheet!.className).toContain('shadow-xs');
+    expect(sheet!.className).toContain('mx-[var(--choy-view-sheet-gutter)]');
+    const host = mounted.q('[data-slot=view-body-host]') as HTMLElement | null;
+    expect(host!.getAttribute('data-sheet-pad')).toBe('flush');
+    expect(host!.className).not.toContain('p-[var(--choy-view-sheet-pad)]');
     mounted.unmount();
   });
 });

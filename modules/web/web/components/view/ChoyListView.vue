@@ -17,6 +17,8 @@ SPDX-License-Identifier: Apache-2.0
     :store="store"
     :busy="listBusy"
     :mode="listBusyMode"
+    :sheet-surface="true"
+    sheet-pad="flush"
     busy-host-class="flex min-h-0 min-w-0 flex-1 flex-col"
     :error="controller.vm.error"
     :has-frame="listHasFrame"

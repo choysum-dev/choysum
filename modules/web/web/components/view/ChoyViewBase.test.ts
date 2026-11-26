@@ -94,6 +94,7 @@ describe('ChoyViewBase', () => {
     expect(extra?.querySelector('[data-testid=extra]')?.textContent).toBe('Controls');
     expect(header?.querySelector('[data-slot=view-header-extra]')).not.toBeNull();
     expect(header!.className).toContain('gap-2');
+    expect(header!.className).toContain('mx-[var(--choy-view-sheet-gutter)]');
     expect(extra!.className.split(/\s+/)).not.toContain('pt-1');
     expect(extra!.className.split(/\s+/)).not.toContain('pb-2');
     expect(mounted.q('[data-slot=view-body]')?.querySelector('[data-slot=view-header-extra]')).toBeNull();

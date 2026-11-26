@@ -21,6 +21,8 @@ SPDX-License-Identifier: Apache-2.0
     :store="store"
     :busy="overlayBusy"
     :mode="formBusyMode"
+    :sheet-surface="!isEmbedded"
+    :sheet-pad="isEmbedded ? 'none' : 'form'"
     :busy-host-class="formSheetHostClass"
     :busy-host-attrs="{
       'data-anchor': isSettingsPresentation ? 'choy.settings.sheet' : 'choy.form-view',
@@ -671,19 +673,15 @@ const resolvedResolveRecordIdFromRoute = computed<boolean>(() =>
   hasResolveRecordIdFromRouteProp ? props.resolveRecordIdFromRoute === true : !isEmbedded.value
 );
 /**
- * Inset <main> is already the paper (shell). Page Form: Action Bar + statusbar
- * share view-header as a control ribbon; gap-1 + sheet border-t = paper top.
- * No second card. Embedded stays flat.
+ * Page Form: gap above the sheet matches sheet gutter (section-gap / gap-2).
+ * Paper shell + in-paper pad come from ViewBase sheetSurface / sheetPad.
+ * Embedded stays flat (no double-frame).
  */
 const formViewBaseClass = computed(() =>
-  !isEmbedded.value ? 'choy-form-view gap-1' : 'choy-form-view',
+  !isEmbedded.value ? 'choy-form-view gap-2' : 'choy-form-view',
 );
 const formSheetHostClass = computed(() =>
-  cn(
-    'min-h-0 flex-1 overflow-y-auto',
-    !isEmbedded.value &&
-      'choy-form-view__sheet border-t border-border pt-[var(--choy-layout-content-padding)] pb-[var(--choy-layout-content-padding)]',
-  ),
+  cn('min-h-0 flex-1 overflow-y-auto', !isEmbedded.value && 'choy-form-view__sheet'),
 );
 const resolvedCreateAction = useResolvedCreateAction(() => props.createAction, {
   enabled: () => !isEmbedded.value && !isSettingsPresentation.value,
