@@ -127,21 +127,7 @@ SPDX-License-Identifier: Apache-2.0
       "
       #overflow-actions
     >
-      <ChoyViewOverflowRefreshItem
-        v-if="showRefreshInOverflow"
-        test-id="form-overflow-refresh"
-        @select="handleRefresh"
-      />
-      <ChoyActionMenuItem
-        v-if="showResetInOverflow"
-        data-testid="form-overflow-reset"
-        :requires-connectivity="false"
-        :disabled="controlsLocked"
-        @execute="handleReset"
-      >
-        <RotateCcw class="size-4" aria-hidden="true" />
-        {{ _t('Reset') }}
-      </ChoyActionMenuItem>
+      <!-- Lifecycle first; platform tools (Reset / Refresh) last — same as List IO then Refresh. -->
       <ChoyActionMenuItem
         v-if="showOverflowNew"
         data-testid="form-overflow-new"
@@ -174,6 +160,21 @@ SPDX-License-Identifier: Apache-2.0
         {{ _t('Delete') }}
       </ChoyActionMenuItem>
       <slot name="overflow-actions" />
+      <ChoyActionMenuItem
+        v-if="showResetInOverflow"
+        data-testid="form-overflow-reset"
+        :requires-connectivity="false"
+        :disabled="controlsLocked"
+        @execute="handleReset"
+      >
+        <RotateCcw class="size-4" aria-hidden="true" />
+        {{ _t('Reset') }}
+      </ChoyActionMenuItem>
+      <ChoyViewOverflowRefreshItem
+        v-if="showRefreshInOverflow"
+        test-id="form-overflow-refresh"
+        @select="handleRefresh"
+      />
     </template>
 
     <template
