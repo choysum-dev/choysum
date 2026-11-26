@@ -196,7 +196,7 @@ describe('ChoyViewBase', () => {
     mounted.unmount();
   });
 
-  test('skips user-actions tray when slot absent', async () => {
+  test('skips leading secondary tray when secondary-actions absent', async () => {
     setActivePinia(createPinia());
     const mounted = mountApp(ChoyViewBase as any, {
       props: { showActions: true, pageTitle: 'T' },
@@ -207,6 +207,28 @@ describe('ChoyViewBase', () => {
     });
     await flushPromises();
     expect(mounted.q('[data-slot=view-action-bar-leading]')).not.toBeNull();
+    const actionsOnly = mounted.q('[data-slot=view-action-bar-actions]') as HTMLElement | null;
+    expect(actionsOnly?.querySelector('[data-slot=separator]')).toBeNull();
+    mounted.unmount();
+  });
+
+  test('puts secondary-actions in the leading secondary tray after platform', async () => {
+    setActivePinia(createPinia());
+    const mounted = mountApp(ChoyViewBase as any, {
+      props: { showActions: true, pageTitle: 'T' },
+      slots: {
+        'system-actions': () => h('button', { 'data-testid': 'platform' }, 'Edit'),
+        'secondary-actions': () => h('button', { 'data-testid': 'leading-secondary' }, 'Load Demo'),
+        default: () => h('div', 'body'),
+      },
+    });
+    await flushPromises();
+    expect(mounted.q('[data-testid=platform]')?.textContent).toBe('Edit');
+    expect(mounted.q('[data-testid=leading-secondary]')?.textContent).toBe('Load Demo');
+    const actions = mounted.q('[data-slot=view-action-bar-actions]') as HTMLElement | null;
+    expect(actions?.querySelector('[data-slot=separator]')).not.toBeNull();
+    const trays = mounted.qa('[data-testid=choy-action-tray]');
+    expect(trays.length).toBe(2);
     mounted.unmount();
   });
 

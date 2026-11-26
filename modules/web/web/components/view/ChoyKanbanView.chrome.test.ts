@@ -52,7 +52,7 @@ type KanbanSetup = {
 };
 
 describe('ChoyKanbanView chrome', () => {
-  test('renders ActionTray chrome and user-actions slot', async () => {
+  test('renders ActionTray chrome and contextual-actions in center', async () => {
     const store = makeStore();
     const mounted = mountApp(ChoyKanbanView as any, {
       props: {
@@ -61,16 +61,16 @@ describe('ChoyKanbanView chrome', () => {
         createLabel: 'Create card',
       },
       slots: {
-        'user-actions': () => h('button', { type: 'button', 'data-test': 'user-act' }, 'Extra'),
+        'contextual-actions': () => h('button', { type: 'button', 'data-test': 'user-act' }, 'Extra'),
       },
     });
     await flushPromises();
 
     const trays = mounted.qa('[data-testid=choy-action-tray]');
-    expect(trays.length).toBe(2);
+    expect(trays.length).toBe(1);
     expect(trays[0]?.getAttribute('aria-label')).toBe('System actions');
-    expect(trays[1]?.getAttribute('aria-label')).toBe('User actions');
     expect(mounted.text()).toContain('Create card');
+    expect(mounted.q('[data-testid=kanban-contextual-actions]')).not.toBeNull();
     expect(mounted.q('[data-test=user-act]')).not.toBeNull();
     expect(mounted.q('[data-anchor="choy.kanban.view-chrome"]')).not.toBeNull();
     expect(mounted.q('[data-anchor="choy.kanban-view"]')).not.toBeNull();

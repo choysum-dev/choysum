@@ -660,7 +660,7 @@ test('LanguageFormView: loading slot hides Activate/Deactivate', async () => {
     setup(_: unknown, { slots }: any) {
       return () =>
         h('div', [
-          slots['secondary-actions']?.({
+          slots['contextual-actions']?.({
             formData: { Id: 'lang-loading', Code: 'zh_HK', IsActive: false },
             recordId: 'lang-loading',
             loading: true,

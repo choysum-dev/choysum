@@ -166,6 +166,39 @@ describe('ChoyButton mount', () => {
       w.unmount();
     }
   });
+
+  test('soft-primary is borderless primary text (fill only on hover)', async () => {
+    const w = mountApp(ChoyButton as any, {
+      props: { variant: 'soft-primary', 'data-testid': 'soft-primary-btn' },
+      slots: { default: () => 'New' },
+    });
+    try {
+      await flushPromises();
+      const cls = (w.q('[data-testid="soft-primary-btn"]') as HTMLButtonElement | null)?.className || '';
+      expect(cls).toContain('text-primary');
+      expect(cls).toContain('hover:bg-primary/10');
+      expect(` ${cls} `.includes(' bg-primary/10 ')).toBe(false);
+      expect(cls).not.toContain('border-primary');
+    } finally {
+      w.unmount();
+    }
+  });
+
+  test('soft-destructive is borderless danger fill', async () => {
+    const w = mountApp(ChoyButton as any, {
+      props: { variant: 'soft-destructive', 'data-testid': 'soft-destructive-btn' },
+      slots: { default: () => 'Delete' },
+    });
+    try {
+      await flushPromises();
+      const cls = (w.q('[data-testid="soft-destructive-btn"]') as HTMLButtonElement | null)?.className || '';
+      expect(cls).toContain('bg-destructive/10');
+      expect(cls).toContain('text-destructive');
+      expect(cls).not.toContain('border-destructive');
+    } finally {
+      w.unmount();
+    }
+  });
 });
 
 describe('Button host click guard', () => {

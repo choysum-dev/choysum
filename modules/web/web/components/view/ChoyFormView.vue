@@ -34,10 +34,9 @@ SPDX-License-Identifier: Apache-2.0
     <!--
       Action Bar contract:
       [identity: title] [主 → 次 → ⋯] | [找] | [看]
-      create/edit: primary=Save/Cancel; Reset/New/Copy/Delete in ⋮; domain suppressed.
-      display + domain #system-actions: domain is main CTA; Edit secondary; New in ⋮.
-      display default: Edit is main CTA; New/Copy/Delete/Refresh in ⋮.
-      settings: primary=Save/Discard only (no CRUD / Reset overflow).
+      create/edit: platform Save/Cancel; Reset/New/Copy/Delete in ⋮; contextual center hidden.
+      display: platform Edit; #contextual-actions (+ #user-actions alias) → #center (like List selection).
+      settings: Save/Discard only (no CRUD / Reset overflow).
     -->
     <template v-if="resolvedShowActions" #system-actions>
       <!-- Settings chrome: Save/Discard; dirty gates enablement. -->
@@ -45,7 +44,7 @@ SPDX-License-Identifier: Apache-2.0
         <ChoyActionButton
           type="button"
           size="default"
-          variant="outline-primary"
+          variant="soft-primary"
           data-testid="settings-save"
           :disabled="!settingsDirty"
           :busy="controlsLocked"
@@ -57,7 +56,7 @@ SPDX-License-Identifier: Apache-2.0
         <ChoyActionButton
           type="button"
           size="default"
-          variant="outline"
+          variant="ghost"
           data-testid="settings-discard"
           :requires-connectivity="false"
           :disabled="!settingsDirty"
@@ -68,12 +67,12 @@ SPDX-License-Identifier: Apache-2.0
           {{ settingsDiscardLabel }}
         </ChoyActionButton>
       </template>
-      <!-- Editing: Save/Cancel own the primary cluster; domain system-actions stay hidden. -->
+      <!-- Editing: Save/Cancel own the platform tray; domain tray is hidden. -->
       <template v-else-if="isEditing && resolvedShowActions">
         <ChoyActionButton
           type="button"
           size="default"
-          variant="outline-primary"
+          variant="soft-primary"
           :busy="controlsLocked"
           @execute="onSaveExecute"
         >
@@ -83,7 +82,7 @@ SPDX-License-Identifier: Apache-2.0
         <ChoyActionButton
           type="button"
           size="default"
-          variant="outline"
+          variant="ghost"
           :requires-connectivity="false"
           :busy="controlsLocked"
           @execute="handleCancel"
@@ -92,29 +91,29 @@ SPDX-License-Identifier: Apache-2.0
           {{ _t('Cancel') }}
         </ChoyActionButton>
       </template>
-      <!-- Display: domain #system-actions is the main CTA when provided; else Edit. -->
+      <!-- Display: platform Edit stays soft-primary; contextual CTAs go to #center. -->
       <template v-else-if="resolvedShowActions">
+        <ChoyActionButton
+          v-if="viewMode === 'display' && effectiveRecordId && canEdit"
+          type="button"
+          size="default"
+          variant="soft-primary"
+          data-testid="form-primary-edit"
+          :action-id="actionIds?.edit"
+          :has-action="hasAction"
+          @execute="handleEdit"
+        >
+          <Pencil class="size-4" aria-hidden="true" />
+          {{ _t('Edit') }}
+        </ChoyActionButton>
+        <!-- Optional platform extras only — domain CTAs use #contextual-actions → center. -->
         <slot
           name="system-actions"
           :form-data="exposedFormData"
           :record-id="effectiveRecordId"
           :view-mode="viewMode"
           :loading="loading"
-        >
-          <ChoyActionButton
-            v-if="viewMode === 'display' && effectiveRecordId && canEdit"
-            type="button"
-            size="default"
-            variant="outline-primary"
-            data-testid="form-primary-edit"
-            :action-id="actionIds?.edit"
-            :has-action="hasAction"
-            @execute="handleEdit"
-          >
-            <Pencil class="size-4" aria-hidden="true" />
-            {{ _t('Edit') }}
-          </ChoyActionButton>
-        </slot>
+        />
       </template>
     </template>
 
@@ -184,12 +183,13 @@ SPDX-License-Identifier: Apache-2.0
       />
     </template>
 
+    <!-- Leading secondary (rare); stays beside platform via ViewBase. -->
     <template
       v-if="
         !isSettingsPresentation &&
         resolvedShowActions &&
-        viewMode === 'display' &&
-        (!!slots['secondary-actions'] || showEditAsSecondary)
+        !isEditing &&
+        !!slots['secondary-actions']
       "
       #secondary-actions
     >
@@ -200,34 +200,44 @@ SPDX-License-Identifier: Apache-2.0
         :view-mode="viewMode"
         :loading="loading"
       />
-      <!-- When domain owns the primary CTA, Edit stays exposed as outline secondary. -->
-      <ChoyActionButton
-        v-if="showEditAsSecondary"
-        type="button"
-        size="default"
-        variant="outline"
-        data-testid="form-secondary-edit"
-        :action-id="actionIds?.edit"
-        :has-action="hasAction"
-        @execute="handleEdit"
-      >
-        <Pencil class="size-4" aria-hidden="true" />
-        {{ _t('Edit') }}
-      </ChoyActionButton>
     </template>
 
-    <!-- Only register when filled — empty tray would paint a dangling ActionBar separator. -->
+    <!--
+      Contextual actions in the find/center column (Form has no Search) — same
+      centered toolbar as List selection. Hidden while editing so Save/Cancel stay left.
+      #user-actions is a deprecated alias for #contextual-actions.
+    -->
     <template
-      v-if="resolvedShowActions && !isEditing && !!slots['user-actions']"
-      #user-actions
+      v-if="
+        !isSettingsPresentation &&
+        resolvedShowActions &&
+        !isEditing &&
+        (!!slots['contextual-actions'] || !!slots['user-actions'])
+      "
+      #center
     >
-      <slot
-        name="user-actions"
-        :form-data="exposedFormData"
-        :record-id="effectiveRecordId"
-        :view-mode="viewMode"
-        :loading="loading"
-      />
+      <div
+        data-anchor="choy.form.contextual-actions"
+        data-testid="form-contextual-actions"
+        class="flex min-w-0 w-full flex-nowrap items-center justify-center gap-2 overflow-x-auto"
+        role="toolbar"
+        :aria-label="_t('Contextual actions')"
+      >
+        <slot
+          name="contextual-actions"
+          :form-data="exposedFormData"
+          :record-id="effectiveRecordId"
+          :view-mode="viewMode"
+          :loading="loading"
+        />
+        <slot
+          name="user-actions"
+          :form-data="exposedFormData"
+          :record-id="effectiveRecordId"
+          :view-mode="viewMode"
+          :loading="loading"
+        />
+      </div>
     </template>
 
     <template #header-right>
@@ -446,8 +456,8 @@ const isSettingsPresentation = computed(() => props.presentation === 'settings')
 defineSlots<{
   breadcrumb(): any;
   /**
-   * Display main CTA cluster (domain primary such as Install/Activate).
-   * Default when empty: Edit. Hidden while create/edit (Save/Cancel own the tray).
+   * Optional platform extras after Edit (display). Prefer domain CTAs in #contextual-actions.
+   * Hidden while create/edit (Save/Cancel own the platform tray).
    */
   'system-actions'(props: {
     formData: Partial<ClientModel<T>>;
@@ -456,8 +466,7 @@ defineSlots<{
     loading: boolean;
   }): any;
   /**
-   * Display-only secondary CTAs after the main cluster (before Edit when domain owns primary).
-   * `recordId` is the effective identity (prop, else route peek).
+   * Leading secondary (rare on Form). Stays in the left secondary tray via ViewBase.
    */
   'secondary-actions'(props: {
     formData: Partial<ClientModel<T>>;
@@ -465,6 +474,18 @@ defineSlots<{
     viewMode: ViewMode;
     loading: boolean;
   }): any;
+  /**
+   * Contextual actions (Install/Activate/…). Centered in ActionBar #center.
+   */
+  'contextual-actions'(props: {
+    formData: Partial<ClientModel<T>>;
+    recordId?: string;
+    viewMode: ViewMode;
+    loading: boolean;
+  }): any;
+  /**
+   * @deprecated Alias of #contextual-actions.
+   */
   'user-actions'(props: {
     formData: Partial<ClientModel<T>>;
     recordId?: string;
@@ -878,19 +899,6 @@ const showResetInOverflow = computed(
     resolvedShowActions.value &&
     resolvedShowHeader.value &&
     isEditing.value,
-);
-/** Domain filled `#system-actions` — that button is the display main CTA; Edit becomes secondary. */
-const hasDomainPrimary = computed(
-  () =>
-    !isSettingsPresentation.value &&
-    viewMode.value === 'display' &&
-    !!slots['system-actions'],
-);
-const showEditAsSecondary = computed(
-  () =>
-    hasDomainPrimary.value &&
-    !!effectiveRecordId.value &&
-    canEdit.value,
 );
 const showOverflowNew = computed(
   () =>

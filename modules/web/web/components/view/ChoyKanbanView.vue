@@ -43,7 +43,7 @@ SPDX-License-Identifier: Apache-2.0
           v-if="!props.readonly"
           type="button"
           size="default"
-          variant="outline-primary"
+          variant="soft-primary"
           :busy="boardBusy"
           :action-id="actionIds?.create"
           :has-action="hasAction"
@@ -64,16 +64,26 @@ SPDX-License-Identifier: Apache-2.0
       <slot name="overflow-actions" />
     </template>
 
-    <template v-if="showActions" #secondary-actions>
+    <template v-if="showActions && !!slots['secondary-actions']" #secondary-actions>
       <slot name="secondary-actions" />
     </template>
 
-    <template v-if="slots['user-actions']" #user-actions>
-      <slot name="user-actions" />
-    </template>
-
-    <template v-if="slots.search" #center>
-      <ChoySearchFit>
+    <template
+      v-if="slots.search || slots['contextual-actions'] || slots['user-actions']"
+      #center
+    >
+      <div
+        v-if="slots['contextual-actions'] || slots['user-actions']"
+        data-anchor="choy.kanban.contextual-actions"
+        data-testid="kanban-contextual-actions"
+        class="flex min-w-0 w-full flex-nowrap items-center justify-center gap-2 overflow-x-auto"
+        role="toolbar"
+        :aria-label="_t('Contextual actions')"
+      >
+        <slot name="contextual-actions" />
+        <slot name="user-actions" />
+      </div>
+      <ChoySearchFit v-if="slots.search">
         <slot name="search" :on-query-update="engine.applySearch" />
       </ChoySearchFit>
     </template>

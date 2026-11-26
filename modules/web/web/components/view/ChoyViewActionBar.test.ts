@@ -112,6 +112,8 @@ describe('ChoyViewActionBar', () => {
     expect(mounted.q('[data-testid=title]')?.textContent).toBe('Partners');
     expect(mounted.q('[data-testid=sys]')?.textContent).toBe('New');
     expect(mounted.q('[data-testid=more]')?.textContent).toBe('⋯');
+    // Thin rule only when both identity and actions are present.
+    expect(mounted.q('[data-testid=view-action-bar-identity-sep]')).not.toBeNull();
     // Leading text order: title → ⋯ (identity) → New (actions).
     const text = (leading!.textContent || '').replace(/\s+/g, ' ');
     const titleIdx = text.indexOf('Partners');
@@ -121,5 +123,27 @@ describe('ChoyViewActionBar', () => {
     expect(moreIdx).toBeGreaterThan(titleIdx);
     expect(newIdx).toBeGreaterThan(moreIdx);
     mounted.unmount();
+  });
+
+  test('skips identity/actions separator when either side is empty', async () => {
+    const identityOnly = mountApp(ChoyViewActionBar as any, {
+      props: { layout: 'thirds' },
+      slots: {
+        identity: () => h('h1', { 'data-testid': 'title' }, 'Partners'),
+      },
+    });
+    await flushPromises();
+    expect(identityOnly.q('[data-testid=view-action-bar-identity-sep]')).toBeNull();
+    identityOnly.unmount();
+
+    const actionsOnly = mountApp(ChoyViewActionBar as any, {
+      props: { layout: 'thirds' },
+      slots: {
+        'system-actions': () => h('button', { 'data-testid': 'sys' }, 'New'),
+      },
+    });
+    await flushPromises();
+    expect(actionsOnly.q('[data-testid=view-action-bar-identity-sep]')).toBeNull();
+    actionsOnly.unmount();
   });
 });

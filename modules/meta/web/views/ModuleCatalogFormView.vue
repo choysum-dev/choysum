@@ -21,8 +21,8 @@ SPDX-License-Identifier: Apache-2.0
     <ChoyFormView
       v-bind="{ store, recordId, viewMode: 'display' as const, showHeader }"
     >
-      <!-- Domain main CTA (Install/Upgrade); Uninstall is destructive secondary. -->
-      <template #system-actions>
+      <!-- Contextual actions → Form #center (no platform Edit on this read-only form). -->
+      <template #contextual-actions>
         <ChoyActionButton
           v-if="primaryAction"
           type="button"
@@ -33,13 +33,11 @@ SPDX-License-Identifier: Apache-2.0
         >
           {{ primaryActionLabel }}
         </ChoyActionButton>
-      </template>
-      <template #secondary-actions>
         <ChoyActionButton
           v-if="canUninstallRow && hasAction(moduleUninstallAction)"
           type="button"
           size="default"
-          variant="outline-destructive"
+          variant="soft-destructive"
           data-testid="module-catalog-form-uninstall"
           @execute="onUninstallClick"
         >
@@ -413,7 +411,7 @@ const primaryActionLabel = computed(() => {
   return '';
 });
 /** Form primary CTA (Install / Upgrade / Progress) uses branded outline. */
-const primaryButtonVariant = computed(() => 'outline-primary' as const);
+const primaryButtonVariant = computed(() => 'soft-primary' as const);
 const canUninstallRow = computed(() => {
   if (!hasMatchedRow.value) return false;
   const rec = currentRow.value;

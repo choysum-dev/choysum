@@ -31,7 +31,7 @@ SPDX-License-Identifier: Apache-2.0
         v-if="editable && isEditing"
         type="button"
         size="default"
-        variant="outline-primary"
+        variant="soft-primary"
         :busy="inlineSaving"
         @execute="handleInlineSave"
       >
@@ -43,7 +43,7 @@ SPDX-License-Identifier: Apache-2.0
         v-if="editable && isEditing"
         type="button"
         size="default"
-        variant="outline"
+        variant="ghost"
         :requires-connectivity="false"
         @execute="handleInlineDiscard"
       >
@@ -64,7 +64,7 @@ SPDX-License-Identifier: Apache-2.0
           v-if="resolvedCreateAction && canCreate"
           type="button"
           size="default"
-          variant="outline-primary"
+          variant="soft-primary"
           :action-id="actionIds?.create"
           :has-action="hasAction"
           @execute="handleCreate"
@@ -84,25 +84,23 @@ SPDX-License-Identifier: Apache-2.0
       <slot name="overflow-actions" :selected-items="selectedItems" />
     </template>
 
-    <template v-if="showActions" #secondary-actions>
+    <!-- Leading secondary (e.g. Load Demo); not contextual/center. -->
+    <template v-if="showActions && !!slots['secondary-actions']" #secondary-actions>
       <slot name="secondary-actions" :selected-items="selectedItems" />
     </template>
 
-    <template v-if="showActions && !!slots['user-actions']" #user-actions>
-      <slot name="user-actions" :selected-items="selectedItems" />
-    </template>
-
     <!--
-      Find zone: Search by default. With a selection, hide Search and show batch
-      actions centered in the same column. Left cluster (New / secondary / ⋯) stays.
+      Find zone: Search by default. With a selection, hide Search and show the
+      contextual toolbar (engine chrome + #contextual-actions / aliases).
     -->
     <template #center>
       <div
         v-show="hasSelection"
         data-anchor="choy.list.selection-bar"
+        data-testid="list-contextual-actions"
         class="flex min-w-0 w-full flex-nowrap items-center justify-center gap-2 overflow-x-auto"
         role="toolbar"
-        :aria-label="_t('Selection actions')"
+        :aria-label="_t('Contextual actions')"
       >
         <div class="flex min-w-0 items-center gap-1">
           <span class="truncate text-sm text-muted-foreground tabular-nums">
@@ -123,7 +121,7 @@ SPDX-License-Identifier: Apache-2.0
         <ChoyActionButton
           v-if="deleteAction && canDelete"
           size="default"
-          variant="outline-destructive"
+          variant="soft-destructive"
           :busy="deleteLoading"
           :action-id="actionIds?.delete"
           :has-action="hasAction"
@@ -133,7 +131,14 @@ SPDX-License-Identifier: Apache-2.0
           {{ _t('Delete') }}
         </ChoyActionButton>
 
+        <slot
+          name="contextual-actions"
+          :selected-items="selectedItems"
+          :clear="clearSelection"
+        />
+        <!-- Deprecated aliases for #contextual-actions. -->
         <slot name="selection-actions" :selected-items="selectedItems" :clear="clearSelection" />
+        <slot name="user-actions" :selected-items="selectedItems" :clear="clearSelection" />
       </div>
       <ChoySearchFit
         v-if="resolvedSearchView"
@@ -232,7 +237,7 @@ SPDX-License-Identifier: Apache-2.0
                     <ChoyActionButton
                       type="button"
                       size="default"
-                      variant="outline-primary"
+                      variant="soft-primary"
                       :action-id="actionIds?.create"
                       :has-action="hasAction"
                       @execute="handleCreate"

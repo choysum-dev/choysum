@@ -49,6 +49,13 @@ SPDX-License-Identifier: Apache-2.0
           <slot name="identity" />
         </div>
 
+        <Separator
+          v-if="$slots.identity && showActionsCluster()"
+          orientation="vertical"
+          data-testid="view-action-bar-identity-sep"
+          class="mx-0 !h-4 w-px shrink-0"
+        />
+
         <div
           v-if="showActionsCluster()"
           data-slot="view-action-bar-actions"

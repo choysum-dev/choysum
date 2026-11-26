@@ -172,7 +172,7 @@ describe('ChoyFormView workspace height', () => {
     mounted.unmount();
   });
 
-  test('display with domain primary keeps Edit secondary and lifecycle in ⋮', async () => {
+  test('display with contextual-actions centered; platform Edit soft-primary; lifecycle in ⋮', async () => {
     const store = loginStore();
     const { router } = createFeStubRouter({
       route: { name: 'login', path: '/web/login', fullPath: '/web/login', params: {}, query: {}, meta: {} },
@@ -205,7 +205,7 @@ describe('ChoyFormView workspace height', () => {
                     hasAction: () => true,
                   },
                   {
-                    'system-actions': () =>
+                    'contextual-actions': () =>
                       h('button', { type: 'button', 'data-testid': 'domain-primary' }, 'Install'),
                   },
                 ),
@@ -217,8 +217,18 @@ describe('ChoyFormView workspace height', () => {
     await flushPromises();
 
     expect(mounted.q('[data-testid=domain-primary]')?.textContent).toBe('Install');
-    expect(mounted.q('[data-testid=form-primary-edit]')).toBeNull();
-    expect(mounted.q('[data-testid=form-secondary-edit]')).not.toBeNull();
+    // Contextual actions sit in the centered find column (List selection pattern).
+    const contextualBar = mounted.q('[data-testid=form-contextual-actions]') as HTMLElement | null;
+    expect(contextualBar).not.toBeNull();
+    expect(contextualBar!.querySelector('[data-testid=domain-primary]')).not.toBeNull();
+    expect(contextualBar!.className || '').toContain('justify-center');
+    const center = mounted.q('[data-slot=view-action-bar-center]') as HTMLElement | null;
+    expect(center).not.toBeNull();
+    expect(center!.querySelector('[data-testid=form-contextual-actions]')).not.toBeNull();
+    // Platform Edit stays in the left system tray (not inside the center bar).
+    expect(mounted.q('[data-testid=form-primary-edit]')).not.toBeNull();
+    expect(contextualBar!.querySelector('[data-testid=form-primary-edit]')).toBeNull();
+    expect(mounted.q('[data-testid=form-secondary-edit]')).toBeNull();
     expect(mounted.q('[data-testid=form-overflow-new]')).not.toBeNull();
     expect(mounted.q('[data-testid=form-overflow-copy]')).not.toBeNull();
     expect(mounted.q('[data-testid=form-overflow-delete]')).not.toBeNull();

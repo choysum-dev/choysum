@@ -23,7 +23,7 @@ describe('ChoyChartView chrome', () => {
         metrics: [{ alias: 'count', label: 'Count' }],
       },
       slots: {
-        'user-actions': () => h('button', { type: 'button', 'data-test': 'user-act' }, 'Extra'),
+        'contextual-actions': () => h('button', { type: 'button', 'data-test': 'user-act' }, 'Extra'),
       },
     });
     await flushPromises();
@@ -34,9 +34,10 @@ describe('ChoyChartView chrome', () => {
     expect(String(bar?.className || '')).toContain('border-b-0');
 
     const trays = mounted.qa('[data-testid=choy-action-tray]');
-    expect(trays.length).toBe(2);
+    expect(trays.length).toBe(1);
     expect(trays[0]?.getAttribute('aria-label')).toBe('System actions');
-    expect(trays[1]?.getAttribute('aria-label')).toBe('User actions');
+    expect(mounted.q('[data-testid=chart-contextual-actions]')).not.toBeNull();
+    expect(mounted.q('[data-test=user-act]')).not.toBeNull();
 
     const controls = mounted.q('[data-region=chart-controls]');
     expect(controls).not.toBeNull();
@@ -133,7 +134,7 @@ describe('ChoyChartView chrome', () => {
     mounted.unmount();
   });
 
-  test('omits empty user-actions tray and keeps thirds center without search', async () => {
+  test('omits empty contextual center and keeps thirds layout without search', async () => {
     const store = makeStore();
     const mounted = mountApp(ChoyChartView as any, {
       props: {

@@ -13,7 +13,7 @@ SPDX-License-Identifier: Apache-2.0
     :action-ids="{}"
     :detail-path="detailPathForRow"
   >
-    <!-- Actions-zone secondary (not a separate user tray). Nested ⋮ export would nest menus. -->
+    <!-- Leading secondary (after platform New via ActionBar sep). Nested ⋮ export would nest menus. -->
     <template #secondary-actions>
       <TerminologyExportMenu :application="application" />
     </template>

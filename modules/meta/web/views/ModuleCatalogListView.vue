@@ -26,7 +26,7 @@ SPDX-License-Identifier: Apache-2.0
           v-if="hasAction(moduleSyncAction)"
           type="button"
           size="default"
-          variant="outline-primary"
+          variant="soft-primary"
           data-testid="module-catalog-sync"
           :busy="syncBusy"
           :aria-busy="syncBusy || undefined"
@@ -46,7 +46,7 @@ SPDX-License-Identifier: Apache-2.0
           v-if="hasAction(moduleLoadDemoAction) && hasPendingDemo"
           type="button"
           size="default"
-          variant="outline"
+          variant="ghost"
           data-testid="module-catalog-load-demo"
           @execute="onLoadDemo"
         >
@@ -116,7 +116,7 @@ SPDX-License-Identifier: Apache-2.0
               v-if="canUninstall(row) && hasAction(moduleUninstallAction)"
               type="button"
               size="xs"
-              variant="outline-destructive"
+              variant="soft-destructive"
               data-testid="module-catalog-uninstall"
               @execute="onUninstall(row)"
             >

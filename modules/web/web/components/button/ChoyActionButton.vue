@@ -34,6 +34,8 @@ type ButtonVariant =
   | 'outline'
   | 'outline-primary'
   | 'outline-destructive'
+  | 'soft-primary'
+  | 'soft-destructive'
   | 'ghost'
   | 'destructive'
   | 'link';

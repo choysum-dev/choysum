@@ -13,12 +13,13 @@ SPDX-License-Identifier: Apache-2.0
     @update-success="reloadActiveLanguagesAfterLanguageSave"
     @create-success="reloadActiveLanguagesAfterLanguageSave"
   >
-    <template #system-actions="{ formData, recordId: slotRecordId, loading }">
+    <!-- Contextual actions (Form centers these in #center, like List selection). -->
+    <template #contextual-actions="{ formData, recordId: slotRecordId, loading }">
       <ChoyActionButton
         v-if="!loading && showActivateFor(formData, slotRecordId)"
         type="button"
         size="default"
-        variant="outline-primary"
+        variant="soft-primary"
         data-testid="language-activate"
         :busy="activeBusy || reloadBusy"
         :aria-busy="activeBusy || undefined"
@@ -31,7 +32,7 @@ SPDX-License-Identifier: Apache-2.0
         v-else-if="!loading && showDeactivateFor(formData, slotRecordId)"
         type="button"
         size="default"
-        variant="outline"
+        variant="ghost"
         data-testid="language-deactivate"
         :busy="activeBusy || reloadBusy"
         :aria-busy="activeBusy || undefined"
@@ -40,13 +41,11 @@ SPDX-License-Identifier: Apache-2.0
         <CircleOff class="size-4" aria-hidden="true" />
         {{ _t('Deactivate') }}
       </ChoyActionButton>
-    </template>
-    <template #secondary-actions="{ formData, recordId: slotRecordId, loading }">
       <ChoyActionButton
         v-if="!loading && showReloadTerminologyFor(formData, slotRecordId)"
         type="button"
         size="default"
-        variant="outline"
+        variant="ghost"
         data-testid="language-reload-terminology"
         :busy="activeBusy || reloadBusy"
         :aria-busy="reloadBusy || undefined"

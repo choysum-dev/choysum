@@ -9,7 +9,7 @@ SPDX-License-Identifier: Apache-2.0
   New view type checklist:
   1. registerViewKind({ id, fieldPresentation, defaultMode })
   2. page meta.viewKind / viewPaths (+ optional ChoyViewSwitcher)
-  3. wrap with ChoyViewBase; fill #system-actions / #center / default body
+  3. wrap with ChoyViewBase; fill #system-actions / #secondary-actions / #center / default body
   4. useProvideViewScope({ kind })
   5. wire busy / error / hasFrame / hasSettled / @retry / @cancel
   6. collection: Search first-frame + #search or embedded Search
@@ -67,11 +67,15 @@ SPDX-License-Identifier: Apache-2.0
           <template v-if="showSystemTray()" #system-actions>
             <slot name="system-actions" />
             <slot name="primary" />
-            <slot name="secondary-actions" />
           </template>
 
-          <template v-if="slots['user-actions']" #user-actions>
-            <slot name="user-actions" />
+          <!--
+            Leading secondary tray (ActionBar #user-actions slot name is legacy).
+            Host #contextual-actions / #user-actions go to #center via each engine —
+            do not park them here.
+          -->
+          <template v-if="showLeadingSecondary()" #user-actions>
+            <slot name="secondary-actions" />
           </template>
 
           <!-- ActionBar thirds pads an empty center when this slot is omitted. -->
@@ -204,12 +208,12 @@ const containerClass = computed(() => cn('gap-5', props.class));
  * builds re-evaluate when a parent adds/removes a conditional named slot.
  */
 function showSystemTray(): boolean {
-  return (
-    props.showActions ||
-    !!slots['system-actions'] ||
-    !!slots.primary ||
-    !!slots['secondary-actions']
-  );
+  return props.showActions || !!slots['system-actions'] || !!slots.primary;
+}
+
+/** Leading secondary tray (#secondary-actions only), separated from platform. */
+function showLeadingSecondary(): boolean {
+  return !!slots['secondary-actions'];
 }
 
 function showHeaderRegion(): boolean {
@@ -218,7 +222,7 @@ function showHeaderRegion(): boolean {
     !!props.pageTitle ||
     !!props.showTitleOverflow ||
     showSystemTray() ||
-    !!slots['user-actions'] ||
+    showLeadingSecondary() ||
     !!slots.center ||
     !!slots['header-right']
   );

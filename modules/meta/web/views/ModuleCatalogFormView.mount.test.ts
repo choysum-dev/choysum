@@ -219,7 +219,7 @@ test('ModuleCatalogFormView.vue primary and uninstall actions open the drawer fo
   await flushPromises();
   const forceUpgradeVm = forceUpgrade.vm as any;
   expect(forceUpgradeVm.primaryAction).toBe('upgrade');
-  expect(forceUpgradeVm.primaryButtonVariant).toBe('outline-primary');
+  expect(forceUpgradeVm.primaryButtonVariant).toBe('soft-primary');
   forceUpgradeVm.onPrimaryClick();
   expect(forceUpgradeVm.drawerAction).toBe('upgrade');
   forceUpgrade.unmount();
@@ -231,7 +231,7 @@ test('ModuleCatalogFormView.vue primary and uninstall actions open the drawer fo
     UpdateAvailable: true,
   });
   await flushPromises();
-  expect((emphasizedUpgrade.vm as any).primaryButtonVariant).toBe('outline-primary');
+  expect((emphasizedUpgrade.vm as any).primaryButtonVariant).toBe('soft-primary');
   emphasizedUpgrade.unmount();
 
   const uninstall = mountShow({
