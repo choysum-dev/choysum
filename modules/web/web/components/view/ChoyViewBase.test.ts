@@ -192,7 +192,7 @@ describe('ChoyViewBase', () => {
     expect(title?.textContent).toBe('Partners');
     expect(title?.className || '').toContain('max-w-[10rem]');
     expect(title?.className || '').toContain('text-base');
-    expect(title?.className || '').toContain('line-clamp-2');
+    expect(title?.className || '').toContain('truncate');
     mounted.unmount();
   });
 

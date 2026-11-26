@@ -124,7 +124,7 @@ const props = withDefaults(
      * content). Click/focus still toggles via the trigger.
      */
     hoverOpen?: boolean;
-    /** Dropdown content alignment; title-as-trigger prefers start. */
+    /** Dropdown content alignment (logical start/end; default end = chevron side). */
     contentAlign?: 'start' | 'center' | 'end';
   }>(),
   {

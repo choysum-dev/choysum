@@ -17,7 +17,7 @@ SPDX-License-Identifier: Apache-2.0
 
   Left chrome contract (List / Kanban / Form / Chart):
   [identity: max-width title menu] [主 → 次 → 领域] | [找] | [看]
-  Title is the overflow/IO menu trigger (hover or click); no standalone ⋯.
+  Title is the overflow/IO menu trigger (click); no standalone ⋯.
 -->
 <template>
   <ChoyViewContainer :class="containerClass" v-bind="attrs">
@@ -57,6 +57,7 @@ SPDX-License-Identifier: Apache-2.0
               v-else-if="pageTitle"
               :id="pageTitleId || undefined"
               data-slot="page-title"
+              :title="pageTitle"
               :class="resolvedPageTitleClass"
             >
               {{ pageTitle }}
@@ -184,11 +185,11 @@ const slots = useSlots();
 const attrs = useAttrs();
 
 /**
- * Title track: text-base (match prior chrome), max-width with wrap + clamp so long
- * labels shrink vertically instead of shoving the action cluster.
+ * Title track: text-base, max-width, single-line ellipsis so long labels never
+ * grow the action bar past adjacent control height.
  */
 const defaultPageTitleClass =
-  'min-w-0 max-w-[10rem] text-base font-semibold leading-snug text-balance break-words line-clamp-2 text-foreground sm:max-w-[14rem]';
+  'min-w-0 max-w-[10rem] truncate text-base font-semibold leading-none text-foreground sm:max-w-[14rem]';
 
 /** Default title chrome + optional BEM / extra classes from the product view. */
 const resolvedPageTitleClass = computed(() => cn(defaultPageTitleClass, props.pageTitleClass));

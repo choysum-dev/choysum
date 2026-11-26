@@ -17,15 +17,15 @@ SPDX-License-Identifier: Apache-2.0
       :action-list-ref="hasIoMenu ? actionListRef : undefined"
       :action-company-id="hasIoMenu ? actionCompanyId : undefined"
       :store="store"
-      :hover-open="!!menuTitle"
-      :content-align="menuTitle ? 'start' : 'end'"
     >
       <template v-if="menuTitle" #trigger="{ open, ariaLabel }">
         <button
           type="button"
           data-testid="page-io-menu-trigger"
           data-slot="view-title-menu-trigger"
-          class="group inline-flex min-w-0 max-w-full items-center gap-1 rounded-md px-1.5 py-0.5 text-start outline-none transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring/50"
+          class="group inline-flex min-h-control min-w-0 max-w-full items-center gap-1.5 rounded-md px-2.5 text-start outline-none transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring/50"
+          :class="open ? 'bg-accent' : undefined"
+          :title="menuTitle || undefined"
           :aria-label="ariaLabel"
           :aria-expanded="open"
           :aria-haspopup="true"
@@ -38,8 +38,8 @@ SPDX-License-Identifier: Apache-2.0
             {{ menuTitle }}
           </span>
           <ChevronDown
-            class="size-3.5 shrink-0 text-muted-foreground transition-opacity group-hover:opacity-100"
-            :class="open ? 'opacity-100' : 'opacity-70'"
+            class="size-3.5 shrink-0 text-muted-foreground transition-[opacity,transform] duration-150 group-hover:opacity-100"
+            :class="open ? 'opacity-100 rotate-180' : 'opacity-70'"
             aria-hidden="true"
           />
         </button>
