@@ -405,6 +405,31 @@ export function dataTableMaybeMeasure(
   }
 }
 
+/**
+ * Scroll-parent width changes (sidebar toggle) must not clear the size cache —
+ * only a vertical viewport change needs a remasure.
+ */
+export function dataTableShouldRemeasureOnScrollParentResize(
+  prevHeight: number,
+  nextHeight: number,
+): boolean {
+  return nextHeight !== prevHeight;
+}
+
+/** Keep scrollTop stable across a remasure that may adjust the spacer. */
+export function dataTablePreserveScrollTop(
+  el: { scrollTop: number } | null | undefined,
+  run: () => void,
+): void {
+  if (!el) {
+    run();
+    return;
+  }
+  const top = el.scrollTop;
+  run();
+  el.scrollTop = top;
+}
+
 export function dataTableMeasureRow(
   el: Element | null,
   virtualized: boolean,

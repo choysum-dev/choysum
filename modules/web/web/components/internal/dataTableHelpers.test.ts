@@ -10,6 +10,8 @@ import {
   dataTableIsGroupLikeRow,
   dataTableIsVirtualized,
   dataTableMaybeMeasure,
+  dataTablePreserveScrollTop,
+  dataTableShouldRemeasureOnScrollParentResize,
   dataTableMeasureRow,
   dataTableRowKind,
   dataTableScrollElement,
@@ -318,6 +320,17 @@ describe('dataTableHelpers', () => {
     dataTableMaybeMeasure(false, { measure: () => { measured += 1; } });
     dataTableMaybeMeasure(true, null);
     expect(measured).toBe(1);
+    expect(dataTableShouldRemeasureOnScrollParentResize(400, 400)).toBe(false);
+    expect(dataTableShouldRemeasureOnScrollParentResize(400, 380)).toBe(true);
+    const scroller = { scrollTop: 240 };
+    dataTablePreserveScrollTop(scroller, () => {
+      scroller.scrollTop = 280;
+    });
+    expect(scroller.scrollTop).toBe(240);
+    dataTablePreserveScrollTop(null, () => {
+      measured += 1;
+    });
+    expect(measured).toBe(2);
     let rowMeasured = 0;
     dataTableMeasureRow(parent, true, { measureElement: () => { rowMeasured += 1; } });
     dataTableMeasureRow(null, true, { measureElement: () => { rowMeasured += 1; } });
