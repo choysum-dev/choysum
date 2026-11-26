@@ -36,6 +36,20 @@ export type {
 } from './components/button/ChoyStatusbarButton.vue';
 export { default as ChoyActionMenuItem } from './components/button/ChoyActionMenuItem.vue';
 export type { ChoyActionConfirm } from './composables/useChoyActionPolicy';
+export {
+  runViewWorkflowAction,
+  useFormWorkflowAction,
+  useListWorkflowAction,
+} from './composables/viewWorkflowAction';
+export type {
+  FormWorkflowFormApi,
+  FormWorkflowReload,
+  ListWorkflowListApi,
+  ListWorkflowReload,
+  UseFormWorkflowActionOpts,
+  UseListWorkflowActionOpts,
+  ViewWorkflowErrorMessage,
+} from './composables/viewWorkflowAction';
 export { default as ChoyInput } from './components/vendor/ui/input/Input.vue';
 export { default as ChoyCheckbox } from './components/vendor/ui/checkbox/Checkbox.vue';
 export {
@@ -126,6 +140,7 @@ export { useViewTitleOverflow } from './components/view/useViewTitleOverflow';
 export { useCollectionBusyMode } from './components/view/useCollectionBusyMode';
 export { useControllerSoftFailSurface } from './components/view/useControllerSoftFailSurface';
 export { useDetailPathRecordSetHygiene } from './components/view/useDetailPathRecordSetHygiene';
+export { useDetailPathCollectionSoftRefresh } from './components/view/useDetailPathCollectionSoftRefresh';
 export { default as ChoyViewContainer } from './components/view/ChoyViewContainer.vue';
 export { default as ChoyViewActionBar } from './components/view/ChoyViewActionBar.vue';
 export { default as ChoyViewBusyHost } from './components/view/ChoyViewBusyHost.vue';

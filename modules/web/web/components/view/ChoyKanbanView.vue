@@ -296,6 +296,7 @@ import { useViewTitleOverflow } from '@/web/web/components/view/useViewTitleOver
 import { useCollectionBusyMode } from '@/web/web/components/view/useCollectionBusyMode';
 import { useControllerSoftFailSurface } from '@/web/web/components/view/useControllerSoftFailSurface';
 import { useDetailPathRecordSetHygiene } from '@/web/web/components/view/useDetailPathRecordSetHygiene';
+import { useDetailPathCollectionSoftRefresh } from '@/web/web/components/view/useDetailPathCollectionSoftRefresh';
 import Select from '../vendor/ui/select/Select.vue';
 import SelectContent from '../vendor/ui/select/SelectContent.vue';
 import SelectItem from '../vendor/ui/select/SelectItem.vue';
@@ -491,6 +492,13 @@ const engine = useChoyKanbanStoreEngine({
   onSearchError: props.onSearchError,
   onLoadMoreError: props.onLoadMoreError,
   onMoveError: handleMoveError,
+});
+
+// KeepAlive return from Form: silent board refresh; skips mount activate.
+useDetailPathCollectionSoftRefresh({
+  detailPath: () => props.detailPath,
+  hasSettled: () => !!engine.controller.vm.hasAppliedOnce,
+  refresh: () => engine.refresh(),
 });
 
 useRegisterPageActionTarget({

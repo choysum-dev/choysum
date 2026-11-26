@@ -420,4 +420,43 @@ describe('ListView create action', () => {
     expect(root).toBeTruthy();
     unmount();
   });
+
+  test('softRefresh re-applies without clearing selection', async () => {
+    const { plugins } = buildPageMountGlobal({
+      route: { name: 'PartnerList', path: '/partner/partners', fullPath: '/partner/partners' },
+      router: { push },
+    });
+    const store = makeStore();
+    const { unmount, root } = mountApp(ChoyListView as any, {
+      props: {
+        store,
+        createAction: '',
+        showHeader: true,
+        showActions: true,
+        refreshAction: false,
+        deleteAction: true,
+        showPaginate: false,
+      },
+      plugins,
+    });
+    await flushPromises();
+    const exposed = root as {
+      softRefresh?: () => Promise<void>;
+      onSelectionChange?: (rows: unknown[]) => void;
+      selectedItems?: unknown[];
+    };
+    expect(typeof exposed.softRefresh).toBe('function');
+    exposed.onSelectionChange?.([
+      { type: 'record', record: { Id: 'keep-me' } },
+      { Id: 'keep-2' },
+    ]);
+    await flushPromises();
+    expect(exposed.selectedItems?.length).toBe(2);
+    const searchesBefore = store.Search.calls.length;
+    await exposed.softRefresh?.();
+    await flushPromises();
+    expect(store.Search.calls.length).toBeGreaterThan(searchesBefore);
+    expect(exposed.selectedItems?.length).toBe(2);
+    unmount();
+  });
 });

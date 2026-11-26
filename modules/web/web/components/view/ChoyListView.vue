@@ -355,6 +355,7 @@ import { useViewTitleOverflow } from '@/web/web/components/view/useViewTitleOver
 import { useCollectionBusyMode } from '@/web/web/components/view/useCollectionBusyMode';
 import { useControllerSoftFailSurface } from '@/web/web/components/view/useControllerSoftFailSurface';
 import { useDetailPathRecordSetHygiene } from '@/web/web/components/view/useDetailPathRecordSetHygiene';
+import { useDetailPathCollectionSoftRefresh } from '@/web/web/components/view/useDetailPathCollectionSoftRefresh';
 
 defineOptions({ name: 'ChoyListView', inheritAttrs: false });
 
@@ -816,8 +817,11 @@ const baseIndex = computed(() => (effectivePagination.value.offset ?? 0) + 1);
 // =============================
 // Section 12: Side-effects on data change (reset selection)
 // =============================
-// Clear selection after page changes or data refreshes
+/** When true, items watch skips clearing selection (domain softRefresh). */
+let suppressSelectionResetOnItems = false;
+// Clear selection after page changes or data refreshes (not softRefresh).
 watch(items, () => {
+  if (suppressSelectionResetOnItems) return;
   selection.clear();
   selectedItems.value = [];
 });
@@ -886,6 +890,16 @@ function afterLayoutRecompute() {
   return nextTick().then(recomputeTableHeight);
 }
 
+// KeepAlive return from Form: silent re-apply (stale busy); skips mount activate.
+useDetailPathCollectionSoftRefresh({
+  detailPath: () => props.detailPath,
+  hasSettled: () => !!controller.vm.hasAppliedOnce || !!firstApplied.value,
+  refresh: async () => {
+    await controller.apply({ forcedCondition: props.forcedCondition as any });
+    await afterLayoutRecompute();
+  },
+});
+
 // =============================
 // Section 15: Lifecycle - onMounted (initial load)
 // =============================
@@ -942,6 +956,23 @@ async function loadData() {
     const err = e instanceof Error ? e : new Error(String(e));
     emit('action-error', { action: 'load', error: err });
     ChoyMessage.error(_t('Failed to load list'));
+  }
+}
+
+/** Silent re-apply for domain workflow CTAs; keeps selection (unlike loadData). */
+async function softRefresh() {
+  suppressSelectionResetOnItems = true;
+  try {
+    await controller.apply({ forcedCondition: props.forcedCondition as any });
+    await afterLayoutRecompute();
+    // Let items watch from apply flush while still suppressed.
+    await nextTick();
+  } catch (e: unknown) {
+    const err = e instanceof Error ? e : new Error(String(e));
+    emit('action-error', { action: 'refresh', error: err });
+    throw err;
+  } finally {
+    suppressSelectionResetOnItems = false;
   }
 }
 
@@ -1192,6 +1223,7 @@ const onToggleGroup = async (key: string) => {
 defineExpose<
   SelectionExpose<ClientModel<T>> & {
     load: () => Promise<void>;
+    softRefresh: () => Promise<void>;
     retrySurface: () => Promise<void>;
     inlineEdit: typeof inlineEdit;
     flatRows: typeof flatRows;
@@ -1205,6 +1237,7 @@ defineExpose<
   selectedItems: selectedItems as any,
   selectedItem: selectedItem as any,
   load: loadData,
+  softRefresh,
   /** BusyHost surface Retry — same entry as load (keeps forcedCondition). */
   retrySurface: onSurfaceRetry,
   inlineEdit,

@@ -8,6 +8,7 @@ SPDX-License-Identifier: Apache-2.0
     :data-anchor="isSettingsPresentation ? 'choy.settings-view' : undefined"
     :data-testid="isSettingsPresentation ? 'choy-settings-view' : undefined"
     :chrome-anchor="isSettingsPresentation ? 'choy.settings.view-chrome' : 'choy.form.view-chrome'"
+    :class="formViewBaseClass"
     :show-header="resolvedShowHeader"
     :show-actions="resolvedShowActions"
     :page-title="chromeTitle || undefined"
@@ -20,9 +21,10 @@ SPDX-License-Identifier: Apache-2.0
     :store="store"
     :busy="overlayBusy"
     :mode="formBusyMode"
-    busy-host-class="min-h-0 flex-1 overflow-y-auto"
+    :busy-host-class="formSheetHostClass"
     :busy-host-attrs="{
       'data-anchor': isSettingsPresentation ? 'choy.settings.sheet' : 'choy.form-view',
+      'data-testid': isSettingsPresentation ? 'settings-sheet' : 'form-sheet',
     }"
     :error="formSurfaceError"
     :has-frame="formHasFrame"
@@ -336,6 +338,7 @@ import { useFormRecordPager } from '@/web/web/composables/useFormRecordPager';
 import { useFormViewSubmit } from '@/web/web/composables/useFormViewSubmit';
 import { nextLocalToken } from '@/web/web/components/view/localToken';
 import { createTranslate } from '@/web/web/i18n';
+import { cn } from '@/web/web/lib/utils';
 import type { UiModelStore } from '@/web/web/stores/uiModelStore';
 import ChoyActionButton from '@/web/web/components/button/ChoyActionButton.vue';
 import ChoyActionMenuItem from '@/web/web/components/button/ChoyActionMenuItem.vue';
@@ -666,6 +669,21 @@ const resolvedShowActions = computed<boolean>(() => (hasShowActionsProp ? props.
 const resolvedShowMessages = computed<boolean>(() => (hasShowMessagesProp ? props.showMessages === true : !isEmbedded.value));
 const resolvedResolveRecordIdFromRoute = computed<boolean>(() =>
   hasResolveRecordIdFromRouteProp ? props.resolveRecordIdFromRoute === true : !isEmbedded.value
+);
+/**
+ * Inset <main> is already the paper (shell). Page Form only adds in-paper rhythm:
+ * tight chrome↔body gap, hairline on body top, content padding — no second card.
+ * Embedded stays flat (dialogs must not double-frame).
+ */
+const formViewBaseClass = computed(() =>
+  !isEmbedded.value ? 'choy-form-view gap-2' : 'choy-form-view',
+);
+const formSheetHostClass = computed(() =>
+  cn(
+    'min-h-0 flex-1 overflow-y-auto',
+    !isEmbedded.value &&
+      'choy-form-view__sheet border-t border-border pt-[var(--choy-layout-content-padding)] pb-[var(--choy-layout-content-padding)]',
+  ),
 );
 const resolvedCreateAction = useResolvedCreateAction(() => props.createAction, {
   enabled: () => !isEmbedded.value && !isSettingsPresentation.value,

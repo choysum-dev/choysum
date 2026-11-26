@@ -42,12 +42,22 @@ export function useListViewExpose<T>() {
     return (listRef.value as ListViewLoadExpose | null | undefined)?.load?.();
   }
 
+  function softRefresh() {
+    return (listRef.value as ListViewLoadExpose | null | undefined)?.softRefresh?.();
+  }
+
+  function clearSelection() {
+    (listRef.value as ListViewLoadExpose | null | undefined)?.clearSelection?.();
+  }
+
   return {
     listRef,
     expose: {
       selectedItems,
       selectedItem,
       refresh,
+      softRefresh,
+      clearSelection,
     },
   };
 }

@@ -174,6 +174,7 @@ import {
   ChoyGrid,
   ChoySelectionField,
   ChoyVarcharField,
+  useFormWorkflowAction,
 } from '@/web';
 import type { ChoyViewMode as ViewMode } from '@/web';
 import {
@@ -214,13 +215,21 @@ type FormViewApi = {
 };
 const formViewRef = ref<FormViewApi | null>(null);
 
-const activeBusy = ref(false);
-const reloadBusy = ref(false);
 /**
  * Local override after Activate/Deactivate when form reload is unavailable.
  * Scoped via languageRowOverrideFields(id) — stale overrides for other recordIds are ignored.
  */
 const rowOverride = ref<LanguageRowOverride | null>(null);
+
+/** reload:none — Language keeps Browse/rowOverride via reloadRecord inside call. */
+const { busy: activeBusy, run: runActiveWorkflow } = useFormWorkflowAction({
+  formRef: formViewRef,
+  reload: 'none',
+});
+const { busy: reloadBusy, run: runReloadTerminologyWorkflow } = useFormWorkflowAction({
+  formRef: formViewRef,
+  reload: 'none',
+});
 
 const canWriteLanguage = computed(() => hasAction(languageActions.edit));
 
@@ -320,23 +329,13 @@ async function onActivate(slotRecordId: string | undefined): Promise<void> {
     }
     return;
   }
-  activeBusy.value = true;
-  try {
+  await runActiveWorkflow(async () => {
     await activateLanguage({
       activate: req => activate.call(store, req),
       recordId: id,
       reloadRecord: () => reloadRecord(id),
     });
-  } catch (err: any) {
-    const message = String(err?.message || err || _t('Activate failed'));
-    try {
-      ChoyMessage.error(message);
-    } catch {
-      // Toast host may be absent in FE unit tests.
-    }
-  } finally {
-    activeBusy.value = false;
-  }
+  });
 }
 
 async function onDeactivate(slotRecordId: string | undefined): Promise<void> {
@@ -352,23 +351,13 @@ async function onDeactivate(slotRecordId: string | undefined): Promise<void> {
     }
     return;
   }
-  activeBusy.value = true;
-  try {
+  await runActiveWorkflow(async () => {
     await deactivateLanguage({
       deactivate: req => deactivate.call(store, req),
       recordId: id,
       reloadRecord: () => reloadRecord(id),
     });
-  } catch (err: any) {
-    const message = String(err?.message || err || _t('Deactivate failed'));
-    try {
-      ChoyMessage.error(message);
-    } catch {
-      // Toast host may be absent in FE unit tests.
-    }
-  } finally {
-    activeBusy.value = false;
-  }
+  });
 }
 
 async function onReloadTerminology(
@@ -387,8 +376,7 @@ async function onReloadTerminology(
     }
     return;
   }
-  reloadBusy.value = true;
-  try {
+  await runReloadTerminologyWorkflow(async () => {
     const i18n = useI18nStore();
     // Prefer LanguageId so an unsaved Code draft cannot retarget the reload.
     await reloadLanguageTerminology({
@@ -413,15 +401,6 @@ async function onReloadTerminology(
         }
       },
     });
-  } catch (err: any) {
-    const message = String(err?.message || err || _t('Update translations failed'));
-    try {
-      ChoyMessage.error(message);
-    } catch {
-      // Toast host may be absent in FE unit tests.
-    }
-  } finally {
-    reloadBusy.value = false;
-  }
+  });
 }
 </script>

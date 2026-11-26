@@ -83,13 +83,15 @@ describe('ChoyFormView workspace height', () => {
     setActivePinia(createPinia());
   });
 
-  test('body scrolls inside the shell and the container uses gap-5', async () => {
+  test('body scrolls inside the shell; page Form uses tight gap and in-paper body pad', async () => {
     const mounted = mountForm({ showHeader: false, showActions: false });
     await flushPromises();
 
     const root = mounted.q('[data-slot="view-container"]') as HTMLElement | null;
     expect(root).not.toBeNull();
-    expect(root!.className).toContain('gap-5');
+    // Form overrides ViewBase gap-5 so statusbar sits closer to the sheet body.
+    expect(root!.className).toContain('gap-2');
+    expect(root!.className.split(/\s+/)).not.toContain('gap-5');
 
     const shell = mounted.q('[data-slot="view-body"]') as HTMLElement | null;
     expect(shell).not.toBeNull();
@@ -102,9 +104,27 @@ describe('ChoyFormView workspace height', () => {
     expect(body!.className).toContain('min-h-0');
     expect(body!.className).toContain('flex-1');
     expect(body!.className).toContain('overflow-y-auto');
+    // Inset main is the paper — no nested card; hairline + vertical pad only.
+    expect(body!.className).toContain('choy-form-view__sheet');
+    expect(body!.className).toContain('border-t');
+    expect(body!.className).toContain('border-border');
+    expect(body!.className).not.toContain('rounded-md');
+    expect(body!.className).not.toContain('shadow-sm');
+    expect(body!.getAttribute('data-testid')).toBe('form-sheet');
     expect(body!.className.split(/\s+/)).not.toContain('p-5');
-    expect(body!.className.split(/\s+/)).not.toContain('pt-2');
 
+    mounted.unmount();
+  });
+
+  test('embedded Form skips in-paper body chrome', async () => {
+    const mounted = mountForm({ embedded: true, showHeader: false, showActions: false });
+    await flushPromises();
+    const root = mounted.q('[data-slot="view-container"]') as HTMLElement | null;
+    expect(root!.className).toContain('gap-5');
+    const body = mounted.q('[data-anchor="choy.form-view"]') as HTMLElement | null;
+    expect(body).not.toBeNull();
+    expect(body!.className).not.toContain('choy-form-view__sheet');
+    expect(body!.className).not.toContain('border-t');
     mounted.unmount();
   });
 
