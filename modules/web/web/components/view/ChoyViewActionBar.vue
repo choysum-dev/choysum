@@ -8,7 +8,7 @@ SPDX-License-Identifier: Apache-2.0
     Column host: toolbar row + Vue-owned search-fit row (narrow SearchFit teleports here).
     data-slot=view-action-bar stays on the toolbar so width observers keep measuring it.
 
-    Leading contract: [identity: title + optional ⋯] [actions: platform → domain] | find | present
+    Leading contract: [identity: title menu] [actions: platform → domain] | find | present
   -->
   <div
     class="choy-view-action-bar-host flex min-w-0 w-full flex-col"

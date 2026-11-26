@@ -5,11 +5,11 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <div
-    v-if="hasIoMenu || $slots.overflow || $slots.default"
-    class="choy-page__title-actions flex shrink-0 items-center gap-2"
+    v-if="hasIoMenu || $slots.overflow || $slots.default || menuTitle"
+    class="choy-page__title-actions flex min-w-0 shrink-0 items-center gap-2"
   >
     <ChoyPageIoMenu
-      v-if="hasIoMenu || $slots.overflow"
+      v-if="hasIoMenu || $slots.overflow || menuTitle"
       :action-import="hasIoMenu ? actionImport : false"
       :action-export="hasIoMenu ? actionExport : false"
       :action-import-upload-hint="hasIoMenu ? actionImportUploadHint : undefined"
@@ -17,7 +17,33 @@ SPDX-License-Identifier: Apache-2.0
       :action-list-ref="hasIoMenu ? actionListRef : undefined"
       :action-company-id="hasIoMenu ? actionCompanyId : undefined"
       :store="store"
+      :hover-open="!!menuTitle"
+      :content-align="menuTitle ? 'start' : 'end'"
     >
+      <template v-if="menuTitle" #trigger="{ open, ariaLabel }">
+        <button
+          type="button"
+          data-testid="page-io-menu-trigger"
+          data-slot="view-title-menu-trigger"
+          class="group inline-flex min-w-0 max-w-full items-center gap-1 rounded-md px-1.5 py-0.5 text-start outline-none transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring/50"
+          :aria-label="ariaLabel"
+          :aria-expanded="open"
+          :aria-haspopup="true"
+        >
+          <span
+            :id="menuTitleId || undefined"
+            data-slot="page-title"
+            :class="menuTitleClass"
+          >
+            {{ menuTitle }}
+          </span>
+          <ChevronDown
+            class="size-3.5 shrink-0 text-muted-foreground transition-opacity group-hover:opacity-100"
+            :class="open ? 'opacity-100' : 'opacity-70'"
+            aria-hidden="true"
+          />
+        </button>
+      </template>
       <slot name="overflow" />
     </ChoyPageIoMenu>
     <slot />
@@ -25,12 +51,15 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
+import { ChevronDown } from 'lucide-vue-next';
 import ChoyPageIoMenu from './ChoyPageIoMenu.vue';
 import type { PageIoMenuListRef } from './ChoyPageIoMenu.vue';
+import type { ClassValue } from '../../lib/utils';
 
 /**
- * Shared title-actions row for ChoyPage and list chrome.
- * `#overflow` items land inside the ⋮ menu; default slot stays beside the trigger.
+ * Shared title-actions row for ChoyPage and view chrome.
+ * `#overflow` items land inside the menu; default slot stays beside the trigger.
+ * When `menuTitle` is set (View Action Bar), the title itself is the menu trigger.
  */
 defineProps<{
   hasIoMenu: boolean;
@@ -41,5 +70,9 @@ defineProps<{
   actionListRef?: PageIoMenuListRef | null;
   actionCompanyId?: string;
   store?: { storeId?: string; fullModelName?: string; state?: { result?: { total?: number } } };
+  /** When set, use the page title as the overflow/IO menu trigger (View chrome). */
+  menuTitle?: string | null;
+  menuTitleId?: string | null;
+  menuTitleClass?: ClassValue;
 }>();
 </script>

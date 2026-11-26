@@ -4,19 +4,37 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <DropdownMenu v-if="showMenu">
+  <DropdownMenu
+    v-if="showMenu"
+    v-model:open="menuOpen"
+    :modal="!hoverOpen"
+  >
     <DropdownMenuTrigger as-child>
-      <ChoyButton
-        type="button"
-        variant="ghost"
-        size="icon"
-        :aria-label="menuAriaLabel"
-        data-testid="page-io-menu-trigger"
+      <!-- Host owns hover when hoverOpen; click still goes through the slotted control. -->
+      <div
+        class="inline-flex min-w-0 max-w-full"
+        data-slot="page-io-menu-trigger-host"
+        @pointerenter="onTriggerEnter"
+        @pointerleave="onTriggerLeave"
       >
-        <EllipsisVertical class="size-4" aria-hidden="true" />
-      </ChoyButton>
+        <slot name="trigger" :open="menuOpen" :aria-label="menuAriaLabel">
+          <ChoyButton
+            type="button"
+            variant="ghost"
+            size="icon"
+            :aria-label="menuAriaLabel"
+            data-testid="page-io-menu-trigger"
+          >
+            <EllipsisVertical class="size-4" aria-hidden="true" />
+          </ChoyButton>
+        </slot>
+      </div>
     </DropdownMenuTrigger>
-    <DropdownMenuContent align="end">
+    <DropdownMenuContent
+      :align="contentAlign"
+      @pointerenter="onContentEnter"
+      @pointerleave="onContentLeave"
+    >
       <ChoyActionMenuItem
         v-for="item in visibleItems"
         :key="item.key"
@@ -54,7 +72,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { computed, ref, useSlots } from 'vue';
+import { computed, onBeforeUnmount, ref, useSlots } from 'vue';
 import { Download, EllipsisVertical, Upload } from 'lucide-vue-next';
 import ChoyButton from '../button/ChoyButton.vue';
 import ChoyActionMenuItem from '../button/ChoyActionMenuItem.vue';
@@ -83,24 +101,37 @@ type PageIoStore = {
   state?: { result?: { total?: number } };
 };
 
-const props = defineProps<{
-  /** Low-level menu entries. When omitted, items are derived from action flags. */
-  items?: PageIoMenuItem[];
-  /** Enable Import panel and menu item. */
-  actionImport?: boolean;
-  /** Enable Export panel and menu item. */
-  actionExport?: boolean;
-  /** Optional CSV upload hint for ImportPanel. */
-  actionImportUploadHint?: string;
-  /** Optional default column mapping for ImportPanel. */
-  actionImportColumnMapping?: Record<string, string>;
-  /** List/kanban store; falls back to Page provided store when omitted. */
-  store?: PageIoStore;
-  /** Explicit list/kanban target; falls back to the page-registered main view. */
-  actionListRef?: PageIoMenuListRef | null;
-  /** Optional company override for import/export panels. */
-  actionCompanyId?: string;
-}>();
+const props = withDefaults(
+  defineProps<{
+    /** Low-level menu entries. When omitted, items are derived from action flags. */
+    items?: PageIoMenuItem[];
+    /** Enable Import panel and menu item. */
+    actionImport?: boolean;
+    /** Enable Export panel and menu item. */
+    actionExport?: boolean;
+    /** Optional CSV upload hint for ImportPanel. */
+    actionImportUploadHint?: string;
+    /** Optional default column mapping for ImportPanel. */
+    actionImportColumnMapping?: Record<string, string>;
+    /** List/kanban store; falls back to Page provided store when omitted. */
+    store?: PageIoStore;
+    /** Explicit list/kanban target; falls back to the page-registered main view. */
+    actionListRef?: PageIoMenuListRef | null;
+    /** Optional company override for import/export panels. */
+    actionCompanyId?: string;
+    /**
+     * Open on pointer enter (non-modal so the pointer can reach the portaled
+     * content). Click/focus still toggles via the trigger.
+     */
+    hoverOpen?: boolean;
+    /** Dropdown content alignment; title-as-trigger prefers start. */
+    contentAlign?: 'start' | 'center' | 'end';
+  }>(),
+  {
+    hoverOpen: false,
+    contentAlign: 'end',
+  },
+);
 
 const emit = defineEmits<{
   (e: 'imported'): void;
@@ -111,6 +142,8 @@ const slots = useSlots();
 
 const importOpen = ref(false);
 const exportOpen = ref(false);
+const menuOpen = ref(false);
+let closeTimer: ReturnType<typeof setTimeout> | null = null;
 
 const pageCtx = usePageContext();
 const resolvedStore = useResolvedOptionalPageStore<PageIoStore>(() => props.store);
@@ -189,6 +222,44 @@ const menuAriaLabel = computed(() =>
   visibleItems.value.length && !slots.default ? _t('Import and export') : _t('More actions'),
 );
 
+function clearCloseTimer() {
+  if (closeTimer != null) {
+    clearTimeout(closeTimer);
+    closeTimer = null;
+  }
+}
+
+function openFromHover() {
+  if (!props.hoverOpen) return;
+  clearCloseTimer();
+  menuOpen.value = true;
+}
+
+function scheduleHoverClose() {
+  if (!props.hoverOpen) return;
+  clearCloseTimer();
+  closeTimer = setTimeout(() => {
+    menuOpen.value = false;
+    closeTimer = null;
+  }, 160);
+}
+
+function onTriggerEnter() {
+  openFromHover();
+}
+
+function onTriggerLeave() {
+  scheduleHoverClose();
+}
+
+function onContentEnter() {
+  openFromHover();
+}
+
+function onContentLeave() {
+  scheduleHoverClose();
+}
+
 function onCommand(key: string) {
   const item = visibleItems.value.find(entry => entry.key === key);
   if (item && !item.disabled) {
@@ -201,5 +272,9 @@ function onImported() {
   emit('imported');
 }
 
-defineExpose({ onCommand });
+onBeforeUnmount(() => {
+  clearCloseTimer();
+});
+
+defineExpose({ onCommand, menuOpen });
 </script>

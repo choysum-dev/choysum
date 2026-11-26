@@ -168,12 +168,12 @@ describe('ChoyViewBase', () => {
     }
   });
 
-  test('mounts page title actions beside fixed-width title when showTitleOverflow', async () => {
+  test('mounts page title as overflow menu trigger when showTitleOverflow', async () => {
     setActivePinia(createPinia());
     const mounted = mountApp(ChoyViewBase as any, {
       props: {
         showActions: true,
-        pageTitle: 'T',
+        pageTitle: 'Partners',
         showTitleOverflow: true,
         pageTitleActionsIo: { actionImport: false, actionExport: false },
       },
@@ -186,13 +186,13 @@ describe('ChoyViewBase', () => {
     await flushPromises();
     expect(mounted.q('.choy-page__title-actions')).not.toBeNull();
     expect(mounted.q('[data-testid=overflow-item]')?.textContent).toBe('Refresh');
-    const identity = mounted.q('[data-slot=view-action-bar-identity]') as HTMLElement | null;
-    expect(identity).not.toBeNull();
-    expect(identity!.querySelector('[data-slot=page-title]')).not.toBeNull();
-    expect(identity!.querySelector('[data-slot=view-action-bar-overflow]')).not.toBeNull();
-    expect(mounted.q('[data-testid=page-io-menu-trigger]')).not.toBeNull();
-    const title = mounted.q('[data-slot=page-title]') as HTMLElement | null;
-    expect(title?.className || '').toContain('w-[10rem]');
+    const trigger = mounted.q('[data-testid=page-io-menu-trigger]') as HTMLElement | null;
+    expect(trigger).not.toBeNull();
+    const title = trigger!.querySelector('[data-slot=page-title]') as HTMLElement | null;
+    expect(title?.textContent).toBe('Partners');
+    expect(title?.className || '').toContain('max-w-[10rem]');
+    expect(title?.className || '').toContain('text-base');
+    expect(title?.className || '').toContain('line-clamp-2');
     mounted.unmount();
   });
 
@@ -225,9 +225,8 @@ describe('ChoyViewBase', () => {
     await flushPromises();
     const title = mounted.q('[data-slot=page-title]') as HTMLElement | null;
     expect(title?.className || '').toContain('choy-list-view__page-title');
-    expect(title?.className || '').toContain('truncate');
-    expect(title?.className || '').toContain('w-[10rem]');
-    expect(title?.className || '').toContain('text-lg');
+    expect(title?.className || '').toContain('max-w-[10rem]');
+    expect(title?.className || '').toContain('text-base');
     expect(title?.className || '').toContain('font-semibold');
     // Thirds ActionBar pads center when product view omits #center.
     expect(mounted.q('[data-slot=view-action-bar-center]')).not.toBeNull();

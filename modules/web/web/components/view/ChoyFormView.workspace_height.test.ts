@@ -59,6 +59,12 @@ function actionBarLeadingOrder(root: Element): string[] {
       out.push('page-title');
       return;
     }
+    // Title-as-menu trigger: record page-title, skip the whole-button label blob.
+    if (testId === 'page-io-menu-trigger') {
+      const title = node.querySelector('[data-slot="page-title"]');
+      if (title) out.push('page-title');
+      return;
+    }
     if (node.tagName === 'BUTTON' || node.tagName === 'button') {
       const label = (node.textContent || '').replace(/\s+/g, ' ').trim();
       if (label) out.push(label);

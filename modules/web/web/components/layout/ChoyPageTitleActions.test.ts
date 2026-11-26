@@ -11,7 +11,11 @@ describe('ChoyPageTitleActions', () => {
     stubSfc(ChoyPageIoMenu as any, {
       name: 'ChoyPageIoMenu',
       setup(_: any, { slots }: any) {
-        return () => h('div', { 'data-testid': 'title-io-menu' }, slots.default?.());
+        return () =>
+          h('div', { 'data-testid': 'title-io-menu' }, [
+            slots.trigger?.({ open: false, ariaLabel: 'More' }),
+            slots.default?.(),
+          ]);
       },
     });
   });
@@ -55,6 +59,27 @@ describe('ChoyPageTitleActions', () => {
     // Default slot stays beside the IO menu, not inside its overflow slot.
     expect(inline?.parentElement === ioMenu).toBe(false);
     expect(inline?.parentElement?.className || '').toContain('choy-page__title-actions');
+    mounted.unmount();
+  });
+
+  test('menuTitle renders the title as the menu trigger', async () => {
+    const mounted = mountApp(ChoyPageTitleActions as any, {
+      props: {
+        hasIoMenu: false,
+        actionImport: false,
+        actionExport: false,
+        menuTitle: 'Country list',
+        menuTitleClass: 'text-base font-semibold',
+      },
+      slots: {
+        overflow: () => h('button', { 'data-testid': 'overflow-item' }, 'Refresh'),
+      },
+    });
+    await flushPromises();
+    const trigger = mounted.q('[data-testid=page-io-menu-trigger]') as HTMLElement | null;
+    expect(trigger).not.toBeNull();
+    expect(trigger!.querySelector('[data-slot=page-title]')?.textContent).toBe('Country list');
+    expect(mounted.q('[data-testid=overflow-item]')?.textContent).toBe('Refresh');
     mounted.unmount();
   });
 });

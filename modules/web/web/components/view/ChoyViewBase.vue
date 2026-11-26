@@ -16,7 +16,8 @@ SPDX-License-Identifier: Apache-2.0
   7. export from kit + chrome/mount unit test
 
   Left chrome contract (List / Kanban / Form / Chart):
-  [identity: fixed-width title][⋯] [主 → 次 → 领域] | [找] | [看]
+  [identity: max-width title menu] [主 → 次 → 领域] | [找] | [看]
+  Title is the overflow/IO menu trigger (hover or click); no standalone ⋯.
 -->
 <template>
   <ChoyViewContainer :class="containerClass" v-bind="attrs">
@@ -29,18 +30,10 @@ SPDX-License-Identifier: Apache-2.0
           :user-actions-label="userActionsLabel"
         >
           <template v-if="pageTitle || showTitleOverflow" #identity>
-            <h1
-              v-if="pageTitle"
-              :id="pageTitleId || undefined"
-              data-slot="page-title"
-              :class="resolvedPageTitleClass"
-            >
-              {{ pageTitle }}
-            </h1>
             <div
               v-if="showTitleOverflow"
               data-slot="view-action-bar-overflow"
-              class="flex shrink-0 items-center"
+              class="flex min-w-0 max-w-full items-center"
             >
               <ChoyPageTitleActions
                 :has-io-menu="!!pageTitleActionsIo"
@@ -51,12 +44,23 @@ SPDX-License-Identifier: Apache-2.0
                 :action-list-ref="(pageTitleActionsIo?.actionListRef as any)"
                 :action-company-id="pageTitleActionsIo?.actionCompanyId"
                 :store="store"
+                :menu-title="pageTitle || _t('Actions')"
+                :menu-title-id="pageTitleId"
+                :menu-title-class="resolvedPageTitleClass"
               >
                 <template v-if="slots['overflow-actions']" #overflow>
                   <slot name="overflow-actions" />
                 </template>
               </ChoyPageTitleActions>
             </div>
+            <h1
+              v-else-if="pageTitle"
+              :id="pageTitleId || undefined"
+              data-slot="page-title"
+              :class="resolvedPageTitleClass"
+            >
+              {{ pageTitle }}
+            </h1>
           </template>
 
           <template v-if="showSystemTray()" #system-actions>
@@ -179,9 +183,12 @@ const emit = defineEmits<{
 const slots = useSlots();
 const attrs = useAttrs();
 
-/** Fixed title track so ⋯ sits immediately after a stable width (truncate long labels). */
+/**
+ * Title track: text-base (match prior chrome), max-width with wrap + clamp so long
+ * labels shrink vertically instead of shoving the action cluster.
+ */
 const defaultPageTitleClass =
-  'w-[10rem] shrink-0 truncate text-lg font-semibold leading-8 text-foreground sm:w-[14rem]';
+  'min-w-0 max-w-[10rem] text-base font-semibold leading-snug text-balance break-words line-clamp-2 text-foreground sm:max-w-[14rem]';
 
 /** Default title chrome + optional BEM / extra classes from the product view. */
 const resolvedPageTitleClass = computed(() => cn(defaultPageTitleClass, props.pageTitleClass));
