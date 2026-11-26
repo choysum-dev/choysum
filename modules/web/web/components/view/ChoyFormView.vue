@@ -160,6 +160,13 @@ SPDX-License-Identifier: Apache-2.0
         {{ _t('Delete') }}
       </ChoyActionMenuItem>
       <slot name="overflow-actions" />
+      <!-- Match List: separator before platform tools (Reset / Refresh). -->
+      <DropdownMenuSeparator
+        v-if="
+          (showResetInOverflow || showRefreshInOverflow) &&
+          (showFormLifecycleInOverflow || !!$slots['overflow-actions'])
+        "
+      />
       <ChoyActionMenuItem
         v-if="showResetInOverflow"
         data-testid="form-overflow-reset"
@@ -304,6 +311,7 @@ import { createTranslate } from '@/web/web/i18n';
 import type { UiModelStore } from '@/web/web/stores/uiModelStore';
 import ChoyActionButton from '@/web/web/components/button/ChoyActionButton.vue';
 import ChoyActionMenuItem from '@/web/web/components/button/ChoyActionMenuItem.vue';
+import { DropdownMenuSeparator } from '@/web/web/components/vendor/ui/dropdown-menu';
 import ChoyViewBase from '@/web/web/components/view/ChoyViewBase.vue';
 import { isConnectivityUnreachable } from '@/web/web/stores/connectivityStore';
 import { runUnlessSessionUnreachable } from './formOfflineSaveGate';
