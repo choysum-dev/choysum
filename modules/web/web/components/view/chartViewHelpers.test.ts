@@ -655,6 +655,8 @@ test('resolveChartPlotHeight fills body minus legend reserve and respects min', 
   expect(resolveChartPlotHeight(200)).toBe(CHOY_CHART_MIN_PLOT_HEIGHT);
   expect(resolveChartPlotHeight(400)).toBe(360);
   expect(resolveChartPlotHeight(400, { minHeight: 100, legendReserve: 50 })).toBe(350);
+  // Pie overlays the legend; no bottom band.
+  expect(resolveChartPlotHeight(400, { legendReserve: 0 })).toBe(400);
 });
 
 test('resolveChartXDomain pads integer indices so first/last categories are inset', () => {

@@ -42,6 +42,17 @@ describe('ChoyChartView chrome', () => {
     const controls = mounted.q('[data-region=chart-controls]');
     expect(controls).not.toBeNull();
     expect(controls?.className || '').toContain('min-h-control');
+    // Vertical rhythm is view-header gap; controls must not add their own py.
+    expect(` ${controls?.className || ''} `).not.toContain(' pb-3 ');
+
+    const chartRoot = mounted.q('[data-anchor="choy.chart-view"]') as HTMLElement | null;
+    expect(chartRoot!.className).toContain('gap-2');
+    expect(chartRoot!.className.split(/\s+/)).not.toContain('gap-5');
+
+    const host = mounted.q('[data-slot=view-body-host]') as HTMLElement | null;
+    expect(host!.getAttribute('data-sheet-pad')).toBe('board');
+    expect(host!.className).toContain('p-[var(--choy-layout-section-gap)]');
+    expect(host!.className).not.toContain('p-[var(--choy-view-sheet-pad)]');
 
     const metricTrigger = mounted.q('[data-testid=choy-chart-metric]') as HTMLElement | null;
     expect(metricTrigger).not.toBeNull();

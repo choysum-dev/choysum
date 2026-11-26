@@ -149,7 +149,7 @@ export type ChoyViewBaseTitleActionsIo = {
 };
 
 /** In-paper density on view-body-host (see choy-view-sheet.md). */
-export type ChoyViewSheetPad = 'form' | 'flush' | 'none';
+export type ChoyViewSheetPad = 'form' | 'board' | 'flush' | 'none';
 
 const props = withDefaults(
   defineProps<{
@@ -186,7 +186,8 @@ const props = withDefaults(
     sheetSurface?: boolean;
     /**
      * In-paper density on view-body-host.
-     * form = four-side pad; flush|none = no pad (tables / boards / embedded).
+     * form = document (content-padding); board = collection/canvas (section-gap);
+     * flush|none = no pad (rare full-bleed / embedded).
      */
     sheetPad?: ChoyViewSheetPad;
   }>(),
@@ -230,10 +231,12 @@ const containerClass = computed(() => cn('gap-5', props.class));
 const sheetSurface = computed(() => props.sheetSurface !== false);
 const sheetPad = computed<ChoyViewSheetPad>(() => props.sheetPad || 'flush');
 
-/** form preset only — flush/none leave host padding to the product view. */
-const sheetPadClass = computed(() =>
-  sheetPad.value === 'form' ? 'p-[var(--choy-view-sheet-pad)]' : undefined,
-);
+/** form/board presets only — flush/none leave host padding unset. */
+const sheetPadClass = computed(() => {
+  if (sheetPad.value === 'form') return 'p-[var(--choy-view-sheet-pad)]';
+  if (sheetPad.value === 'board') return 'p-[var(--choy-layout-section-gap)]';
+  return undefined;
+});
 
 const resolvedBusyHostClass = computed(() => cn(sheetPadClass.value, props.busyHostClass));
 

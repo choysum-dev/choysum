@@ -81,6 +81,11 @@ describe('ChoyListView workspace height', () => {
       plugins,
     });
     await flushPromises();
+    const root = mounted.q('[data-slot=view-container]') as HTMLElement | null;
+    expect(root).not.toBeNull();
+    expect(root!.className).toContain('gap-2');
+    expect(root!.className.split(/\s+/)).not.toContain('gap-5');
+
     const wrap = mounted.q('[data-anchor="choy.list.table"]') as HTMLElement | null;
     expect(wrap).not.toBeNull();
     expect(wrap!.style.height || '').toBe('');
@@ -93,7 +98,7 @@ describe('ChoyListView workspace height', () => {
 
     const sheet = mounted.q('[data-anchor="choy.view.sheet"]') as HTMLElement | null;
     expect(sheet).not.toBeNull();
-    // Paper shell on view-body; List uses flush (no in-paper pad).
+    // Paper shell on view-body; List shares collection board pad (section-gap).
     expect(sheet!.getAttribute('data-sheet-surface')).toBe('true');
     expect(sheet!.className.includes('bg-card')).toBe(true);
     expect(sheet!.className).toContain('rounded-md');
@@ -101,7 +106,8 @@ describe('ChoyListView workspace height', () => {
     expect(sheet!.className).toContain('shadow-xs');
     expect(sheet!.className).toContain('mx-[var(--choy-view-sheet-gutter)]');
     const host = mounted.q('[data-slot=view-body-host]') as HTMLElement | null;
-    expect(host!.getAttribute('data-sheet-pad')).toBe('flush');
+    expect(host!.getAttribute('data-sheet-pad')).toBe('board');
+    expect(host!.className).toContain('p-[var(--choy-layout-section-gap)]');
     expect(host!.className).not.toContain('p-[var(--choy-view-sheet-pad)]');
     mounted.unmount();
   });

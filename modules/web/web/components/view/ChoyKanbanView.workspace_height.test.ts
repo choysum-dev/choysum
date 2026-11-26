@@ -34,7 +34,8 @@ describe('ChoyKanbanView workspace height', () => {
 
     const root = mounted.q('[data-anchor="choy.kanban-view"]') as HTMLElement | null;
     expect(root).not.toBeNull();
-    expect(root!.className).toContain('gap-5');
+    expect(root!.className).toContain('gap-2');
+    expect(root!.className.split(/\s+/)).not.toContain('gap-5');
 
     const sheet = mounted.q('[data-anchor="choy.view.sheet"]') as HTMLElement | null;
     expect(sheet).not.toBeNull();
@@ -45,7 +46,8 @@ describe('ChoyKanbanView workspace height', () => {
     expect(sheet!.className).toContain('shadow-xs');
     expect(sheet!.className).toContain('mx-[var(--choy-view-sheet-gutter)]');
     const host = mounted.q('[data-slot=view-body-host]') as HTMLElement | null;
-    expect(host!.getAttribute('data-sheet-pad')).toBe('flush');
+    expect(host!.getAttribute('data-sheet-pad')).toBe('board');
+    expect(host!.className).toContain('p-[var(--choy-layout-section-gap)]');
     expect(host!.className).not.toContain('p-[var(--choy-view-sheet-pad)]');
 
     const body = mounted.q('.choy-kanban-view__body') as HTMLElement | null;

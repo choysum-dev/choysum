@@ -5,7 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <ChoyViewBase
-    class="choy-list-view"
+    class="choy-list-view gap-2"
     chrome-anchor="choy.list.view-chrome"
     :show-header="showHeader"
     :show-actions="showActions"
@@ -18,7 +18,7 @@ SPDX-License-Identifier: Apache-2.0
     :busy="listBusy"
     :mode="listBusyMode"
     :sheet-surface="true"
-    sheet-pad="flush"
+    sheet-pad="board"
     busy-host-class="flex min-h-0 min-w-0 flex-1 flex-col"
     :error="controller.vm.error"
     :has-frame="listHasFrame"

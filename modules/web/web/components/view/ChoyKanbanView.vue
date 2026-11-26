@@ -6,7 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 <template>
   <ChoyViewBase
     data-anchor="choy.kanban-view"
-    :class="['choy-kanban-view', props.class]"
+    :class="['choy-kanban-view', 'gap-2', props.class]"
     chrome-anchor="choy.kanban.view-chrome"
     :show-header="
       showHeader &&
@@ -26,7 +26,7 @@ SPDX-License-Identifier: Apache-2.0
     :busy="boardBusy"
     :mode="boardBusyMode"
     :sheet-surface="true"
-    sheet-pad="flush"
+    sheet-pad="board"
     busy-host-class="choy-kanban-view__body flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-hidden"
     :error="boardSurfaceError"
     :has-frame="boardHasFrame"

@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
   <ChoyViewBase
     data-anchor="choy.chart-view"
     data-region="chart-view"
-    :class="cn('choy-chart-view', props.class)"
+    :class="cn('choy-chart-view', 'gap-2', props.class)"
     chrome-anchor="choy.chart.view-chrome"
     :show-header="showHeader"
     :show-actions="showActions"
@@ -20,7 +20,7 @@ SPDX-License-Identifier: Apache-2.0
     :busy="boardBusy"
     :mode="chartBusyMode"
     :sheet-surface="true"
-    sheet-pad="flush"
+    sheet-pad="board"
     busy-host-class="relative flex min-h-0 min-w-0 w-full flex-1 flex-col"
     :busy-host-attrs="{ 'data-region': 'chart-body' }"
     :error="chartSurfaceError"
@@ -87,7 +87,7 @@ SPDX-License-Identifier: Apache-2.0
 
     <template v-if="showChartControls" #header-extra>
       <div
-        class="flex min-h-control flex-nowrap items-center justify-between gap-3 pb-3"
+        class="flex min-h-control flex-nowrap items-center justify-between gap-3"
         data-region="chart-controls"
       >
       <!-- Odoo-like: measure left (fixed width); stack / sort / type right. -->
@@ -662,7 +662,10 @@ function chartBodyEl(): HTMLElement | null {
 function syncPlotHeight(): void {
   const el = chartBodyEl();
   const h = el?.clientHeight ?? 0;
-  plotHeight.value = resolveChartPlotHeight(h);
+  // Pie legend is absolute (top-end overlay); do not reserve a bottom band.
+  const legendReserve =
+    localChartType.value === 'pie' ? 0 : undefined;
+  plotHeight.value = resolveChartPlotHeight(h, { legendReserve });
 }
 
 const localStacked = ref(props.stacked);
@@ -1126,6 +1129,8 @@ function selectChartType(type: ChoyChartKind): void {
   if (!availableTypes.value.includes(type) || type === localChartType.value) return;
   localChartType.value = type;
   emit('chart-type-change', type);
+  // Pie drops the bottom legend reserve; bar/line restore it.
+  syncPlotHeight();
 }
 
 function toggleStacked(): void {

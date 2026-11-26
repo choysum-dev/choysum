@@ -540,7 +540,10 @@ export function resolveClickClientX(event: {
 /** Default Unovis plot min height (px) when the chart body has not sized yet. */
 export const CHOY_CHART_MIN_PLOT_HEIGHT = 280;
 
-/** Space reserved below the plot for ChartLegendContent (px). */
+/**
+ * Space reserved below bar/line plots for the in-flow ChartLegendContent (px).
+ * Pie legend is absolutely positioned; callers pass legendReserve: 0 for pie.
+ */
 export const CHOY_CHART_LEGEND_RESERVE = 40;
 
 /**
