@@ -290,9 +290,14 @@ const ChoyTextCell = defineComponent({
       const showLimit = !!p.showWordLimit && max != null && Number.isFinite(max) && max > 0;
       const bounds = resolveAutosizeBounds(p.autosize as AutosizeOpts | undefined, p.rows ?? 3);
       const baseClass = 'choy-textarea w-full';
+      // InputGroupTextarea ships resize-none; pass resize-y so twMerge restores
+      // manual resize when autosize is off.
+      const controlClass = bounds.enabled
+        ? `${baseClass} resize-none`
+        : `${baseClass} resize-y`;
       const controlProps = {
         ...attrs,
-        class: bounds.enabled ? `${baseClass} resize-none` : baseClass,
+        class: controlClass,
         placeholder: p.placeholder,
         rows: bounds.minRows,
         maxlength: p.maxlength,

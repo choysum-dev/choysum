@@ -166,8 +166,10 @@ describe('Choy temporal field cells', () => {
     const dateTrigger = editMount.q('[data-anchor="choy.internal.date-picker"]');
     expect(dateTrigger).toBeTruthy();
     expect(dateTrigger?.textContent || '').toMatch(/15\/06\/2024/);
-    const clearBtn = editMount.q('.choy-date-picker__clear');
+    const clearBtn = editMount.q('.choy-date-picker__clear') as HTMLElement | null;
     expect(clearBtn).toBeTruthy();
+    expect(clearBtn?.className || '').not.toMatch(/\babsolute\b/);
+    expect(clearBtn?.parentElement?.className || '').toMatch(/\bflex\b/);
     clearBtn!.dispatchEvent(new Event('click', { bubbles: true }));
     await flushPromises();
     expect((editBinding as any).__value.value).toBeNull();
@@ -208,8 +210,10 @@ describe('Choy temporal field cells', () => {
     const trigger = m.q('[data-anchor="choy.internal.time-picker"]');
     expect(trigger).toBeTruthy();
     expect(trigger?.textContent || '').toMatch(/14:30/);
-    const clearBtn = m.q('[data-testid="choy-time-picker-clear"]');
+    const clearBtn = m.q('[data-testid="choy-time-picker-clear"]') as HTMLElement | null;
     expect(clearBtn).toBeTruthy();
+    expect(clearBtn?.className || '').not.toMatch(/\babsolute\b/);
+    expect(clearBtn?.parentElement?.className || '').toMatch(/\bflex\b/);
     clearBtn!.dispatchEvent(new Event('click', { bubbles: true }));
     await flushPromises();
     expect((binding as any).__value.value).toBeNull();
@@ -269,8 +273,10 @@ describe('Choy temporal field cells', () => {
     expect(trigger).toBeTruthy();
     // Seeded overlay is DD/MM/YYYY HH:mm:ss (not the ISO fallback).
     expect(trigger?.textContent || '').toMatch(/\d{2}\/\d{2}\/\d{4}/);
-    const clearBtn = m.q('[data-testid="choy-datetime-picker-clear"]');
+    const clearBtn = m.q('[data-testid="choy-datetime-picker-clear"]') as HTMLElement | null;
     expect(clearBtn).toBeTruthy();
+    expect(clearBtn?.className || '').not.toMatch(/\babsolute\b/);
+    expect(clearBtn?.parentElement?.className || '').toMatch(/\bflex\b/);
     clearBtn!.dispatchEvent(new Event('click', { bubbles: true }));
     await flushPromises();
     expect((binding as any).__value.value).toBeNull();

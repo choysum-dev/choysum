@@ -23,7 +23,7 @@ function handleInputGroupAddonClick(e: MouseEvent) {
     return
   }
   if (currentTarget && currentTarget?.parentElement) {
-    currentTarget.parentElement?.querySelector("input")?.focus()
+    ;(currentTarget.parentElement?.querySelector("input, textarea") as HTMLElement | null)?.focus()
   }
 }
 </script>

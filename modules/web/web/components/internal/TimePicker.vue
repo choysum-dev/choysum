@@ -33,7 +33,8 @@ SPDX-License-Identifier: Apache-2.0
       <button
         v-if="showClear"
         type="button"
-        class="choy-time-picker__clear inline-flex size-control shrink-0 items-center justify-center rounded-md border border-input text-foreground/50 hover:bg-muted hover:text-foreground"
+        class="choy-time-picker__clear inline-flex size-control shrink-0 items-center justify-center rounded-md text-foreground/50 hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
+        :disabled="disabled"
         :aria-label="_t('Clear')"
         data-testid="choy-time-picker-clear"
         @click.stop.prevent="onClear"
