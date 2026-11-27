@@ -3,7 +3,7 @@
 
 import DOMPurify from 'dompurify';
 
-/** TipTap StarterKit (includes Link) aligned allowlist. */
+/** TipTap HTML allowlist aligned with StarterKit + configured Link. */
 export const CHOY_HTML_ALLOWED_TAGS = [
   'p',
   'br',
