@@ -785,9 +785,19 @@ html[dir='rtl'] .choy-statusbar-field__control .choy-statusbar-opt[data-edge='la
   color: var(--choy-color-foreground);
 }
 
+/* Native disabled (onchange option gate): wash that stage only. */
 .choy-statusbar-field__control .choy-statusbar-opt:disabled {
   opacity: 0.45;
   cursor: not-allowed;
+}
+
+/*
+ * Identity / pending use aria-disabled (not native disabled) so stage fills
+ * stay readable; beat global [aria-disabled=true]{opacity:0.5}.
+ */
+.choy-statusbar-field__control .choy-statusbar-opt[aria-disabled='true']:not(:disabled) {
+  opacity: 1;
+  cursor: default;
 }
 
 /* Product links: no underline by default (preflight uses text-decoration: inherit). */

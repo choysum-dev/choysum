@@ -52,8 +52,9 @@ SPDX-License-Identifier: Apache-2.0
           :data-stage="item.stage"
           :data-edge="item.edge"
           :aria-checked="item.selected ? 'true' : 'false'"
-          :disabled="pending || item.opt.disabled ? true : undefined"
-          :tabindex="isInteractive ? undefined : -1"
+          :disabled="item.opt.disabled ? true : undefined"
+          :aria-disabled="!isInteractive || pending || item.opt.disabled ? 'true' : undefined"
+          :tabindex="isInteractive && !pending ? undefined : -1"
           @click="onSelect(fieldValue, item.opt.value)"
         >
           {{ item.opt.label }}
@@ -82,8 +83,9 @@ SPDX-License-Identifier: Apache-2.0
           :data-stage="item.stage"
           :data-edge="item.edge"
           :aria-checked="item.selected ? 'true' : 'false'"
-          :disabled="pending || item.opt.disabled ? true : undefined"
-          :tabindex="isInteractive ? undefined : -1"
+          :disabled="item.opt.disabled ? true : undefined"
+          :aria-disabled="!isInteractive || pending || item.opt.disabled ? 'true' : undefined"
+          :tabindex="isInteractive && !pending ? undefined : -1"
           @click="onSelect(fieldValue, item.opt.value)"
         >
           {{ item.opt.label }}
@@ -246,9 +248,9 @@ const isInteractive = computed(() => {
   return true;
 });
 
-// Identity ribbon (non-clickable): readonly so form submit skips client rules.
+// Non-interactive ribbon: readonly so form submit skips client option rules.
 const fieldReadonly = computed<FieldStateExpr<T, V>>(() => {
-  if (props.clickable !== true) return true;
+  if (!isInteractive.value) return true;
   return props.readonly as FieldStateExpr<T, V>;
 });
 
@@ -358,9 +360,9 @@ const internalRule = {
   },
 } as RuleItem;
 const mergedRules = computed<RuleItem[]>(() => {
-  // Non-clickable identity ribbon: omit option validation so a stage outside
-  // the current whitelist cannot block unrelated field saves.
-  if (props.clickable !== true) return [...(props.rules ?? [])];
+  // Non-interactive ribbon: omit option validation so a stage outside the
+  // current whitelist cannot block unrelated field saves.
+  if (!isInteractive.value) return [...(props.rules ?? [])];
   return [...(props.rules ?? []), internalRule];
 });
 </script>
