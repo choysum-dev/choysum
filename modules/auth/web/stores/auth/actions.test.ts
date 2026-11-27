@@ -770,6 +770,201 @@ test('loadPermissionState: concurrent non-force calls share one GetPermissionSta
   expect((mockState.permissionState.value as any)?.permStateVersion).toBe(1);
 });
 
+function sequenceGetPermissionState(mockState: ReturnType<typeof buildMockState>, responses: unknown[]) {
+  let idx = 0;
+  mockState.userStore.GetPermissionState = (...args: any[]) => {
+    mockState._recorders.GetPermissionState.calls.push({ args });
+    const value = responses[Math.min(idx, responses.length - 1)];
+    idx += 1;
+    return value;
+  };
+}
+
+test('loadPermissionState: forced call waits for in-flight non-forced then refreshes', async () => {
+  const mockState = buildMockState();
+  const mockHelpers = buildMockHelpers();
+  mockState.tokens.value = {
+    accessToken: 'access',
+    refreshToken: 'refresh',
+    expiresAt: Date.now() + 3600_000,
+  };
+  mockState.identity.value = {
+    userId: 'usr_1',
+    metadata: {
+      permStateVersion: 1,
+      activeCompanyId: 'cmp_a',
+      enabledCompanyIds: ['cmp_a', 'cmp_b'],
+    },
+  } as any;
+
+  let resolveFirst: (value: unknown) => void = () => {};
+  const firstDeferred = new Promise(resolve => {
+    resolveFirst = resolve;
+  });
+  sequenceGetPermissionState(mockState, [
+    firstDeferred,
+    Promise.resolve({
+      permStateVersion: 2,
+      byCompany: { cmp_a: { ui: { routes: ['home'], menus: ['*'], actions: ['*'] } } },
+    }),
+  ]);
+
+  const actions = defineAuthActions(mockState as any, mockHelpers as any, { isClient: true });
+  const unforced = actions.loadPermissionState(false);
+  const forced = actions.loadPermissionState(true);
+
+  expect(mockState._recorders.GetPermissionState.calls.length).toBe(1);
+
+  resolveFirst({
+    permStateVersion: 1,
+    byCompany: { cmp_a: { ui: { routes: ['*'], menus: ['*'], actions: ['*'] } } },
+  });
+
+  expect(await unforced).toBe(true);
+  expect(await forced).toBe(true);
+  expect(mockState._recorders.GetPermissionState.calls.length).toBe(2);
+  expect((mockState.permissionState.value as any)?.permStateVersion).toBe(2);
+});
+
+test('loadPermissionState: forced wait swallows prior failure then starts refresh', async () => {
+  const mockState = buildMockState();
+  const mockHelpers = buildMockHelpers();
+  mockState.tokens.value = {
+    accessToken: 'access',
+    refreshToken: 'refresh',
+    expiresAt: Date.now() + 3600_000,
+  };
+  mockState.identity.value = {
+    userId: 'usr_1',
+    metadata: {
+      permStateVersion: 1,
+      activeCompanyId: 'cmp_a',
+      enabledCompanyIds: 'not-an-array',
+    },
+  } as any;
+
+  let rejectFirst: (reason: unknown) => void = () => {};
+  const firstDeferred = new Promise((_resolve, reject) => {
+    rejectFirst = reject;
+  });
+  sequenceGetPermissionState(mockState, [
+    firstDeferred,
+    Promise.resolve({
+      permStateVersion: 1,
+      byCompany: { cmp_a: { ui: { routes: ['*'], menus: ['*'], actions: ['*'] } } },
+    }),
+  ]);
+
+  const actions = defineAuthActions(mockState as any, mockHelpers as any, { isClient: true });
+  const unforced = actions.loadPermissionState(false);
+  const forced = actions.loadPermissionState(true);
+
+  rejectFirst(new Error('first flight failed'));
+
+  let unforcedErr: unknown;
+  try {
+    await unforced;
+  } catch (err) {
+    unforcedErr = err;
+  }
+  expect(Boolean(unforcedErr)).toBe(true);
+  expect(await forced).toBe(true);
+  expect(mockState._recorders.GetPermissionState.calls.length).toBe(2);
+});
+
+test('loadPermissionState: different identity epoch starts a new flight', async () => {
+  const mockState = buildMockState();
+  const mockHelpers = buildMockHelpers();
+  mockState.tokens.value = {
+    accessToken: 'access',
+    refreshToken: 'refresh',
+    expiresAt: Date.now() + 3600_000,
+  };
+  mockState.identity.value = {
+    userId: 'usr_1',
+    metadata: {
+      permStateVersion: 1,
+      activeCompanyId: 'cmp_a',
+      enabledCompanyIds: ['cmp_a'],
+    },
+  } as any;
+
+  let resolveFirst: (value: unknown) => void = () => {};
+  const firstDeferred = new Promise(resolve => {
+    resolveFirst = resolve;
+  });
+  sequenceGetPermissionState(mockState, [
+    firstDeferred,
+    Promise.resolve({
+      permStateVersion: 2,
+      byCompany: { cmp_b: { ui: { routes: ['*'], menus: ['*'], actions: ['*'] } } },
+    }),
+  ]);
+
+  const actions = defineAuthActions(mockState as any, mockHelpers as any, { isClient: true });
+  const first = actions.loadPermissionState(false);
+
+  mockState.identity.value = {
+    userId: 'usr_1',
+    metadata: {
+      permStateVersion: 2,
+      activeCompanyId: 'cmp_b',
+      enabledCompanyIds: ['cmp_b'],
+    },
+  } as any;
+  const second = actions.loadPermissionState(false);
+
+  expect(mockState._recorders.GetPermissionState.calls.length).toBe(2);
+
+  resolveFirst({
+    permStateVersion: 1,
+    byCompany: { cmp_a: { ui: { routes: ['stale'], menus: ['*'], actions: ['*'] } } },
+  });
+
+  await first.catch(() => undefined);
+  expect(await second).toBe(true);
+  expect((mockState.permissionState.value as any)?.permStateVersion).toBe(2);
+});
+
+test('loadPermissionState: concurrent forced calls share one forced flight', async () => {
+  const mockState = buildMockState();
+  const mockHelpers = buildMockHelpers();
+  mockState.tokens.value = {
+    accessToken: 'access',
+    refreshToken: 'refresh',
+    expiresAt: Date.now() + 3600_000,
+  };
+  mockState.identity.value = {
+    userId: 'usr_1',
+    metadata: {
+      permStateVersion: 'not-a-number',
+      activeCompanyId: 'cmp_a',
+      enabledCompanyIds: ['cmp_a'],
+    },
+  } as any;
+
+  let resolvePermission: (value: unknown) => void = () => {};
+  const permissionDeferred = new Promise(resolve => {
+    resolvePermission = resolve;
+  });
+  mockState._recorders.GetPermissionState.returnValue(permissionDeferred);
+
+  const actions = defineAuthActions(mockState as any, mockHelpers as any, { isClient: true });
+  const first = actions.loadPermissionState(true);
+  const second = actions.loadPermissionState(true);
+
+  expect(mockState._recorders.GetPermissionState.calls.length).toBe(1);
+
+  resolvePermission({
+    permStateVersion: 1,
+    byCompany: { cmp_a: { ui: { routes: ['*'], menus: ['*'], actions: ['*'] } } },
+  });
+
+  expect(await first).toBe(true);
+  expect(await second).toBe(true);
+  expect(mockState._recorders.GetPermissionState.calls.length).toBe(1);
+});
+
 test('loadPermissionState: late failure after company switch keeps the newer snapshot', async () => {
   const mockState = buildMockState();
   const mockHelpers = buildMockHelpers();

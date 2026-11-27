@@ -99,7 +99,7 @@ func (m *moduleUninstaller) cleanModels() error {
 	}
 	if db.Migrator().HasTable("auth_role_ui_resource") {
 		if err := db.Exec(
-			"DELETE FROM auth_role_ui_resource WHERE meta_ui_resource_id IN ?",
+			"DELETE FROM auth_role_ui_resource WHERE meta_ui_resource_id IN (?)",
 			uiResourceIDs,
 		).Error; err != nil {
 			return xfmt.Errorf("error deleting role UI resource grants: %w", err)

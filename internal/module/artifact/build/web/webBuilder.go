@@ -1795,23 +1795,8 @@ func (b *WebModuleBuilder) persistModuleUiResources(moduleID string, uiResources
 		return err
 	}
 
-	removedIDs := make([]string, 0)
-	nameSet := make(map[string]bool, len(names))
-	for _, name := range names {
-		nameSet[name] = true
-	}
-	for _, row := range moduleRows {
-		if row == nil || !row.Id.Valid {
-			continue
-		}
-		if nameSet[strings.TrimSpace(row.Name)] {
-			continue
-		}
-		removedIDs = append(removedIDs, row.Id.String)
-	}
-	if err := b.deleteUiResourceRelationsByIDs(removedIDs); err != nil {
-		return err
-	}
+	removedIDs := uiResourceRemovedIDs(moduleRows, names)
+	// Menu/route edges for these ids were already cleared in replaceUiResourceRelations.
 	if err := b.deleteUiResourceGrantsByIDs(removedIDs); err != nil {
 		return err
 	}
@@ -1920,6 +1905,25 @@ func collectUiResourceIDs(rows []*meta.UiResource) []string {
 		ids = append(ids, id)
 	}
 	return ids
+}
+
+// uiResourceRemovedIDs returns persisted resource ids whose names are not in keepNames.
+func uiResourceRemovedIDs(moduleRows []*meta.UiResource, keepNames []string) []string {
+	nameSet := make(map[string]bool, len(keepNames))
+	for _, name := range keepNames {
+		nameSet[name] = true
+	}
+	removedIDs := make([]string, 0)
+	for _, row := range moduleRows {
+		if row == nil || !row.Id.Valid {
+			continue
+		}
+		if nameSet[strings.TrimSpace(row.Name)] {
+			continue
+		}
+		removedIDs = append(removedIDs, row.Id.String)
+	}
+	return removedIDs
 }
 
 func (b *WebModuleBuilder) deleteUiResourceRelationsByIDs(resourceIDs []string) error {
@@ -2255,6 +2259,9 @@ func parseJSONStrings(raw []byte) []string {
 	return norm
 }
 
+// Overridable in tests to exercise empty role/resource pair skipping.
+var collectUiResourceDefaultRoleRowsFn = collectUiResourceDefaultRoleRows
+
 func collectUiResourceDefaultRoleRows(
 	uiResources []*meta.UiResource,
 	roleIDByCode map[string]string,
@@ -2271,10 +2278,8 @@ func collectUiResourceDefaultRoleRows(
 			continue
 		}
 		for _, roleCode := range parseJSONStrings(resource.DefaultRoles) {
+			// parseJSONStrings already trims and drops blanks.
 			code := strings.TrimSpace(roleCode)
-			if code == "" {
-				continue
-			}
 			roleID := strings.TrimSpace(roleIDByCode[code])
 			if roleID == "" {
 				return nil, xfmt.Errorf("defaultRoles role %q not found", code)
@@ -2380,7 +2385,7 @@ func (b *WebModuleBuilder) persistUiResourceDefaultRoles(uiResources []*meta.UiR
 		}
 	}
 
-	grantRows, err := collectUiResourceDefaultRoleRows(uiResources, roleIDByCode, skipRoleIDs)
+	grantRows, err := collectUiResourceDefaultRoleRowsFn(uiResources, roleIDByCode, skipRoleIDs)
 	if err != nil {
 		return err
 	}

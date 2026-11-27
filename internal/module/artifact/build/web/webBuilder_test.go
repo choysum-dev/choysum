@@ -4589,6 +4589,460 @@ func TestPersistUiResourceDefaultRolesSkipsWhenAuthTablesMissing(t *testing.T) {
 	}
 }
 
+func TestDeleteUiResourceGrantsByIDsRemovesMatchingRows(t *testing.T) {
+	testRuntimeScope := newTestScopeWithDB(t).(*testScope)
+	if err := testRuntimeScope.db.AutoMigrate(&roleUiResourceGrantRow{}); err != nil {
+		t.Fatalf("automigrate auth_role_ui_resource failed: %v", err)
+	}
+	b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
+
+	if err := b.deleteUiResourceGrantsByIDs(nil); err != nil {
+		t.Fatalf("empty ids should no-op: %v", err)
+	}
+
+	seed := []roleUiResourceGrantRow{
+		{RoleId: sql.NullString{String: "role_a", Valid: true}, Mode: "allow", MetaUiResourceId: sql.NullString{String: "ui_drop", Valid: true}},
+		{RoleId: sql.NullString{String: "role_b", Valid: true}, Mode: "allow", MetaUiResourceId: sql.NullString{String: "ui_keep", Valid: true}},
+	}
+	for i := range seed {
+		if err := testRuntimeScope.db.Table("auth_role_ui_resource").Create(&seed[i]).Error; err != nil {
+			t.Fatalf("seed grant: %v", err)
+		}
+	}
+
+	if err := b.deleteUiResourceGrantsByIDs([]string{"ui_drop"}); err != nil {
+		t.Fatalf("deleteUiResourceGrantsByIDs: %v", err)
+	}
+
+	var rows []roleUiResourceGrantRow
+	if err := testRuntimeScope.db.Unscoped().Table("auth_role_ui_resource").Find(&rows).Error; err != nil {
+		t.Fatalf("query grants: %v", err)
+	}
+	if len(rows) != 1 || rows[0].MetaUiResourceId.String != "ui_keep" {
+		t.Fatalf("expected only ui_keep grant to remain, got %#v", rows)
+	}
+}
+
+func TestPersistModuleUiResourcesRemovesGrantsOnEmptyAndPrune(t *testing.T) {
+	testRuntimeScope := newTestScopeWithDB(t).(*testScope)
+	if err := testRuntimeScope.db.AutoMigrate(&meta.UiResource{}, &meta.UiResourceMenuRoute{}, &meta.UiResourceRouteAction{}, &roleUiResourceGrantRow{}); err != nil {
+		t.Fatalf("automigrate failed: %v", err)
+	}
+	b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
+	moduleID := "mod_grants"
+
+	keep := &meta.UiResource{
+		BaseModel: meta.BaseModel{Id: sql.NullString{String: "ui_keep", Valid: true}},
+		Name:      "auth.menu.keep",
+		Type:      meta.UiResourceTypeMenu,
+		ModuleId:  sql.NullString{String: moduleID, Valid: true},
+	}
+	drop := &meta.UiResource{
+		BaseModel: meta.BaseModel{Id: sql.NullString{String: "ui_drop", Valid: true}},
+		Name:      "auth.menu.drop",
+		Type:      meta.UiResourceTypeMenu,
+		ModuleId:  sql.NullString{String: moduleID, Valid: true},
+	}
+	for _, row := range []*meta.UiResource{keep, drop} {
+		if err := testRuntimeScope.db.Create(row).Error; err != nil {
+			t.Fatalf("seed ui resource: %v", err)
+		}
+	}
+	for _, grant := range []roleUiResourceGrantRow{
+		{RoleId: sql.NullString{String: "role_keep", Valid: true}, Mode: "allow", MetaUiResourceId: sql.NullString{String: "ui_keep", Valid: true}},
+		{RoleId: sql.NullString{String: "role_drop", Valid: true}, Mode: "allow", MetaUiResourceId: sql.NullString{String: "ui_drop", Valid: true}},
+	} {
+		row := grant
+		if err := testRuntimeScope.db.Table("auth_role_ui_resource").Create(&row).Error; err != nil {
+			t.Fatalf("seed grant: %v", err)
+		}
+	}
+
+	if err := b.persistModuleUiResources(moduleID, []*meta.UiResource{{Name: "auth.menu.keep", Type: meta.UiResourceTypeMenu}}, nil, nil); err != nil {
+		t.Fatalf("prune persist failed: %v", err)
+	}
+
+	var afterPrune []roleUiResourceGrantRow
+	if err := testRuntimeScope.db.Unscoped().Table("auth_role_ui_resource").Find(&afterPrune).Error; err != nil {
+		t.Fatalf("query grants after prune: %v", err)
+	}
+	if len(afterPrune) != 1 || afterPrune[0].MetaUiResourceId.String != "ui_keep" {
+		t.Fatalf("expected prune to drop ui_drop grant only, got %#v", afterPrune)
+	}
+
+	if err := b.persistModuleUiResources(moduleID, nil, nil, nil); err != nil {
+		t.Fatalf("empty-names persist failed: %v", err)
+	}
+	var afterEmpty int64
+	if err := testRuntimeScope.db.Unscoped().Table("auth_role_ui_resource").Count(&afterEmpty).Error; err != nil {
+		t.Fatalf("count grants after empty cleanup: %v", err)
+	}
+	if afterEmpty != 0 {
+		t.Fatalf("expected empty-names cleanup to delete remaining grants, got %d", afterEmpty)
+	}
+}
+
+func TestPersistUiResourceDefaultRolesPurgesSoftDeletedPairs(t *testing.T) {
+	testRuntimeScope := newTestScopeWithDB(t).(*testScope)
+	mustExec(t, testRuntimeScope.db, `CREATE TABLE auth_role (id TEXT PRIMARY KEY, code TEXT)`)
+	if err := testRuntimeScope.db.AutoMigrate(&roleUiResourceGrantRow{}); err != nil {
+		t.Fatalf("automigrate auth_role_ui_resource failed: %v", err)
+	}
+	b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
+
+	if err := testRuntimeScope.db.Exec(`INSERT INTO auth_role (id, code) VALUES (?, ?)`, "role_user", "base.user").Error; err != nil {
+		t.Fatalf("seed auth_role failed: %v", err)
+	}
+	tombstone := roleUiResourceGrantRow{
+		RoleId:           sql.NullString{String: "role_user", Valid: true},
+		Mode:             "allow",
+		MetaUiResourceId: sql.NullString{String: "ui_1", Valid: true},
+	}
+	if err := testRuntimeScope.db.Table("auth_role_ui_resource").Create(&tombstone).Error; err != nil {
+		t.Fatalf("seed grant: %v", err)
+	}
+	if err := testRuntimeScope.db.Exec(
+		`UPDATE auth_role_ui_resource SET deleted_at = CURRENT_TIMESTAMP WHERE role_id = ? AND meta_ui_resource_id = ?`,
+		"role_user", "ui_1",
+	).Error; err != nil {
+		t.Fatalf("soft-delete grant: %v", err)
+	}
+	unrelated := roleUiResourceGrantRow{
+		RoleId:           sql.NullString{String: "role_user", Valid: true},
+		Mode:             "allow",
+		MetaUiResourceId: sql.NullString{String: "ui_other", Valid: true},
+	}
+	if err := testRuntimeScope.db.Table("auth_role_ui_resource").Create(&unrelated).Error; err != nil {
+		t.Fatalf("seed unrelated grant: %v", err)
+	}
+	if err := testRuntimeScope.db.Exec(
+		`UPDATE auth_role_ui_resource SET deleted_at = CURRENT_TIMESTAMP WHERE role_id = ? AND meta_ui_resource_id = ?`,
+		"role_user", "ui_other",
+	).Error; err != nil {
+		t.Fatalf("soft-delete unrelated grant: %v", err)
+	}
+
+	resources := []*meta.UiResource{
+		{BaseModel: meta.BaseModel{Id: sql.NullString{String: "ui_1", Valid: true}}, Name: "menu.root", DefaultRoles: []byte(`["base.user"]`)},
+	}
+	if err := b.persistUiResourceDefaultRoles(resources); err != nil {
+		t.Fatalf("persistUiResourceDefaultRoles: %v", err)
+	}
+
+	var live []roleUiResourceGrantRow
+	if err := testRuntimeScope.db.Table("auth_role_ui_resource").Find(&live).Error; err != nil {
+		t.Fatalf("query live grants: %v", err)
+	}
+	if len(live) != 1 || live[0].MetaUiResourceId.String != "ui_1" {
+		t.Fatalf("expected revived ui_1 grant only, got %#v", live)
+	}
+	var otherTombstones int64
+	if err := testRuntimeScope.db.Unscoped().Table("auth_role_ui_resource").
+		Where("meta_ui_resource_id = ? AND deleted_at IS NOT NULL", "ui_other").
+		Count(&otherTombstones).Error; err != nil {
+		t.Fatalf("count unrelated tombstone: %v", err)
+	}
+	if otherTombstones != 1 {
+		t.Fatalf("expected unrelated soft-deleted grant to remain, got %d", otherTombstones)
+	}
+}
+
+func TestPersistUiResourceDefaultRolesInsertsWithoutUniqueIndex(t *testing.T) {
+	testRuntimeScope := newTestScopeWithDB(t).(*testScope)
+	mustExec(t, testRuntimeScope.db, `CREATE TABLE auth_role (id TEXT PRIMARY KEY, code TEXT)`)
+	mustExec(t, testRuntimeScope.db, `CREATE TABLE auth_role_ui_resource (
+		id TEXT PRIMARY KEY,
+		created_at DATETIME,
+		updated_at DATETIME,
+		deleted_at DATETIME,
+		created_uid TEXT,
+		updated_uid TEXT,
+		deleted_uid TEXT,
+		role_id TEXT NOT NULL,
+		mode TEXT NOT NULL DEFAULT 'allow',
+		meta_application_id TEXT,
+		meta_ui_resource_id TEXT
+	)`)
+	b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
+
+	if err := testRuntimeScope.db.Exec(`INSERT INTO auth_role (id, code) VALUES (?, ?)`, "role_user", "base.user").Error; err != nil {
+		t.Fatalf("seed auth_role failed: %v", err)
+	}
+	resources := []*meta.UiResource{
+		{BaseModel: meta.BaseModel{Id: sql.NullString{String: "ui_1", Valid: true}}, Name: "menu.root", DefaultRoles: []byte(`["base.user"]`)},
+	}
+	if err := b.persistUiResourceDefaultRoles(resources); err != nil {
+		t.Fatalf("persist without unique index: %v", err)
+	}
+	var count int64
+	if err := testRuntimeScope.db.Table("auth_role_ui_resource").Count(&count).Error; err != nil {
+		t.Fatalf("count grants: %v", err)
+	}
+	if count != 1 {
+		t.Fatalf("expected 1 grant without OnConflict index, got %d", count)
+	}
+}
+
+func TestDeleteUiResourceGrantsByIDsPropagatesDeleteError(t *testing.T) {
+	testRuntimeScope := newTestScopeWithDB(t).(*testScope)
+	if err := testRuntimeScope.db.AutoMigrate(&meta.UiResource{}, &meta.UiResourceMenuRoute{}, &meta.UiResourceRouteAction{}, &roleUiResourceGrantRow{}); err != nil {
+		t.Fatalf("automigrate failed: %v", err)
+	}
+	b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
+	moduleID := "mod_grant_err"
+	if err := testRuntimeScope.db.Create(&meta.UiResource{
+		BaseModel: meta.BaseModel{Id: sql.NullString{String: "ui_1", Valid: true}},
+		Name:      "auth.menu.one",
+		Type:      meta.UiResourceTypeMenu,
+		ModuleId:  sql.NullString{String: moduleID, Valid: true},
+	}).Error; err != nil {
+		t.Fatalf("seed ui resource: %v", err)
+	}
+	if err := testRuntimeScope.db.Table("auth_role_ui_resource").Create(&roleUiResourceGrantRow{
+		RoleId:           sql.NullString{String: "role_a", Valid: true},
+		Mode:             "allow",
+		MetaUiResourceId: sql.NullString{String: "ui_1", Valid: true},
+	}).Error; err != nil {
+		t.Fatalf("seed grant: %v", err)
+	}
+	if err := testRuntimeScope.db.Exec(`CREATE TRIGGER IF NOT EXISTS block_auth_role_ui_resource_delete
+		BEFORE DELETE ON auth_role_ui_resource
+		BEGIN
+			SELECT RAISE(ABORT, 'blocked grant delete');
+		END`).Error; err != nil {
+		t.Fatalf("create delete trigger: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = testRuntimeScope.db.Exec(`DROP TRIGGER IF EXISTS block_auth_role_ui_resource_delete`)
+	})
+	if err := b.deleteUiResourceGrantsByIDs([]string{"ui_1"}); err == nil {
+		t.Fatal("expected deleteUiResourceGrantsByIDs error")
+	}
+	if err := b.persistModuleUiResources(moduleID, nil, nil, nil); err == nil {
+		t.Fatal("expected empty-names persist to fail when grant delete is blocked")
+	}
+	if err := testRuntimeScope.db.Create(&meta.UiResource{
+		BaseModel: meta.BaseModel{Id: sql.NullString{String: "ui_2", Valid: true}},
+		Name:      "auth.menu.two",
+		Type:      meta.UiResourceTypeMenu,
+		ModuleId:  sql.NullString{String: moduleID, Valid: true},
+	}).Error; err != nil {
+		t.Fatalf("seed second ui resource: %v", err)
+	}
+	if err := testRuntimeScope.db.Table("auth_role_ui_resource").Create(&roleUiResourceGrantRow{
+		RoleId:           sql.NullString{String: "role_b", Valid: true},
+		Mode:             "allow",
+		MetaUiResourceId: sql.NullString{String: "ui_2", Valid: true},
+	}).Error; err != nil {
+		t.Fatalf("seed second grant: %v", err)
+	}
+	if err := b.persistModuleUiResources(moduleID, []*meta.UiResource{{Name: "auth.menu.one", Type: meta.UiResourceTypeMenu}}, nil, nil); err == nil {
+		t.Fatal("expected prune persist to fail when grant delete is blocked")
+	}
+}
+
+func TestPersistModuleUiResourcesPropagatesRelationDeleteErrors(t *testing.T) {
+	testRuntimeScope := newTestScopeWithDB(t).(*testScope)
+	if err := testRuntimeScope.db.AutoMigrate(&meta.UiResource{}, &meta.UiResourceMenuRoute{}, &meta.UiResourceRouteAction{}); err != nil {
+		t.Fatalf("automigrate failed: %v", err)
+	}
+	b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
+	if err := testRuntimeScope.db.Create(&meta.UiResource{
+		BaseModel: meta.BaseModel{Id: sql.NullString{String: "ui_1", Valid: true}},
+		Name:      "auth.menu.one",
+		ModuleId:  sql.NullString{String: "mod_rel_err", Valid: true},
+	}).Error; err != nil {
+		t.Fatalf("seed ui resource: %v", err)
+	}
+	if err := testRuntimeScope.db.Migrator().DropTable(&meta.UiResourceMenuRoute{}); err != nil {
+		t.Fatalf("drop menu route table: %v", err)
+	}
+	if err := b.persistModuleUiResources("mod_rel_err", nil, nil, nil); err == nil {
+		t.Fatal("expected empty-names persist to fail when relation delete fails")
+	}
+}
+
+func TestUiResourceRemovedIDsSkipsNilAndInvalidRows(t *testing.T) {
+	got := uiResourceRemovedIDs([]*meta.UiResource{
+		nil,
+		{Name: "missing.id"},
+		{BaseModel: meta.BaseModel{Id: sql.NullString{String: "ui_keep", Valid: true}}, Name: "auth.menu.keep"},
+		{BaseModel: meta.BaseModel{Id: sql.NullString{String: "ui_drop", Valid: true}}, Name: "auth.menu.drop"},
+	}, []string{"auth.menu.keep"})
+	if len(got) != 1 || got[0] != "ui_drop" {
+		t.Fatalf("expected only ui_drop removed, got %#v", got)
+	}
+}
+
+func TestCollectUiResourceDefaultRoleRowsSkipsNilResourcesAndDedupes(t *testing.T) {
+	rows, err := collectUiResourceDefaultRoleRows(
+		[]*meta.UiResource{
+			nil,
+			{Name: "no-id", DefaultRoles: []byte(`["base.user"]`)},
+			{BaseModel: meta.BaseModel{Id: sql.NullString{String: "ui_1", Valid: true}}, Name: "menu.root", DefaultRoles: []byte(`["base.user","","  ", "base.user"]`)},
+		},
+		map[string]string{"base.user": "role_user"},
+		map[string]bool{"role_skip": true},
+	)
+	if err != nil {
+		t.Fatalf("collectUiResourceDefaultRoleRows: %v", err)
+	}
+	if len(rows) != 1 || rows[0].RoleId.String != "role_user" || rows[0].MetaUiResourceId.String != "ui_1" {
+		t.Fatalf("expected one deduped grant after skipping blanks/nil, got %#v", rows)
+	}
+}
+
+func TestPersistUiResourceDefaultRolesSkipsBlankRoleRowsAndEmptyGrants(t *testing.T) {
+	testRuntimeScope := newTestScopeWithDB(t).(*testScope)
+	mustExec(t, testRuntimeScope.db, `CREATE TABLE auth_role (id TEXT PRIMARY KEY, code TEXT)`)
+	if err := testRuntimeScope.db.AutoMigrate(&roleUiResourceGrantRow{}); err != nil {
+		t.Fatalf("automigrate auth_role_ui_resource failed: %v", err)
+	}
+	b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
+
+	if err := testRuntimeScope.db.Exec(
+		`INSERT INTO auth_role (id, code) VALUES (?, ?), (?, ?), (?, ?), (?, ?)`,
+		"role_user", "base.user",
+		"", "ghost.role",
+		"role_blank", "   ",
+		"role_admin", "sys.admin",
+	).Error; err != nil {
+		t.Fatalf("seed auth_role failed: %v", err)
+	}
+	if err := testRuntimeScope.db.Table("auth_role_ui_resource").Create(&roleUiResourceGrantRow{
+		RoleId: sql.NullString{String: "role_admin", Valid: true},
+		Mode:   "allow",
+	}).Error; err != nil {
+		t.Fatalf("seed global allow: %v", err)
+	}
+
+	// Empty role id is skipped; missing mapped code then fails collect.
+	err := b.persistUiResourceDefaultRoles([]*meta.UiResource{
+		{BaseModel: meta.BaseModel{Id: sql.NullString{String: "ui_1", Valid: true}}, Name: "menu.root", DefaultRoles: []byte(`["base.user","ghost.role"]`)},
+	})
+	if err == nil || !strings.Contains(err.Error(), "ghost.role") {
+		t.Fatalf("expected ghost.role mapping failure after skipping blank id, got %v", err)
+	}
+
+	// sys.admin alone is covered by global allow, so grantRows stay empty.
+	if err := b.persistUiResourceDefaultRoles([]*meta.UiResource{
+		{BaseModel: meta.BaseModel{Id: sql.NullString{String: "ui_2", Valid: true}}, Name: "menu.other", DefaultRoles: []byte(`["sys.admin"]`)},
+	}); err != nil {
+		t.Fatalf("expected empty grantRows fast path, got %v", err)
+	}
+	var adminResourceGrants int64
+	if err := testRuntimeScope.db.Table("auth_role_ui_resource").
+		Where("role_id = ? AND meta_ui_resource_id = ?", "role_admin", "ui_2").
+		Count(&adminResourceGrants).Error; err != nil {
+		t.Fatalf("count sys.admin resource grant: %v", err)
+	}
+	if adminResourceGrants != 0 {
+		t.Fatalf("expected no per-resource grant for global-allow role, got %d", adminResourceGrants)
+	}
+}
+
+func TestPersistUiResourceDefaultRolesGlobalAllowQueryError(t *testing.T) {
+	testRuntimeScope := newTestScopeWithDB(t).(*testScope)
+	mustExec(t, testRuntimeScope.db, `CREATE TABLE auth_role (id TEXT PRIMARY KEY, code TEXT)`)
+	mustExec(t, testRuntimeScope.db, `CREATE TABLE auth_role_ui_resource (id TEXT PRIMARY KEY)`)
+	b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
+	if err := testRuntimeScope.db.Exec(`INSERT INTO auth_role (id, code) VALUES (?, ?)`, "role_user", "base.user").Error; err != nil {
+		t.Fatalf("seed auth_role failed: %v", err)
+	}
+	err := b.persistUiResourceDefaultRoles([]*meta.UiResource{
+		{BaseModel: meta.BaseModel{Id: sql.NullString{String: "ui_1", Valid: true}}, Name: "menu.root", DefaultRoles: []byte(`["base.user"]`)},
+	})
+	if err == nil || !strings.Contains(err.Error(), "query global UI allows failed") {
+		t.Fatalf("expected global allow query error, got %v", err)
+	}
+}
+
+func TestPersistUiResourceDefaultRolesSkipsEmptyPairClauses(t *testing.T) {
+	testRuntimeScope := newTestScopeWithDB(t).(*testScope)
+	mustExec(t, testRuntimeScope.db, `CREATE TABLE auth_role (id TEXT PRIMARY KEY, code TEXT)`)
+	if err := testRuntimeScope.db.AutoMigrate(&roleUiResourceGrantRow{}); err != nil {
+		t.Fatalf("automigrate auth_role_ui_resource failed: %v", err)
+	}
+	b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
+	if err := testRuntimeScope.db.Exec(`INSERT INTO auth_role (id, code) VALUES (?, ?)`, "role_user", "base.user").Error; err != nil {
+		t.Fatalf("seed auth_role failed: %v", err)
+	}
+
+	prev := collectUiResourceDefaultRoleRowsFn
+	collectUiResourceDefaultRoleRowsFn = func(
+		uiResources []*meta.UiResource,
+		roleIDByCode map[string]string,
+		skipRoleIDs map[string]bool,
+	) ([]roleUiResourceGrantRow, error) {
+		return []roleUiResourceGrantRow{
+			{RoleId: sql.NullString{String: "   ", Valid: true}, Mode: "allow", MetaUiResourceId: sql.NullString{String: "ui_1", Valid: true}},
+			{RoleId: sql.NullString{String: "role_user", Valid: true}, Mode: "allow", MetaUiResourceId: sql.NullString{String: "", Valid: true}},
+			{RoleId: sql.NullString{String: "role_user", Valid: true}, Mode: "allow", MetaUiResourceId: sql.NullString{String: "ui_1", Valid: true}},
+		}, nil
+	}
+	t.Cleanup(func() { collectUiResourceDefaultRoleRowsFn = prev })
+
+	if err := b.persistUiResourceDefaultRoles([]*meta.UiResource{
+		{BaseModel: meta.BaseModel{Id: sql.NullString{String: "ui_1", Valid: true}}, Name: "menu.root", DefaultRoles: []byte(`["base.user"]`)},
+	}); err != nil {
+		t.Fatalf("persistUiResourceDefaultRoles: %v", err)
+	}
+	var live []roleUiResourceGrantRow
+	if err := testRuntimeScope.db.Table("auth_role_ui_resource").Find(&live).Error; err != nil {
+		t.Fatalf("query grants: %v", err)
+	}
+	foundValid := false
+	for _, row := range live {
+		if strings.TrimSpace(row.RoleId.String) == "role_user" && row.MetaUiResourceId.String == "ui_1" {
+			foundValid = true
+		}
+	}
+	if !foundValid {
+		t.Fatalf("expected valid pair to insert despite empty pair skips, got %#v", live)
+	}
+}
+
+func TestPersistUiResourceDefaultRolesPurgeSoftDeletedError(t *testing.T) {
+	testRuntimeScope := newTestScopeWithDB(t).(*testScope)
+	mustExec(t, testRuntimeScope.db, `CREATE TABLE auth_role (id TEXT PRIMARY KEY, code TEXT)`)
+	if err := testRuntimeScope.db.AutoMigrate(&roleUiResourceGrantRow{}); err != nil {
+		t.Fatalf("automigrate auth_role_ui_resource failed: %v", err)
+	}
+	b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
+	if err := testRuntimeScope.db.Exec(`INSERT INTO auth_role (id, code) VALUES (?, ?)`, "role_user", "base.user").Error; err != nil {
+		t.Fatalf("seed auth_role failed: %v", err)
+	}
+	if err := testRuntimeScope.db.Table("auth_role_ui_resource").Create(&roleUiResourceGrantRow{
+		RoleId:           sql.NullString{String: "role_user", Valid: true},
+		Mode:             "allow",
+		MetaUiResourceId: sql.NullString{String: "ui_1", Valid: true},
+	}).Error; err != nil {
+		t.Fatalf("seed grant: %v", err)
+	}
+	if err := testRuntimeScope.db.Exec(
+		`UPDATE auth_role_ui_resource SET deleted_at = CURRENT_TIMESTAMP WHERE meta_ui_resource_id = ?`,
+		"ui_1",
+	).Error; err != nil {
+		t.Fatalf("soft-delete grant: %v", err)
+	}
+	if err := testRuntimeScope.db.Exec(`CREATE TRIGGER IF NOT EXISTS block_auth_role_ui_resource_purge
+		BEFORE DELETE ON auth_role_ui_resource
+		BEGIN
+			SELECT RAISE(ABORT, 'blocked grant purge');
+		END`).Error; err != nil {
+		t.Fatalf("create purge trigger: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = testRuntimeScope.db.Exec(`DROP TRIGGER IF EXISTS block_auth_role_ui_resource_purge`)
+	})
+	err := b.persistUiResourceDefaultRoles([]*meta.UiResource{
+		{BaseModel: meta.BaseModel{Id: sql.NullString{String: "ui_1", Valid: true}}, Name: "menu.root", DefaultRoles: []byte(`["base.user"]`)},
+	})
+	if err == nil || !strings.Contains(err.Error(), "purge soft-deleted defaultRoles grants failed") {
+		t.Fatalf("expected purge error, got %v", err)
+	}
+}
+
 func TestPersistModuleComponentsReplacesAndDedupesByPath(t *testing.T) {
 	testRuntimeScope := newTestScopeWithDB(t).(*testScope)
 	if err := testRuntimeScope.db.AutoMigrate(&meta.Component{}); err != nil {
