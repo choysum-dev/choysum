@@ -57,6 +57,8 @@ test('flat lane body clicks, drags, and labels move targets', async () => {
 
   const articles = mounted.qa('article');
   expect(articles.length).toBe(2);
+  expect(articles[0]!.className).toMatch(/\brounded-sm\b/);
+  expect(articles[0]!.className).not.toMatch(/\brounded-md\b/);
   mounted.click('article');
   const keydown = new Event('keydown', { bubbles: true, cancelable: true });
   Object.defineProperty(keydown, 'key', { value: 'Enter' });

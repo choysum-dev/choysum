@@ -113,7 +113,7 @@ SPDX-License-Identifier: Apache-2.0
       <!-- Ungrouped: tile cards across the board (Odoo-style flat kanban). -->
       <div
         v-if="isFlatBoard"
-        class="choy-kanban-view__board choy-kanban-view__board--flat grid min-h-0 flex-1 content-start gap-4 overflow-y-auto pb-1 [grid-template-columns:repeat(auto-fill,minmax(18rem,1fr))]"
+        class="choy-kanban-view__board choy-kanban-view__board--flat grid min-h-0 flex-1 content-start gap-4 overflow-y-auto pb-1 [grid-template-columns:repeat(auto-fill,minmax(min(18rem,100%),1fr))]"
         role="list"
         data-testid="choy-kanban-flat-board"
         :aria-label="_t('Kanban board')"

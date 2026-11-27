@@ -244,7 +244,7 @@ SPDX-License-Identifier: Apache-2.0
         />
         <div
           v-else
-          class="rounded-sm border border-dashed border-border p-4 text-sm text-muted-foreground"
+          class="rounded-md border border-dashed border-border p-4 text-sm text-muted-foreground"
         >{{ _t('Provide a child record editor via the formView prop.') }}</div>
       </div>
       <div class="flex shrink-0 items-center justify-between gap-2">
