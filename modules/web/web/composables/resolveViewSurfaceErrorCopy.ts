@@ -1,7 +1,9 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
+import { Code, ConnectError } from '@connectrpc/connect';
 import { getActivePinia } from 'pinia';
+import { ChoysumError, GrpcCode } from '@/core/web/error';
 import { isTransportOutage } from '@/core/web/rpc/transportOutage';
 import { createTranslate } from '@/web/web/i18n';
 import { useConnectivityStore } from '../stores/connectivityStore';
@@ -32,8 +34,24 @@ function isSessionUnreachable(): boolean {
   }
 }
 
+/** True when the failure is a missing/expired session rather than a domain error. */
+function isUnauthenticatedError(error: unknown): boolean {
+  if (error instanceof ConnectError && error.code === Code.Unauthenticated) return true;
+  if (error instanceof ChoysumError) {
+    if (error.grpcCode === GrpcCode.Unauthenticated) return true;
+    if (error.cause instanceof ConnectError && error.cause.code === Code.Unauthenticated) {
+      return true;
+    }
+  }
+  const msg = error instanceof Error ? String(error.message || '') : String(error ?? '');
+  return /\[unauthenticated\]/i.test(msg) || /missing authentication token/i.test(msg);
+}
+
 function errorDetail(error: unknown, fallback?: string): string {
   if (typeof fallback === 'string' && fallback.trim()) return fallback.trim();
+  if (isUnauthenticatedError(error)) {
+    return _t('Sign in required. Your session may have expired.');
+  }
   if (error instanceof Error) {
     const msg = String(error.message || '').trim();
     if (msg) return msg.length > 240 ? `${msg.slice(0, 237)}…` : msg;

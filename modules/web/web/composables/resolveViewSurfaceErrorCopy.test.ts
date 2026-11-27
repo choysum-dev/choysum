@@ -50,6 +50,24 @@ test('resolveViewSurfaceErrorCopy: business error uses fallback title and messag
   expect(copy.detail).toBe('missing row');
 });
 
+test('resolveViewSurfaceErrorCopy: unauthenticated uses sign-in copy', () => {
+  const copy = resolveViewSurfaceErrorCopy(
+    connectError(Code.Unauthenticated, 'missing authentication token'),
+    { fallbackTitle: 'Failed to load list' },
+  );
+  expect(copy.title).toBe('Failed to load list');
+  expect(copy.detail).toBe('Sign in required. Your session may have expired.');
+  expect(copy.detail).not.toContain('unauthenticated');
+  expect(copy.detail).not.toContain('missing authentication token');
+});
+
+test('resolveViewSurfaceErrorCopy: bracketed unauthenticated message is rewritten', () => {
+  const copy = resolveViewSurfaceErrorCopy(
+    new Error('[unauthenticated] missing authentication token'),
+  );
+  expect(copy.detail).toBe('Sign in required. Your session may have expired.');
+});
+
 test('resolveViewSurfaceErrorCopy: generic Error without fallback title', () => {
   const copy = resolveViewSurfaceErrorCopy(new Error('boom'));
   expect(copy.title).toBe('Failed to load');
