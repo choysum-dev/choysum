@@ -817,7 +817,7 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
    * Load permission state with single-flight for matching identity epochs.
    */
   async function loadPermissionState(forceRefresh = false): Promise<boolean> {
-    const key = permissionFlightKey();
+    let key = permissionFlightKey();
     while (permissionInFlight) {
       if (permissionInFlightKey === key && (!forceRefresh || permissionInFlightForced)) {
         return permissionInFlight;
@@ -828,6 +828,8 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
         } catch {
           // Prior flight failed; re-check before starting a forced refresh.
         }
+        // Identity may have changed (e.g. company switch) while we waited.
+        key = permissionFlightKey();
         continue;
       }
       // Different identity epoch: start a new flight; ownership checks discard the stale result.

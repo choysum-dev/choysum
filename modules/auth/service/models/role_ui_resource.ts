@@ -135,6 +135,8 @@ export default class RoleUiResource extends AuthzMutationModel {
     );
     const id = normalizeRefId((rows?.[0] as any)?.Id);
     if (!id) return null;
+    // Omit return fields: a follow-up search with onlyDeleted would miss the
+    // just-restored live row and throw "Record not found".
     await this.UpdateById(
       id,
       {
@@ -142,7 +144,7 @@ export default class RoleUiResource extends AuthzMutationModel {
         MetaApplicationId: (values.MetaApplicationId as string | null | undefined) ?? null,
         DeletedAt: null,
       } as any,
-      ['Id'] as any,
+      undefined,
       { onlyDeleted: true } as SoftDeleteOptions
     );
     return id;
