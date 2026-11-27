@@ -440,11 +440,23 @@ describe('ChoyPageIoMenu', () => {
     await flushPromises();
     const host = mounted.q('[data-slot=page-io-menu-trigger-host]') as HTMLElement | null;
     expect(host).toBeTruthy();
-    const readOpen = () => {
-      const ss = mounted.setupState() as { menuOpen?: boolean | { value: boolean } };
-      const v = ss.menuOpen;
-      return typeof v === 'object' && v != null && 'value' in v ? v.value : v;
+    const exposedMenuOpen = (mounted.root as { $?: { exposed?: { menuOpen?: { value: boolean } } } })?.$
+      ?.exposed?.menuOpen;
+    expect(!!(exposedMenuOpen && typeof exposedMenuOpen === 'object')).toBe(true);
+    const readOpen = () => !!exposedMenuOpen!.value;
+    const writeOpen = (next: boolean) => {
+      exposedMenuOpen!.value = next;
     };
+    const ss = mounted.setupState() as {
+      closeFromHover?: () => void;
+      scheduleHoverClose?: () => void;
+      openFromHover?: () => void;
+      flushHoverClose?: () => void;
+      onTriggerLeave?: () => void;
+      onContentLeave?: () => void;
+    };
+
+    // Pointer enter claims hover ownership; content enter keeps it open.
     host!.dispatchEvent(new Event('pointerenter', { bubbles: true }));
     await flushPromises();
     expect(readOpen()).toBe(true);
@@ -452,28 +464,52 @@ describe('ChoyPageIoMenu', () => {
     content?.dispatchEvent(new Event('pointerenter', { bubbles: true }));
     await flushPromises();
     expect(readOpen()).toBe(true);
-    const ss = mounted.setupState() as {
-      onTriggerLeave?: () => void;
-      onContentLeave?: () => void;
-      closeFromHover?: () => void;
-      scheduleHoverClose?: () => void;
-      openFromHover?: () => void;
-    };
+
+    // Leave handlers schedule the delay; flushHoverClose is what the timer runs.
     ss.onTriggerLeave?.();
     ss.onContentLeave?.();
-    // Drive close body directly (avoids flaky real timers under QuickJS).
-    ss.closeFromHover?.();
+    ss.flushHoverClose?.();
     await flushPromises();
     expect(readOpen()).toBe(false);
-    // Re-open via hover, then scheduleHoverClose with openedByHover still true.
+
+    // scheduleHoverClose registers the delay; invoke flushHoverClose as the timer would.
     ss.openFromHover?.();
     expect(readOpen()).toBe(true);
     ss.scheduleHoverClose?.();
+    ss.flushHoverClose?.();
+    await flushPromises();
+    expect(readOpen()).toBe(false);
+
+    // Hover-owned close clears ownership; subsequent flush/close are no-ops.
+    ss.openFromHover?.();
+    expect(readOpen()).toBe(true);
+    ss.closeFromHover?.();
+    await flushPromises();
+    expect(readOpen()).toBe(false);
+    ss.flushHoverClose?.();
     ss.closeFromHover?.();
     expect(readOpen()).toBe(false);
-    // After hover close, schedule/close are no-ops (not hover-owned).
+
+    // v-model / Escape close also drops ownership (watch on menuOpen).
+    ss.openFromHover?.();
+    expect(readOpen()).toBe(true);
+    ss.scheduleHoverClose?.();
+    writeOpen(false);
+    await flushPromises();
+    expect(readOpen()).toBe(false);
+    ss.scheduleHoverClose?.();
+    ss.flushHoverClose?.();
+    expect(readOpen()).toBe(false);
+
+    // Click/keyboard open is not hover-owned: schedule/close are no-ops.
+    writeOpen(true);
+    await flushPromises();
+    expect(readOpen()).toBe(true);
     ss.scheduleHoverClose?.();
     ss.closeFromHover?.();
+    expect(readOpen()).toBe(true);
+    writeOpen(false);
+    await flushPromises();
     expect(readOpen()).toBe(false);
     mounted.unmount();
   });

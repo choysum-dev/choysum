@@ -749,6 +749,8 @@ function reconcileSelectionToFreshRows(): void {
     rows,
     selectionRowKey,
   );
+  // Notify parents when softRefresh pruned or replaced selected rows.
+  onSelectionChange(selectedItems.value as any[]);
 }
 
 function onSelectionChange(rows: any[]) {

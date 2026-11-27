@@ -427,6 +427,7 @@ describe('ListView create action', () => {
       router: { push },
     });
     const store = makeStore();
+    const selectionChanges: Array<{ rows: unknown[]; ids: string[] }> = [];
     const { unmount, root } = mountApp(ChoyListView as any, {
       props: {
         store,
@@ -436,6 +437,11 @@ describe('ListView create action', () => {
         refreshAction: false,
         deleteAction: true,
         showPaginate: false,
+      },
+      on: {
+        onSelectionChange: (payload: { rows: unknown[]; ids: string[] }) => {
+          selectionChanges.push(payload);
+        },
       },
       plugins,
     });
@@ -449,19 +455,24 @@ describe('ListView create action', () => {
     exposed.onSelectionChange?.([
       { type: 'record', record: { Id: 'keep-me' } },
       { Id: 'keep-2' },
+      { Id: 'gone' },
     ]);
     await flushPromises();
-    expect(exposed.selectedItems?.length).toBe(2);
-    // Fresh rows must still contain selected ids or reconcile prunes them.
+    expect(exposed.selectedItems?.length).toBe(3);
+    // Fresh rows keep matching ids and drop the missing one; reconcile must emit.
     store.Search = fnRecorder(async () => [
       { Id: 'keep-me', Name: 'A' },
       { Id: 'keep-2', Name: 'B' },
     ]);
     const searchesBefore = store.Search.calls.length;
+    const emitsBefore = selectionChanges.length;
     await exposed.softRefresh?.();
     await flushPromises();
     expect(store.Search.calls.length).toBeGreaterThan(searchesBefore);
     expect(exposed.selectedItems?.length).toBe(2);
+    expect(selectionChanges.length).toBeGreaterThan(emitsBefore);
+    const last = selectionChanges[selectionChanges.length - 1];
+    expect(last?.ids).toEqual(['keep-me', 'keep-2']);
     unmount();
   });
 

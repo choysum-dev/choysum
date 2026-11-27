@@ -72,7 +72,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, useSlots } from 'vue';
+import { computed, onBeforeUnmount, ref, useSlots, watch } from 'vue';
 import { Download, EllipsisVertical, Upload } from 'lucide-vue-next';
 import ChoyButton from '../button/ChoyButton.vue';
 import ChoyActionMenuItem from '../button/ChoyActionMenuItem.vue';
@@ -250,14 +250,25 @@ function closeFromHover() {
   closeTimer = null;
 }
 
+// Escape / trigger toggle / v-model close must drop hover ownership and cancel the delay.
+watch(menuOpen, isOpen => {
+  if (isOpen) return;
+  openedByHover = false;
+  clearCloseTimer();
+});
+
+function flushHoverClose() {
+  // Clear any pending id first so a manual flush does not race a live timer.
+  clearCloseTimer();
+  if (!openedByHover) return;
+  closeFromHover();
+}
+
 function scheduleHoverClose() {
   // Click/keyboard-opened menus must not dismiss on a brief pointer leave.
   if (!props.hoverOpen || !openedByHover) return;
   clearCloseTimer();
-  closeTimer = setTimeout(() => {
-    if (!openedByHover) return;
-    closeFromHover();
-  }, 160);
+  closeTimer = setTimeout(flushHoverClose, 160);
 }
 
 function onTriggerEnter() {
