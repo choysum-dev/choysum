@@ -490,23 +490,19 @@ describe('ChoyPageIoMenu', () => {
     ss.closeFromHover?.();
     expect(readOpen()).toBe(false);
 
-    // v-model / Escape close also drops ownership (watch on menuOpen).
+    // v-model / Escape close drops ownership; click-open must not be hover-dismissed.
     ss.openFromHover?.();
     expect(readOpen()).toBe(true);
     ss.scheduleHoverClose?.();
     writeOpen(false);
     await flushPromises();
     expect(readOpen()).toBe(false);
-    ss.scheduleHoverClose?.();
-    ss.flushHoverClose?.();
-    expect(readOpen()).toBe(false);
-
-    // Click/keyboard open is not hover-owned: schedule/close are no-ops.
     writeOpen(true);
     await flushPromises();
     expect(readOpen()).toBe(true);
     ss.scheduleHoverClose?.();
     ss.closeFromHover?.();
+    ss.flushHoverClose?.();
     expect(readOpen()).toBe(true);
     writeOpen(false);
     await flushPromises();

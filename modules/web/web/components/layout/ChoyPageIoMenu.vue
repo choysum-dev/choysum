@@ -224,6 +224,7 @@ const menuAriaLabel = computed(() =>
 
 /** True while the open state was entered via hover (not click/keyboard). */
 let openedByHover = false;
+const HOVER_CLOSE_DELAY_MS = 160;
 
 function clearCloseTimer() {
   if (closeTimer != null) {
@@ -268,7 +269,7 @@ function scheduleHoverClose() {
   // Click/keyboard-opened menus must not dismiss on a brief pointer leave.
   if (!props.hoverOpen || !openedByHover) return;
   clearCloseTimer();
-  closeTimer = setTimeout(flushHoverClose, 160);
+  closeTimer = setTimeout(flushHoverClose, HOVER_CLOSE_DELAY_MS);
 }
 
 function onTriggerEnter() {
