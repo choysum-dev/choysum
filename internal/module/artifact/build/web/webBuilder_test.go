@@ -4847,6 +4847,7 @@ func TestPersistUiResourceDefaultRolesFilterErrorWithoutUniqueIndex(t *testing.T
 		id TEXT PRIMARY KEY,
 		role_id TEXT,
 		mode TEXT NOT NULL DEFAULT 'allow',
+		meta_application_id TEXT,
 		meta_ui_resource_id TEXT,
 		deleted_at DATETIME
 	)`)
