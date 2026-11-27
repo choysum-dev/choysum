@@ -46,6 +46,19 @@ describe('ChoyViewBase', () => {
     expect(mounted.q('[data-testid=right]')?.textContent).toBe('Right');
     expect(mounted.q('[data-testid=body]')?.textContent).toBe('Body');
     expect(mounted.q('[data-slot=view-body-host]')).not.toBeNull();
+
+    // Identity before actions: title precedes primary / secondary in the leading column.
+    const leading = mounted.q('[data-slot=view-action-bar-leading]') as HTMLElement | null;
+    expect(leading).not.toBeNull();
+    expect(mounted.q('[data-slot=view-action-bar-identity]')).not.toBeNull();
+    expect(mounted.q('[data-slot=view-action-bar-actions]')).not.toBeNull();
+    const text = (leading!.textContent || '').replace(/\s+/g, ' ');
+    const titleIdx = text.indexOf('Partners');
+    const newIdx = text.indexOf('New');
+    const moreIdx = text.indexOf('More');
+    expect(titleIdx).toBeGreaterThanOrEqual(0);
+    expect(newIdx).toBeGreaterThan(titleIdx);
+    expect(moreIdx).toBeGreaterThan(newIdx);
     mounted.unmount();
   });
 
@@ -65,7 +78,7 @@ describe('ChoyViewBase', () => {
     mounted.unmount();
   });
 
-  test('renders header-extra between action bar and busy host', async () => {
+  test('renders header-extra inside view-header under action bar (not in body)', async () => {
     setActivePinia(createPinia());
     const mounted = mountApp(ChoyViewBase as any, {
       props: { showActions: true },
@@ -76,18 +89,20 @@ describe('ChoyViewBase', () => {
       },
     });
     await flushPromises();
+    const header = mounted.q('[data-slot=view-header]') as HTMLElement | null;
     const extra = mounted.q('[data-slot=view-header-extra]') as HTMLElement | null;
     expect(extra?.querySelector('[data-testid=extra]')?.textContent).toBe('Controls');
-    const containerBody = mounted.q('[data-slot=view-body]') as HTMLElement | null;
-    const children = Array.from(containerBody?.children || []);
-    const extraIdx = children.findIndex((el) => el.getAttribute('data-slot') === 'view-header-extra');
-    const busyIdx = children.findIndex((el) => el.getAttribute('data-slot') === 'view-body-host');
-    expect(extraIdx).toBeGreaterThanOrEqual(0);
-    expect(busyIdx).toBeGreaterThan(extraIdx);
+    expect(header?.querySelector('[data-slot=view-header-extra]')).not.toBeNull();
+    expect(header!.className).toContain('gap-2');
+    expect(header!.className).toContain('mx-[var(--choy-view-sheet-gutter)]');
+    expect(extra!.className.split(/\s+/)).not.toContain('pt-1');
+    expect(extra!.className.split(/\s+/)).not.toContain('pb-2');
+    expect(mounted.q('[data-slot=view-body]')?.querySelector('[data-slot=view-header-extra]')).toBeNull();
+    expect(mounted.q('[data-slot=view-body-host]')).not.toBeNull();
     mounted.unmount();
   });
 
-  test('showHeader=false still renders header-extra (Chart controls parity)', async () => {
+  test('showHeader=false still renders header-extra in view-header (Chart controls parity)', async () => {
     setActivePinia(createPinia());
     const mounted = mountApp(ChoyViewBase as any, {
       props: { showHeader: false },
@@ -97,8 +112,10 @@ describe('ChoyViewBase', () => {
       },
     });
     await flushPromises();
-    expect(mounted.q('[data-slot=view-header]')).toBeNull();
-    expect(mounted.q('[data-testid=extra]')?.textContent).toBe('Controls');
+    const header = mounted.q('[data-slot=view-header]') as HTMLElement | null;
+    expect(header).not.toBeNull();
+    expect(header?.querySelector('[data-testid=extra]')?.textContent).toBe('Controls');
+    expect(mounted.q('[data-slot=view-action-bar]')).toBeNull();
     expect(mounted.q('[data-testid=body]')?.textContent).toBe('Body');
     mounted.unmount();
   });
@@ -155,16 +172,17 @@ describe('ChoyViewBase', () => {
     }
   });
 
-  test('mounts page title actions when showTitleOverflow and overflow slot', async () => {
+  test('mounts page title as overflow menu trigger when showTitleOverflow', async () => {
     setActivePinia(createPinia());
     const mounted = mountApp(ChoyViewBase as any, {
       props: {
         showActions: true,
-        pageTitle: 'T',
+        pageTitle: 'Partners',
         showTitleOverflow: true,
         pageTitleActionsIo: { actionImport: false, actionExport: false },
       },
       slots: {
+        'system-actions': () => h('button', { 'data-testid': 'primary' }, 'New'),
         'overflow-actions': () => h('div', { 'data-testid': 'overflow-item' }, 'Refresh'),
         default: () => h('div', 'body'),
       },
@@ -172,10 +190,17 @@ describe('ChoyViewBase', () => {
     await flushPromises();
     expect(mounted.q('.choy-page__title-actions')).not.toBeNull();
     expect(mounted.q('[data-testid=overflow-item]')?.textContent).toBe('Refresh');
+    const trigger = mounted.q('[data-testid=page-io-menu-trigger]') as HTMLElement | null;
+    expect(trigger).not.toBeNull();
+    const title = trigger!.querySelector('[data-slot=page-title]') as HTMLElement | null;
+    expect(title?.textContent).toBe('Partners');
+    expect(title?.className || '').toContain('max-w-[10rem]');
+    expect(title?.className || '').toContain('text-base');
+    expect(title?.className || '').toContain('truncate');
     mounted.unmount();
   });
 
-  test('skips user-actions tray when slot absent', async () => {
+  test('skips leading secondary tray when secondary-actions absent', async () => {
     setActivePinia(createPinia());
     const mounted = mountApp(ChoyViewBase as any, {
       props: { showActions: true, pageTitle: 'T' },
@@ -186,6 +211,28 @@ describe('ChoyViewBase', () => {
     });
     await flushPromises();
     expect(mounted.q('[data-slot=view-action-bar-leading]')).not.toBeNull();
+    const actionsOnly = mounted.q('[data-slot=view-action-bar-actions]') as HTMLElement | null;
+    expect(actionsOnly?.querySelector('[data-slot=separator]')).toBeNull();
+    mounted.unmount();
+  });
+
+  test('puts secondary-actions in the leading secondary tray after platform', async () => {
+    setActivePinia(createPinia());
+    const mounted = mountApp(ChoyViewBase as any, {
+      props: { showActions: true, pageTitle: 'T' },
+      slots: {
+        'system-actions': () => h('button', { 'data-testid': 'platform' }, 'Edit'),
+        'secondary-actions': () => h('button', { 'data-testid': 'leading-secondary' }, 'Load Demo'),
+        default: () => h('div', 'body'),
+      },
+    });
+    await flushPromises();
+    expect(mounted.q('[data-testid=platform]')?.textContent).toBe('Edit');
+    expect(mounted.q('[data-testid=leading-secondary]')?.textContent).toBe('Load Demo');
+    const actions = mounted.q('[data-slot=view-action-bar-actions]') as HTMLElement | null;
+    expect(actions?.querySelector('[data-slot=separator]')).not.toBeNull();
+    const trays = mounted.qa('[data-testid=choy-action-tray]');
+    expect(trays.length).toBe(2);
     mounted.unmount();
   });
 
@@ -204,7 +251,8 @@ describe('ChoyViewBase', () => {
     await flushPromises();
     const title = mounted.q('[data-slot=page-title]') as HTMLElement | null;
     expect(title?.className || '').toContain('choy-list-view__page-title');
-    expect(title?.className || '').toContain('truncate');
+    expect(title?.className || '').toContain('max-w-[10rem]');
+    expect(title?.className || '').toContain('text-base');
     expect(title?.className || '').toContain('font-semibold');
     // Thirds ActionBar pads center when product view omits #center.
     expect(mounted.q('[data-slot=view-action-bar-center]')).not.toBeNull();

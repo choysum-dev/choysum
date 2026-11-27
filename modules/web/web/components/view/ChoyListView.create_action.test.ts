@@ -420,4 +420,176 @@ describe('ListView create action', () => {
     expect(root).toBeTruthy();
     unmount();
   });
+
+  test('softRefresh re-applies without clearing selection', async () => {
+    const { plugins } = buildPageMountGlobal({
+      route: { name: 'PartnerList', path: '/partner/partners', fullPath: '/partner/partners' },
+      router: { push },
+    });
+    const store = makeStore();
+    const selectionChanges: Array<{ rows: unknown[]; ids: string[] }> = [];
+    const { unmount, root } = mountApp(ChoyListView as any, {
+      props: {
+        store,
+        createAction: '',
+        showHeader: true,
+        showActions: true,
+        refreshAction: false,
+        deleteAction: true,
+        showPaginate: false,
+      },
+      on: {
+        onSelectionChange: (payload: { rows: unknown[]; ids: string[] }) => {
+          selectionChanges.push(payload);
+        },
+      },
+      plugins,
+    });
+    await flushPromises();
+    const exposed = root as {
+      softRefresh?: () => Promise<void>;
+      onSelectionChange?: (rows: unknown[]) => void;
+      selectedItems?: unknown[];
+    };
+    expect(typeof exposed.softRefresh).toBe('function');
+    exposed.onSelectionChange?.([
+      { type: 'record', record: { Id: 'keep-me' } },
+      { Id: 'keep-2' },
+      { Id: 'gone' },
+    ]);
+    await flushPromises();
+    expect(exposed.selectedItems?.length).toBe(3);
+    // Fresh rows keep matching ids and drop the missing one; reconcile must emit.
+    store.Search = fnRecorder(async () => [
+      { Id: 'keep-me', Name: 'A' },
+      { Id: 'keep-2', Name: 'B' },
+    ]);
+    const searchesBefore = store.Search.calls.length;
+    const emitsBefore = selectionChanges.length;
+    await exposed.softRefresh?.();
+    await flushPromises();
+    expect(store.Search.calls.length).toBeGreaterThan(searchesBefore);
+    expect(exposed.selectedItems?.length).toBe(2);
+    expect(selectionChanges.length).toBeGreaterThan(emitsBefore);
+    const last = selectionChanges[selectionChanges.length - 1];
+    expect(last?.ids).toEqual(['keep-me', 'keep-2']);
+    unmount();
+  });
+
+  test('softRefreshDetailPathCollection reapplies through KeepAlive helper', async () => {
+    const { plugins } = buildPageMountGlobal({
+      route: { name: 'PartnerList', path: '/partner/partners', fullPath: '/partner/partners' },
+      router: { push },
+    });
+    const store = makeStore();
+    const { unmount, setupState } = mountApp(ChoyListView as any, {
+      props: {
+        store,
+        detailPath: '/partner/partners/:id',
+        createAction: '',
+        showHeader: false,
+        showActions: false,
+        showPaginate: false,
+      },
+      plugins,
+    });
+    await flushPromises();
+    const ss = setupState() as {
+      softRefreshDetailPathCollection?: () => Promise<void>;
+    };
+    expect(typeof ss.softRefreshDetailPathCollection).toBe('function');
+    const before = store.Search.calls.length;
+    await ss.softRefreshDetailPathCollection?.();
+    await flushPromises();
+    expect(store.Search.calls.length).toBeGreaterThan(before);
+    unmount();
+  });
+
+  test('softRefresh rethrows when apply fails', async () => {
+    const { plugins } = buildPageMountGlobal({
+      route: { name: 'PartnerList', path: '/partner/partners', fullPath: '/partner/partners' },
+      router: { push },
+    });
+    const store = makeStore();
+    const { unmount, root } = mountApp(ChoyListView as any, {
+      props: {
+        store,
+        createAction: '',
+        showHeader: true,
+        showActions: true,
+        refreshAction: false,
+        deleteAction: true,
+        showPaginate: false,
+      },
+      plugins,
+    });
+    await flushPromises();
+    store.Search = async () => {
+      throw new Error('soft refresh failed');
+    };
+    let threw = false;
+    try {
+      await (root as { softRefresh?: () => Promise<void> }).softRefresh?.();
+    } catch (err) {
+      threw = true;
+      expect((err as Error).message).toBe('soft refresh failed');
+    }
+    expect(threw).toBe(true);
+    unmount();
+  });
+
+  test('paginate clears selection', async () => {
+    const { plugins } = buildPageMountGlobal({
+      route: { name: 'PartnerList', path: '/partner/partners', fullPath: '/partner/partners' },
+      router: { push },
+    });
+    const store = makeStore();
+    const { unmount, setupState } = mountApp(ChoyListView as any, {
+      props: {
+        store,
+        createAction: '',
+        showHeader: false,
+        showActions: false,
+        showPaginate: false,
+      },
+      plugins,
+    });
+    await flushPromises();
+    const ss = setupState() as {
+      selectedItems: unknown[];
+      onSelectionChange?: (rows: unknown[]) => void;
+      onPaginateState?: (next: { limit: number; offset: number }) => void;
+    };
+    ss.onSelectionChange?.([{ Id: 'keep-me' }]);
+    await flushPromises();
+    expect((setupState() as typeof ss).selectedItems.length).toBe(1);
+    ss.onPaginateState?.({ limit: 20, offset: 20 });
+    await flushPromises();
+    expect((setupState() as typeof ss).selectedItems.length).toBe(0);
+    unmount();
+  });
+
+  test('editable forces show-actions chrome even when showActions is false', async () => {
+    const { plugins } = buildPageMountGlobal({
+      route: { name: 'PartnerList', path: '/partner/partners', fullPath: '/partner/partners' },
+      router: { push },
+    });
+    const store = makeStore();
+    const { unmount, root } = mountApp(ChoyListView as any, {
+      props: {
+        store,
+        createAction: '',
+        showHeader: true,
+        showActions: false,
+        editable: true,
+        showPaginate: false,
+      },
+      plugins,
+    });
+    await flushPromises();
+    // Mounting with editable=true exercises `:show-actions="showActions || editable"`.
+    expect(root).toBeTruthy();
+    unmount();
+  });
+
 });

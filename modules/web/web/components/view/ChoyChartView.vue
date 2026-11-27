@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
   <ChoyViewBase
     data-anchor="choy.chart-view"
     data-region="chart-view"
-    :class="cn('choy-chart-view', props.class)"
+    :class="cn('choy-chart-view', 'gap-2', props.class)"
     chrome-anchor="choy.chart.view-chrome"
     :show-header="showHeader"
     :show-actions="showActions"
@@ -19,6 +19,8 @@ SPDX-License-Identifier: Apache-2.0
     :store="store"
     :busy="boardBusy"
     :mode="chartBusyMode"
+    :sheet-surface="true"
+    sheet-pad="board"
     busy-host-class="relative flex min-h-0 min-w-0 w-full flex-1 flex-col"
     :busy-host-attrs="{ 'data-region': 'chart-body' }"
     :error="chartSurfaceError"
@@ -35,7 +37,7 @@ SPDX-License-Identifier: Apache-2.0
           v-if="showCreate"
           type="button"
           size="default"
-          variant="default"
+          variant="soft-primary"
           :busy="boardBusy"
           :action-id="actionIds?.create"
           :has-action="hasAction"
@@ -58,12 +60,23 @@ SPDX-License-Identifier: Apache-2.0
       <slot name="overflow-actions" />
     </template>
 
-    <template v-if="showActions && !!$slots['user-actions']" #user-actions>
-      <slot name="user-actions" />
-    </template>
-
-    <template v-if="$slots.search" #center>
-      <ChoySearchFit>
+    <!-- Chart contextual defaults empty; if provided, park in center (not leading). -->
+    <template
+      v-if="$slots.search || $slots['contextual-actions'] || $slots['user-actions']"
+      #center
+    >
+      <div
+        v-if="$slots['contextual-actions'] || $slots['user-actions']"
+        data-anchor="choy.chart.contextual-actions"
+        data-testid="chart-contextual-actions"
+        class="flex min-w-0 w-full flex-nowrap items-center justify-center gap-2 overflow-x-auto"
+        role="toolbar"
+        :aria-label="_t('Contextual actions')"
+      >
+        <slot name="contextual-actions" />
+        <slot name="user-actions" />
+      </div>
+      <ChoySearchFit v-if="$slots.search">
         <slot name="search" :on-query-update="onSearch" />
       </ChoySearchFit>
     </template>
@@ -74,7 +87,7 @@ SPDX-License-Identifier: Apache-2.0
 
     <template v-if="showChartControls" #header-extra>
       <div
-        class="flex min-h-control flex-nowrap items-center justify-between gap-3 pb-3"
+        class="flex min-h-control flex-nowrap items-center justify-between gap-3"
         data-region="chart-controls"
       >
       <!-- Odoo-like: measure left (fixed width); stack / sort / type right. -->
@@ -357,32 +370,44 @@ SPDX-License-Identifier: Apache-2.0
           </div>
         </div>
 
-        <VisSingleContainer
+        <div
           v-else-if="spec.kind === 'pie'"
-          :data="pieRows"
-          :height="plotHeight"
-          class="h-full min-h-[280px] w-full"
+          class="flex min-h-0 w-full flex-1 items-center justify-center"
+          data-region="chart-pie-frame"
         >
-          <!-- arcWidth 0 → solid pie (Odoo graph); non-zero would be a donut ring. -->
-          <!-- Solid pie: hide Unovis donut track (showBackground) so no gray outer ring. -->
-          <VisDonut
-            :value="(d: { value: number }) => d.value"
-            :color="(d: { color: string }) => d.color"
-            :arc-width="0"
-            :show-background="false"
-            :pad-angle="0"
-            :corner-radius="0"
-            :events="donutEvents"
-          />
-          <VisTooltip
-            :triggers="pieTooltipTriggers"
-            class-name="choy-chart-tooltip"
-            :container="visTooltipContainer"
-            horizontal-placement="auto"
-            vertical-placement="top"
-            :follow-cursor="true"
-          />
-        </VisSingleContainer>
+          <div
+            class="relative shrink-0"
+            data-region="chart-pie-plot"
+            :style="{ width: `${pieSide}px`, height: `${pieSide}px` }"
+          >
+            <VisSingleContainer
+              :data="pieRows"
+              :width="pieSide"
+              :height="pieSide"
+              class="h-full w-full"
+            >
+              <!-- arcWidth 0 → solid pie (Odoo graph); non-zero would be a donut ring. -->
+              <!-- Solid pie: hide Unovis donut track (showBackground) so no gray outer ring. -->
+              <VisDonut
+                :value="(d: { value: number }) => d.value"
+                :color="(d: { color: string }) => d.color"
+                :arc-width="0"
+                :show-background="false"
+                :pad-angle="0"
+                :corner-radius="0"
+                :events="donutEvents"
+              />
+              <VisTooltip
+                :triggers="pieTooltipTriggers"
+                class-name="choy-chart-tooltip"
+                :container="visTooltipContainer"
+                horizontal-placement="auto"
+                vertical-placement="top"
+                :follow-cursor="true"
+              />
+            </VisSingleContainer>
+          </div>
+        </div>
 
         <ChartLegendContent
           :class="
@@ -410,7 +435,8 @@ SPDX-License-Identifier: Apache-2.0
 
       <ChoyEmpty
         v-else-if="controller.vm.hasAppliedOnce && !boardBusy && chartSurfaceError == null"
-        class="min-h-[280px] w-full flex-1 border-none"
+        class="flex min-h-0 w-full flex-1 items-center justify-center border-none"
+        data-region="chart-empty"
         :description="resolvedEmptyLabel"
       />
     </div>
@@ -516,6 +542,7 @@ import {
   resolveChartBarLayout,
   resolveChartFloatingTooltipPosition,
   resolveChartPlotHeight,
+  resolvePiePlotSize,
   resolveChartTooltipViewportSize,
   resolveChartXDomain,
   resolveStackedYDomain,
@@ -639,6 +666,10 @@ const registryMetrics = ref<ChoyChartMetricOption[]>([]);
 
 const chartBodyRef = ref<HTMLElement | null>(null);
 const plotHeight = ref(CHOY_CHART_MIN_PLOT_HEIGHT);
+/** Measured XY plot host width for width-aware bar density. */
+const plotWidthRef = ref(0);
+/** Square pie side (capped / centered); kept separate from bar/line plotHeight. */
+const pieSide = ref(CHOY_CHART_MIN_PLOT_HEIGHT);
 let chartBodyObserver: ResizeObserver | null = null;
 
 function chartBodyEl(): HTMLElement | null {
@@ -649,6 +680,17 @@ function chartBodyEl(): HTMLElement | null {
 function syncPlotHeight(): void {
   const el = chartBodyEl();
   const h = el?.clientHeight ?? 0;
+  const w = el?.clientWidth ?? 0;
+  const xyHost = xyPlotHostRef.value;
+  const xyW =
+    xyHost instanceof HTMLElement && xyHost.clientWidth > 0 ? xyHost.clientWidth : w;
+  plotWidthRef.value = Math.max(0, Math.floor(xyW));
+  if (localChartType.value === 'pie') {
+    // Pie legend is absolute; size a capped square and center it in the body.
+    pieSide.value = resolvePiePlotSize(w, h).side;
+    plotHeight.value = pieSide.value;
+    return;
+  }
   plotHeight.value = resolveChartPlotHeight(h);
 }
 
@@ -912,6 +954,14 @@ watch(
   { immediate: true },
 );
 
+watch(
+  localChartType,
+  () => {
+    void nextTick(() => syncPlotHeight());
+  },
+  { flush: 'post' },
+);
+
 const metricLabel = computed(() => {
   const hit = resolvedMetrics.value.find((m) => m.alias === localMetric.value);
   return hit?.label || localMetric.value || 'Value';
@@ -1000,9 +1050,12 @@ const spec = computed<ChoyChartSpec | null>(() => {
 const xyRows = computed(() => (spec.value && spec.value.kind !== 'pie' ? chartSpecToXyRows(spec.value) : []));
 const pieRows = computed(() => (spec.value?.kind === 'pie' ? chartSpecToPieRows(spec.value) : []));
 
-/** Few categories → wider bars / less padding (closer to Odoo graph density). */
+/** Few categories → wider bars; plot width tightens density on wide sheets. */
 const barLayout = computed(() =>
-  resolveChartBarLayout(spec.value?.kind === 'bar' ? spec.value.categories.length : 0),
+  resolveChartBarLayout(
+    spec.value?.kind === 'bar' ? spec.value.categories.length : 0,
+    plotWidthRef.value || undefined,
+  ),
 );
 
 /** Bar: band centers. Line: first category at x=0 (flush to the Y-axis, like Odoo). */
@@ -1113,6 +1166,8 @@ function selectChartType(type: ChoyChartKind): void {
   if (!availableTypes.value.includes(type) || type === localChartType.value) return;
   localChartType.value = type;
   emit('chart-type-change', type);
+  // Pie drops the bottom legend reserve; bar/line restore it.
+  syncPlotHeight();
 }
 
 function toggleStacked(): void {
@@ -1828,6 +1883,8 @@ defineExpose({
   boardBusy,
   controller,
   plotHeight,
+  pieSide,
+  plotWidthRef,
   /** Test / debug hook: run the line-plot hover path with a synthetic pointer. */
   onXyPointerMove,
   clearLinePlotHover,

@@ -43,13 +43,13 @@ SPDX-License-Identifier: Apache-2.0
         />
       </template>
 
-      <!-- After title + ⋮ in the system tray (no ActionBar separator). -->
-      <template v-if="showHeader" #secondary-actions>
+      <!-- Tool-list primary CTA (Kanban is readonly — no default New). -->
+      <template v-if="showHeader" #system-actions>
         <ChoyActionButton
           v-if="hasAction(moduleSyncAction)"
           type="button"
           size="default"
-          variant="outline"
+          variant="ghost"
           data-testid="module-catalog-sync"
           :busy="syncBusy"
           :aria-busy="syncBusy || undefined"
@@ -62,11 +62,14 @@ SPDX-License-Identifier: Apache-2.0
           />
           {{ _t('Update Module List') }}
         </ChoyActionButton>
+      </template>
+
+      <template v-if="showHeader" #secondary-actions>
         <ChoyActionButton
           v-if="hasAction(moduleLoadDemoAction) && hasPendingDemo"
           type="button"
           size="default"
-          variant="outline"
+          variant="ghost"
           data-testid="module-catalog-load-demo"
           @execute="onLoadDemo"
         >

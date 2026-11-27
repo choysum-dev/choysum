@@ -19,11 +19,38 @@ describe('ChoyViewContainer', () => {
     expect(root).not.toBeNull();
     expect(root?.className || '').toContain('gap-3');
     const header = mounted.q('[data-slot=view-header]') as HTMLElement | null;
+    expect(header!.className).toContain('gap-2');
+    expect(header!.className).toContain('mx-[var(--choy-view-sheet-gutter)]');
     expect(header?.querySelector('[data-testid=hdr]')?.textContent).toBe('H');
-    expect(mounted.q('[data-slot=view-body]')?.getAttribute('data-anchor')).toBe('choy.view.sheet');
+    const body = mounted.q('[data-slot=view-body]') as HTMLElement | null;
+    expect(body?.getAttribute('data-anchor')).toBe('choy.view.sheet');
+    expect(body!.getAttribute('data-sheet-surface')).toBe('true');
+    expect(body!.className).toContain('bg-card');
+    expect(body!.className).toContain('rounded-md');
+    expect(body!.className).toContain('border-border');
+    expect(body!.className).toContain('shadow-xs');
+    expect(body!.className).toContain('mx-[var(--choy-view-sheet-gutter)]');
     expect(mounted.q('[data-testid=body]')?.textContent).toBe('B');
     const footer = mounted.q('[data-slot=view-footer]') as HTMLElement | null;
     expect(footer?.querySelector('[data-testid=ftr]')?.textContent).toBe('F');
+    mounted.unmount();
+  });
+
+  test('sheetSurface=false drops paper chrome and gutter', async () => {
+    const mounted = mountApp(ChoyViewContainer as any, {
+      props: { sheetSurface: false },
+      slots: {
+        header: () => h('div', { 'data-testid': 'hdr' }, 'H'),
+        default: () => h('div', { 'data-testid': 'body' }, 'B'),
+      },
+    });
+    await flushPromises();
+    const header = mounted.q('[data-slot=view-header]') as HTMLElement | null;
+    const body = mounted.q('[data-slot=view-body]') as HTMLElement | null;
+    expect(body!.getAttribute('data-sheet-surface')).toBe('false');
+    expect(body!.className.includes('bg-card')).toBe(false);
+    expect(body!.className).not.toContain('mx-[var(--choy-view-sheet-gutter)]');
+    expect(header!.className).not.toContain('mx-[var(--choy-view-sheet-gutter)]');
     mounted.unmount();
   });
 

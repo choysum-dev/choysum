@@ -13,7 +13,8 @@ SPDX-License-Identifier: Apache-2.0
     :action-ids="{}"
     :detail-path="detailPathForRow"
   >
-    <template #user-actions>
+    <!-- Leading secondary (after platform New via ActionBar sep). Nested ⋮ export would nest menus. -->
+    <template #secondary-actions>
       <TerminologyExportMenu :application="application" />
     </template>
     <ChoyTableColumn type="index" :vColumnProps="{ align: 'right' }" />

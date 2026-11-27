@@ -11,6 +11,9 @@ export interface SelectionExpose<T = any> {
 
 export interface ListViewLoadExpose {
   load?: () => Promise<void>;
+  /** Silent re-apply for domain workflow CTAs; does not clear selection. */
+  softRefresh?: () => Promise<void>;
+  clearSelection?: () => void;
 }
 
 export type RowEventPayload<T = any> = {

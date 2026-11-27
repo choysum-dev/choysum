@@ -41,17 +41,28 @@ function mountForm(props: Record<string, unknown> = {}, extra: Record<string, un
   });
 }
 
-/** Action-tray chrome order for the minimal DOM (no compound querySelector). */
-function actionTrayOrder(tray: Element): string[] {
+/** Leading-column chrome order for the minimal DOM (no compound querySelector). */
+function actionBarLeadingOrder(root: Element): string[] {
   const out: string[] = [];
   const walk = (node: Element) => {
     const testId = node.getAttribute('data-testid');
-    if (testId === 'form-primary-new' || testId === 'form-secondary-edit' || testId === 'form-secondary-reset') {
+    if (
+      testId === 'form-primary-edit' ||
+      testId === 'form-primary-new' ||
+      testId === 'form-secondary-edit' ||
+      testId === 'form-secondary-reset'
+    ) {
       out.push(testId);
       return;
     }
     if (node.getAttribute('data-slot') === 'page-title') {
       out.push('page-title');
+      return;
+    }
+    // Title-as-menu trigger: record page-title, skip the whole-button label blob.
+    if (testId === 'page-io-menu-trigger') {
+      const title = node.querySelector('[data-slot="page-title"]');
+      if (title) out.push('page-title');
       return;
     }
     if (node.tagName === 'BUTTON' || node.tagName === 'button') {
@@ -63,7 +74,7 @@ function actionTrayOrder(tray: Element): string[] {
       walk(child as Element);
     }
   };
-  walk(tray);
+  walk(root);
   return out;
 }
 
@@ -72,18 +83,27 @@ describe('ChoyFormView workspace height', () => {
     setActivePinia(createPinia());
   });
 
-  test('body scrolls inside the shell and the container uses gap-5', async () => {
+  test('body scrolls inside the shell; page Form uses tight gap and in-paper body pad', async () => {
     const mounted = mountForm({ showHeader: false, showActions: false });
     await flushPromises();
 
     const root = mounted.q('[data-slot="view-container"]') as HTMLElement | null;
     expect(root).not.toBeNull();
-    expect(root!.className).toContain('gap-5');
+    // Form overrides ViewBase gap; gap-2 matches sheet gutter (section-gap).
+    expect(root!.className).toContain('gap-2');
+    expect(root!.className.split(/\s+/)).not.toContain('gap-5');
+    expect(root!.className.split(/\s+/)).not.toContain('gap-1');
 
     const shell = mounted.q('[data-slot="view-body"]') as HTMLElement | null;
     expect(shell).not.toBeNull();
     expect(shell!.className).toContain('overflow-hidden');
-    expect(shell!.className.includes('bg-card')).toBe(false);
+    // Paper shell on view-body; in-paper density on host (sheetPad=form).
+    expect(shell!.getAttribute('data-sheet-surface')).toBe('true');
+    expect(shell!.className.includes('bg-card')).toBe(true);
+    expect(shell!.className).toContain('rounded-md');
+    expect(shell!.className).toContain('border-border');
+    expect(shell!.className).toContain('shadow-xs');
+    expect(shell!.className).toContain('mx-[var(--choy-view-sheet-gutter)]');
     expect(shell!.getAttribute('data-anchor')).toBe('choy.view.sheet');
 
     const body = mounted.q('[data-anchor="choy.form-view"]') as HTMLElement | null;
@@ -91,9 +111,31 @@ describe('ChoyFormView workspace height', () => {
     expect(body!.className).toContain('min-h-0');
     expect(body!.className).toContain('flex-1');
     expect(body!.className).toContain('overflow-y-auto');
+    expect(body!.className).toContain('choy-form-view__sheet');
+    expect(body!.className).toContain('p-[var(--choy-view-sheet-pad)]');
+    expect(body!.className).not.toContain('border-t');
+    expect(body!.getAttribute('data-testid')).toBe('form-sheet');
+    expect(body!.getAttribute('data-sheet-pad')).toBe('form');
     expect(body!.className.split(/\s+/)).not.toContain('p-5');
-    expect(body!.className.split(/\s+/)).not.toContain('pt-2');
 
+    mounted.unmount();
+  });
+
+  test('embedded Form skips in-paper body chrome', async () => {
+    const mounted = mountForm({ embedded: true, showHeader: false, showActions: false });
+    await flushPromises();
+    const root = mounted.q('[data-slot="view-container"]') as HTMLElement | null;
+    expect(root!.className).toContain('gap-5');
+    const sheet = mounted.q('[data-slot="view-body"]') as HTMLElement | null;
+    expect(sheet!.getAttribute('data-sheet-surface')).toBe('false');
+    expect(sheet!.className.includes('bg-card')).toBe(false);
+    expect(sheet!.className).not.toContain('border-border');
+    expect(sheet!.className).not.toContain('mx-[var(--choy-view-sheet-gutter)]');
+    const body = mounted.q('[data-anchor="choy.form-view"]') as HTMLElement | null;
+    expect(body).not.toBeNull();
+    expect(body!.className).not.toContain('choy-form-view__sheet');
+    expect(body!.className).not.toContain('p-[var(--choy-view-sheet-pad)]');
+    expect(body!.getAttribute('data-sheet-pad')).toBe('none');
     mounted.unmount();
   });
 
@@ -112,7 +154,7 @@ describe('ChoyFormView workspace height', () => {
     mounted.unmount();
   });
 
-  test('display left chrome is primary → title → secondary', async () => {
+  test('display left chrome is title → Edit primary (New in ⋮)', async () => {
     const store = loginStore();
     const { router } = createFeStubRouter({
       route: { name: 'login', path: '/web/login', fullPath: '/web/login', params: {}, query: {}, meta: {} },
@@ -147,20 +189,101 @@ describe('ChoyFormView workspace height', () => {
     const mounted = mountApp(Host, { plugins: [createPinia(), router] });
     await flushPromises();
 
-    const tray = mounted.q('[data-testid=choy-action-tray]') as HTMLElement | null;
-    expect(tray).not.toBeNull();
-    const order = actionTrayOrder(tray!);
-    const newIdx = order.indexOf('form-primary-new');
+    const leading = mounted.q('[data-slot=view-action-bar-leading]') as HTMLElement | null;
+    expect(leading).not.toBeNull();
+    const order = actionBarLeadingOrder(leading!);
     const titleIdx = order.indexOf('page-title');
-    const editIdx = order.indexOf('form-secondary-edit');
-    expect(newIdx).toBeGreaterThanOrEqual(0);
-    expect(titleIdx).toBeGreaterThan(newIdx);
+    const editIdx = order.indexOf('form-primary-edit');
+    expect(titleIdx).toBeGreaterThanOrEqual(0);
     expect(editIdx).toBeGreaterThan(titleIdx);
+    expect(order.indexOf('form-primary-new')).toBe(-1);
+    expect(mounted.q('[data-testid=form-overflow-new]')).not.toBeNull();
+    expect(mounted.q('[data-slot=view-action-bar-overflow]')).not.toBeNull();
 
     mounted.unmount();
   });
 
-  test('create left chrome is Save/Cancel → title → ⋮ (Reset in overflow)', async () => {
+  test('display with statusbar-buttons under Action Bar; platform Edit soft-primary; lifecycle in ⋮', async () => {
+    const store = loginStore();
+    const { router } = createFeStubRouter({
+      route: { name: 'login', path: '/web/login', fullPath: '/web/login', params: {}, query: {}, meta: {} },
+    });
+    const Host = defineComponent({
+      setup() {
+        return () =>
+          h(
+            ChoyPage as any,
+            { store, title: 'Module' },
+            {
+              default: () =>
+                h(
+                  ChoyFormView as any,
+                  {
+                    store,
+                    viewMode: 'display',
+                    recordId: 'mod-1',
+                    resolveRecordIdFromRoute: false,
+                    showHeader: true,
+                    showActions: true,
+                    showMessages: false,
+                    createAction: '/modules/new',
+                    actionIds: {
+                      create: 'meta.action.create',
+                      edit: 'meta.action.edit',
+                      copy: 'meta.action.copy',
+                      delete: 'meta.action.delete',
+                    },
+                    hasAction: () => true,
+                  },
+                  {
+                    'statusbar-buttons': () =>
+                      h('button', { type: 'button', 'data-testid': 'domain-primary' }, 'Install'),
+                    'statusbar-status': () =>
+                      h('div', { 'data-testid': 'domain-status' }, 'Installed'),
+                  },
+                ),
+            },
+          );
+      },
+    });
+    const mounted = mountApp(Host, { plugins: [createPinia(), router] });
+    await flushPromises();
+
+    expect(mounted.q('[data-testid=domain-primary]')?.textContent).toBe('Install');
+    const statusbar = mounted.q('[data-testid=form-statusbar]') as HTMLElement | null;
+    expect(statusbar).not.toBeNull();
+    expect(statusbar!.querySelector('[data-testid=form-statusbar-buttons]')).not.toBeNull();
+    expect(statusbar!.querySelector('[data-testid=domain-primary]')).not.toBeNull();
+    expect(statusbar!.querySelector('[data-testid=form-statusbar-status]')).not.toBeNull();
+    expect(statusbar!.querySelector('[data-testid=domain-status]')).not.toBeNull();
+    // Statusbar stays in view-header (control ribbon on muted canvas).
+    // view-header gap owns Action Bar ↔ statusbar; header-extra has no vertical pad.
+    const header = mounted.q('[data-slot=view-header]') as HTMLElement | null;
+    expect(header).not.toBeNull();
+    expect(header!.className).toContain('gap-2');
+    expect(header!.querySelector('[data-testid=form-statusbar]')).not.toBeNull();
+    expect(mounted.q('[data-slot=view-body]')?.querySelector('[data-testid=form-statusbar]')).toBeNull();
+    const headerExtra = mounted.q('[data-slot=view-header-extra]') as HTMLElement | null;
+    expect(headerExtra).not.toBeNull();
+    expect(headerExtra!.className.split(/\s+/)).not.toContain('pt-1');
+    expect(headerExtra!.className.split(/\s+/)).not.toContain('pb-2');
+    expect(headerExtra!.className.split(/\s+/)).not.toContain('pb-1.5');
+    // Domain CTAs leave Action Bar center empty (List selection still owns center).
+    expect(mounted.q('[data-testid=form-contextual-actions]')).toBeNull();
+    const center = mounted.q('[data-slot=view-action-bar-center]') as HTMLElement | null;
+    expect(center?.querySelector('[data-testid=domain-primary]') ?? null).toBeNull();
+    // Platform Edit stays in the left system tray (not inside the statusbar).
+    expect(mounted.q('[data-testid=form-primary-edit]')).not.toBeNull();
+    expect(statusbar!.querySelector('[data-testid=form-primary-edit]')).toBeNull();
+    expect(mounted.q('[data-testid=form-secondary-edit]')).toBeNull();
+    expect(mounted.q('[data-testid=form-overflow-new]')).not.toBeNull();
+    expect(mounted.q('[data-testid=form-overflow-copy]')).not.toBeNull();
+    expect(mounted.q('[data-testid=form-overflow-delete]')).not.toBeNull();
+
+    mounted.unmount();
+  });
+
+  test('create left chrome is title → Save/Cancel → ⋮ (Reset in overflow)', async () => {
     const store = loginStore();
     const { router } = createFeStubRouter({
       route: { name: 'login', path: '/web/login', fullPath: '/web/login', params: {}, query: {}, meta: {} },
@@ -188,17 +311,18 @@ describe('ChoyFormView workspace height', () => {
     const mounted = mountApp(Host, { plugins: [createPinia(), router] });
     await flushPromises();
 
-    const tray = mounted.q('[data-testid=choy-action-tray]') as HTMLElement | null;
-    expect(tray).not.toBeNull();
-    const order = actionTrayOrder(tray!);
+    const leading = mounted.q('[data-slot=view-action-bar-leading]') as HTMLElement | null;
+    expect(leading).not.toBeNull();
+    const order = actionBarLeadingOrder(leading!);
     const saveIdx = order.findIndex(t => t.includes('Save') || t.includes('保存'));
     const cancelIdx = order.findIndex(t => t.includes('Cancel') || t.includes('取消'));
     const titleIdx = order.indexOf('page-title');
-    expect(saveIdx).toBeGreaterThanOrEqual(0);
+    expect(titleIdx).toBeGreaterThanOrEqual(0);
+    expect(saveIdx).toBeGreaterThan(titleIdx);
     expect(cancelIdx).toBeGreaterThan(saveIdx);
-    expect(titleIdx).toBeGreaterThan(cancelIdx);
     expect(order.includes('form-secondary-reset')).toBe(false);
     expect(mounted.q('[data-testid=page-io-menu-trigger]')).not.toBeNull();
+    expect(mounted.q('[data-slot=view-action-bar-overflow]')).not.toBeNull();
 
     mounted.unmount();
   });

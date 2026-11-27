@@ -10,7 +10,7 @@ SPDX-License-Identifier: Apache-2.0
     data-print="page"
     :class="
       cn(
-        // App shell owns paper gutter (choy.shell.content). Page padding is opt-in
+        // View sheet owns paper gutter (choy-view-sheet). Page padding is opt-in
         // for rare document/guest layouts — not the ERP default.
         'choy-page relative mx-auto w-full text-foreground',
         props.padding ? (titleHostedByView ? 'choy-inset-pad-no-top' : 'choy-inset-pad') : '',

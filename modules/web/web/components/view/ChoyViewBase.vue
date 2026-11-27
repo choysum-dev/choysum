@@ -9,58 +9,79 @@ SPDX-License-Identifier: Apache-2.0
   New view type checklist:
   1. registerViewKind({ id, fieldPresentation, defaultMode })
   2. page meta.viewKind / viewPaths (+ optional ChoyViewSwitcher)
-  3. wrap with ChoyViewBase; fill #system-actions / #center / default body
+  3. wrap with ChoyViewBase; fill #system-actions / #secondary-actions / #center / default body
   4. useProvideViewScope({ kind })
   5. wire busy / error / hasFrame / hasSettled / @retry / @cancel
   6. collection: Search first-frame + #search or embedded Search
   7. export from kit + chrome/mount unit test
 
-  Left chrome contract (List / Kanban / Form):
-  [primary / #system-actions] [page title][⋮] [#secondary-actions…]
+  Left chrome contract (List / Kanban / Form / Chart):
+  [identity: max-width title menu] [主 → 次 → 领域] | [找] | [看]
+  Title is the overflow/IO menu trigger (click); no standalone ⋯.
 -->
 <template>
-  <ChoyViewContainer :class="containerClass" v-bind="attrs">
-    <template v-if="showHeaderRegion()" #header>
-      <div :data-anchor="chromeAnchor || undefined">
+  <ChoyViewContainer :class="containerClass" :sheet-surface="sheetSurface" v-bind="attrs">
+    <!--
+      Action Bar + optional header-extra (Form statusbar / Chart controls) share
+      view-header; vertical rhythm is view-header gap (not padding on extra).
+      Paper shell / in-paper density: sheetSurface + sheetPad (see choy-view-sheet.md).
+    -->
+    <template v-if="showChromeHeader()" #header>
+      <div v-if="showHeaderRegion()" :data-anchor="chromeAnchor || undefined">
         <ChoyViewActionBar
           layout="thirds"
           class="gap-2 border-b-0 [border-bottom-width:0px]"
           :system-actions-label="systemActionsLabel"
           :user-actions-label="userActionsLabel"
         >
-          <template v-if="showSystemTray()" #system-actions>
-            <slot name="system-actions" />
-            <slot name="primary" />
-
+          <template v-if="pageTitle || showTitleOverflow" #identity>
+            <div
+              v-if="showTitleOverflow"
+              data-slot="view-action-bar-overflow"
+              class="flex min-w-0 max-w-full items-center"
+            >
+              <ChoyPageTitleActions
+                :has-io-menu="!!pageTitleActionsIo"
+                :action-import="pageTitleActionsIo?.actionImport ?? false"
+                :action-export="pageTitleActionsIo?.actionExport ?? false"
+                :action-import-upload-hint="pageTitleActionsIo?.actionImportUploadHint"
+                :action-import-column-mapping="pageTitleActionsIo?.actionImportColumnMapping"
+                :action-list-ref="(pageTitleActionsIo?.actionListRef as any)"
+                :action-company-id="pageTitleActionsIo?.actionCompanyId"
+                :store="store"
+                :menu-title="pageTitle || _t('Actions')"
+                :menu-title-id="pageTitleId"
+                :menu-title-class="resolvedPageTitleClass"
+              >
+                <template v-if="slots['overflow-actions']" #overflow>
+                  <slot name="overflow-actions" />
+                </template>
+              </ChoyPageTitleActions>
+            </div>
             <h1
-              v-if="pageTitle"
+              v-else-if="pageTitle"
               :id="pageTitleId || undefined"
               data-slot="page-title"
+              :title="pageTitle"
               :class="resolvedPageTitleClass"
             >
               {{ pageTitle }}
             </h1>
-            <ChoyPageTitleActions
-              v-if="showTitleOverflow"
-              :has-io-menu="!!pageTitleActionsIo"
-              :action-import="pageTitleActionsIo?.actionImport ?? false"
-              :action-export="pageTitleActionsIo?.actionExport ?? false"
-              :action-import-upload-hint="pageTitleActionsIo?.actionImportUploadHint"
-              :action-import-column-mapping="pageTitleActionsIo?.actionImportColumnMapping"
-              :action-list-ref="(pageTitleActionsIo?.actionListRef as any)"
-              :action-company-id="pageTitleActionsIo?.actionCompanyId"
-              :store="store"
-            >
-              <template v-if="slots['overflow-actions']" #overflow>
-                <slot name="overflow-actions" />
-              </template>
-            </ChoyPageTitleActions>
-
-            <slot name="secondary-actions" />
           </template>
 
-          <template v-if="slots['user-actions']" #user-actions>
-            <slot name="user-actions" />
+          <template v-if="showSystemTray()" #system-actions>
+            <slot name="system-actions" />
+            <slot name="primary" />
+          </template>
+
+          <!--
+            Leading secondary tray (ActionBar #user-actions slot name is legacy).
+            List selection toolbar lives in #system-actions; Kanban/Chart host
+            #contextual-actions may still use #center; Form uses statusbar.
+            Do not park List selection chrome in this leading tray.
+          -->
+          <template v-if="showLeadingSecondary()" #user-actions>
+            <slot name="secondary-actions" />
           </template>
 
           <!-- ActionBar thirds pads an empty center when this slot is omitted. -->
@@ -73,17 +94,21 @@ SPDX-License-Identifier: Apache-2.0
           </template>
         </ChoyViewActionBar>
       </div>
+
+      <div
+        v-if="slots['header-extra']"
+        data-slot="view-header-extra"
+        class="min-w-0 shrink-0"
+      >
+        <slot name="header-extra" />
+      </div>
     </template>
 
-    <div v-if="slots['header-extra']" data-slot="view-header-extra" class="min-w-0 shrink-0">
-      <slot name="header-extra" />
-    </div>
-
     <ChoyViewBusyHost
-      v-bind="busyHostAttrs"
+      v-bind="resolvedBusyHostAttrs"
       :busy="busy"
       :mode="mode"
-      :class="busyHostClass"
+      :class="resolvedBusyHostClass"
       :busy-label="busyLabel"
       :error="error"
       :has-frame="hasFrame"
@@ -124,6 +149,9 @@ export type ChoyViewBaseTitleActionsIo = {
   actionCompanyId?: string;
 };
 
+/** In-paper density on view-body-host (see choy-view-sheet.md). */
+export type ChoyViewSheetPad = 'form' | 'board' | 'flush' | 'none';
+
 const props = withDefaults(
   defineProps<{
     /** When false, header ActionBar is omitted. */
@@ -139,7 +167,7 @@ const props = withDefaults(
     pageTitleId?: string | null;
     pageTitleClass?: ClassValue;
     pageTitleActionsIo?: ChoyViewBaseTitleActionsIo | null;
-    /** When true, mount ChoyPageTitleActions (IO ⋮ / overflow). */
+    /** When true, mount ChoyPageTitleActions (IO ⋮ / overflow) at the actions cluster end. */
     showTitleOverflow?: boolean;
     store?: { storeId?: string; fullModelName?: string; state?: { result?: { total?: number } } };
     busy?: boolean;
@@ -152,6 +180,17 @@ const props = withDefaults(
     hasFrame?: boolean;
     hasSettled?: boolean;
     errorFallbackTitle?: string;
+    /**
+     * Floating paper on view-body. Off for embedded / dialog hosts.
+     * Default true (page views).
+     */
+    sheetSurface?: boolean;
+    /**
+     * In-paper density on view-body-host.
+     * form = document (content-padding); board = collection/canvas (section-gap);
+     * flush|none = no pad (rare full-bleed / embedded).
+     */
+    sheetPad?: ChoyViewSheetPad;
   }>(),
   {
     showHeader: true,
@@ -162,6 +201,8 @@ const props = withDefaults(
     hasFrame: false,
     hasSettled: false,
     busyHostAttrs: () => ({}),
+    sheetSurface: true,
+    sheetPad: 'flush',
   },
 );
 
@@ -173,8 +214,12 @@ const emit = defineEmits<{
 const slots = useSlots();
 const attrs = useAttrs();
 
+/**
+ * Title track: text-base, max-width, single-line ellipsis so long labels never
+ * grow the action bar past adjacent control height.
+ */
 const defaultPageTitleClass =
-  'min-w-0 max-w-[10rem] truncate text-base font-semibold text-foreground sm:max-w-[14rem]';
+  'min-w-0 max-w-[10rem] truncate text-base font-semibold leading-none text-foreground sm:max-w-[14rem]';
 
 /** Default title chrome + optional BEM / extra classes from the product view. */
 const resolvedPageTitleClass = computed(() => cn(defaultPageTitleClass, props.pageTitleClass));
@@ -184,28 +229,50 @@ const userActionsLabel = computed(() => props.userActionsLabel || _t('User actio
 
 const containerClass = computed(() => cn('gap-5', props.class));
 
+const sheetSurface = computed(() => props.sheetSurface !== false);
+const sheetPad = computed<ChoyViewSheetPad>(() => props.sheetPad || 'flush');
+
+/** form/board presets only — flush/none leave host padding unset. */
+const sheetPadClass = computed(() => {
+  if (sheetPad.value === 'form') return 'p-[var(--choy-view-sheet-pad)]';
+  if (sheetPad.value === 'board') return 'p-[var(--choy-layout-section-gap)]';
+  return undefined;
+});
+
+const resolvedBusyHostClass = computed(() => cn(sheetPadClass.value, props.busyHostClass));
+
+const resolvedBusyHostAttrs = computed(() => ({
+  ...(props.busyHostAttrs || {}),
+  'data-sheet-pad': sheetPad.value,
+}));
+
 /**
  * Slot presence is read during render (not via computed) so Vue 3.5 production
  * builds re-evaluate when a parent adds/removes a conditional named slot.
  */
 function showSystemTray(): boolean {
-  return (
-    props.showActions ||
-    !!props.pageTitle ||
-    !!props.showTitleOverflow ||
-    !!slots['system-actions'] ||
-    !!slots.primary ||
-    !!slots['secondary-actions']
-  );
+  return props.showActions || !!slots['system-actions'] || !!slots.primary;
+}
+
+/** Leading secondary tray (#secondary-actions only), separated from platform. */
+function showLeadingSecondary(): boolean {
+  return !!slots['secondary-actions'];
 }
 
 function showHeaderRegion(): boolean {
   if (!props.showHeader) return false;
   return (
+    !!props.pageTitle ||
+    !!props.showTitleOverflow ||
     showSystemTray() ||
-    !!slots['user-actions'] ||
+    showLeadingSecondary() ||
     !!slots.center ||
     !!slots['header-right']
   );
+}
+
+/** Action Bar and/or header-extra (statusbar / Chart controls) as one chrome block. */
+function showChromeHeader(): boolean {
+  return showHeaderRegion() || !!slots['header-extra'];
 }
 </script>

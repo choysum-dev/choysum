@@ -5,6 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <ChoyFormView
+    ref="formViewRef"
     v-bind="{ store, recordId, initialValues, viewMode, showHeader, createAction }"
     :action-ids="{
       create: sandboxRecordActions.create,
@@ -15,24 +16,57 @@ SPDX-License-Identifier: Apache-2.0
     :has-action="hasAction"
     v-on="$attrs"
   >
+    <!-- Workflow CTAs → Form statusbar left (display). Writes State; onchange mirrors Progress. -->
+    <template #statusbar-buttons="{ formData, recordId: slotRecordId, loading }">
+      <ChoyStatusbarButton
+        v-if="!loading && showMarkOpen(formData, slotRecordId)"
+        data-testid="sandbox-mark-open"
+        :busy="stateBusy"
+        @execute="() => void markState(slotRecordId, 'open')"
+      >
+        <ChevronRight class="size-4" aria-hidden="true" />
+        {{ _t('Mark Open') }}
+      </ChoyStatusbarButton>
+      <ChoyStatusbarButton
+        v-if="!loading && showMarkDone(formData, slotRecordId)"
+        data-testid="sandbox-mark-done"
+        :busy="stateBusy"
+        @execute="() => void markState(slotRecordId, 'done')"
+      >
+        <CircleCheck class="size-4" aria-hidden="true" />
+        {{ _t('Mark Done') }}
+      </ChoyStatusbarButton>
+      <ChoyStatusbarButton
+        v-if="!loading && showResetDraft(formData, slotRecordId)"
+        data-testid="sandbox-reset-draft"
+        :busy="stateBusy"
+        @execute="() => void markState(slotRecordId, 'draft')"
+      >
+        <RotateCcw class="size-4" aria-hidden="true" />
+        {{ _t('Reset to Draft') }}
+      </ChoyStatusbarButton>
+    </template>
+
+    <!-- Progress ribbon → Form statusbar right (not in sheet body). -->
+    <template #statusbar-status>
+      <ChoyStatusbarField :store="store" prop="Progress" />
+    </template>
+
     <!--
       Sheet tip chrome + ChoySection `divided` for phase breaks (padless sections,
       not nested cards). Avoid stacking flex gap with divided mt-* (double rhythm).
     -->
     <div data-anchor="choy.form.sheet" class="flex min-h-full flex-col">
-      <div class="mb-8 flex flex-col gap-3">
-        <ChoyStatusbarField :store="store" prop="Progress" />
-        <aside
-          class="rounded-md border border-border bg-muted/40 px-3.5 py-2.5 text-xs leading-relaxed text-muted-foreground"
-          data-testid="sandbox-onchange-hint"
-        >
-          {{
-            _t(
-              'Onchange: Active/State warn → toast; State disables Progress statusbar clicks (options stay visible); Currency/Category rewrite values; negative Int Value → field error; Line Quantity silently clamps to 1…999 (no toast).',
-            )
-          }}
-        </aside>
-      </div>
+      <aside
+        class="mb-8 rounded-md border border-border bg-muted/40 px-3.5 py-2.5 text-xs leading-relaxed text-muted-foreground"
+        data-testid="sandbox-onchange-hint"
+      >
+        {{
+          _t(
+            'Onchange: Active/State warn → toast; State disables Progress statusbar clicks (options stay visible); Currency/Category rewrite values; negative Int Value → field error; Line Quantity silently clamps to 1…999 (no toast).',
+          )
+        }}
+      </aside>
 
       <!-- divided for title trailing rule; mt-0 so tip mb-8 is not doubled. -->
       <ChoySection :title="_t('Identity')" divided class="mt-0">
@@ -299,6 +333,7 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import type { RouteLocationRaw } from 'vue-router';
+import { ChevronRight, CircleCheck, RotateCcw } from 'lucide-vue-next';
 import type { ModelStore } from '@/web/web/stores/modelStore';
 import type SandboxRecord from '@/sandbox/service/models/sandbox_record';
 import type SandboxLine from '@/sandbox/service/models/sandbox_line';
@@ -342,12 +377,14 @@ import {
   ChoyPropertiesField,
   ChoySection,
   ChoySelectionField,
+  ChoyStatusbarButton,
   ChoyStatusbarField,
   ChoyTab,
   ChoyTabs,
   ChoyTextField,
   ChoyTimeField,
   ChoyVarcharField,
+  useFormWorkflowAction,
   type ChoyViewMode as ViewMode,
 } from '@/web';
 import { sandboxRecordActions } from './sandbox_record_actions';
@@ -356,6 +393,19 @@ defineOptions({ name: 'SandboxRecordFormView', inheritAttrs: true });
 const { _t } = createTranslate('sandbox', { scope: 'web/views/SandboxRecordFormView' });
 const requiredRules = computed(() => [{ required: true, message: _t('Required') }]);
 const linesTab = ref('lines-table');
+const formViewRef = ref<{
+  reloadDisplay?: () => Promise<void>;
+  refresh?: () => Promise<void>;
+  getViewMode?: () => ViewMode;
+} | null>(null);
+const { busy: stateBusy, run: runStateWorkflow } = useFormWorkflowAction({
+  formRef: formViewRef,
+  reload: 'display',
+  errorMessage: err =>
+    err instanceof Error ? err.message : String(err || _t('Failed to update state')),
+});
+
+type WorkflowState = 'draft' | 'open' | 'done';
 
 const props = withDefaults(
   defineProps<{
@@ -375,6 +425,35 @@ const props = withDefaults(
 const store = resolvePageStore(props.store, 'SandboxRecordFormView');
 const { recordId, initialValues, viewMode, showHeader, createAction } = props;
 const { hasAction } = usePermission();
+
+const canWriteRecord = computed(() => hasAction(sandboxRecordActions.edit));
+
+function resolveWorkflowState(formData: Partial<SandboxRecord> | undefined): WorkflowState {
+  const raw = String(formData?.State ?? formData?.Progress ?? 'draft').trim() || 'draft';
+  if (raw === 'open' || raw === 'done') return raw;
+  return 'draft';
+}
+
+function showMarkOpen(formData: Partial<SandboxRecord> | undefined, slotRecordId: string | undefined): boolean {
+  return canWriteRecord.value && !!String(slotRecordId || '').trim() && resolveWorkflowState(formData) === 'draft';
+}
+
+function showMarkDone(formData: Partial<SandboxRecord> | undefined, slotRecordId: string | undefined): boolean {
+  return canWriteRecord.value && !!String(slotRecordId || '').trim() && resolveWorkflowState(formData) === 'open';
+}
+
+function showResetDraft(formData: Partial<SandboxRecord> | undefined, slotRecordId: string | undefined): boolean {
+  return canWriteRecord.value && !!String(slotRecordId || '').trim() && resolveWorkflowState(formData) === 'done';
+}
+
+async function markState(slotRecordId: string | undefined, next: WorkflowState): Promise<void> {
+  const id = String(slotRecordId || '').trim();
+  if (!id) return;
+  // UpdateById does not run @Onchange; mirror Progress so statusbar matches State.
+  await runStateWorkflow(async () => {
+    await store.UpdateById(id, { State: next, Progress: next } as Partial<SandboxRecord>);
+  });
+}
 
 const defaultLineRecord = computed((): Partial<SandboxLine> => ({
   Name: '',

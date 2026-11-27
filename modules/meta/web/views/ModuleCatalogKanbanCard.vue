@@ -70,7 +70,7 @@ SPDX-License-Identifier: Apache-2.0
         v-if="showUninstall"
         type="button"
         size="xs"
-        variant="outline-destructive"
+        variant="soft-destructive"
         data-testid="module-catalog-card-uninstall"
         @execute="emit('uninstall')"
       >

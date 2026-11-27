@@ -5,10 +5,10 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <ChoyViewBase
-    class="choy-list-view"
+    class="choy-list-view gap-2"
     chrome-anchor="choy.list.view-chrome"
     :show-header="showHeader"
-    :show-actions="showActions"
+    :show-actions="showActions || editable"
     :page-title="pageTitle"
     :page-title-id="pageTitleId"
     page-title-class="choy-list-view__page-title"
@@ -17,6 +17,8 @@ SPDX-License-Identifier: Apache-2.0
     :store="store"
     :busy="listBusy"
     :mode="listBusyMode"
+    :sheet-surface="true"
+    sheet-pad="board"
     busy-host-class="flex min-h-0 min-w-0 flex-1 flex-col"
     :error="controller.vm.error"
     :has-frame="listHasFrame"
@@ -31,7 +33,7 @@ SPDX-License-Identifier: Apache-2.0
         v-if="editable && isEditing"
         type="button"
         size="default"
-        variant="default"
+        variant="soft-primary"
         :busy="inlineSaving"
         @execute="handleInlineSave"
       >
@@ -43,7 +45,7 @@ SPDX-License-Identifier: Apache-2.0
         v-if="editable && isEditing"
         type="button"
         size="default"
-        variant="outline"
+        variant="ghost"
         :requires-connectivity="false"
         @execute="handleInlineDiscard"
       >
@@ -51,55 +53,14 @@ SPDX-License-Identifier: Apache-2.0
         {{ _t('Discard') }}
       </ChoyActionButton>
 
-      <slot
-        v-if="showActions"
-        name="system-actions"
-        :selected-items="selectedItems"
-        :is-editing="isEditing"
-        :inline-saving="inlineSaving"
-        :save="handleInlineSave"
-        :discard="handleInlineDiscard"
-      >
-        <ChoyActionButton
-          v-if="resolvedCreateAction && canCreate"
-          type="button"
-          size="default"
-          variant="default"
-          :action-id="actionIds?.create"
-          :has-action="hasAction"
-          @execute="handleCreate"
-        >
-          <Plus class="size-4" aria-hidden="true" />
-          {{ _t('New') }}
-        </ChoyActionButton>
-      </slot>
-    </template>
-
-    <template v-if="showRefreshInOverflow || !!slots['overflow-actions']" #overflow-actions>
-      <ChoyViewOverflowRefreshItem
-        v-if="showRefreshInOverflow"
-        test-id="list-overflow-refresh"
-        @select="handleRefresh"
-      />
-      <slot name="overflow-actions" :selected-items="selectedItems" />
-    </template>
-
-    <template v-if="showActions" #secondary-actions>
-      <slot name="secondary-actions" :selected-items="selectedItems" />
-    </template>
-
-    <template v-if="showActions && !!slots['user-actions']" #user-actions>
-      <slot name="user-actions" :selected-items="selectedItems" />
-    </template>
-
-    <!-- Selection replaces Search in the center column. Search stays mounted. -->
-    <template #center>
+      <!-- Selection toolbar lives in the actions cluster; find keeps Search. -->
       <div
-        v-show="hasSelection"
+        v-if="showActions && hasSelection"
         data-anchor="choy.list.selection-bar"
-        class="flex min-w-0 w-full flex-nowrap items-center gap-2 overflow-x-auto"
+        data-testid="list-contextual-actions"
+        class="flex min-w-0 flex-nowrap items-center gap-2 overflow-x-auto"
         role="toolbar"
-        :aria-label="_t('Selection actions')"
+        :aria-label="_t('Contextual actions')"
       >
         <div class="flex min-w-0 items-center gap-1">
           <span class="truncate text-sm text-muted-foreground tabular-nums">
@@ -120,7 +81,7 @@ SPDX-License-Identifier: Apache-2.0
         <ChoyActionButton
           v-if="deleteAction && canDelete"
           size="default"
-          variant="outline-destructive"
+          variant="soft-destructive"
           :busy="deleteLoading"
           :action-id="actionIds?.delete"
           :has-action="hasAction"
@@ -130,13 +91,57 @@ SPDX-License-Identifier: Apache-2.0
           {{ _t('Delete') }}
         </ChoyActionButton>
 
+        <slot
+          name="contextual-actions"
+          :selected-items="selectedItems"
+          :clear="clearSelection"
+        />
+        <!-- Deprecated aliases for #contextual-actions. -->
         <slot name="selection-actions" :selected-items="selectedItems" :clear="clearSelection" />
+        <slot name="user-actions" :selected-items="selectedItems" :clear="clearSelection" />
       </div>
-      <ChoySearchFit
-        v-if="resolvedSearchView"
-        v-show="!hasSelection"
-        :field-visible="!hasSelection"
+
+      <slot
+        v-else-if="showActions"
+        name="system-actions"
+        :selected-items="selectedItems"
+        :is-editing="isEditing"
+        :inline-saving="inlineSaving"
+        :save="handleInlineSave"
+        :discard="handleInlineDiscard"
       >
+        <ChoyActionButton
+          v-if="resolvedCreateAction && canCreate"
+          type="button"
+          size="default"
+          variant="soft-primary"
+          :action-id="actionIds?.create"
+          :has-action="hasAction"
+          @execute="handleCreate"
+        >
+          <Plus class="size-4" aria-hidden="true" />
+          {{ _t('New') }}
+        </ChoyActionButton>
+      </slot>
+    </template>
+
+    <template v-if="showRefreshInOverflow || !!slots['overflow-actions']" #overflow-actions>
+      <ChoyViewOverflowRefreshItem
+        v-if="showRefreshInOverflow"
+        test-id="list-overflow-refresh"
+        @select="handleRefresh"
+      />
+      <slot name="overflow-actions" :selected-items="selectedItems" />
+    </template>
+
+    <!-- Leading secondary (e.g. Load Demo); hide while selection owns the actions cluster. -->
+    <template v-if="showActions && !hasSelection && !!slots['secondary-actions']" #secondary-actions>
+      <slot name="secondary-actions" :selected-items="selectedItems" />
+    </template>
+
+    <!-- Find zone keeps Search whether or not rows are selected. -->
+    <template #center>
+      <ChoySearchFit v-if="resolvedSearchView">
         <component :is="resolvedSearchView" class="min-w-0 w-full" :store="store" @query-update="onSearch" />
       </ChoySearchFit>
     </template>
@@ -229,7 +234,7 @@ SPDX-License-Identifier: Apache-2.0
                     <ChoyActionButton
                       type="button"
                       size="default"
-                      variant="default"
+                      variant="soft-primary"
                       :action-id="actionIds?.create"
                       :has-action="hasAction"
                       @execute="handleCreate"
@@ -314,6 +319,10 @@ import { useVirtualizationAdapter } from '@/web/web/composables/virtualizationAd
 import { awaitFieldSelection } from '@/web/web/query/utils/registry/fieldReady';
 import ChoySearchView from '@/web/web/components/view/ChoySearchView.vue';
 import { shouldDeferToSearchFirstFrame } from '@/web/web/components/view/viewFirstFrame';
+import {
+  reconcileListSelection,
+  reconcileListSelectionKeys,
+} from '@/web/web/components/view/listSelectionReconcile';
 import { useSearchFirstFrameHost } from '@/web/web/components/view/search/searchFirstFrame';
 import {
   canShowAction,
@@ -347,6 +356,7 @@ import { useViewTitleOverflow } from '@/web/web/components/view/useViewTitleOver
 import { useCollectionBusyMode } from '@/web/web/components/view/useCollectionBusyMode';
 import { useControllerSoftFailSurface } from '@/web/web/components/view/useControllerSoftFailSurface';
 import { useDetailPathRecordSetHygiene } from '@/web/web/components/view/useDetailPathRecordSetHygiene';
+import { useDetailPathCollectionSoftRefresh } from '@/web/web/components/view/useDetailPathCollectionSoftRefresh';
 
 defineOptions({ name: 'ChoyListView', inheritAttrs: false });
 
@@ -708,13 +718,18 @@ async function handleInlineDiscard() {
 // Section 8: Selection management
 // =============================
 // Prefer the new wrapped key first, then __rowKey / Id.
-const selection = useTableSelection(
-  (row: any) =>
-    row?.key ?? row?.__rowKey ?? row?.Id ?? (typeof row === 'object' ? ((row as any)?.payload?.Id) : undefined),
-  props.selectionMode
-);
+function selectionRowKey(row: any): string | number | undefined {
+  return (
+    row?.key ??
+    row?.__rowKey ??
+    row?.Id ??
+    (typeof row === 'object' ? ((row as any)?.payload?.Id) : undefined)
+  );
+}
 
-// Selected items; bulk actions render in the center selection bar (Odoo-style).
+const selection = useTableSelection(selectionRowKey, props.selectionMode);
+
+// Selected items; bulk actions live in the actions cluster (find keeps Search).
 const selectedItems = ref<any[]>([]);
 const hasSelection = computed(() => selectedItems.value.length > 0);
 
@@ -722,6 +737,20 @@ function clearSelection() {
   selection.clear();
   selectedItems.value = [];
   emit('selection-change', { rows: [], ids: [] });
+}
+
+function reconcileSelectionToFreshRows(): void {
+  // Prefer controller nodes (post-apply); fall back to flattened table rows.
+  const rows = ((items.value?.length ? items.value : tableItems.value) || []) as any[];
+  selectedItems.value = reconcileListSelection(selectedItems.value as any[], rows) as ClientModel<T[]>;
+  // Keep checkbox selection keys in sync — softRefresh skips the items watcher that normally clears.
+  selection.selected.value = reconcileListSelectionKeys(
+    selection.selected.value,
+    rows,
+    selectionRowKey,
+  );
+  // Notify parents when softRefresh pruned or replaced selected rows.
+  onSelectionChange(selectedItems.value as any[]);
 }
 
 function onSelectionChange(rows: any[]) {
@@ -808,8 +837,11 @@ const baseIndex = computed(() => (effectivePagination.value.offset ?? 0) + 1);
 // =============================
 // Section 12: Side-effects on data change (reset selection)
 // =============================
-// Clear selection after page changes or data refreshes
+/** When true, items watch skips clearing selection (domain softRefresh). */
+let suppressSelectionResetOnItems = false;
+// Clear selection after page changes or data refreshes (not softRefresh).
 watch(items, () => {
+  if (suppressSelectionResetOnItems) return;
   selection.clear();
   selectedItems.value = [];
 });
@@ -878,6 +910,18 @@ function afterLayoutRecompute() {
   return nextTick().then(recomputeTableHeight);
 }
 
+async function softRefreshDetailPathCollection(): Promise<void> {
+  await controller.apply({ forcedCondition: props.forcedCondition as any });
+  await afterLayoutRecompute();
+}
+
+// KeepAlive return from Form: silent re-apply (stale busy); skips mount activate.
+useDetailPathCollectionSoftRefresh({
+  detailPath: () => props.detailPath,
+  hasSettled: () => !!controller.vm.hasAppliedOnce || !!firstApplied.value,
+  refresh: softRefreshDetailPathCollection,
+});
+
 // =============================
 // Section 15: Lifecycle - onMounted (initial load)
 // =============================
@@ -937,6 +981,31 @@ async function loadData() {
   }
 }
 
+/** Nested softRefresh must not clear suppress while an outer apply is in flight. */
+let softRefreshDepth = 0;
+
+/** Silent re-apply for domain workflow CTAs; keeps selection (unlike loadData). */
+async function softRefresh() {
+  softRefreshDepth += 1;
+  suppressSelectionResetOnItems = true;
+  try {
+    await controller.apply({ forcedCondition: props.forcedCondition as any });
+    await afterLayoutRecompute();
+    // Let items watch from apply flush while still suppressed.
+    await nextTick();
+    reconcileSelectionToFreshRows();
+  } catch (e: unknown) {
+    const err = e instanceof Error ? e : new Error(String(e));
+    emit('action-error', { action: 'refresh', error: err });
+    throw err;
+  } finally {
+    softRefreshDepth = Math.max(0, softRefreshDepth - 1);
+    if (softRefreshDepth === 0) {
+      suppressSelectionResetOnItems = false;
+    }
+  }
+}
+
 // Sync props.orderBy into queryState when the host changes controlled sorting.
 watch(
   () => props.orderBy,
@@ -991,6 +1060,7 @@ function onSearch(payload: QueryUpdatePayload<T>) {
 // =============================
 // Pagination only updates state and emits events
 function onPaginateState({ limit, offset }: { limit: number; offset: number }) {
+  clearSelection();
   // Still emit paginate externally for legacy listeners
   const page = Math.floor(offset / Math.max(1, limit)) + 1;
   const pageSize = limit;
@@ -1184,6 +1254,7 @@ const onToggleGroup = async (key: string) => {
 defineExpose<
   SelectionExpose<ClientModel<T>> & {
     load: () => Promise<void>;
+    softRefresh: () => Promise<void>;
     retrySurface: () => Promise<void>;
     inlineEdit: typeof inlineEdit;
     flatRows: typeof flatRows;
@@ -1197,6 +1268,7 @@ defineExpose<
   selectedItems: selectedItems as any,
   selectedItem: selectedItem as any,
   load: loadData,
+  softRefresh,
   /** BusyHost surface Retry — same entry as load (keeps forcedCondition). */
   retrySurface: onSurfaceRetry,
   inlineEdit,

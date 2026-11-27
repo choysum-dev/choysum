@@ -32,7 +32,10 @@ type ButtonVariant =
   | 'default'
   | 'secondary'
   | 'outline'
+  | 'outline-primary'
   | 'outline-destructive'
+  | 'soft-primary'
+  | 'soft-destructive'
   | 'ghost'
   | 'destructive'
   | 'link';

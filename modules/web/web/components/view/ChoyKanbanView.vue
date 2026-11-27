@@ -6,12 +6,11 @@ SPDX-License-Identifier: Apache-2.0
 <template>
   <ChoyViewBase
     data-anchor="choy.kanban-view"
-    :class="['choy-kanban-view', props.class]"
+    :class="['choy-kanban-view', 'gap-2', props.class]"
     chrome-anchor="choy.kanban.view-chrome"
     :show-header="
       showHeader &&
-      (!!slots.header ||
-        !!slots.search ||
+      (!!slots.search ||
         !!slots['header-right'] ||
         showActions ||
         !!pageTitle ||
@@ -26,6 +25,8 @@ SPDX-License-Identifier: Apache-2.0
     :store="boundStore"
     :busy="boardBusy"
     :mode="boardBusyMode"
+    :sheet-surface="true"
+    sheet-pad="board"
     busy-host-class="choy-kanban-view__body flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-hidden"
     :error="boardSurfaceError"
     :has-frame="boardHasFrame"
@@ -44,7 +45,7 @@ SPDX-License-Identifier: Apache-2.0
           v-if="!props.readonly"
           type="button"
           size="default"
-          variant="default"
+          variant="soft-primary"
           :busy="boardBusy"
           :action-id="actionIds?.create"
           :has-action="hasAction"
@@ -65,19 +66,26 @@ SPDX-License-Identifier: Apache-2.0
       <slot name="overflow-actions" />
     </template>
 
-    <template v-if="showActions" #secondary-actions>
+    <template v-if="showActions && !!slots['secondary-actions']" #secondary-actions>
       <slot name="secondary-actions" />
     </template>
 
-    <template v-if="slots['user-actions'] || slots.header" #user-actions>
-      <slot name="user-actions" />
-      <div v-if="slots.header" class="min-w-0">
-        <slot name="header" />
+    <template
+      v-if="slots.search || slots['contextual-actions'] || slots['user-actions']"
+      #center
+    >
+      <div
+        v-if="slots['contextual-actions'] || slots['user-actions']"
+        data-anchor="choy.kanban.contextual-actions"
+        data-testid="kanban-contextual-actions"
+        class="flex min-w-0 w-full flex-nowrap items-center justify-center gap-2 overflow-x-auto"
+        role="toolbar"
+        :aria-label="_t('Contextual actions')"
+      >
+        <slot name="contextual-actions" />
+        <slot name="user-actions" />
       </div>
-    </template>
-
-    <template v-if="slots.search" #center>
-      <ChoySearchFit>
+      <ChoySearchFit v-if="slots.search">
         <slot name="search" :on-query-update="engine.applySearch" />
       </ChoySearchFit>
     </template>
@@ -290,6 +298,7 @@ import { useViewTitleOverflow } from '@/web/web/components/view/useViewTitleOver
 import { useCollectionBusyMode } from '@/web/web/components/view/useCollectionBusyMode';
 import { useControllerSoftFailSurface } from '@/web/web/components/view/useControllerSoftFailSurface';
 import { useDetailPathRecordSetHygiene } from '@/web/web/components/view/useDetailPathRecordSetHygiene';
+import { useDetailPathCollectionSoftRefresh } from '@/web/web/components/view/useDetailPathCollectionSoftRefresh';
 import Select from '../vendor/ui/select/Select.vue';
 import SelectContent from '../vendor/ui/select/SelectContent.vue';
 import SelectItem from '../vendor/ui/select/SelectItem.vue';
@@ -485,6 +494,13 @@ const engine = useChoyKanbanStoreEngine({
   onSearchError: props.onSearchError,
   onLoadMoreError: props.onLoadMoreError,
   onMoveError: handleMoveError,
+});
+
+// KeepAlive return from Form: silent board refresh; skips mount activate.
+useDetailPathCollectionSoftRefresh({
+  detailPath: () => props.detailPath,
+  hasSettled: () => !!engine.controller.vm.hasAppliedOnce,
+  refresh: () => engine.refresh(),
 });
 
 useRegisterPageActionTarget({

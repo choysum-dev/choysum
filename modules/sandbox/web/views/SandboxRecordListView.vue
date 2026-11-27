@@ -24,6 +24,43 @@ SPDX-License-Identifier: Apache-2.0
       />
     </template>
 
+    <!-- Domain bulk workflow → List selection contextual (pairs with Form statusbar). -->
+    <template #contextual-actions="{ selectedItems }">
+      <ChoyActionButton
+        v-if="canWriteRecord && selectedIdsFor('draft', selectedItems).length"
+        data-testid="sandbox-list-mark-open"
+        size="sm"
+        variant="outline"
+        :busy="bulkBusy"
+        @execute="() => void markSelected(selectedItems, 'open')"
+      >
+        <ChevronRight class="size-4" aria-hidden="true" />
+        {{ _t('Mark Open') }}
+      </ChoyActionButton>
+      <ChoyActionButton
+        v-if="canWriteRecord && selectedIdsFor('open', selectedItems).length"
+        data-testid="sandbox-list-mark-done"
+        size="sm"
+        variant="outline"
+        :busy="bulkBusy"
+        @execute="() => void markSelected(selectedItems, 'done')"
+      >
+        <CircleCheck class="size-4" aria-hidden="true" />
+        {{ _t('Mark Done') }}
+      </ChoyActionButton>
+      <ChoyActionButton
+        v-if="canWriteRecord && selectedIdsFor('done', selectedItems).length"
+        data-testid="sandbox-list-reset-draft"
+        size="sm"
+        variant="outline"
+        :busy="bulkBusy"
+        @execute="() => void markSelected(selectedItems, 'draft')"
+      >
+        <RotateCcw class="size-4" aria-hidden="true" />
+        {{ _t('Reset to Draft') }}
+      </ChoyActionButton>
+    </template>
+
     <ChoyTableColumn type="selection" :vColumnProps="{ align: 'center' }" />
     <ChoyTableColumn type="index" :vColumnProps="{ align: 'end' }" />
 
@@ -42,12 +79,15 @@ SPDX-License-Identifier: Apache-2.0
 
 <script setup lang="ts">
 import { computed } from 'vue';
+import { ChevronRight, CircleCheck, RotateCcw } from 'lucide-vue-next';
 import type { ModelStore } from '@/web/web/stores/modelStore';
 import type SandboxRecord from '@/sandbox/service/models/sandbox_record';
 import { useListViewExpose } from '@/web/web/composables/useListView';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
 import { usePermission } from '@/auth/web/composables/usePermission';
+import { ViewWorkflowPartialError } from '@/web/web/composables/viewWorkflowAction';
 import {
+  ChoyActionButton,
   ChoyBooleanField,
   ChoyCharField,
   ChoyDatetimeField,
@@ -60,14 +100,19 @@ import {
   ChoyVarcharField,
   ChoyViewSwitcher,
   useChoyViewRouteSwitch,
+  useListWorkflowAction,
   type ChoyViewSwitcherOption,
 } from '@/web';
 import { createTranslate } from '@/web/web/i18n';
 import { sandboxRecordActions } from './sandbox_record_actions';
+import {
+  sandboxWorkflowSourceState,
+  selectedSandboxIdsFor,
+  type SandboxWorkflowState,
+} from './sandbox_record_list_workflow';
 
 defineOptions({ name: 'SandboxRecordListView', inheritAttrs: false });
 const { _t } = createTranslate('sandbox', { scope: 'web/views/SandboxRecordListView' });
-
 
 const props = withDefaults(
   defineProps<{
@@ -83,6 +128,7 @@ const store = resolvePageStore(props.store, 'SandboxRecordListView');
 const { active: activeView, selectView: onViewSelect } = useChoyViewRouteSwitch({ store });
 const { showHeader } = props;
 const { hasAction } = usePermission();
+const canWriteRecord = computed(() => hasAction(sandboxRecordActions.edit));
 
 const viewSwitcherOptions = computed<ChoyViewSwitcherOption[]>(() => [
   { value: 'list', label: _t('List View') },
@@ -90,7 +136,42 @@ const viewSwitcherOptions = computed<ChoyViewSwitcherOption[]>(() => [
   { value: 'chart', label: _t('Chart View') },
 ]);
 
-
 const { listRef, expose } = useListViewExpose<SandboxRecord>();
 defineExpose(expose);
+
+const { busy: bulkBusy, run: runBulkWorkflow } = useListWorkflowAction({
+  listRef: listRef as any,
+  reload: 'apply',
+  clearSelection: true,
+  errorMessage: err =>
+    err instanceof Error ? err.message : String(err || _t('Failed to update state')),
+});
+
+function selectedIdsFor(from: SandboxWorkflowState, selectedItems: unknown): string[] {
+  return selectedSandboxIdsFor(from, selectedItems);
+}
+
+async function markSelected(selectedItems: unknown, next: SandboxWorkflowState): Promise<void> {
+  const ids = selectedSandboxIdsFor(sandboxWorkflowSourceState(next), selectedItems);
+  if (!ids.length) return;
+  await runBulkWorkflow(async () => {
+    let succeeded = 0;
+    const failures: unknown[] = [];
+    for (const id of ids) {
+      try {
+        // UpdateById does not run @Onchange; mirror Progress like Form statusbar.
+        await store.UpdateById(id, { State: next, Progress: next } as Partial<SandboxRecord>);
+        succeeded += 1;
+      } catch (err) {
+        failures.push(err);
+      }
+    }
+    if (!succeeded && failures.length) {
+      throw failures[0];
+    }
+    if (failures.length) {
+      throw new ViewWorkflowPartialError(_t('Failed to update some records'));
+    }
+  });
+}
 </script>

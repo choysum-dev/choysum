@@ -8,6 +8,7 @@ SPDX-License-Identifier: Apache-2.0
     :data-anchor="isSettingsPresentation ? 'choy.settings-view' : undefined"
     :data-testid="isSettingsPresentation ? 'choy-settings-view' : undefined"
     :chrome-anchor="isSettingsPresentation ? 'choy.settings.view-chrome' : 'choy.form.view-chrome'"
+    :class="formViewBaseClass"
     :show-header="resolvedShowHeader"
     :show-actions="resolvedShowActions"
     :page-title="chromeTitle || undefined"
@@ -20,9 +21,12 @@ SPDX-License-Identifier: Apache-2.0
     :store="store"
     :busy="overlayBusy"
     :mode="formBusyMode"
-    busy-host-class="min-h-0 flex-1 overflow-y-auto"
+    :sheet-surface="!isEmbedded"
+    :sheet-pad="isEmbedded ? 'none' : 'form'"
+    :busy-host-class="formSheetHostClass"
     :busy-host-attrs="{
       'data-anchor': isSettingsPresentation ? 'choy.settings.sheet' : 'choy.form-view',
+      'data-testid': isSettingsPresentation ? 'settings-sheet' : 'form-sheet',
     }"
     :error="formSurfaceError"
     :has-frame="formHasFrame"
@@ -32,11 +36,11 @@ SPDX-License-Identifier: Apache-2.0
     @cancel="onFormSurfaceCancel"
   >
     <!--
-      Left chrome contract (List / Kanban / Form):
-      [primary] [page title][⋮] [secondary…]
-      create/edit: primary=Save/Cancel, Reset in ⋮ (no trailing secondary).
-      display: primary=New; after title: #secondary-actions then Edit/Copy/Delete.
-      settings: primary=Save/Discard only (no CRUD / Reset overflow).
+      Action Bar contract:
+      [identity: title] [主 → 次 → ⋯] | [找] | [看]
+      create/edit: platform Save/Cancel; Reset/New/Copy/Delete in ⋮; statusbar hidden.
+      display: platform Edit; domain flow → optional statusbar (#statusbar-buttons | #statusbar-status).
+      settings: Save/Discard only (no CRUD / Reset overflow / statusbar).
     -->
     <template v-if="resolvedShowActions" #system-actions>
       <!-- Settings chrome: Save/Discard; dirty gates enablement. -->
@@ -44,7 +48,7 @@ SPDX-License-Identifier: Apache-2.0
         <ChoyActionButton
           type="button"
           size="default"
-          variant="default"
+          variant="soft-primary"
           data-testid="settings-save"
           :disabled="!settingsDirty"
           :busy="controlsLocked"
@@ -56,7 +60,7 @@ SPDX-License-Identifier: Apache-2.0
         <ChoyActionButton
           type="button"
           size="default"
-          variant="outline"
+          variant="ghost"
           data-testid="settings-discard"
           :requires-connectivity="false"
           :disabled="!settingsDirty"
@@ -67,12 +71,12 @@ SPDX-License-Identifier: Apache-2.0
           {{ settingsDiscardLabel }}
         </ChoyActionButton>
       </template>
-      <!-- Primary: Save/Cancel while editing; New (or #system-actions) in display. -->
+      <!-- Editing: Save/Cancel own the platform tray; domain tray is hidden. -->
       <template v-else-if="isEditing && resolvedShowActions">
         <ChoyActionButton
           type="button"
           size="default"
-          variant="default"
+          variant="soft-primary"
           :busy="controlsLocked"
           @execute="onSaveExecute"
         >
@@ -82,7 +86,7 @@ SPDX-License-Identifier: Apache-2.0
         <ChoyActionButton
           type="button"
           size="default"
-          variant="outline"
+          variant="ghost"
           :requires-connectivity="false"
           :busy="controlsLocked"
           @execute="handleCancel"
@@ -91,31 +95,80 @@ SPDX-License-Identifier: Apache-2.0
           {{ _t('Cancel') }}
         </ChoyActionButton>
       </template>
-      <slot v-else-if="resolvedShowActions" name="system-actions">
+      <!-- Display: platform Edit stays soft-primary; contextual CTAs go to #center. -->
+      <template v-else-if="resolvedShowActions">
         <ChoyActionButton
-          v-if="viewMode === 'display' && effectiveRecordId && resolvedCreateAction && canCreate"
+          v-if="viewMode === 'display' && effectiveRecordId && canEdit"
           type="button"
           size="default"
-          variant="default"
-          data-testid="form-primary-new"
-          :action-id="actionIds?.create"
+          variant="soft-primary"
+          data-testid="form-primary-edit"
+          :action-id="actionIds?.edit"
           :has-action="hasAction"
-          @execute="handleCreate"
+          @execute="handleEdit"
         >
-          <Plus class="size-4" aria-hidden="true" />
-          {{ _t('New') }}
+          <Pencil class="size-4" aria-hidden="true" />
+          {{ _t('Edit') }}
         </ChoyActionButton>
-      </slot>
+        <!-- Optional platform extras only — domain CTAs use #statusbar-buttons. -->
+        <slot
+          name="system-actions"
+          :form-data="exposedFormData"
+          :record-id="effectiveRecordId"
+          :view-mode="viewMode"
+          :loading="loading"
+        />
+      </template>
     </template>
 
     <template
-      v-if="showRefreshInOverflow || showResetInOverflow || $slots['overflow-actions']"
+      v-if="
+        showRefreshInOverflow ||
+        showResetInOverflow ||
+        showFormLifecycleInOverflow ||
+        $slots['overflow-actions']
+      "
       #overflow-actions
     >
-      <ChoyViewOverflowRefreshItem
-        v-if="showRefreshInOverflow"
-        test-id="form-overflow-refresh"
-        @select="handleRefresh"
+      <!-- Lifecycle first; platform tools (Reset / Refresh) last — same as List IO then Refresh. -->
+      <ChoyActionMenuItem
+        v-if="showOverflowNew"
+        data-testid="form-overflow-new"
+        :action-id="actionIds?.create"
+        :has-action="hasAction"
+        @execute="handleCreate"
+      >
+        <Plus class="size-4" aria-hidden="true" />
+        {{ _t('New') }}
+      </ChoyActionMenuItem>
+      <ChoyActionMenuItem
+        v-if="showOverflowCopy"
+        data-testid="form-overflow-copy"
+        :action-id="actionIds?.copy"
+        :has-action="hasAction"
+        @execute="handleCopy"
+      >
+        <Copy class="size-4" aria-hidden="true" />
+        {{ _t('Copy') }}
+      </ChoyActionMenuItem>
+      <ChoyActionMenuItem
+        v-if="showOverflowDelete"
+        data-testid="form-overflow-delete"
+        class="text-destructive focus:text-destructive"
+        :action-id="actionIds?.delete"
+        :has-action="hasAction"
+        @execute="handleDelete"
+      >
+        <Trash2 class="size-4" aria-hidden="true" />
+        {{ _t('Delete') }}
+      </ChoyActionMenuItem>
+      <slot name="overflow-actions" />
+      <!-- Match List: separator before platform tools (Reset / Refresh). -->
+      <DropdownMenuSeparator
+        v-if="
+          (showResetInOverflow || showRefreshInOverflow) &&
+          (showFormLifecycleInOverflow || !!$slots['overflow-actions'])
+        "
       />
       <ChoyActionMenuItem
         v-if="showResetInOverflow"
@@ -127,82 +180,88 @@ SPDX-License-Identifier: Apache-2.0
         <RotateCcw class="size-4" aria-hidden="true" />
         {{ _t('Reset') }}
       </ChoyActionMenuItem>
-      <slot name="overflow-actions" />
+      <ChoyViewOverflowRefreshItem
+        v-if="showRefreshInOverflow"
+        test-id="form-overflow-refresh"
+        @select="handleRefresh"
+      />
     </template>
 
+    <!-- Leading secondary (rare); stays beside platform via ViewBase. -->
     <template
       v-if="
         !isSettingsPresentation &&
         resolvedShowActions &&
-        viewMode === 'display' &&
-        (!!slots['secondary-actions'] || !!effectiveRecordId)
+        !isEditing &&
+        !!slots['secondary-actions']
       "
       #secondary-actions
     >
-    <!--
-      Same tray as title/⋮ (List/Kanban secondary-actions parity) — no ActionBar separator.
-      Product CTAs (e.g. Activate) render before Edit/Copy/Delete.
-    -->
-    <slot
-      name="secondary-actions"
-      :form-data="exposedFormData"
-      :record-id="effectiveRecordId"
-      :view-mode="viewMode"
-      :loading="loading"
-    />
-    <!-- Built-in secondary: Edit/Copy/Delete after product #secondary-actions. -->
-    <template v-if="effectiveRecordId">
-      <ChoyActionButton
-        v-if="canEdit"
-        type="button"
-        size="default"
-        variant="outline"
-        data-testid="form-secondary-edit"
-        :action-id="actionIds?.edit"
-        :has-action="hasAction"
-        @execute="handleEdit"
-      >
-        <Pencil class="size-4" aria-hidden="true" />
-        {{ _t('Edit') }}
-      </ChoyActionButton>
-      <ChoyActionButton
-        v-if="canCopy"
-        type="button"
-        size="default"
-        variant="outline"
-        data-testid="form-secondary-copy"
-        :action-id="actionIds?.copy"
-        :has-action="hasAction"
-        @execute="handleCopy"
-      >
-        <Copy class="size-4" aria-hidden="true" />
-        {{ _t('Copy') }}
-      </ChoyActionButton>
-      <ChoyActionButton
-        v-if="canDelete"
-        type="button"
-        size="default"
-        variant="outline-destructive"
-        data-testid="form-secondary-delete"
-        :action-id="actionIds?.delete"
-        :has-action="hasAction"
-        @execute="handleDelete"
-      >
-        <Trash2 class="size-4" aria-hidden="true" />
-        {{ _t('Delete') }}
-      </ChoyActionButton>
-    </template>
-    </template>
-
-    <!-- Only register when filled — empty tray would paint a dangling ActionBar separator. -->
-    <template v-if="resolvedShowActions && !!slots['user-actions']" #user-actions>
       <slot
-        name="user-actions"
+        name="secondary-actions"
         :form-data="exposedFormData"
         :record-id="effectiveRecordId"
         :view-mode="viewMode"
         :loading="loading"
       />
+    </template>
+
+    <!--
+      Optional Form statusbar under Action Bar (Odoo-aligned):
+      statusbar = #statusbar-buttons | #statusbar-status.
+      Hidden while editing / settings; omitted when both sides empty.
+      #contextual-actions / #user-actions → buttons (deprecated).
+      #statusbar → status (deprecated).
+    -->
+    <template v-if="showFormStatusbar()" #header-extra>
+      <div
+        data-anchor="choy.form.statusbar"
+        data-testid="form-statusbar"
+        class="flex min-h-control-sm min-w-0 w-full flex-nowrap items-center justify-between gap-3"
+        role="region"
+        :aria-label="_t('Status bar')"
+      >
+        <div
+          v-if="hasStatusbarButtons()"
+          data-anchor="choy.form.statusbar-buttons"
+          data-testid="form-statusbar-buttons"
+          class="flex min-w-0 flex-nowrap items-center gap-2 overflow-x-auto"
+          role="toolbar"
+          :aria-label="_t('Document actions')"
+        >
+          <slot
+            name="statusbar-buttons"
+            :form-data="exposedFormData"
+            :record-id="effectiveRecordId"
+            :view-mode="viewMode"
+            :loading="loading"
+          />
+          <slot
+            name="contextual-actions"
+            :form-data="exposedFormData"
+            :record-id="effectiveRecordId"
+            :view-mode="viewMode"
+            :loading="loading"
+          />
+          <slot
+            v-if="resolvedShowActions"
+            name="user-actions"
+            :form-data="exposedFormData"
+            :record-id="effectiveRecordId"
+            :view-mode="viewMode"
+            :loading="loading"
+          />
+        </div>
+        <div
+          v-if="hasStatusbarStatus()"
+          data-anchor="choy.form.statusbar-status"
+          data-testid="form-statusbar-status"
+          class="ml-auto flex min-w-0 shrink-0 items-center justify-end overflow-x-auto"
+        >
+          <slot name="statusbar-status" />
+          <slot name="statusbar" />
+        </div>
+      </div>
     </template>
 
     <template #header-right>
@@ -214,7 +273,6 @@ SPDX-License-Identifier: Apache-2.0
           @select="onSettingsViewSelect"
         />
       </template>
-      <slot v-else name="statusbar" />
       <slot v-if="!isSettingsPresentation" name="button-box" />
       <ChoyFormPager
         v-if="!isSettingsPresentation && formRecordPager.visible.value"
@@ -283,9 +341,11 @@ import { useFormRecordPager } from '@/web/web/composables/useFormRecordPager';
 import { useFormViewSubmit } from '@/web/web/composables/useFormViewSubmit';
 import { nextLocalToken } from '@/web/web/components/view/localToken';
 import { createTranslate } from '@/web/web/i18n';
+import { cn } from '@/web/web/lib/utils';
 import type { UiModelStore } from '@/web/web/stores/uiModelStore';
 import ChoyActionButton from '@/web/web/components/button/ChoyActionButton.vue';
 import ChoyActionMenuItem from '@/web/web/components/button/ChoyActionMenuItem.vue';
+import { DropdownMenuSeparator } from '@/web/web/components/vendor/ui/dropdown-menu';
 import ChoyViewBase from '@/web/web/components/view/ChoyViewBase.vue';
 import { isConnectivityUnreachable } from '@/web/web/stores/connectivityStore';
 import { runUnlessSessionUnreachable } from './formOfflineSaveGate';
@@ -419,12 +479,18 @@ const isSettingsPresentation = computed(() => props.presentation === 'settings')
 // =============================
 defineSlots<{
   breadcrumb(): any;
-  /** Primary actions before the page title (default: New in display). */
-  'system-actions'(): any;
   /**
-   * Display-only CTAs after the title/⋮ cluster, before Edit/Copy/Delete.
-   * Same tray as List/Kanban `#secondary-actions` — no ActionBar separator.
-   * `recordId` is the effective identity (prop, else route peek) — same as Edit/Copy/Delete.
+   * Optional platform extras after Edit (display). Prefer domain CTAs in #statusbar-buttons.
+   * Hidden while create/edit (Save/Cancel own the platform tray).
+   */
+  'system-actions'(props: {
+    formData: Partial<ClientModel<T>>;
+    recordId?: string;
+    viewMode: ViewMode;
+    loading: boolean;
+  }): any;
+  /**
+   * Leading secondary (rare on Form). Stays in the left secondary tray via ViewBase.
    */
   'secondary-actions'(props: {
     formData: Partial<ClientModel<T>>;
@@ -432,12 +498,40 @@ defineSlots<{
     viewMode: ViewMode;
     loading: boolean;
   }): any;
+  /**
+   * Domain workflow actions on the Form statusbar (left).
+   */
+  'statusbar-buttons'(props: {
+    formData: Partial<ClientModel<T>>;
+    recordId?: string;
+    viewMode: ViewMode;
+    loading: boolean;
+  }): any;
+  /**
+   * Status stage ribbon on the Form statusbar (right).
+   */
+  'statusbar-status'(): any;
+  /**
+   * @deprecated Prefer #statusbar-buttons (still rendered on statusbar left).
+   */
+  'contextual-actions'(props: {
+    formData: Partial<ClientModel<T>>;
+    recordId?: string;
+    viewMode: ViewMode;
+    loading: boolean;
+  }): any;
+  /**
+   * @deprecated Alias of #statusbar-buttons / #contextual-actions.
+   */
   'user-actions'(props: {
     formData: Partial<ClientModel<T>>;
     recordId?: string;
     viewMode: ViewMode;
     loading: boolean;
   }): any;
+  /**
+   * @deprecated Prefer #statusbar-status.
+   */
   statusbar(): any;
   'button-box'(): any;
   'header-right'(): any;
@@ -578,6 +672,17 @@ const resolvedShowActions = computed<boolean>(() => (hasShowActionsProp ? props.
 const resolvedShowMessages = computed<boolean>(() => (hasShowMessagesProp ? props.showMessages === true : !isEmbedded.value));
 const resolvedResolveRecordIdFromRoute = computed<boolean>(() =>
   hasResolveRecordIdFromRouteProp ? props.resolveRecordIdFromRoute === true : !isEmbedded.value
+);
+/**
+ * Page Form: gap above the sheet matches sheet gutter (section-gap / gap-2).
+ * Paper shell + in-paper pad come from ViewBase sheetSurface / sheetPad.
+ * Embedded stays flat (no double-frame).
+ */
+const formViewBaseClass = computed(() =>
+  !isEmbedded.value ? 'choy-form-view gap-2' : 'choy-form-view',
+);
+const formSheetHostClass = computed(() =>
+  cn('min-h-0 flex-1 overflow-y-auto', !isEmbedded.value && 'choy-form-view__sheet'),
 );
 const resolvedCreateAction = useResolvedCreateAction(() => props.createAction, {
   enabled: () => !isEmbedded.value && !isSettingsPresentation.value,
@@ -838,6 +943,30 @@ async function onSettingsViewSelect(value: string) {
 }
 
 const isEditing = computed(() => viewMode.value === 'edit' || viewMode.value === 'create');
+
+/**
+ * Slot presence is read during render (not via computed) so production builds
+ * re-evaluate when a parent adds/removes conditional named slots.
+ */
+function hasStatusbarButtons(): boolean {
+  return (
+    !!slots['statusbar-buttons'] ||
+    !!slots['contextual-actions'] ||
+    (resolvedShowActions.value && !!slots['user-actions'])
+  );
+}
+function hasStatusbarStatus(): boolean {
+  return !!slots['statusbar-status'] || !!slots.statusbar;
+}
+/** Form statusbar under Action Bar: display only; omit when both sides empty. */
+function showFormStatusbar(): boolean {
+  return (
+    !isSettingsPresentation.value &&
+    !isEditing.value &&
+    (hasStatusbarButtons() || hasStatusbarStatus())
+  );
+}
+
 /** Reset lives in ⋮ during create/edit so the left bar stays [Save][Cancel][title][⋮]. */
 const showResetInOverflow = computed(
   () =>
@@ -845,6 +974,33 @@ const showResetInOverflow = computed(
     resolvedShowActions.value &&
     resolvedShowHeader.value &&
     isEditing.value,
+);
+const showOverflowNew = computed(
+  () =>
+    !isSettingsPresentation.value &&
+    resolvedShowActions.value &&
+    viewMode.value === 'display' &&
+    !!resolvedCreateAction.value &&
+    canCreate.value,
+);
+const showOverflowCopy = computed(
+  () =>
+    !isSettingsPresentation.value &&
+    resolvedShowActions.value &&
+    viewMode.value === 'display' &&
+    !!effectiveRecordId.value &&
+    canCopy.value,
+);
+const showOverflowDelete = computed(
+  () =>
+    !isSettingsPresentation.value &&
+    resolvedShowActions.value &&
+    viewMode.value === 'display' &&
+    !!effectiveRecordId.value &&
+    canDelete.value,
+);
+const showFormLifecycleInOverflow = computed(
+  () => showOverflowNew.value || showOverflowCopy.value || showOverflowDelete.value,
 );
 const { showRefreshInOverflow, showTitleOverflow } = useViewTitleOverflow({
   pageTitleActionsIo,
@@ -856,7 +1012,7 @@ const { showRefreshInOverflow, showTitleOverflow } = useViewTitleOverflow({
     viewMode.value === 'display' &&
     !!effectiveRecordId.value,
   showReset: showResetInOverflow,
-  hasOverflowSlot: () => !!slots['overflow-actions'],
+  hasOverflowSlot: () => !!slots['overflow-actions'] || showFormLifecycleInOverflow.value,
   enabled: () => !isSettingsPresentation.value,
 });
 

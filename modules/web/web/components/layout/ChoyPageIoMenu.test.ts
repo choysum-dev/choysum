@@ -46,8 +46,18 @@ describe('ChoyPageIoMenu', () => {
     });
     stubSfc(DropdownMenuContent as any, {
       name: 'DropdownMenuContent',
-      setup(_: any, { slots }: any) {
-        return () => h('div', { class: 'dropdown-content' }, slots.default?.());
+      inheritAttrs: false,
+      setup(_: any, { slots, attrs }: any) {
+        return () =>
+          h(
+            'div',
+            {
+              class: 'dropdown-content',
+              onPointerenter: attrs.onPointerenter,
+              onPointerleave: attrs.onPointerleave,
+            },
+            slots.default?.(),
+          );
       },
     });
     stubSfc(DropdownMenuItem as any, {
@@ -419,6 +429,131 @@ describe('ChoyPageIoMenu', () => {
     expect(mounted.q('[data-testid=page-io-menu-import]')).toBeFalsy();
     expect(mounted.q('[data-testid=page-io-menu-separator]')).toBeFalsy();
     mounted.unmount();
+  });
+
+  test('hoverOpen toggles menuOpen via pointer enter and leave', async () => {
+    const mounted = mountMenu({
+      actionImport: true,
+      store: { storeId: 's1', fullModelName: 'partner.Partner', state: { result: { total: 1 } } },
+      hoverOpen: true,
+    });
+    await flushPromises();
+    const host = mounted.q('[data-slot=page-io-menu-trigger-host]') as HTMLElement | null;
+    expect(host).toBeTruthy();
+    const exposedMenuOpen = (mounted.root as { $?: { exposed?: { menuOpen?: { value: boolean } } } })?.$
+      ?.exposed?.menuOpen;
+    expect(!!(exposedMenuOpen && typeof exposedMenuOpen === 'object')).toBe(true);
+    const readOpen = () => !!exposedMenuOpen!.value;
+    const writeOpen = (next: boolean) => {
+      exposedMenuOpen!.value = next;
+    };
+    const ss = mounted.setupState() as {
+      closeFromHover?: () => void;
+      scheduleHoverClose?: () => void;
+      openFromHover?: () => void;
+      flushHoverClose?: () => void;
+      onTriggerLeave?: () => void;
+      onContentLeave?: () => void;
+    };
+
+    // Pointer enter claims hover ownership; content enter keeps it open.
+    host!.dispatchEvent(new Event('pointerenter', { bubbles: true }));
+    await flushPromises();
+    expect(readOpen()).toBe(true);
+    const content = mounted.q('.dropdown-content') as HTMLElement | null;
+    content?.dispatchEvent(new Event('pointerenter', { bubbles: true }));
+    await flushPromises();
+    expect(readOpen()).toBe(true);
+
+    // Leave handlers schedule the delay; flushHoverClose is what the timer runs.
+    ss.onTriggerLeave?.();
+    ss.onContentLeave?.();
+    ss.flushHoverClose?.();
+    await flushPromises();
+    expect(readOpen()).toBe(false);
+
+    // scheduleHoverClose registers the delay; invoke flushHoverClose as the timer would.
+    ss.openFromHover?.();
+    expect(readOpen()).toBe(true);
+    ss.scheduleHoverClose?.();
+    ss.flushHoverClose?.();
+    await flushPromises();
+    expect(readOpen()).toBe(false);
+
+    // Hover-owned close clears ownership; subsequent flush/close are no-ops.
+    ss.openFromHover?.();
+    expect(readOpen()).toBe(true);
+    ss.closeFromHover?.();
+    await flushPromises();
+    expect(readOpen()).toBe(false);
+    ss.flushHoverClose?.();
+    ss.closeFromHover?.();
+    expect(readOpen()).toBe(false);
+
+    // Same-tick Escape then click-open (flush:sync ownership clear).
+    ss.openFromHover?.();
+    expect(readOpen()).toBe(true);
+    writeOpen(false);
+    writeOpen(true);
+    ss.scheduleHoverClose?.();
+    ss.flushHoverClose?.();
+    expect(readOpen()).toBe(true);
+
+    // Async Escape/v-model close then click-open must also resist hover leave.
+    // Do not leave a pending hover-close timer before writeOpen(false) — wall-clock 160ms
+    // can race the click-open asserts under QuickJS.
+    writeOpen(false);
+    await flushPromises();
+    expect(readOpen()).toBe(false);
+    writeOpen(true);
+    await flushPromises();
+    expect(readOpen()).toBe(true);
+    ss.scheduleHoverClose?.();
+    ss.closeFromHover?.();
+    ss.flushHoverClose?.();
+    expect(readOpen()).toBe(true);
+    writeOpen(false);
+    await flushPromises();
+    expect(readOpen()).toBe(false);
+    mounted.unmount();
+  });
+
+  test('custom trigger slot receives open state and aria label', async () => {
+    const mounted = mountMenu(
+      { actionImport: true, store: { storeId: 's1', fullModelName: 'partner.Partner', state: { result: { total: 1 } } } },
+      {
+        slots: {
+          trigger: ({ open, ariaLabel }: { open: boolean; ariaLabel: string }) =>
+            h('button', {
+              type: 'button',
+              'data-testid': 'custom-io-trigger',
+              'data-open': String(open),
+              'aria-label': ariaLabel,
+            }),
+        },
+      },
+    );
+    await flushPromises();
+    const custom = mounted.q('[data-testid=custom-io-trigger]');
+    expect(custom).toBeTruthy();
+    expect(custom?.getAttribute('aria-label')).toBeTruthy();
+    expect(mounted.q('[data-testid=page-io-menu-trigger]')).toBeFalsy();
+    mounted.unmount();
+  });
+
+  test('import/export flags independently gate derived menu items', async () => {
+    const store = { storeId: 's1', fullModelName: 'partner.Partner', state: { result: { total: 1 } } };
+    const exportOnly = mountMenu({ actionExport: true, store });
+    await flushPromises();
+    expect(exportOnly.q('[data-testid=page-io-menu-export]')).toBeTruthy();
+    expect(exportOnly.q('[data-testid=page-io-menu-import]')).toBeFalsy();
+    exportOnly.unmount();
+
+    const importOnly = mountMenu({ actionImport: true, store });
+    await flushPromises();
+    expect(importOnly.q('[data-testid=page-io-menu-import]')).toBeTruthy();
+    expect(importOnly.q('[data-testid=page-io-menu-export]')).toBeFalsy();
+    importOnly.unmount();
   });
 
   test('separates IO items from default-slot extras', async () => {

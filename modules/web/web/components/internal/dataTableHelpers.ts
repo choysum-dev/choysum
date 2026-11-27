@@ -405,6 +405,55 @@ export function dataTableMaybeMeasure(
   }
 }
 
+/**
+ * Scroll-parent width changes (sidebar toggle) must not clear the size cache —
+ * only a vertical viewport change needs a remasure.
+ */
+export function dataTableShouldRemeasureOnScrollParentResize(
+  prevHeight: number,
+  nextHeight: number,
+): boolean {
+  return nextHeight !== prevHeight;
+}
+
+/** Keep scrollTop stable across a remasure that may adjust the spacer. */
+export function dataTablePreserveScrollTop(
+  el: { scrollTop: number } | null | undefined,
+  run: () => void,
+): void {
+  if (!el) {
+    run();
+    return;
+  }
+  const top = el.scrollTop;
+  run();
+  el.scrollTop = top;
+}
+
+/**
+ * ResizeObserver callback for the virtual scroll parent: remasure only when
+ * height changes, and keep scrollTop stable across spacer updates.
+ */
+export function createDataTableScrollParentResizeHandler(opts: {
+  isVirtualized: () => boolean;
+  getLastHeight: () => number;
+  setLastHeight: (height: number) => void;
+  getElement: () => { clientHeight: number; scrollTop: number } | null | undefined;
+  remasure: () => void;
+}): () => void {
+  return () => {
+    if (!opts.isVirtualized()) return;
+    const el = opts.getElement();
+    if (!el) return;
+    const nextHeight = el.clientHeight;
+    if (!dataTableShouldRemeasureOnScrollParentResize(opts.getLastHeight(), nextHeight)) {
+      return;
+    }
+    opts.setLastHeight(nextHeight);
+    dataTablePreserveScrollTop(el, opts.remasure);
+  };
+}
+
 export function dataTableMeasureRow(
   el: Element | null,
   virtualized: boolean,

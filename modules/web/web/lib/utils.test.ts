@@ -74,6 +74,19 @@ describe('cn', () => {
     expect(outlineDestructive).not.toContain('border-0');
     expect(outlineDestructive).not.toContain('border-input');
 
+    const softPrimary = tokens(buttonVariants({ variant: 'soft-primary' }));
+    expect(softPrimary).toContain('text-primary');
+    expect(softPrimary).toContain('hover:bg-primary/10');
+    expect(softPrimary).not.toContain('border-primary');
+    // Resting fill is hover-only; token list must not keep a bare bg-primary/10.
+    expect(softPrimary.filter((t) => t === 'bg-primary/10')).toHaveLength(0);
+
+    const softDestructive = tokens(buttonVariants({ variant: 'soft-destructive' }));
+    expect(softDestructive).toContain('text-destructive');
+    expect(softDestructive).toContain('hover:bg-destructive/10');
+    expect(softDestructive).not.toContain('border-destructive');
+    expect(softDestructive.filter((t) => t === 'bg-destructive/10')).toHaveLength(0);
+
     // Calendar nav: later bg-transparent replaces outline bg-background.
     const calendarNav = tokens(
       cn(buttonVariants({ variant: 'outline' }), 'bg-transparent p-0 opacity-50'),

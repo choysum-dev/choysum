@@ -13,11 +13,10 @@ SPDX-License-Identifier: Apache-2.0
     @update-success="reloadActiveLanguagesAfterLanguageSave"
     @create-success="reloadActiveLanguagesAfterLanguageSave"
   >
-    <template #secondary-actions="{ formData, recordId: slotRecordId, loading }">
-      <ChoyActionButton
+    <!-- Domain workflow → Form statusbar buttons. -->
+    <template #statusbar-buttons="{ formData, recordId: slotRecordId, loading }">
+      <ChoyStatusbarButton
         v-if="!loading && showActivateFor(formData, slotRecordId)"
-        type="button"
-        size="default"
         data-testid="language-activate"
         :busy="activeBusy || reloadBusy"
         :aria-busy="activeBusy || undefined"
@@ -25,12 +24,10 @@ SPDX-License-Identifier: Apache-2.0
       >
         <CircleCheck class="size-4" aria-hidden="true" />
         {{ _t('Activate') }}
-      </ChoyActionButton>
-      <ChoyActionButton
+      </ChoyStatusbarButton>
+      <ChoyStatusbarButton
         v-else-if="!loading && showDeactivateFor(formData, slotRecordId)"
-        type="button"
-        size="default"
-        variant="outline"
+        variant="outline-destructive"
         data-testid="language-deactivate"
         :busy="activeBusy || reloadBusy"
         :aria-busy="activeBusy || undefined"
@@ -38,12 +35,9 @@ SPDX-License-Identifier: Apache-2.0
       >
         <CircleOff class="size-4" aria-hidden="true" />
         {{ _t('Deactivate') }}
-      </ChoyActionButton>
-      <ChoyActionButton
+      </ChoyStatusbarButton>
+      <ChoyStatusbarButton
         v-if="!loading && showReloadTerminologyFor(formData, slotRecordId)"
-        type="button"
-        size="default"
-        variant="outline"
         data-testid="language-reload-terminology"
         :busy="activeBusy || reloadBusy"
         :aria-busy="reloadBusy || undefined"
@@ -51,7 +45,7 @@ SPDX-License-Identifier: Apache-2.0
       >
         <Languages class="size-4" aria-hidden="true" />
         {{ _t('Update translations') }}
-      </ChoyActionButton>
+      </ChoyStatusbarButton>
     </template>
 
     <template #default="{ viewMode: mode }">
@@ -174,12 +168,13 @@ import { ChoyMessage } from '@/web/web/composables/useChoyMessage';
 import { useI18nStore } from '@/web/web/stores/i18nStore';
 import {
   ChoyBooleanField,
-  ChoyActionButton,
+  ChoyStatusbarButton,
   ChoyCol,
   ChoyFormView,
   ChoyGrid,
   ChoySelectionField,
   ChoyVarcharField,
+  useFormWorkflowAction,
 } from '@/web';
 import type { ChoyViewMode as ViewMode } from '@/web';
 import {
@@ -220,13 +215,21 @@ type FormViewApi = {
 };
 const formViewRef = ref<FormViewApi | null>(null);
 
-const activeBusy = ref(false);
-const reloadBusy = ref(false);
 /**
  * Local override after Activate/Deactivate when form reload is unavailable.
  * Scoped via languageRowOverrideFields(id) — stale overrides for other recordIds are ignored.
  */
 const rowOverride = ref<LanguageRowOverride | null>(null);
+
+/** reload:none — Language keeps Browse/rowOverride via reloadRecord inside call. */
+const { busy: activeBusy, run: runActiveWorkflow } = useFormWorkflowAction({
+  formRef: formViewRef,
+  reload: 'none',
+});
+const { busy: reloadBusy, run: runReloadTerminologyWorkflow } = useFormWorkflowAction({
+  formRef: formViewRef,
+  reload: 'none',
+});
 
 const canWriteLanguage = computed(() => hasAction(languageActions.edit));
 
@@ -326,23 +329,13 @@ async function onActivate(slotRecordId: string | undefined): Promise<void> {
     }
     return;
   }
-  activeBusy.value = true;
-  try {
+  await runActiveWorkflow(async () => {
     await activateLanguage({
       activate: req => activate.call(store, req),
       recordId: id,
       reloadRecord: () => reloadRecord(id),
     });
-  } catch (err: any) {
-    const message = String(err?.message || err || _t('Activate failed'));
-    try {
-      ChoyMessage.error(message);
-    } catch {
-      // Toast host may be absent in FE unit tests.
-    }
-  } finally {
-    activeBusy.value = false;
-  }
+  });
 }
 
 async function onDeactivate(slotRecordId: string | undefined): Promise<void> {
@@ -358,23 +351,13 @@ async function onDeactivate(slotRecordId: string | undefined): Promise<void> {
     }
     return;
   }
-  activeBusy.value = true;
-  try {
+  await runActiveWorkflow(async () => {
     await deactivateLanguage({
       deactivate: req => deactivate.call(store, req),
       recordId: id,
       reloadRecord: () => reloadRecord(id),
     });
-  } catch (err: any) {
-    const message = String(err?.message || err || _t('Deactivate failed'));
-    try {
-      ChoyMessage.error(message);
-    } catch {
-      // Toast host may be absent in FE unit tests.
-    }
-  } finally {
-    activeBusy.value = false;
-  }
+  });
 }
 
 async function onReloadTerminology(
@@ -393,8 +376,7 @@ async function onReloadTerminology(
     }
     return;
   }
-  reloadBusy.value = true;
-  try {
+  await runReloadTerminologyWorkflow(async () => {
     const i18n = useI18nStore();
     // Prefer LanguageId so an unsaved Code draft cannot retarget the reload.
     await reloadLanguageTerminology({
@@ -419,15 +401,6 @@ async function onReloadTerminology(
         }
       },
     });
-  } catch (err: any) {
-    const message = String(err?.message || err || _t('Update translations failed'));
-    try {
-      ChoyMessage.error(message);
-    } catch {
-      // Toast host may be absent in FE unit tests.
-    }
-  } finally {
-    reloadBusy.value = false;
-  }
+  });
 }
 </script>

@@ -21,8 +21,15 @@ export const buttonVariants = cva(
         outline: 'border border-input bg-background text-foreground shadow-xs hover:bg-accent hover:text-accent-foreground',
         ghost: 'text-foreground hover:bg-accent hover:text-accent-foreground',
         destructive: 'bg-destructive text-primary-foreground hover:bg-destructive/90',
+        // Branded outline for primary CTAs that stay outline.
+        'outline-primary':
+          'border border-primary bg-background text-primary shadow-xs hover:bg-primary/10 hover:text-primary',
         'outline-destructive':
           'border border-destructive/40 bg-background text-destructive shadow-xs hover:bg-destructive/10 hover:text-destructive',
+        // Action Bar accents: text-only at rest (match soft-primary / soft-destructive).
+        'soft-primary': 'text-primary hover:bg-primary/10 hover:text-primary',
+        'soft-destructive':
+          'text-destructive hover:bg-destructive/10 hover:text-destructive',
         link: 'text-primary underline-offset-4 hover:underline',
       },
       size: {

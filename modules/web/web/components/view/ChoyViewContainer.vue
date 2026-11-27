@@ -4,8 +4,9 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <!--
-  Region spacing (header ↔ body ↔ footer) is flex gap on the root. Paper surface
-  and gutters live on shell inset/content; view-body is a scroll region only.
+  Region spacing (header ↔ body ↔ footer) is flex gap on the root. Shell canvas
+  is flush. When sheetSurface is on, view-body is the floating paper
+  (choy.view.sheet) and view-header shares the same gutter so Action Bar tracks it.
 -->
 <template>
   <div
@@ -18,13 +19,22 @@ SPDX-License-Identifier: Apache-2.0
       )
     "
   >
-    <div v-if="regionHasContent('header')" data-slot="view-header" class="shrink-0">
+    <!--
+      flex + gap owns Action Bar ↔ header-extra rhythm (Form statusbar /
+      Chart controls). Children should not add vertical padding for that gap.
+    -->
+    <div
+      v-if="regionHasContent('header')"
+      data-slot="view-header"
+      :class="headerClass"
+    >
       <slot name="header" />
     </div>
     <div
       data-slot="view-body"
       data-anchor="choy.view.sheet"
-      class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
+      :data-sheet-surface="sheetSurface ? 'true' : 'false'"
+      :class="bodyClass"
     >
       <slot />
     </div>
@@ -35,17 +45,50 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { useSlots } from 'vue';
+import { computed, useSlots } from 'vue';
 import { cn, type ClassValue } from '../../lib/utils';
 import { slotHasContent } from '../button/statInfoHelpers';
 
 defineOptions({ name: 'ChoyViewContainer' });
 
-const props = defineProps<{
-  class?: ClassValue;
-}>();
+const props = withDefaults(
+  defineProps<{
+    class?: ClassValue;
+    /**
+     * Floating paper on view-body (bg / radius / shadow + gutter mx).
+     * Off for embedded / dialog hosts so they do not double-frame.
+     */
+    sheetSurface?: boolean;
+  }>(),
+  {
+    sheetSurface: true,
+  },
+);
 
 const slots = useSlots();
+
+const sheetSurface = computed(() => props.sheetSurface !== false);
+
+/** Shared inline gutter when the paper is on (Action Bar tracks the sheet). */
+const sheetGutterClass = 'mx-[var(--choy-view-sheet-gutter)]';
+
+const headerClass = computed(() =>
+  cn('flex shrink-0 flex-col gap-2', sheetSurface.value ? sheetGutterClass : undefined),
+);
+
+const bodyClass = computed(() =>
+  cn(
+    'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden',
+    sheetSurface.value
+      ? [
+          sheetGutterClass,
+          // rounded-md == --choy-view-sheet-radius / nav-pane; hairline keeps
+          // the edge readable when pane ≈ card white.
+          'rounded-md border border-border bg-card shadow-xs',
+        ]
+      : undefined,
+  ),
+);
 
 /** Skip empty / comment-only header|footer so flex gap does not leave blank bands. */
 function regionHasContent(name: 'header' | 'footer'): boolean {

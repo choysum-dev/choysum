@@ -244,6 +244,7 @@ import {
   dataTableColumnJustifyClass,
   dataTableIsGroupLikeRow,
   dataTableIsVirtualized,
+  createDataTableScrollParentResizeHandler,
   dataTableMaybeMeasure,
   dataTableMeasureRow,
   dataTableRowKind,
@@ -610,16 +611,29 @@ function scheduleVirtualMeasure(): void {
 }
 
 let scrollParentObserver: ResizeObserver | null = null;
+let scrollParentLastHeight = 0;
+
+function setScrollParentLastHeight(height: number): void {
+  scrollParentLastHeight = height;
+}
+
+function remasureScrollParent(): void {
+  dataTableMaybeMeasure(true, virtualizer.value);
+}
 
 function bindScrollParentObserver(el: HTMLElement | null): void {
   scrollParentObserver?.disconnect();
   scrollParentObserver = null;
   if (!el || typeof ResizeObserver === 'undefined') return;
-  scrollParentObserver = new ResizeObserver(() => {
-    if (isVirtualized.value) {
-      dataTableMaybeMeasure(true, virtualizer.value);
-    }
+  scrollParentLastHeight = el.clientHeight;
+  const onResize = createDataTableScrollParentResizeHandler({
+    isVirtualized: () => isVirtualized.value,
+    getLastHeight: () => scrollParentLastHeight,
+    setLastHeight: setScrollParentLastHeight,
+    getElement: () => el,
+    remasure: remasureScrollParent,
   });
+  scrollParentObserver = new ResizeObserver(onResize);
   scrollParentObserver.observe(el);
 }
 
@@ -993,6 +1007,11 @@ function onRowKeydown(event: KeyboardEvent, row: (typeof rows.value)[number] | u
 .choy-data-table__header,
 .choy-data-table__body {
   direction: inherit;
+}
+
+/* Virtual spacer remounts must not let the engine nudge scrollTop. */
+.choy-data-table__body {
+  overflow-anchor: none;
 }
 
 /* Keep overflow-x for scroll sync with the body; hide the duplicate track. */

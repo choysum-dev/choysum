@@ -540,8 +540,18 @@ export function resolveClickClientX(event: {
 /** Default Unovis plot min height (px) when the chart body has not sized yet. */
 export const CHOY_CHART_MIN_PLOT_HEIGHT = 280;
 
-/** Space reserved below the plot for ChartLegendContent (px). */
-export const CHOY_CHART_LEGEND_RESERVE = 40;
+/**
+ * Soft max pie diameter (px). Wide sheets center a capped square instead of
+ * stretching the donut to the full body height.
+ */
+export const CHOY_CHART_PIE_MAX_DIAMETER = 480;
+
+/**
+ * Space reserved below bar/line plots for the in-flow ChartLegendContent (px).
+ * Covers ChartContainer gap-2 (~8) + legend row (~20) + slack. Pie legend is
+ * absolutely positioned; callers pass legendReserve: 0 for pie.
+ */
+export const CHOY_CHART_LEGEND_RESERVE = 32;
 
 /**
  * Soft cap on bar / group width (px). High enough that few categories stay
@@ -556,22 +566,90 @@ export type ChartBarLayout = {
   groupPadding: number;
 };
 
+type ChartBarLayoutTier = {
+  fillRatio: number;
+  tierCap: number;
+  barPadding: number;
+  groupPadding: number;
+};
+
+function chartBarLayoutTier(categoryCount: number): ChartBarLayoutTier {
+  const n = Math.max(0, Math.floor(Number(categoryCount) || 0));
+  if (n <= 2) {
+    return { fillRatio: 0.72, tierCap: 560, barPadding: 0.06, groupPadding: 0.1 };
+  }
+  if (n <= 4) {
+    return { fillRatio: 0.62, tierCap: 480, barPadding: 0.1, groupPadding: 0.14 };
+  }
+  if (n <= 8) {
+    return {
+      fillRatio: 0.55,
+      tierCap: CHOY_CHART_BAR_MAX_WIDTH,
+      barPadding: 0.16,
+      groupPadding: 0.2,
+    };
+  }
+  return {
+    fillRatio: 0.5,
+    tierCap: CHOY_CHART_BAR_MAX_WIDTH,
+    barPadding: 0.18,
+    groupPadding: 0.2,
+  };
+}
+
 /**
  * Wider bars / less intra-band padding when there are few categories so the
  * plot does not look like two thin sticks in a sea of white space.
+ * When `plotWidth` is known, `barMaxWidth` tracks band width × fillRatio
+ * (capped by the tier); without width, falls back to absolute tier caps used
+ * by unit tests and first paint.
  */
-export function resolveChartBarLayout(categoryCount: number): ChartBarLayout {
+export function resolveChartBarLayout(
+  categoryCount: number,
+  plotWidth?: number,
+): ChartBarLayout {
   const n = Math.max(0, Math.floor(Number(categoryCount) || 0));
+  const tier = chartBarLayoutTier(n);
+  const width = Math.floor(Number(plotWidth) || 0);
+  if (width > 0 && n >= 1) {
+    const band = width / n;
+    const fromBand = Math.floor(band * tier.fillRatio);
+    const floor = Math.floor(band * 0.4);
+    return {
+      barMaxWidth: Math.max(1, Math.min(tier.tierCap, Math.max(fromBand, floor))),
+      barPadding: tier.barPadding,
+      groupPadding: tier.groupPadding,
+    };
+  }
+  // Absolute fallbacks when plot width is not measured yet.
   if (n <= 2) {
-    return { barMaxWidth: 360, barPadding: 0.08, groupPadding: 0.12 };
+    return { barMaxWidth: 360, barPadding: tier.barPadding, groupPadding: tier.groupPadding };
   }
   if (n <= 4) {
-    return { barMaxWidth: 300, barPadding: 0.12, groupPadding: 0.16 };
+    return { barMaxWidth: 300, barPadding: tier.barPadding, groupPadding: tier.groupPadding };
   }
-  if (n <= 8) {
-    return { barMaxWidth: CHOY_CHART_BAR_MAX_WIDTH, barPadding: 0.16, groupPadding: 0.2 };
-  }
-  return { barMaxWidth: CHOY_CHART_BAR_MAX_WIDTH, barPadding: 0.18, groupPadding: 0.2 };
+  return {
+    barMaxWidth: CHOY_CHART_BAR_MAX_WIDTH,
+    barPadding: tier.barPadding,
+    groupPadding: tier.groupPadding,
+  };
+}
+
+/**
+ * Square pie plot side: min of body box and {@link CHOY_CHART_PIE_MAX_DIAMETER},
+ * never below {@link CHOY_CHART_MIN_PLOT_HEIGHT}.
+ */
+export function resolvePiePlotSize(
+  bodyWidth: number,
+  bodyHeight: number,
+  opts?: { minSide?: number; maxDiameter?: number },
+): { side: number } {
+  const minSide = opts?.minSide ?? CHOY_CHART_MIN_PLOT_HEIGHT;
+  const maxDiameter = opts?.maxDiameter ?? CHOY_CHART_PIE_MAX_DIAMETER;
+  const w = Math.max(0, Math.floor(Number(bodyWidth) || 0));
+  const h = Math.max(0, Math.floor(Number(bodyHeight) || 0));
+  // Unsized body (0×0) collapses to minSide until ResizeObserver measures.
+  return { side: Math.max(minSide, Math.min(w, h, maxDiameter)) };
 }
 
 /** Line stroke width (px). */

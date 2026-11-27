@@ -6,6 +6,14 @@ import { useListViewExpose } from './useListView';
 import { asyncFnRecorder } from '@/web/web/__tests__/mountApp';
 
 describe('useListViewExpose', () => {
+  test('softRefresh falls back to load when softRefresh is missing', async () => {
+    const load = asyncFnRecorder(async () => {});
+    const { listRef, expose } = useListViewExpose<{ Id: string }>();
+    listRef.value = { selectedItems: ref([]) as any, selectedItem: ref(null) as any, load } as any;
+    await expose.softRefresh?.();
+    expect(load.calls.length).toBe(1);
+  });
+
   test('refresh delegates to the underlying list load', async () => {
     const load = asyncFnRecorder(async () => {});
     const { listRef, expose } = useListViewExpose<{ Id: string }>();
@@ -30,5 +38,32 @@ describe('useListViewExpose', () => {
     selectedItems.value = [{ Id: 'a' }, { Id: 'b' }];
     await nextTick();
     expect(expose.selectedItems.value).toEqual([{ Id: 'a' }, { Id: 'b' }]);
+  });
+
+  test('softRefresh and clearSelection delegate to the list expose', async () => {
+    const softRefresh = asyncFnRecorder(async () => {});
+    const load = asyncFnRecorder(async () => {});
+    let cleared = 0;
+    const { listRef, expose } = useListViewExpose<{ Id: string }>();
+    listRef.value = {
+      softRefresh,
+      load,
+      clearSelection: () => {
+        cleared += 1;
+      },
+    } as any;
+    await expose.softRefresh?.();
+    expect(softRefresh.calls.length).toBe(1);
+    expect(load.calls.length).toBe(0);
+
+    listRef.value = { load } as any;
+    await expose.softRefresh?.();
+    expect(load.calls.length).toBe(1);
+
+    listRef.value = { clearSelection: () => {
+        cleared += 1;
+      } } as any;
+    expose.clearSelection?.();
+    expect(cleared).toBe(1);
   });
 });

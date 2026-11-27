@@ -11,6 +11,7 @@ import {
 import {
   accumulateChartSeries,
   CHOY_CHART_MIN_PLOT_HEIGHT,
+  CHOY_CHART_PIE_MAX_DIAMETER,
   chartCategoryAxisIsTemporal,
   chartSpecToPieRows,
   chartSpecToXyRows,
@@ -29,6 +30,7 @@ import {
   normalizeSeriesToPercent,
   parseChartCategoryTime,
   resolveChartPlotHeight,
+  resolvePiePlotSize,
   resolveChartXDomain,
   resolveStackedYDomain,
   resolveGroupedXyClickTarget,
@@ -653,8 +655,18 @@ test('sortChartCategories coerces non-finite values to 0', () => {
 test('resolveChartPlotHeight fills body minus legend reserve and respects min', () => {
   expect(resolveChartPlotHeight(0)).toBe(CHOY_CHART_MIN_PLOT_HEIGHT);
   expect(resolveChartPlotHeight(200)).toBe(CHOY_CHART_MIN_PLOT_HEIGHT);
-  expect(resolveChartPlotHeight(400)).toBe(360);
+  expect(resolveChartPlotHeight(400)).toBe(368);
   expect(resolveChartPlotHeight(400, { minHeight: 100, legendReserve: 50 })).toBe(350);
+  // Pie overlays the legend; no bottom band.
+  expect(resolveChartPlotHeight(400, { legendReserve: 0 })).toBe(400);
+});
+
+test('resolvePiePlotSize caps diameter and respects min side', () => {
+  expect(resolvePiePlotSize(1600, 900).side).toBe(CHOY_CHART_PIE_MAX_DIAMETER);
+  expect(resolvePiePlotSize(400, 500).side).toBe(400);
+  expect(resolvePiePlotSize(100, 100).side).toBe(CHOY_CHART_MIN_PLOT_HEIGHT);
+  expect(resolvePiePlotSize(0, 0).side).toBe(CHOY_CHART_MIN_PLOT_HEIGHT);
+  expect(resolvePiePlotSize(600, 600, { maxDiameter: 320 }).side).toBe(320);
 });
 
 test('resolveChartXDomain pads integer indices so first/last categories are inset', () => {
@@ -767,6 +779,12 @@ test('resolveChartBarLayout widens few-category bars', () => {
   expect(resolveChartBarLayout(8).barPadding).toBe(0.16);
   expect(resolveChartBarLayout(12).barPadding).toBe(0.18);
   expect(resolveChartBarLayout(0).barMaxWidth).toBe(360);
+  // Wide plot + few categories: fill band (0.62) instead of the absolute 300 cap.
+  expect(resolveChartBarLayout(3, 1500).barMaxWidth).toBe(Math.floor(500 * 0.62));
+  expect(resolveChartBarLayout(3, 600).barMaxWidth).toBe(Math.floor(200 * 0.62));
+  // Cap still binds when fill would exceed tierCap.
+  expect(resolveChartBarLayout(3, 3000).barMaxWidth).toBe(480);
+  expect(resolveChartBarLayout(365, 600).barMaxWidth).toBeGreaterThan(0);
 });
 
 test('chartCategoryAxisIsTemporal reads object granularity and field:gran', () => {
@@ -1026,6 +1044,7 @@ test('resolveLineHoverCategory and row index null paths', () => {
 
 test('resolveChartBarLayout tiers for 3/5/9 categories', () => {
   expect(resolveChartBarLayout(3).barMaxWidth).toBe(300);
+  expect(resolveChartBarLayout(3).barPadding).toBe(0.1);
   expect(resolveChartBarLayout(5).barPadding).toBe(0.16);
   expect(resolveChartBarLayout(9).barPadding).toBe(0.18);
 });

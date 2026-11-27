@@ -195,7 +195,7 @@ export default class SandboxRecord extends BaseModel {
     notNull: true,
     default: () => 'draft',
     string: _lt('Progress', { scope: 'sandbox.model.SandboxRecord.fields' }),
-    help: _lt('Same selection options as State; Form binds ChoyStatusbarField.', {
+    help: _lt('Same selection options as State; Form hosts ChoyStatusbarField in #statusbar-status.', {
       scope: 'sandbox.model.SandboxRecord.fields',
     }),
   })

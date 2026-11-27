@@ -81,7 +81,12 @@ policy intent; the router does not schedule a zero-delay idle re-arm.
 - KeepAlive reactivation can paint without a new surface. `ChoyPage` calls
   `useSettleNavChromeOnActivate` to settle leftover nav chrome on activate when idle.
 - Instance cache ≠ data freshness: ModelStore soft-refresh / TTL (when added) stays separate
-  from KeepAlive lifetime.
+  from KeepAlive lifetime. DetailPath List/Kanban hosts also soft-reapply on KeepAlive
+  reactivate (`useDetailPathCollectionSoftRefresh`) so breadcrumb return after Form writes
+  does not keep pre-edit Search rows; relation pickers without `detailPath` stay untouched.
+- Domain side-path RPC (statusbar / List `#contextual-actions`) resyncs via
+  `useFormWorkflowAction` / `useListWorkflowAction` — not Action kit buttons, and not
+  platform Overflow Refresh. See `choy-view-workflow-action.md`.
 
 ## Registry pointers
 

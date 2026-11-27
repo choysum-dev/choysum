@@ -161,4 +161,5 @@ describe('SandboxRecordFormView M2M Tags/Tree widgets', () => {
 
     unmount();
   });
+
 });

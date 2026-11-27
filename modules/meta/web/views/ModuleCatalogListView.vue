@@ -20,16 +20,13 @@ SPDX-License-Identifier: Apache-2.0
       data-testid="module-catalog-table"
       @row-click="onRowClick"
     >
-      <!-- Suppress default New; keep show-actions for Refresh in ⋮. -->
-      <template v-if="showHeader" #system-actions />
-
-      <!-- After title + ⋮ in the system tray (no ActionBar separator). -->
-      <template v-if="showHeader" #secondary-actions>
+      <!-- Tool-list primary CTA replaces New (suppresses default create). -->
+      <template v-if="showHeader" #system-actions>
         <ChoyActionButton
           v-if="hasAction(moduleSyncAction)"
           type="button"
           size="default"
-          variant="outline"
+          variant="ghost"
           data-testid="module-catalog-sync"
           :busy="syncBusy"
           :aria-busy="syncBusy || undefined"
@@ -42,11 +39,14 @@ SPDX-License-Identifier: Apache-2.0
           />
           {{ _t('Update Module List') }}
         </ChoyActionButton>
+      </template>
+
+      <template v-if="showHeader" #secondary-actions>
         <ChoyActionButton
           v-if="hasAction(moduleLoadDemoAction) && hasPendingDemo"
           type="button"
           size="default"
-          variant="outline"
+          variant="ghost"
           data-testid="module-catalog-load-demo"
           @execute="onLoadDemo"
         >
@@ -116,7 +116,7 @@ SPDX-License-Identifier: Apache-2.0
               v-if="canUninstall(row) && hasAction(moduleUninstallAction)"
               type="button"
               size="xs"
-              variant="outline-destructive"
+              variant="soft-destructive"
               data-testid="module-catalog-uninstall"
               @execute="onUninstall(row)"
             >

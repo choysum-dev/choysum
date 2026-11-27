@@ -21,28 +21,23 @@ SPDX-License-Identifier: Apache-2.0
     <ChoyFormView
       v-bind="{ store, recordId, viewMode: 'display' as const, showHeader }"
     >
-      <!-- Install / Upgrade / Uninstall after the title/⋮ cluster (List/Kanban CTA parity). -->
-      <template #secondary-actions>
-        <ChoyActionButton
+      <!-- Domain workflow → Form statusbar buttons (read-only form: no platform Edit). -->
+      <template #statusbar-buttons>
+        <ChoyStatusbarButton
           v-if="primaryAction"
-          type="button"
-          size="default"
-          :variant="primaryButtonVariant"
           :data-testid="`module-catalog-form-primary-${primaryAction}`"
           @execute="onPrimaryClick"
         >
           {{ primaryActionLabel }}
-        </ChoyActionButton>
-        <ChoyActionButton
+        </ChoyStatusbarButton>
+        <ChoyStatusbarButton
           v-if="canUninstallRow && hasAction(moduleUninstallAction)"
-          type="button"
-          size="default"
           variant="outline-destructive"
           data-testid="module-catalog-form-uninstall"
           @execute="onUninstallClick"
         >
           {{ _t('Uninstall') }}
-        </ChoyActionButton>
+        </ChoyStatusbarButton>
       </template>
 
       <div data-anchor="choy.form.sheet" class="flex min-h-full flex-col gap-0">
@@ -323,7 +318,7 @@ import ModuleCatalogOpProgressStrip from './ModuleCatalogOpProgressStrip.vue';
 import {
   ChoyBadge,
   ChoyBooleanField,
-  ChoyActionButton,
+  ChoyStatusbarButton,
   ChoyCol,
   ChoyDatetimeField,
   ChoyFormView,
@@ -409,14 +404,6 @@ const primaryActionLabel = computed(() => {
   if (primaryAction.value === 'upgrade') return _t('Upgrade');
   if (primaryAction.value === 'progress') return _t('View Progress');
   return '';
-});
-/** Emphasize Upgrade only when catalog detected a newer source version. */
-const primaryButtonVariant = computed(() => {
-  if (primaryAction.value === 'upgrade' && currentRow.value.UpdateAvailable !== true) {
-    return 'outline' as const;
-  }
-  if (primaryAction.value === 'progress') return 'outline' as const;
-  return 'default' as const;
 });
 const canUninstallRow = computed(() => {
   if (!hasMatchedRow.value) return false;
@@ -598,7 +585,6 @@ defineExpose({
   drawerRegistryNewer,
   primaryAction,
   primaryActionLabel,
-  primaryButtonVariant,
   progressBusy,
   progressTitle,
   progressHeadline,
