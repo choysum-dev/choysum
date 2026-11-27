@@ -26,6 +26,7 @@ export type ChoyColSpanBands = { base: number; md: number; lg: number };
 /**
  * ChoyCol `span` input: fixed lg target (scales under responsive), object bands,
  * or omitted (421 default slot when responsive).
+ * `string` covers raw template attributes (e.g. span="3").
  */
 export type ChoyColSpanObject = {
   base?: number;
@@ -34,7 +35,7 @@ export type ChoyColSpanObject = {
   lg?: number;
 };
 
-export type ChoyColSpanInput = number | ChoyColSpanObject;
+export type ChoyColSpanInput = number | string | ChoyColSpanObject;
 
 /** Reads a template-attribute number, treating blank / whitespace as unset. */
 function toAttrNumber(value: unknown): number {
@@ -79,7 +80,10 @@ export function isChoyColSpanObject(span: unknown): span is ChoyColSpanObject {
 
 /**
  * Scales an lg (wide) target span into 421 bands: wide / mid / narrow.
- * `slots = max(1, ceil(span / 3))` then wide=slots*3, mid=slots*6, narrow=full.
+ * Slot math is calibrated for a 12-track form grid (`slots = ceil(span / 3)` →
+ * wide=slots*3, mid=slots*6, narrow=full). Non-multiples of 3 round up to a
+ * whole slot (e.g. 4 → 6/12/12). For other `cols`, prefer object spans or
+ * `:responsive="false"`.
  */
 export function scaleChoyColSpanFromLg(lgSpan: number, cols?: number): ChoyColSpanBands {
   const safeCols = normalizeChoyGridCols(cols);
@@ -149,11 +153,15 @@ export function resolveChoyColSpanBands(
     return resolveChoyColSpanObjectBands(span, safeCols);
   }
 
-  // Blank attribute string → treat as omitted (421 default).
+  // Blank attribute string → treat as omitted (421 default one-slot).
   if (typeof span === 'string' && String(span).trim() === '') {
     return defaultChoyColSpanBands(safeCols);
   }
 
-  const lgTarget = clampChoyColSpan(span as number, safeCols, CHOY_GRID_WIDE_SLOT);
-  return scaleChoyColSpanFromLg(lgTarget, safeCols);
+  const spanRaw = toAttrNumber(span);
+  // Invalid non-blank (NaN, "foo") → legacy full width, not one-slot.
+  if (!Number.isFinite(spanRaw)) {
+    return { base: safeCols, md: safeCols, lg: safeCols };
+  }
+  return scaleChoyColSpanFromLg(spanRaw, safeCols);
 }

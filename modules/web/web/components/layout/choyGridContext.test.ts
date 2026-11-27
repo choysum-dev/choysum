@@ -91,6 +91,24 @@ describe('resolveChoyColSpanBands', () => {
     expect(resolveChoyColSpanBands(3, 12, false)).toEqual({ base: 3, md: 3, lg: 3 });
   });
 
+  test('blank attribute string matches omitted under responsive', () => {
+    expect(resolveChoyColSpanBands('', 12, true)).toEqual(defaultChoyColSpanBands());
+    expect(resolveChoyColSpanBands('   ', 12, true)).toEqual(defaultChoyColSpanBands());
+  });
+
+  test('invalid non-blank span falls back to full width under responsive', () => {
+    expect(resolveChoyColSpanBands(Number.NaN, 12, true)).toEqual({
+      base: 12,
+      md: 12,
+      lg: 12,
+    });
+    expect(resolveChoyColSpanBands('foo', 12, true)).toEqual({
+      base: 12,
+      md: 12,
+      lg: 12,
+    });
+  });
+
   test('object span uses mobile-first fallbacks without scale-up', () => {
     expect(resolveChoyColSpanBands({ base: 12, md: 6, lg: 3 }, 12, true)).toEqual({
       base: 12,
