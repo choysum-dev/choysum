@@ -1,7 +1,11 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { listSelectionRowKey, reconcileListSelection } from './listSelectionReconcile';
+import {
+  listSelectionRowKey,
+  reconcileListSelection,
+  reconcileListSelectionKeys,
+} from './listSelectionReconcile';
 
 describe('listSelectionReconcile', () => {
   test('listSelectionRowKey reads key / __rowKey / Id / wrappers', () => {
@@ -15,23 +19,29 @@ describe('listSelectionReconcile', () => {
     expect(listSelectionRowKey({ payload: { Id: 'fallback' } })).toBe('fallback');
   });
 
-  test('reconcileListSelection replaces matching rows and keeps misses', () => {
+  test('reconcileListSelection replaces matching rows and drops misses', () => {
     expect(reconcileListSelection([], [{ Id: 'a' }])).toEqual([]);
-    expect(reconcileListSelection([{ Id: 'a' }], [])).toEqual([{ Id: 'a' }]);
+    expect(reconcileListSelection([{ Id: 'a' }], [])).toEqual([]);
     const selected = [
       { Id: 'keep-me', Name: 'Before' },
       { Id: 'gone', Name: 'Stale' },
     ];
     const fresh = [{ Id: 'keep-me', Name: 'After' }];
-    expect(reconcileListSelection(selected, fresh)).toEqual([
-      { Id: 'keep-me', Name: 'After' },
-      { Id: 'gone', Name: 'Stale' },
-    ]);
+    expect(reconcileListSelection(selected, fresh)).toEqual([{ Id: 'keep-me', Name: 'After' }]);
     expect(
       reconcileListSelection(
         [{ kind: 'record', key: 'k', payload: { Id: 'k', Name: 'Old' } }],
         [{ kind: 'record', key: 'k', payload: { Id: 'k', Name: 'New' } }],
       )[0],
     ).toEqual({ kind: 'record', key: 'k', payload: { Id: 'k', Name: 'New' } });
+  });
+
+  test('reconcileListSelectionKeys drops keys absent from fresh rows', () => {
+    const keyOf = (row: unknown) => (row as { Id?: string } | null)?.Id;
+    expect(
+      Array.from(
+        reconcileListSelectionKeys(['keep-me', 'gone'], [{ Id: 'keep-me' }], keyOf),
+      ),
+    ).toEqual(['keep-me']);
   });
 });

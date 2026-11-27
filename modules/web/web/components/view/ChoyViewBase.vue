@@ -76,8 +76,9 @@ SPDX-License-Identifier: Apache-2.0
 
           <!--
             Leading secondary tray (ActionBar #user-actions slot name is legacy).
-            Host #contextual-actions go to #center (List/Kanban/Chart) or Form
-            statusbar — do not park them in this leading tray.
+            List selection toolbar lives in #system-actions; Kanban/Chart host
+            #contextual-actions may still use #center; Form uses statusbar.
+            Do not park List selection chrome in this leading tray.
           -->
           <template v-if="showLeadingSecondary()" #user-actions>
             <slot name="secondary-actions" />

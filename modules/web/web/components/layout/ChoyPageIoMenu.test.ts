@@ -471,8 +471,9 @@ describe('ChoyPageIoMenu', () => {
     ss.scheduleHoverClose?.();
     ss.closeFromHover?.();
     expect(readOpen()).toBe(false);
-    // Without openedByHover, scheduleHoverClose is a no-op.
+    // After hover close, schedule/close are no-ops (not hover-owned).
     ss.scheduleHoverClose?.();
+    ss.closeFromHover?.();
     expect(readOpen()).toBe(false);
     mounted.unmount();
   });

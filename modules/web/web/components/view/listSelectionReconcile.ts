@@ -15,18 +15,38 @@ export function listSelectionRowKey(row: unknown): string | undefined {
 }
 
 /**
- * Replace selected rows with matching fresh rows by id; keep unmatched selection entries.
+ * Replace selected rows with matching fresh rows by id; drop entries absent from freshRows.
  */
 export function reconcileListSelection<T>(selected: T[], freshRows: T[]): T[] {
-  if (!selected.length || !freshRows.length) return selected;
+  if (!selected.length) return selected;
+  if (!freshRows.length) return [];
   const byKey = new Map<string, T>();
   for (const row of freshRows) {
     const k = listSelectionRowKey(row);
     if (k != null) byKey.set(k, row);
   }
-  return selected.map((sel) => {
+  const out: T[] = [];
+  for (const sel of selected) {
     const k = listSelectionRowKey(sel);
-    if (k != null && byKey.has(k)) return byKey.get(k)!;
-    return sel;
-  });
+    if (k != null && byKey.has(k)) out.push(byKey.get(k)!);
+  }
+  return out;
+}
+
+/** Keep only selection keys that still exist among fresh rows (same key space as useTableSelection). */
+export function reconcileListSelectionKeys(
+  selectedKeys: Iterable<string | number>,
+  freshRows: unknown[],
+  keyOf: (row: unknown) => string | number | undefined | null,
+): Set<string | number> {
+  const fresh = new Set<string | number>();
+  for (const row of freshRows) {
+    const k = keyOf(row);
+    if (k != null) fresh.add(k);
+  }
+  const next = new Set<string | number>();
+  for (const k of selectedKeys) {
+    if (fresh.has(k) || fresh.has(String(k))) next.add(k);
+  }
+  return next;
 }

@@ -452,6 +452,11 @@ describe('ListView create action', () => {
     ]);
     await flushPromises();
     expect(exposed.selectedItems?.length).toBe(2);
+    // Fresh rows must still contain selected ids or reconcile prunes them.
+    store.Search = fnRecorder(async () => [
+      { Id: 'keep-me', Name: 'A' },
+      { Id: 'keep-2', Name: 'B' },
+    ]);
     const searchesBefore = store.Search.calls.length;
     await exposed.softRefresh?.();
     await flushPromises();

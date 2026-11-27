@@ -53,54 +53,12 @@ SPDX-License-Identifier: Apache-2.0
         {{ _t('Discard') }}
       </ChoyActionButton>
 
-      <slot
-        v-if="showActions"
-        name="system-actions"
-        :selected-items="selectedItems"
-        :is-editing="isEditing"
-        :inline-saving="inlineSaving"
-        :save="handleInlineSave"
-        :discard="handleInlineDiscard"
-      >
-        <ChoyActionButton
-          v-if="resolvedCreateAction && canCreate"
-          type="button"
-          size="default"
-          variant="soft-primary"
-          :action-id="actionIds?.create"
-          :has-action="hasAction"
-          @execute="handleCreate"
-        >
-          <Plus class="size-4" aria-hidden="true" />
-          {{ _t('New') }}
-        </ChoyActionButton>
-      </slot>
-    </template>
-
-    <template v-if="showRefreshInOverflow || !!slots['overflow-actions']" #overflow-actions>
-      <ChoyViewOverflowRefreshItem
-        v-if="showRefreshInOverflow"
-        test-id="list-overflow-refresh"
-        @select="handleRefresh"
-      />
-      <slot name="overflow-actions" :selected-items="selectedItems" />
-    </template>
-
-    <!-- Leading secondary (e.g. Load Demo); not contextual/center. -->
-    <template v-if="showActions && !!slots['secondary-actions']" #secondary-actions>
-      <slot name="secondary-actions" :selected-items="selectedItems" />
-    </template>
-
-    <!--
-      Find zone: Search by default. With a selection, hide Search and show the
-      contextual toolbar (engine chrome + #contextual-actions / aliases).
-    -->
-    <template #center>
+      <!-- Selection toolbar lives in the actions cluster; find keeps Search. -->
       <div
-        v-show="hasSelection"
+        v-if="showActions && hasSelection"
         data-anchor="choy.list.selection-bar"
         data-testid="list-contextual-actions"
-        class="flex min-w-0 w-full flex-nowrap items-center justify-center gap-2 overflow-x-auto"
+        class="flex min-w-0 flex-nowrap items-center gap-2 overflow-x-auto"
         role="toolbar"
         :aria-label="_t('Contextual actions')"
       >
@@ -142,11 +100,48 @@ SPDX-License-Identifier: Apache-2.0
         <slot name="selection-actions" :selected-items="selectedItems" :clear="clearSelection" />
         <slot name="user-actions" :selected-items="selectedItems" :clear="clearSelection" />
       </div>
-      <ChoySearchFit
-        v-if="resolvedSearchView"
-        v-show="!hasSelection"
-        :field-visible="!hasSelection"
+
+      <slot
+        v-else-if="showActions"
+        name="system-actions"
+        :selected-items="selectedItems"
+        :is-editing="isEditing"
+        :inline-saving="inlineSaving"
+        :save="handleInlineSave"
+        :discard="handleInlineDiscard"
       >
+        <ChoyActionButton
+          v-if="resolvedCreateAction && canCreate"
+          type="button"
+          size="default"
+          variant="soft-primary"
+          :action-id="actionIds?.create"
+          :has-action="hasAction"
+          @execute="handleCreate"
+        >
+          <Plus class="size-4" aria-hidden="true" />
+          {{ _t('New') }}
+        </ChoyActionButton>
+      </slot>
+    </template>
+
+    <template v-if="showRefreshInOverflow || !!slots['overflow-actions']" #overflow-actions>
+      <ChoyViewOverflowRefreshItem
+        v-if="showRefreshInOverflow"
+        test-id="list-overflow-refresh"
+        @select="handleRefresh"
+      />
+      <slot name="overflow-actions" :selected-items="selectedItems" />
+    </template>
+
+    <!-- Leading secondary (e.g. Load Demo); hide while selection owns the actions cluster. -->
+    <template v-if="showActions && !hasSelection && !!slots['secondary-actions']" #secondary-actions>
+      <slot name="secondary-actions" :selected-items="selectedItems" />
+    </template>
+
+    <!-- Find zone keeps Search whether or not rows are selected. -->
+    <template #center>
+      <ChoySearchFit v-if="resolvedSearchView">
         <component :is="resolvedSearchView" class="min-w-0 w-full" :store="store" @query-update="onSearch" />
       </ChoySearchFit>
     </template>
@@ -324,7 +319,10 @@ import { useVirtualizationAdapter } from '@/web/web/composables/virtualizationAd
 import { awaitFieldSelection } from '@/web/web/query/utils/registry/fieldReady';
 import ChoySearchView from '@/web/web/components/view/ChoySearchView.vue';
 import { shouldDeferToSearchFirstFrame } from '@/web/web/components/view/viewFirstFrame';
-import { reconcileListSelection } from '@/web/web/components/view/listSelectionReconcile';
+import {
+  reconcileListSelection,
+  reconcileListSelectionKeys,
+} from '@/web/web/components/view/listSelectionReconcile';
 import { useSearchFirstFrameHost } from '@/web/web/components/view/search/searchFirstFrame';
 import {
   canShowAction,
@@ -720,13 +718,18 @@ async function handleInlineDiscard() {
 // Section 8: Selection management
 // =============================
 // Prefer the new wrapped key first, then __rowKey / Id.
-const selection = useTableSelection(
-  (row: any) =>
-    row?.key ?? row?.__rowKey ?? row?.Id ?? (typeof row === 'object' ? ((row as any)?.payload?.Id) : undefined),
-  props.selectionMode
-);
+function selectionRowKey(row: any): string | number | undefined {
+  return (
+    row?.key ??
+    row?.__rowKey ??
+    row?.Id ??
+    (typeof row === 'object' ? ((row as any)?.payload?.Id) : undefined)
+  );
+}
 
-// Selected items; bulk actions replace Search in the find (center) column.
+const selection = useTableSelection(selectionRowKey, props.selectionMode);
+
+// Selected items; bulk actions live in the actions cluster (find keeps Search).
 const selectedItems = ref<any[]>([]);
 const hasSelection = computed(() => selectedItems.value.length > 0);
 
@@ -740,6 +743,12 @@ function reconcileSelectionToFreshRows(): void {
   // Prefer controller nodes (post-apply); fall back to flattened table rows.
   const rows = ((items.value?.length ? items.value : tableItems.value) || []) as any[];
   selectedItems.value = reconcileListSelection(selectedItems.value as any[], rows) as ClientModel<T[]>;
+  // Keep checkbox selection keys in sync — softRefresh skips the items watcher that normally clears.
+  selection.selected.value = reconcileListSelectionKeys(
+    selection.selected.value,
+    rows,
+    selectionRowKey,
+  );
 }
 
 function onSelectionChange(rows: any[]) {

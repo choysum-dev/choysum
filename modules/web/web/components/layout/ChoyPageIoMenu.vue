@@ -235,11 +235,16 @@ function clearCloseTimer() {
 function openFromHover() {
   if (!props.hoverOpen) return;
   clearCloseTimer();
-  openedByHover = true;
-  menuOpen.value = true;
+  // Only claim hover ownership when hover is what opens a closed menu.
+  // Pointer entry into an already click/keyboard-opened menu must not flip ownership.
+  if (!menuOpen.value) {
+    openedByHover = true;
+    menuOpen.value = true;
+  }
 }
 
 function closeFromHover() {
+  if (!openedByHover) return;
   menuOpen.value = false;
   openedByHover = false;
   closeTimer = null;
@@ -249,7 +254,10 @@ function scheduleHoverClose() {
   // Click/keyboard-opened menus must not dismiss on a brief pointer leave.
   if (!props.hoverOpen || !openedByHover) return;
   clearCloseTimer();
-  closeTimer = setTimeout(closeFromHover, 160);
+  closeTimer = setTimeout(() => {
+    if (!openedByHover) return;
+    closeFromHover();
+  }, 160);
 }
 
 function onTriggerEnter() {
