@@ -252,11 +252,16 @@ function closeFromHover() {
 }
 
 // Escape / trigger toggle / v-model close must drop hover ownership and cancel the delay.
-watch(menuOpen, isOpen => {
-  if (isOpen) return;
-  openedByHover = false;
-  clearCloseTimer();
-});
+// Sync flush so a same-tick pointer leave cannot schedule close on stale ownership.
+watch(
+  menuOpen,
+  isOpen => {
+    if (isOpen) return;
+    openedByHover = false;
+    clearCloseTimer();
+  },
+  { flush: 'sync' },
+);
 
 function flushHoverClose() {
   // Clear any pending id first so a manual flush does not race a live timer.
