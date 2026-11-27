@@ -1,7 +1,13 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { normalizeChoyGridCols, resolveChoyColSpan } from './choyGridContext';
+import {
+  defaultChoyColSpanBands,
+  normalizeChoyGridCols,
+  resolveChoyColSpan,
+  resolveChoyColSpanBands,
+  scaleChoyColSpanFromLg,
+} from './choyGridContext';
 
 describe('normalizeChoyGridCols', () => {
   test('defaults and clamps to a positive integer', () => {
@@ -42,5 +48,72 @@ describe('resolveChoyColSpan', () => {
     expect(normalizeChoyGridCols('   ' as unknown as number)).toBe(12);
     expect(resolveChoyColSpan('' as unknown as number, 12)).toBe(12);
     expect(resolveChoyColSpan(' ' as unknown as number, 8)).toBe(8);
+  });
+});
+
+describe('scaleChoyColSpanFromLg', () => {
+  test('maps 421 examples from the responsive design note', () => {
+    expect(scaleChoyColSpanFromLg(3)).toEqual({ base: 12, md: 6, lg: 3 });
+    expect(scaleChoyColSpanFromLg(6)).toEqual({ base: 12, md: 12, lg: 6 });
+    expect(scaleChoyColSpanFromLg(4)).toEqual({ base: 12, md: 12, lg: 6 });
+    expect(scaleChoyColSpanFromLg(12)).toEqual({ base: 12, md: 12, lg: 12 });
+  });
+
+  test('default one-slot bands match span 3', () => {
+    expect(defaultChoyColSpanBands()).toEqual(scaleChoyColSpanFromLg(3));
+  });
+});
+
+describe('resolveChoyColSpanBands', () => {
+  test('omitted span uses 421 defaults when responsive', () => {
+    expect(resolveChoyColSpanBands(undefined, 12, true)).toEqual({
+      base: 12,
+      md: 6,
+      lg: 3,
+    });
+  });
+
+  test('omitted span stays full width when not responsive', () => {
+    expect(resolveChoyColSpanBands(undefined, 12, false)).toEqual({
+      base: 12,
+      md: 12,
+      lg: 12,
+    });
+    expect(resolveChoyColSpanBands(undefined, 8, false)).toEqual({
+      base: 8,
+      md: 8,
+      lg: 8,
+    });
+  });
+
+  test('numeric span scales under responsive and stays fixed otherwise', () => {
+    expect(resolveChoyColSpanBands(3, 12, true)).toEqual({ base: 12, md: 6, lg: 3 });
+    expect(resolveChoyColSpanBands(3, 12, false)).toEqual({ base: 3, md: 3, lg: 3 });
+  });
+
+  test('object span uses mobile-first fallbacks without scale-up', () => {
+    expect(resolveChoyColSpanBands({ base: 12, md: 6, lg: 3 }, 12, true)).toEqual({
+      base: 12,
+      md: 6,
+      lg: 3,
+    });
+    expect(resolveChoyColSpanBands({ sm: 12, lg: 4 }, 12, true)).toEqual({
+      base: 12,
+      md: 12,
+      lg: 4,
+    });
+  });
+
+  test('object span collapses to lg??md??sm??base when not responsive', () => {
+    expect(resolveChoyColSpanBands({ base: 12, md: 6, lg: 3 }, 12, false)).toEqual({
+      base: 3,
+      md: 3,
+      lg: 3,
+    });
+    expect(resolveChoyColSpanBands({ base: 12, md: 6 }, 12, false)).toEqual({
+      base: 6,
+      md: 6,
+      lg: 6,
+    });
   });
 });

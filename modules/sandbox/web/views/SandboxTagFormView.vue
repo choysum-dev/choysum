@@ -16,14 +16,14 @@ SPDX-License-Identifier: Apache-2.0
     v-on="$attrs"
   >
     <ChoySection :title="_t('Tag')">
-      <ChoyGrid :cols="12">
+      <ChoyGrid>
         <ChoyCol :span="6">
           <ChoyVarcharField :store="store" prop="Name" :rules="requiredRules" />
         </ChoyCol>
         <ChoyCol :span="6">
           <ChoyVarcharField :store="store" prop="Code" :rules="requiredRules" />
         </ChoyCol>
-        <ChoyCol :span="6">
+        <ChoyCol>
           <ChoyBooleanField :store="store" prop="IsActive" />
         </ChoyCol>
       </ChoyGrid>

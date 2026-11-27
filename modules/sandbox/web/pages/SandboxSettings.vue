@@ -18,7 +18,7 @@ SPDX-License-Identifier: Apache-2.0
     >
       <div data-anchor="sandbox.settings.sections" class="flex max-w-md flex-col gap-8">
         <ChoySection :title="_t('Demo')" data-anchor="sandbox.settings.demo">
-          <ChoyGrid :cols="12" class="gap-y-4">
+          <ChoyGrid>
             <ChoyCol :span="12">
               <ChoyBooleanField
                 v-if="formStore"

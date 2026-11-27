@@ -68,25 +68,29 @@ SPDX-License-Identifier: Apache-2.0
         }}
       </aside>
 
+      <!--
+        ChoyGrid defaults to container 421 (omit span = one field slot).
+        Use :span="12" for full-bleed; object span for custom bands; :responsive="false" to freeze.
+      -->
       <!-- divided for title trailing rule; mt-0 so tip mb-8 is not doubled. -->
       <ChoySection :title="_t('Identity')" divided class="mt-0">
-        <ChoyGrid :cols="12" gap="none" class="gap-x-6 gap-y-5">
-          <ChoyCol :span="3">
+        <ChoyGrid>
+          <ChoyCol>
             <ChoyCharField :store="store" prop="NameChar" :rules="requiredRules" />
           </ChoyCol>
-          <ChoyCol :span="3">
+          <ChoyCol>
             <ChoyVarcharField :store="store" prop="Title" :rules="requiredRules" />
           </ChoyCol>
-          <ChoyCol :span="3">
+          <ChoyCol>
             <ChoyVarcharField :store="store" prop="Code" :rules="requiredRules" :copyable="true" />
           </ChoyCol>
-          <ChoyCol :span="3">
+          <ChoyCol>
             <ChoyBooleanField :store="store" prop="IsActive" widget="switch" />
           </ChoyCol>
-          <ChoyCol :span="3">
+          <ChoyCol>
             <ChoyIntField :store="store" prop="Sequence" />
           </ChoyCol>
-          <ChoyCol :span="3">
+          <ChoyCol>
             <ChoySelectionField :store="store" prop="State" />
           </ChoyCol>
           <ChoyCol :span="12">
@@ -96,20 +100,20 @@ SPDX-License-Identifier: Apache-2.0
       </ChoySection>
 
       <ChoySection :title="_t('Numbers')" divided>
-        <ChoyGrid :cols="12" gap="none" class="gap-x-6 gap-y-5">
-          <ChoyCol :span="3">
+        <ChoyGrid>
+          <ChoyCol>
             <ChoyIntField :store="store" prop="IntValue" />
           </ChoyCol>
-          <ChoyCol :span="3">
+          <ChoyCol>
             <ChoyBigintField :store="store" prop="BigintValue" />
           </ChoyCol>
-          <ChoyCol :span="3">
+          <ChoyCol>
             <ChoyNumberField :store="store" prop="NumberValue" />
           </ChoyCol>
-          <ChoyCol :span="3">
+          <ChoyCol>
             <ChoyDecimalField :store="store" prop="DecimalValue" />
           </ChoyCol>
-          <ChoyCol :span="3">
+          <ChoyCol>
             <ChoyManyToOneRefField
               :store="store"
               prop="CurrencyId"
@@ -117,48 +121,50 @@ SPDX-License-Identifier: Apache-2.0
               :search-view-title="_t('Select Currency')"
             />
           </ChoyCol>
-          <ChoyCol :span="3">
+          <ChoyCol>
             <ChoyMonetaryField :store="store" prop="Amount" />
           </ChoyCol>
         </ChoyGrid>
       </ChoySection>
 
       <ChoySection :title="_t('Temporal')" divided>
-        <ChoyGrid :cols="12" gap="none" class="gap-x-6 gap-y-5">
-          <ChoyCol :span="4">
+        <!-- Object span: container bands (not viewport) — three columns when wide. -->
+        <ChoyGrid>
+          <ChoyCol :span="{ base: 12, md: 6, lg: 4 }">
             <ChoyDateField :store="store" prop="DateValue" />
           </ChoyCol>
-          <ChoyCol :span="4">
+          <ChoyCol :span="{ base: 12, md: 6, lg: 4 }">
             <ChoyDatetimeField :store="store" prop="DatetimeValue" mode="datetime" />
           </ChoyCol>
-          <ChoyCol :span="4">
+          <ChoyCol :span="{ base: 12, md: 6, lg: 4 }">
             <ChoyTimeField :store="store" prop="TimeValue" />
           </ChoyCol>
         </ChoyGrid>
       </ChoySection>
 
       <ChoySection :title="_t('Rich Content')" divided>
-        <ChoyGrid :cols="12" gap="none" class="gap-x-6 gap-y-5">
+        <ChoyGrid>
           <ChoyCol :span="12">
             <ChoyHtmlField :store="store" prop="BodyHtml" orientation="vertical" />
           </ChoyCol>
-          <ChoyCol :span="6">
+          <ChoyCol :span="{ base: 12, md: 6, lg: 6 }">
             <ChoyBinaryField :store="store" prop="Attachment" />
           </ChoyCol>
-          <ChoyCol :span="6">
+          <ChoyCol :span="{ base: 12, md: 6, lg: 6 }">
             <ChoyImageField :store="store" prop="Image" />
           </ChoyCol>
-          <ChoyCol :span="6">
+          <ChoyCol :span="{ base: 12, md: 6, lg: 6 }">
             <ChoyJsonField :store="store" prop="JsonPayload" />
           </ChoyCol>
-          <ChoyCol :span="6">
+          <ChoyCol :span="{ base: 12, md: 6, lg: 6 }">
             <ChoyPropertiesField :store="store" prop="Properties" />
           </ChoyCol>
         </ChoyGrid>
       </ChoySection>
 
       <ChoySection :title="_t('Depth')" divided>
-        <ChoyGrid :cols="12" gap="none" class="gap-x-6 gap-y-5">
+        <ChoyGrid>
+          <!-- Numeric span = lg target; scales up under 421 (6→12→12). -->
           <ChoyCol :span="6">
             <ChoyVarcharField :store="store" prop="CompanyNote" />
           </ChoyCol>
@@ -170,10 +176,10 @@ SPDX-License-Identifier: Apache-2.0
               :search-view-title="_t('Select Company')"
             />
           </ChoyCol>
-          <ChoyCol :span="3">
+          <ChoyCol>
             <ChoyIntField :store="store" prop="LineCount" :readonly="true" />
           </ChoyCol>
-          <ChoyCol :span="3">
+          <ChoyCol>
             <ChoyVarcharField :store="store" prop="CategoryName" :readonly="true" />
           </ChoyCol>
           <ChoyCol :span="6">
@@ -185,7 +191,7 @@ SPDX-License-Identifier: Apache-2.0
       </ChoySection>
 
       <ChoySection :title="_t('Relations')" divided>
-        <ChoyGrid :cols="12" gap="none" class="gap-x-6 gap-y-5">
+        <ChoyGrid>
           <ChoyCol :span="6">
             <ChoyManyToOneField
               :store="store"
