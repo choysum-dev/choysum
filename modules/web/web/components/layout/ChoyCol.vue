@@ -4,8 +4,22 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <template>
-  <div data-anchor="choy.col" :class="cn('choy-col min-w-0', props.class)" :style="style">
-    <slot />
+  <div
+    data-anchor="choy.col"
+    :data-label-gutter="labelGutterOn ? 'true' : 'false'"
+    :data-label-width="labelWidthOn ? 'true' : undefined"
+    :class="cn('choy-col min-w-0', props.class)"
+    :style="style"
+  >
+    <!--
+      When label-gutter is on, the outer Col is the CQ size box (container-name
+      choy-col); the inner host owns the 2-track stack so narrow CQ can collapse
+      tracks (a container cannot query-style itself).
+    -->
+    <div v-if="labelGutterOn" class="choy-col__stack">
+      <slot />
+    </div>
+    <slot v-else />
   </div>
 </template>
 
@@ -20,22 +34,30 @@ import {
 } from './choyGridContext';
 
 /**
- * Grid column. Under a responsive ChoyGrid, omitted span is one 421 field slot
- * (3/6/12). A number is the wide (lg) target and scales up; an object sets
- * container bands explicitly (keys are container bands, not viewport).
+ * Grid column: 421 span bands plus optional shared label gutter for stacked fields.
+ * `label-width` fixes the Col label track (not a per-field API).
  */
 const props = withDefaults(
   defineProps<{
     class?: ClassValue;
     span?: ChoyColSpanInput;
+    /** When true (default), fields in this Col share one label track. */
+    labelGutter?: boolean;
+    /** Optional fixed label track width (e.g. `8rem`); ignored when narrow → vertical. */
+    labelWidth?: string;
   }>(),
   {
     span: undefined,
+    labelGutter: true,
   },
 );
 
 const gridCols = inject(ChoyGridColsKey, undefined);
 const gridResponsive = inject(ChoyGridResponsiveKey, undefined);
+
+const labelGutterOn = computed(() => props.labelGutter !== false);
+const labelWidthTrimmed = computed(() => String(props.labelWidth ?? '').trim());
+const labelWidthOn = computed(() => labelGutterOn.value && labelWidthTrimmed.value !== '');
 
 const style = computed(() => {
   const bands = resolveChoyColSpanBands(
@@ -43,32 +65,46 @@ const style = computed(() => {
     gridCols?.value,
     gridResponsive?.value !== false,
   );
-  return {
+  const out: Record<string, string> = {
     '--choy-col-span-base': String(bands.base),
     '--choy-col-span-md': String(bands.md),
     '--choy-col-span-lg': String(bands.lg),
-  } as Record<string, string>;
+  };
+  if (labelWidthOn.value) {
+    out['--choy-field-label-width'] = labelWidthTrimmed.value;
+  }
+  return out;
 });
 </script>
 
 <style scoped>
 /*
- * Breakpoints must stay in sync with --choy-grid-break-md/lg in tokens.css
- * (36rem / 56rem). Literal lengths: @container min-width var() is unreliable.
+ * Span CQ targets named grid container (not this Col).
+ * Breakpoints sync with --choy-grid-break-md/lg (36rem / 56rem); literals only.
  */
 .choy-col {
   grid-column: span var(--choy-col-span-base) / span var(--choy-col-span-base);
 }
 
-@container (min-width: 36rem) {
+@container choy-grid (min-width: 36rem) {
   .choy-col {
     grid-column: span var(--choy-col-span-md) / span var(--choy-col-span-md);
   }
 }
 
-@container (min-width: 56rem) {
+@container choy-grid (min-width: 56rem) {
   .choy-col {
     grid-column: span var(--choy-col-span-lg) / span var(--choy-col-span-lg);
   }
+}
+
+/* Outer Col is the label CQ size box when gutter is on. Stack tracks live in index.css. */
+.choy-col[data-label-gutter='true'] {
+  container-type: inline-size;
+  container-name: choy-col;
+}
+
+.choy-col__stack {
+  min-width: 0;
 }
 </style>

@@ -443,9 +443,9 @@ html {
 }
 
 /*
- * Form: label | value as a 2-track CSS grid sized to the host ChoyCol
- * (percentage of the field cell, not a fixed rem). Without a label row the
- * content track spans the full cell.
+ * Form: label | value. Standalone / label-gutter=off: Field owns two tracks
+ * (max-content clamped). Inside ChoyCol gutter: Field is display:contents so
+ * label-row / content become Col stack items (no spanning subgrid).
  */
 [data-slot='field'].choy-field-base[data-orientation='horizontal'] {
   display: grid;
@@ -456,29 +456,119 @@ html {
   grid-template-columns: minmax(0, 1fr);
 }
 
+/*
+ * Standalone / gutter-off: minmax(min, max-content). Cap long labels via
+ * max-width on the label-row (not min(var(--max), max-content) inside minmax —
+ * that form collapses to one column in Chromium when mins/maxes are var()).
+ */
 [data-slot='field'].choy-field-base[data-orientation='horizontal']:has(> .choy-field-base__label-row) {
-  /* max(min, basis) keeps % from shrinking the track below the CJK-safe floor. */
   grid-template-columns:
     minmax(
       var(--choy-field-label-min),
-      min(
-        var(--choy-field-label-max),
-        max(var(--choy-field-label-min), var(--choy-field-label-basis))
-      )
+      var(--choy-field-label-width, max-content)
     )
     minmax(0, 1fr);
 }
 
+/*
+ * Col shared gutter (.choy-col__stack). Break literal = --choy-field-label-stack-break.
+ * Horizontal fields use display:contents; vertical fields stay a box spanning both tracks.
+ */
+.choy-col[data-label-gutter='true'] > .choy-col__stack:has(> [data-slot='field']) {
+  display: grid;
+  grid-template-columns:
+    minmax(var(--choy-field-label-min), max-content)
+    minmax(0, 1fr);
+  column-gap: var(--choy-field-label-control-gap);
+  row-gap: var(--choy-field-group-gap);
+  align-content: start;
+  /* Start — not stretch: tall controls (textarea) must not vertically center the label. */
+  align-items: start;
+}
+
+.choy-col[data-label-gutter='true'][data-label-width='true']
+  > .choy-col__stack:has(> [data-slot='field']) {
+  grid-template-columns:
+    max(var(--choy-field-label-min), var(--choy-field-label-width))
+    minmax(0, 1fr);
+}
+
+.choy-col[data-label-gutter='true']
+  > .choy-col__stack:has(> [data-slot='field'])
+  > :not([data-slot='field']) {
+  grid-column: 1 / -1;
+}
+
+.choy-col[data-label-gutter='true']
+  > .choy-col__stack
+  > [data-slot='field'].choy-field-base[data-orientation='horizontal'] {
+  display: contents;
+}
+
+/* No label row: control must not land in the label track. */
+.choy-col[data-label-gutter='true']
+  > .choy-col__stack
+  > [data-slot='field'].choy-field-base[data-orientation='horizontal']:not(
+    :has(> .choy-field-base__label-row)
+  )
+  > .choy-field-base__content {
+  grid-column: 1 / -1;
+}
+
+.choy-col[data-label-gutter='true']
+  > .choy-col__stack
+  > [data-slot='field'].choy-field-base[data-orientation='vertical'] {
+  grid-column: 1 / -1;
+}
+
+/*
+ * Narrow multi-field Col → one track; contents children auto-stack (label then control).
+ * Single-field 421 slots stay horizontal even when Col is < 36rem.
+ */
+@container choy-col (max-width: 36rem) {
+  .choy-col[data-label-gutter='true']
+    > .choy-col__stack:has(> [data-slot='field'] ~ [data-slot='field']) {
+    grid-template-columns: minmax(0, 1fr);
+    column-gap: 0;
+  }
+}
+
+/*
+ * Label row sizes to its text (max-content track contribution). width:100% would
+ * cyclic-size against the grid area and defeat max-content on Col/standalone tracks.
+ */
 [data-slot='field'].choy-field-base[data-orientation='horizontal'] .choy-field-base__label-row {
   min-width: 0;
-  width: 100%;
-  max-width: 100%;
+  width: max-content;
+  /* Caps track contribution when Col/standalone uses max-content (see minmax note above). */
+  max-width: var(--choy-field-label-width, var(--choy-field-label-max));
   min-height: var(--choy-control-height, 2rem);
   justify-content: flex-start;
   text-align: start;
 }
 
 [data-slot='field'].choy-field-base[data-orientation='horizontal'] .choy-field-base__content {
+  min-width: 0;
+  gap: var(--choy-field-stack-gap);
+}
+
+/* Contents path: same chrome; selectors target Field children after display:contents. */
+.choy-col[data-label-gutter='true']
+  > .choy-col__stack
+  > [data-slot='field'].choy-field-base[data-orientation='horizontal']
+  > .choy-field-base__label-row {
+  min-width: 0;
+  width: max-content;
+  max-width: var(--choy-field-label-width, var(--choy-field-label-max));
+  min-height: var(--choy-control-height, 2rem);
+  justify-content: flex-start;
+  text-align: start;
+}
+
+.choy-col[data-label-gutter='true']
+  > .choy-col__stack
+  > [data-slot='field'].choy-field-base[data-orientation='horizontal']
+  > .choy-field-base__content {
   min-width: 0;
   gap: var(--choy-field-stack-gap);
 }
