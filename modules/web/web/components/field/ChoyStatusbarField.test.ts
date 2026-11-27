@@ -153,8 +153,9 @@ describe('ChoyStatusbarField mount wiring', () => {
       'done',
     ]);
     expect(optionValues(m).map((o) => o.text)).toEqual(['Draft', 'Confirmed', 'Done']);
-    // Non-interactive: stages stay out of the tab order / activation path.
-    expect(optionValues(m).every((o) => o.disabled)).toBe(true);
+    // Non-interactive: leave tab order via tabindex; avoid native disabled (washes fills).
+    expect(optionValues(m).some((o) => o.disabled)).toBe(false);
+    expect(optionValues(m).every((o) => o.el.getAttribute('aria-disabled') === 'true')).toBe(true);
     expect(optionValues(m).every((o) => o.el.getAttribute('tabindex') === '-1')).toBe(true);
     const opts = optionValues(m);
     expect(opts[0]?.el.getAttribute('data-selected')).toBe('true');
@@ -170,7 +171,8 @@ describe('ChoyStatusbarField mount wiring', () => {
     const root = statusbarRoot(m);
     expect(root?.getAttribute('data-clickable')).toBeFalsy();
     expect(root?.getAttribute('aria-disabled')).toBe('true');
-    expect(optionValues(m).every((o) => o.disabled)).toBe(true);
+    expect(optionValues(m).some((o) => o.disabled)).toBe(false);
+    expect(optionValues(m).every((o) => o.el.getAttribute('tabindex') === '-1')).toBe(true);
     m.click('[data-value=done]');
     await flushPromises();
     expect(value.value).toBe('draft');
@@ -188,7 +190,8 @@ describe('ChoyStatusbarField mount wiring', () => {
     await flushPromises();
     expect(statusbarRoot(m)?.getAttribute('data-clickable')).toBeFalsy();
     expect(statusbarRoot(m)?.getAttribute('aria-disabled')).toBe('true');
-    expect(optionValues(m).every((o) => o.disabled)).toBe(true);
+    expect(optionValues(m).some((o) => o.disabled)).toBe(false);
+    expect(optionValues(m).every((o) => o.el.getAttribute('tabindex') === '-1')).toBe(true);
     m.click('[data-value=done]');
     await flushPromises();
     expect(value.value).toBe('draft');
@@ -203,7 +206,7 @@ describe('ChoyStatusbarField mount wiring', () => {
     const root = statusbarRoot(m);
     expect(root?.getAttribute('role')).toBe('radiogroup');
     expect(root?.getAttribute('data-clickable')).toBe('true');
-    expect(optionValues(m).every((o) => o.disabled)).toBe(false);
+    expect(optionValues(m).some((o) => o.disabled)).toBe(false);
     const opts = optionValues(m);
     expect(opts.find((o) => o.value === 'confirmed')?.el.getAttribute('data-selected')).toBe('true');
     expect(opts.find((o) => o.value === 'draft')?.el.getAttribute('data-selected')).toBeFalsy();
@@ -217,7 +220,8 @@ describe('ChoyStatusbarField mount wiring', () => {
     await flushPromises();
     expect(statusbarRoot(m)?.getAttribute('data-clickable')).toBeFalsy();
     expect(statusbarRoot(m)?.getAttribute('aria-disabled')).toBe('true');
-    expect(optionValues(m).every((o) => o.disabled)).toBe(true);
+    expect(optionValues(m).some((o) => o.disabled)).toBe(false);
+    expect(optionValues(m).every((o) => o.el.getAttribute('tabindex') === '-1')).toBe(true);
     m.click('[data-value=done]');
     await flushPromises();
     expect(value.value).toBe('draft');
