@@ -2487,7 +2487,12 @@ func filterNewUiResourceDefaultRoleRows(session *scope.Session, grantRows []role
 	}
 	filtered := make([]roleUiResourceGrantRow, 0, len(grantRows))
 	for _, row := range grantRows {
-		key := strings.TrimSpace(row.RoleId.String) + "/" + strings.TrimSpace(row.MetaUiResourceId.String)
+		rid := strings.TrimSpace(row.RoleId.String)
+		uid := strings.TrimSpace(row.MetaUiResourceId.String)
+		if rid == "" || uid == "" {
+			continue
+		}
+		key := rid + "/" + uid
 		if existing[key] {
 			continue
 		}
