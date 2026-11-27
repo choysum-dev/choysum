@@ -209,12 +209,18 @@ SPDX-License-Identifier: Apache-2.0
     <!--
       Optional Form statusbar under Action Bar (Odoo-aligned):
       statusbar = #statusbar-buttons | #statusbar-status.
-      Hidden while editing / settings; omitted when both sides empty.
+      Visually hidden while editing (v-show) so status fields (e.g. Progress)
+      stay registered for cancel/refresh beginDisplay browse selection.
+      Omitted when settings or both sides empty.
       #contextual-actions / #user-actions → buttons (deprecated).
       #statusbar → status (deprecated).
     -->
-    <template v-if="showFormStatusbar()" #header-extra>
+    <template
+      v-if="!isSettingsPresentation && (hasStatusbarButtons() || hasStatusbarStatus())"
+      #header-extra
+    >
       <div
+        v-show="!isEditing"
         data-anchor="choy.form.statusbar"
         data-testid="form-statusbar"
         class="flex min-h-control-sm min-w-0 w-full flex-nowrap items-center justify-between gap-3"
@@ -958,15 +964,6 @@ function hasStatusbarButtons(): boolean {
 function hasStatusbarStatus(): boolean {
   return !!slots['statusbar-status'] || !!slots.statusbar;
 }
-/** Form statusbar under Action Bar: display only; omit when both sides empty. */
-function showFormStatusbar(): boolean {
-  return (
-    !isSettingsPresentation.value &&
-    !isEditing.value &&
-    (hasStatusbarButtons() || hasStatusbarStatus())
-  );
-}
-
 /** Reset lives in ⋮ during create/edit so the left bar stays [Save][Cancel][title][⋮]. */
 const showResetInOverflow = computed(
   () =>
