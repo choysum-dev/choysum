@@ -482,6 +482,8 @@ html {
   column-gap: var(--choy-field-label-control-gap);
   row-gap: var(--choy-field-group-gap);
   align-content: start;
+  /* Start — not stretch: tall controls (textarea) must not vertically center the label. */
+  align-items: start;
 }
 
 .choy-col[data-label-gutter='true'][data-label-width='true']

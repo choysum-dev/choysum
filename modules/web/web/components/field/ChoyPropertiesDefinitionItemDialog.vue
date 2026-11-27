@@ -48,21 +48,28 @@ SPDX-License-Identifier: Apache-2.0
                   label-width="5.5rem"
                   class="choy-properties-definition-item-fields"
                 >
-                  <ChoyVarcharField
-                    :store="formStore"
-                    prop="Name"
-                    orientation="horizontal"
-                    buffer-strategy="live"
-                    :required="!readonly"
-                    data-testid="choy-properties-definition-name"
-                  />
-                  <ChoySelectionField
-                    :store="formStore"
-                    prop="Type"
-                    orientation="horizontal"
-                    :clearable="false"
-                    data-testid="choy-properties-definition-type"
-                  />
+                  <!--
+                    Wrap so fields are not direct stack siblings: dialog is ≤32rem
+                    and the multi-field Col CQ (36rem) would otherwise force vertical
+                    labels. Fixed label-width still applies via the Col CSS var.
+                  -->
+                  <div class="flex flex-col gap-2">
+                    <ChoyVarcharField
+                      :store="formStore"
+                      prop="Name"
+                      orientation="horizontal"
+                      buffer-strategy="live"
+                      :required="!readonly"
+                      data-testid="choy-properties-definition-name"
+                    />
+                    <ChoySelectionField
+                      :store="formStore"
+                      prop="Type"
+                      orientation="horizontal"
+                      :clearable="false"
+                      data-testid="choy-properties-definition-type"
+                    />
+                  </div>
                 </ChoyCol>
               </section>
 
@@ -77,52 +84,55 @@ SPDX-License-Identifier: Apache-2.0
                   label-width="5.5rem"
                   class="choy-properties-definition-item-fields"
                 >
-                  <div class="flex min-w-0 items-center gap-1">
-                    <ChoyVarcharField
-                      class="min-w-0 flex-1"
-                      :store="formStore"
-                      prop="Label"
-                      orientation="horizontal"
-                      buffer-strategy="live"
-                      data-testid="choy-properties-definition-string"
-                    />
-                    <ChoyButton
-                      v-if="!readonly"
-                      type="button"
-                      size="icon"
-                      variant="ghost"
-                      class="size-8 shrink-0 text-muted-foreground hover:text-foreground"
-                      :aria-label="_t('Translate label')"
-                      :title="_t('Translate label')"
-                      data-testid="choy-properties-definition-translate-string"
-                      @click="openStringTranslate"
-                    >
-                      <Languages class="size-4" aria-hidden="true" />
-                    </ChoyButton>
-                  </div>
-                  <div class="flex min-w-0 items-start gap-1">
-                    <ChoyTextField
-                      class="min-w-0 flex-1"
-                      :store="formStore"
-                      prop="Help"
-                      orientation="horizontal"
-                      buffer-strategy="live"
-                      :rows="2"
-                      data-testid="choy-properties-definition-help"
-                    />
-                    <ChoyButton
-                      v-if="!readonly"
-                      type="button"
-                      size="icon"
-                      variant="ghost"
-                      class="mt-0.5 size-8 shrink-0 text-muted-foreground hover:text-foreground"
-                      :aria-label="_t('Translate help')"
-                      :title="_t('Translate help')"
-                      data-testid="choy-properties-definition-translate-help"
-                      @click="openHelpTranslate"
-                    >
-                      <Languages class="size-4" aria-hidden="true" />
-                    </ChoyButton>
+                  <!-- Stack owns gap: wrapped rows are not [data-slot=field], so Col row-gap does not apply. -->
+                  <div class="flex flex-col gap-2">
+                    <div class="flex min-w-0 items-center gap-1">
+                      <ChoyVarcharField
+                        class="min-w-0 flex-1"
+                        :store="formStore"
+                        prop="Label"
+                        orientation="horizontal"
+                        buffer-strategy="live"
+                        data-testid="choy-properties-definition-string"
+                      />
+                      <ChoyButton
+                        v-if="!readonly"
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        class="size-8 shrink-0 text-muted-foreground hover:text-foreground"
+                        :aria-label="_t('Translate label')"
+                        :title="_t('Translate label')"
+                        data-testid="choy-properties-definition-translate-string"
+                        @click="openStringTranslate"
+                      >
+                        <Languages class="size-4" aria-hidden="true" />
+                      </ChoyButton>
+                    </div>
+                    <div class="flex min-w-0 items-start gap-1">
+                      <ChoyTextField
+                        class="min-w-0 flex-1"
+                        :store="formStore"
+                        prop="Help"
+                        orientation="horizontal"
+                        buffer-strategy="live"
+                        :rows="2"
+                        data-testid="choy-properties-definition-help"
+                      />
+                      <ChoyButton
+                        v-if="!readonly"
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        class="mt-0.5 size-8 shrink-0 text-muted-foreground hover:text-foreground"
+                        :aria-label="_t('Translate help')"
+                        :title="_t('Translate help')"
+                        data-testid="choy-properties-definition-translate-help"
+                        @click="openHelpTranslate"
+                      >
+                        <Languages class="size-4" aria-hidden="true" />
+                      </ChoyButton>
+                    </div>
                   </div>
                 </ChoyCol>
               </section>
