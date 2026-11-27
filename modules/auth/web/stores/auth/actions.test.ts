@@ -780,6 +780,68 @@ function sequenceGetPermissionState(mockState: ReturnType<typeof buildMockState>
   };
 }
 
+test('loadPermissionState: forced wait recomputes key after A→B→A company bounce', async () => {
+  const mockState = buildMockState();
+  const mockHelpers = buildMockHelpers();
+  mockState.tokens.value = {
+    accessToken: 'access',
+    refreshToken: 'refresh',
+    expiresAt: Date.now() + 3600_000,
+  };
+  mockState.identity.value = {
+    userId: 'usr_1',
+    metadata: {
+      permStateVersion: 1,
+      activeCompanyId: 'cmp_a',
+      enabledCompanyIds: ['cmp_a'],
+    },
+  } as any;
+
+  let resolveFirst: (value: unknown) => void = () => {};
+  const firstDeferred = new Promise(resolve => {
+    resolveFirst = resolve;
+  });
+  sequenceGetPermissionState(mockState, [
+    firstDeferred,
+    Promise.resolve({
+      permStateVersion: 3,
+      byCompany: { cmp_a: { ui: { routes: ['home'], menus: ['*'], actions: ['*'] } } },
+    }),
+  ]);
+
+  const actions = defineAuthActions(mockState as any, mockHelpers as any, { isClient: true });
+  const unforced = actions.loadPermissionState(false);
+  const forced = actions.loadPermissionState(true);
+
+  // Bounce company scope A → B → A while the forced caller waits.
+  mockState.identity.value = {
+    userId: 'usr_1',
+    metadata: {
+      permStateVersion: 2,
+      activeCompanyId: 'cmp_b',
+      enabledCompanyIds: ['cmp_b'],
+    },
+  } as any;
+  mockState.identity.value = {
+    userId: 'usr_1',
+    metadata: {
+      permStateVersion: 3,
+      activeCompanyId: 'cmp_a',
+      enabledCompanyIds: ['cmp_a'],
+    },
+  } as any;
+
+  resolveFirst({
+    permStateVersion: 1,
+    byCompany: { cmp_a: { ui: { routes: ['stale'], menus: ['*'], actions: ['*'] } } },
+  });
+
+  await unforced.catch(() => undefined);
+  expect(await forced).toBe(true);
+  expect(mockState._recorders.GetPermissionState.calls.length).toBe(2);
+  expect((mockState.permissionState.value as any)?.permStateVersion).toBe(3);
+});
+
 test('loadPermissionState: forced call waits for in-flight non-forced then refreshes', async () => {
   const mockState = buildMockState();
   const mockHelpers = buildMockHelpers();

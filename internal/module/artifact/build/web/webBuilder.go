@@ -2431,12 +2431,66 @@ func (b *WebModuleBuilder) persistUiResourceDefaultRoles(uiResources []*meta.UiR
 			Columns:   []clause.Column{{Name: "role_id"}, {Name: "meta_ui_resource_id"}},
 			DoNothing: true,
 		})
+	} else {
+		// Without the unique index, ON CONFLICT is unavailable — skip live pairs
+		// so re-seeding does not duplicate grants (including conflicting modes).
+		grantRows, err = filterNewUiResourceDefaultRoleRows(session, grantRows)
+		if err != nil {
+			return err
+		}
+		if len(grantRows) == 0 {
+			return nil
+		}
 	}
 	if result := insert.Create(&grantRows); result.Error != nil {
 		return xfmt.Errorf("insert defaultRoles role UI resources failed: %w", result.Error)
 	}
 
 	return nil
+}
+
+// filterNewUiResourceDefaultRoleRows drops grant rows whose live (role, resource)
+// pair already exists when the unique conflict index is unavailable.
+func filterNewUiResourceDefaultRoleRows(session *scope.Session, grantRows []roleUiResourceGrantRow) ([]roleUiResourceGrantRow, error) {
+	resourceIDs := make([]string, 0, len(grantRows))
+	seenRes := make(map[string]bool, len(grantRows))
+	for _, row := range grantRows {
+		uid := strings.TrimSpace(row.MetaUiResourceId.String)
+		if uid == "" || seenRes[uid] {
+			continue
+		}
+		seenRes[uid] = true
+		resourceIDs = append(resourceIDs, uid)
+	}
+	if len(resourceIDs) == 0 {
+		return nil, nil
+	}
+	type livePairRow struct {
+		RoleId           string
+		MetaUiResourceId string
+	}
+	liveRows := make([]livePairRow, 0)
+	if result := session.
+		Table("auth_role_ui_resource").
+		Select("role_id", "meta_ui_resource_id").
+		Where("deleted_at IS NULL").
+		Where("meta_ui_resource_id IN ?", resourceIDs).
+		Find(&liveRows); result.Error != nil {
+		return nil, xfmt.Errorf("query existing defaultRoles grants failed: %w", result.Error)
+	}
+	existing := make(map[string]bool, len(liveRows))
+	for _, row := range liveRows {
+		existing[strings.TrimSpace(row.RoleId)+"/"+strings.TrimSpace(row.MetaUiResourceId)] = true
+	}
+	filtered := make([]roleUiResourceGrantRow, 0, len(grantRows))
+	for _, row := range grantRows {
+		key := strings.TrimSpace(row.RoleId.String) + "/" + strings.TrimSpace(row.MetaUiResourceId.String)
+		if existing[key] {
+			continue
+		}
+		filtered = append(filtered, row)
+	}
+	return filtered, nil
 }
 
 func (b *WebModuleBuilder) buildOptions(prebuild bool, extraEsbOpts ...esbplugins.EsbPluginOptions) *api.BuildOptions {

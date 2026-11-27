@@ -4825,6 +4825,24 @@ func TestPersistUiResourceDefaultRolesInsertsWithoutUniqueIndex(t *testing.T) {
 	if count != 1 {
 		t.Fatalf("expected 1 grant without OnConflict index, got %d", count)
 	}
+
+	// Re-seed with an existing live grant (deny) must not duplicate or overwrite.
+	if err := testRuntimeScope.db.Exec(
+		`UPDATE auth_role_ui_resource SET mode = 'deny' WHERE role_id = ? AND meta_ui_resource_id = ?`,
+		"role_user", "ui_1",
+	).Error; err != nil {
+		t.Fatalf("flip live grant to deny: %v", err)
+	}
+	if err := b.persistUiResourceDefaultRoles(resources); err != nil {
+		t.Fatalf("re-persist without unique index: %v", err)
+	}
+	var rows []roleUiResourceGrantRow
+	if err := testRuntimeScope.db.Table("auth_role_ui_resource").Find(&rows).Error; err != nil {
+		t.Fatalf("query grants after re-persist: %v", err)
+	}
+	if len(rows) != 1 || rows[0].Mode != "deny" {
+		t.Fatalf("expected existing live deny grant kept (no duplicate), got %#v", rows)
+	}
 }
 
 func TestDeleteUiResourceGrantsByIDsPropagatesDeleteError(t *testing.T) {
