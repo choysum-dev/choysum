@@ -4791,6 +4791,82 @@ func TestPersistUiResourceDefaultRolesPurgesSoftDeletedPairs(t *testing.T) {
 	}
 }
 
+func TestFilterNewUiResourceDefaultRoleRowsEdgeCases(t *testing.T) {
+	testRuntimeScope := newTestScopeWithDB(t).(*testScope)
+	mustExec(t, testRuntimeScope.db, `CREATE TABLE auth_role_ui_resource (
+		id TEXT PRIMARY KEY,
+		role_id TEXT NOT NULL,
+		mode TEXT NOT NULL DEFAULT 'allow',
+		meta_ui_resource_id TEXT,
+		deleted_at DATETIME
+	)`)
+	session := testRuntimeScope.Session()
+
+	empty, err := filterNewUiResourceDefaultRoleRows(session, []roleUiResourceGrantRow{
+		{RoleId: sql.NullString{String: "role_a", Valid: true}, Mode: "allow", MetaUiResourceId: sql.NullString{String: "   ", Valid: true}},
+		{RoleId: sql.NullString{String: "role_b", Valid: true}, Mode: "allow"},
+	})
+	if err != nil {
+		t.Fatalf("empty resource ids: %v", err)
+	}
+	if empty != nil {
+		t.Fatalf("expected nil rows when all resource ids are blank, got %#v", empty)
+	}
+
+	if err := testRuntimeScope.db.Exec(
+		`INSERT INTO auth_role_ui_resource (id, role_id, mode, meta_ui_resource_id) VALUES (?, ?, 'allow', ?)`,
+		"g1", "role_user", "ui_1",
+	).Error; err != nil {
+		t.Fatalf("seed live grant: %v", err)
+	}
+	filtered, err := filterNewUiResourceDefaultRoleRows(session, []roleUiResourceGrantRow{
+		{RoleId: sql.NullString{String: "role_user", Valid: true}, Mode: "allow", MetaUiResourceId: sql.NullString{String: "ui_1", Valid: true}},
+		{RoleId: sql.NullString{String: "role_user", Valid: true}, Mode: "allow", MetaUiResourceId: sql.NullString{String: "ui_1", Valid: true}},
+		{RoleId: sql.NullString{String: "role_user", Valid: true}, Mode: "allow", MetaUiResourceId: sql.NullString{String: "ui_2", Valid: true}},
+		{RoleId: sql.NullString{String: "role_user", Valid: true}, Mode: "allow", MetaUiResourceId: sql.NullString{String: "", Valid: true}},
+	})
+	if err != nil {
+		t.Fatalf("filter live pairs: %v", err)
+	}
+	if len(filtered) != 1 || filtered[0].MetaUiResourceId.String != "ui_2" {
+		t.Fatalf("expected only ui_2 to remain, got %#v", filtered)
+	}
+
+	mustExec(t, testRuntimeScope.db, `DROP TABLE auth_role_ui_resource`)
+	if _, err := filterNewUiResourceDefaultRoleRows(session, []roleUiResourceGrantRow{
+		{RoleId: sql.NullString{String: "role_user", Valid: true}, Mode: "allow", MetaUiResourceId: sql.NullString{String: "ui_1", Valid: true}},
+	}); err == nil || !strings.Contains(err.Error(), "query existing defaultRoles grants failed") {
+		t.Fatalf("expected query failure after drop, got %v", err)
+	}
+}
+
+func TestPersistUiResourceDefaultRolesFilterErrorWithoutUniqueIndex(t *testing.T) {
+	testRuntimeScope := newTestScopeWithDB(t).(*testScope)
+	mustExec(t, testRuntimeScope.db, `CREATE TABLE auth_role (id TEXT PRIMARY KEY, code TEXT)`)
+	mustExec(t, testRuntimeScope.db, `CREATE TABLE auth_role_ui_resource (
+		id TEXT PRIMARY KEY,
+		role_id TEXT,
+		mode TEXT NOT NULL DEFAULT 'allow',
+		meta_ui_resource_id TEXT,
+		deleted_at DATETIME
+	)`)
+	b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
+	if err := testRuntimeScope.db.Exec(`INSERT INTO auth_role (id, code) VALUES (?, ?)`, "role_user", "base.user").Error; err != nil {
+		t.Fatalf("seed auth_role: %v", err)
+	}
+	prev := filterNewUiResourceDefaultRoleRowsFn
+	filterNewUiResourceDefaultRoleRowsFn = func(session *scope.Session, grantRows []roleUiResourceGrantRow) ([]roleUiResourceGrantRow, error) {
+		return nil, errors.New("forced filter failure")
+	}
+	t.Cleanup(func() { filterNewUiResourceDefaultRoleRowsFn = prev })
+	err := b.persistUiResourceDefaultRoles([]*meta.UiResource{
+		{BaseModel: meta.BaseModel{Id: sql.NullString{String: "ui_1", Valid: true}}, Name: "menu.root", DefaultRoles: []byte(`["base.user"]`)},
+	})
+	if err == nil || !strings.Contains(err.Error(), "forced filter failure") {
+		t.Fatalf("expected forced filter error, got %v", err)
+	}
+}
+
 func TestPersistUiResourceDefaultRolesInsertsWithoutUniqueIndex(t *testing.T) {
 	testRuntimeScope := newTestScopeWithDB(t).(*testScope)
 	mustExec(t, testRuntimeScope.db, `CREATE TABLE auth_role (id TEXT PRIMARY KEY, code TEXT)`)

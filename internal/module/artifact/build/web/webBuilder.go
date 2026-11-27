@@ -2434,7 +2434,7 @@ func (b *WebModuleBuilder) persistUiResourceDefaultRoles(uiResources []*meta.UiR
 	} else {
 		// Without the unique index, ON CONFLICT is unavailable — skip live pairs
 		// so re-seeding does not duplicate grants (including conflicting modes).
-		grantRows, err = filterNewUiResourceDefaultRoleRows(session, grantRows)
+		grantRows, err = filterNewUiResourceDefaultRoleRowsFn(session, grantRows)
 		if err != nil {
 			return err
 		}
@@ -2448,6 +2448,9 @@ func (b *WebModuleBuilder) persistUiResourceDefaultRoles(uiResources []*meta.UiR
 
 	return nil
 }
+
+// Overridable in tests to force the no-index filter error path.
+var filterNewUiResourceDefaultRoleRowsFn = filterNewUiResourceDefaultRoleRows
 
 // filterNewUiResourceDefaultRoleRows drops grant rows whose live (role, resource)
 // pair already exists when the unique conflict index is unavailable.
