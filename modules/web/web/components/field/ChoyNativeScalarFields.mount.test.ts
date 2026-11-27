@@ -150,7 +150,17 @@ describe('Choy native scalar field cells', () => {
     expect(displayRoot).toBeTruthy();
     // Minimal DOM has no descendant selectors; walk display children.
     const displayKids = Array.from(displayRoot?.childNodes || []) as Element[];
-    expect(displayKids.some(el => String(el.className || '').includes('choy-bool-input'))).toBe(true);
+    const displaySwitch = displayKids.find((el) =>
+      String(el.className || '').includes('choy-bool-input'),
+    ) as HTMLElement | undefined;
+    expect(displaySwitch).toBeTruthy();
+    // Switch-specific marker (not Checkbox) — shared choy-bool-input alone is insufficient.
+    expect(displaySwitch?.getAttribute('data-slot')).toBe('switch');
+    // Display keeps the Switch control (not Yes/No text); disabled for non-edit.
+    expect(
+      displaySwitch?.hasAttribute('disabled') ||
+        displaySwitch?.getAttribute('aria-disabled') === 'true',
+    ).toBeTruthy();
     expect(displayKids.some(el => String(el.className || '').includes('choy-bool-display__text'))).toBe(false);
     const toView = lastBaseProps.current?.toView as (v: unknown) => unknown;
     const fromView = lastBaseProps.current?.fromView as (v: unknown) => unknown;

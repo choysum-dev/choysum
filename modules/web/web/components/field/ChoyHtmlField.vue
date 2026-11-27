@@ -266,7 +266,9 @@ const ChoyHtmlEditorCell = defineComponent({
 
     const editor = useEditor({
       extensions: [
-        StarterKit,
+        // Runtime TipTap 3+ StarterKit ships Link; disable it so Link.configure below is unique.
+        // Cast: peer types may still be 2.x, which omit the `link` StarterKit option.
+        StarterKit.configure({ link: false } as Parameters<typeof StarterKit.configure>[0]),
         Link.configure({
           openOnClick: false,
           autolink: true,

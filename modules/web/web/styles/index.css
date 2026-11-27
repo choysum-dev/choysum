@@ -429,6 +429,16 @@ html {
 }
 
 /*
+ * Display boolean keeps Switch/Checkbox chrome at opacity 0.8 (quieter than edit).
+ * pointer-events: none keeps the disabled control from receiving hits.
+ */
+.choy-bool-display [data-slot='switch'],
+.choy-bool-display [data-slot='checkbox'] {
+  opacity: 0.8;
+  pointer-events: none;
+}
+
+/*
  * Form field chrome density. Kit Field/FieldGroup ship gap-*; product hosts
  * win via these selectors so spacing tracks --choy-field-*-gap
  * (including data-density=compact). cn() does not merge conflicting gap-*.
@@ -644,6 +654,15 @@ html {
   pointer-events: none;
 }
 
+/*
+ * Display sets aria-disabled on the ribbon; beat global [aria-disabled=true]{opacity:0.5}
+ * with a milder 0.8 so stage fills stay readable. Clicks already gated above.
+ */
+.choy-statusbar-field__control[aria-disabled='true'] {
+  opacity: 0.8;
+  cursor: default;
+}
+
 .choy-statusbar-field__control .choy-statusbar-opt {
   position: relative;
   display: inline-flex;
@@ -736,6 +755,7 @@ html[dir='rtl'] .choy-statusbar-field__control .choy-statusbar-opt[data-edge='la
   clip-path: none;
 }
 
+/* Stage fills: same tokens as main (soft primary hierarchy). */
 .choy-statusbar-field__control .choy-statusbar-opt[data-stage='past'] {
   background: var(--choy-color-primary-subtle);
   color: color-mix(in oklab, var(--choy-color-foreground) 78%, var(--choy-color-primary) 22%);

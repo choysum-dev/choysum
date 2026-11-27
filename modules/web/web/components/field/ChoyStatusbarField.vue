@@ -16,7 +16,7 @@ SPDX-License-Identifier: Apache-2.0
     :toView="toView"
     :fromView="fromView"
     :required="required"
-    :readonly="readonly"
+    :readonly="fieldReadonly"
     :visible="visible"
     :cellVisible="cellVisible"
     :renderMode="renderMode"
@@ -48,7 +48,8 @@ SPDX-License-Identifier: Apache-2.0
           :data-stage="item.stage"
           :data-edge="item.edge"
           :aria-checked="item.selected ? 'true' : 'false'"
-          :disabled="pending || item.opt.disabled ? true : undefined"
+          :disabled="!isInteractive || pending || item.opt.disabled ? true : undefined"
+          :tabindex="isInteractive ? undefined : -1"
           @click="onSelect(fieldValue, item.opt.value)"
         >
           {{ item.opt.label }}
@@ -77,7 +78,8 @@ SPDX-License-Identifier: Apache-2.0
           :data-stage="item.stage"
           :data-edge="item.edge"
           :aria-checked="item.selected ? 'true' : 'false'"
-          :disabled="pending || item.opt.disabled ? true : undefined"
+          :disabled="!isInteractive || pending || item.opt.disabled ? true : undefined"
+          :tabindex="isInteractive ? undefined : -1"
           @click="onSelect(fieldValue, item.opt.value)"
         >
           {{ item.opt.label }}
@@ -136,11 +138,10 @@ const props = withDefaults(
 
     /**
      * Write gate for stage clicks.
-     * null/omit: clickable in form edit mode.
-     * true: always when not readonly; false: never.
-     * (null default avoids Vue Boolean-prop coercing omit → false.)
+     * false/omit (default): identity ribbon — not interactive.
+     * true: allow stage clicks to write the field (when not readonly/disabled).
      */
-    clickable?: boolean | null;
+    clickable?: boolean;
     disabled?: boolean;
     /** Write gate before assigning fieldValue. */
     beforeChange?: StatusbarBeforeChange;
@@ -166,7 +167,7 @@ const props = withDefaults(
   }>(),
   {
     rules: () => [],
-    clickable: null,
+    clickable: false,
     disabled: false,
     formItemProps: () => ({}),
     vColumnProps: () => ({}),
@@ -236,9 +237,15 @@ const exprReadonly = computed(() => {
 
 const isInteractive = computed(() => {
   if (props.disabled || exprReadonly.value || metaReadonly.value) return false;
-  if (props.clickable === false) return false;
-  if (props.clickable === true) return true;
-  return binding.env?.isEditMode === true;
+  // Stage writes only in edit mode when explicitly clickable.
+  if (props.clickable !== true || binding.env?.isEditMode !== true) return false;
+  return true;
+});
+
+// Identity ribbon (non-clickable): readonly so form submit skips client rules.
+const fieldReadonly = computed<FieldStateExpr<T, V>>(() => {
+  if (props.clickable !== true) return true;
+  return props.readonly as FieldStateExpr<T, V>;
 });
 
 const whitelist = computed(() => resolveStatusbarWhitelist(props.statusbarVisible, props.selection));
@@ -346,5 +353,10 @@ const internalRule = {
     else cb();
   },
 } as RuleItem;
-const mergedRules = computed<RuleItem[]>(() => [...(props.rules ?? []), internalRule]);
+const mergedRules = computed<RuleItem[]>(() => {
+  // Non-clickable identity ribbon: omit option validation so a stage outside
+  // the current whitelist cannot block unrelated field saves.
+  if (props.clickable !== true) return [...(props.rules ?? [])];
+  return [...(props.rules ?? []), internalRule];
+});
 </script>

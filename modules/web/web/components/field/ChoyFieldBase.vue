@@ -19,16 +19,29 @@ SPDX-License-Identifier: Apache-2.0
       v-if="showLabelRow"
       class="choy-field-base__label-row flex items-center gap-1 text-sm font-normal text-muted-foreground"
     >
-      <!-- font-normal + muted beat Label defaults (font-medium); values stay regular + foreground. -->
+      <!--
+        font-normal + muted beat Label defaults (font-medium); values stay regular + foreground.
+        Native <label> only when `for` points at a labelable control; otherwise a div keeps
+        `id` for aria-labelledby (Chrome flags orphan <label> without for/nesting).
+      -->
       <FieldLabel
-        v-if="resolvedLabel"
+        v-if="resolvedLabel && labelHtmlFor"
         :id="formLabelId"
-        :for="labelHtmlFor || undefined"
+        :for="labelHtmlFor"
         class="text-sm font-normal text-muted-foreground"
       >
         {{ resolvedLabel }}
         <span v-if="showRequiredMark" class="text-destructive" aria-hidden="true">*</span>
       </FieldLabel>
+      <div
+        v-else-if="resolvedLabel"
+        :id="formLabelId"
+        data-slot="field-label"
+        class="flex w-fit select-none items-center gap-2 text-sm font-normal leading-none text-muted-foreground"
+      >
+        {{ resolvedLabel }}
+        <span v-if="showRequiredMark" class="text-destructive" aria-hidden="true">*</span>
+      </div>
       <span v-else-if="showRequiredMark" class="text-destructive" aria-hidden="true">*</span>
       <TooltipProvider v-if="effectiveHelp">
         <Tooltip>
@@ -511,8 +524,8 @@ const props = withDefaults(
     id?: string;
     /**
      * When true (default) and the form control is editable, FieldLabel uses `for=inputId`.
-     * Set false for composite / non-labelable controls (html, json, o2m, trees); use slot
-     * `labelId` with `aria-labelledby` on the control root instead.
+     * Set false for composite / non-labelable controls (html, json, o2m, trees): title
+     * renders as a non-label element with `id`, and the control uses `aria-labelledby`.
      */
     labelForControl?: boolean;
     formItemProps?: Partial<FormItemProps>;
@@ -905,7 +918,7 @@ const inputIdForm = computed(() => {
   const explicit = typeof props.id === 'string' ? props.id.trim() : '';
   return explicit || `fld-${inputName.value}`;
 });
-/** Stable id on FieldLabel for aria-labelledby when `for` is omitted. */
+/** Stable id on the form title for aria-labelledby when native `for` is omitted. */
 const formLabelId = computed(() => `${inputIdForm.value}-label`);
 const inputIdForRow = (row: T) => `${inputIdForm.value}-${guessRowKey(row)}`;
 /** Table edit: wire control to the cell error node (sr-only or overlay) when present. */
@@ -988,8 +1001,8 @@ const showLabelRow = computed(
 
 const effectiveEditForm = computed(() => binding.env.isEditMode && visibleForm.value && !readonlyForm.value);
 /**
- * `for` only when an editable labelable control is expected to own `inputId`.
- * Readonly form display and composite controls omit `for` (use `labelId` + aria-labelledby).
+ * Native label `for` only when an editable labelable control owns `inputId`.
+ * Otherwise the title is a div + `labelId` / aria-labelledby (no orphan <label>).
  */
 const labelHtmlFor = computed(() => {
   if (!props.labelForControl) return '';

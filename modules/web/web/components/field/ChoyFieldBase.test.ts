@@ -230,6 +230,8 @@ describe('ChoyFieldBase label and help', () => {
       },
     );
     const label = m.q('[data-slot="field-label"]');
+    // Non-labelable controls must not use <label> (Chrome orphan-label issue).
+    expect(label?.tagName).toBe('DIV');
     expect(label?.getAttribute('for')).toBeFalsy();
     expect(label?.id).toBe('fld-AccessTokenId-label');
     expect(m.q('.composite-probe')?.getAttribute('aria-labelledby')).toBe('fld-AccessTokenId-label');
@@ -249,7 +251,9 @@ describe('ChoyFieldBase label and help', () => {
         },
       },
     );
-    expect(m.q('[data-slot="field-label"]')?.getAttribute('for')).toBeFalsy();
+    const label = m.q('[data-slot="field-label"]');
+    expect(label?.tagName).toBe('DIV');
+    expect(label?.getAttribute('for')).toBeFalsy();
     m.unmount();
   });
 

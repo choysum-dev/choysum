@@ -38,7 +38,8 @@ SPDX-License-Identifier: Apache-2.0
     <!--
       Action Bar contract:
       [identity: title] [主 → 次 → ⋯] | [找] | [看]
-      create/edit: platform Save/Cancel; Reset/New/Copy/Delete in ⋮; statusbar hidden.
+      create/edit: platform Save/Cancel; Reset/New/Copy/Delete in ⋮;
+        statusbar-buttons hidden; statusbar-status ribbon stays when present.
       display: platform Edit; domain flow → optional statusbar (#statusbar-buttons | #statusbar-status).
       settings: Save/Discard only (no CRUD / Reset overflow / statusbar).
     -->
@@ -207,13 +208,20 @@ SPDX-License-Identifier: Apache-2.0
     </template>
 
     <!--
-      Optional Form statusbar under Action Bar (Odoo-aligned):
+      Optional Form statusbar under Action Bar:
       statusbar = #statusbar-buttons | #statusbar-status.
-      Hidden while editing / settings; omitted when both sides empty.
+      Buttons: display only (side-path workflow). Status ribbon: stays across
+      display/edit/create when slotted (identity); Progress stays mounted for
+      cancel/refresh beginDisplay browse selection.
+      Slot omitted when editing with buttons only (no empty header-extra gap).
+      Omitted when settings or both sides empty.
       #contextual-actions / #user-actions → buttons (deprecated).
       #statusbar → status (deprecated).
     -->
-    <template v-if="showFormStatusbar()" #header-extra>
+    <template
+      v-if="!isSettingsPresentation && (hasStatusbarStatus() || (!isEditing && hasStatusbarButtons()))"
+      #header-extra
+    >
       <div
         data-anchor="choy.form.statusbar"
         data-testid="form-statusbar"
@@ -222,7 +230,7 @@ SPDX-License-Identifier: Apache-2.0
         :aria-label="_t('Status bar')"
       >
         <div
-          v-if="hasStatusbarButtons()"
+          v-if="!isEditing && hasStatusbarButtons()"
           data-anchor="choy.form.statusbar-buttons"
           data-testid="form-statusbar-buttons"
           class="flex min-w-0 flex-nowrap items-center gap-2 overflow-x-auto"
@@ -499,7 +507,7 @@ defineSlots<{
     loading: boolean;
   }): any;
   /**
-   * Domain workflow actions on the Form statusbar (left).
+   * Domain workflow actions on the Form statusbar (left; display only).
    */
   'statusbar-buttons'(props: {
     formData: Partial<ClientModel<T>>;
@@ -508,7 +516,7 @@ defineSlots<{
     loading: boolean;
   }): any;
   /**
-   * Status stage ribbon on the Form statusbar (right).
+   * Status stage ribbon on the Form statusbar (right; stays in edit/create).
    */
   'statusbar-status'(): any;
   /**
@@ -958,15 +966,6 @@ function hasStatusbarButtons(): boolean {
 function hasStatusbarStatus(): boolean {
   return !!slots['statusbar-status'] || !!slots.statusbar;
 }
-/** Form statusbar under Action Bar: display only; omit when both sides empty. */
-function showFormStatusbar(): boolean {
-  return (
-    !isSettingsPresentation.value &&
-    !isEditing.value &&
-    (hasStatusbarButtons() || hasStatusbarStatus())
-  );
-}
-
 /** Reset lives in ⋮ during create/edit so the left bar stays [Save][Cancel][title][⋮]. */
 const showResetInOverflow = computed(
   () =>
