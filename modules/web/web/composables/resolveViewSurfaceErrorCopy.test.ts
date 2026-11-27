@@ -3,6 +3,7 @@
 
 import { createPinia, setActivePinia } from 'pinia';
 import { Code, ConnectError } from '@connectrpc/connect';
+import { ChoysumError, GrpcCode } from '@/core/web/error';
 import {
   resolveViewSurfaceErrorCopy,
   resolveViewSurfaceStaleBannerCopy,
@@ -65,6 +66,33 @@ test('resolveViewSurfaceErrorCopy: bracketed unauthenticated message is rewritte
   const copy = resolveViewSurfaceErrorCopy(
     new Error('[unauthenticated] missing authentication token'),
   );
+  expect(copy.detail).toBe('Sign in required. Your session may have expired.');
+});
+
+test('resolveViewSurfaceErrorCopy: ChoysumError Unauthenticated uses sign-in copy', () => {
+  const err = new ChoysumError({
+    domain: 'api',
+    code: 'UNKNOWN',
+    message: 'token missing',
+  }).withGrpcCode(GrpcCode.Unauthenticated);
+  const copy = resolveViewSurfaceErrorCopy(err, { fallbackTitle: 'Failed to load list' });
+  expect(copy.title).toBe('Failed to load list');
+  expect(copy.detail).toBe('Sign in required. Your session may have expired.');
+});
+
+test('resolveViewSurfaceErrorCopy: ChoysumError with Unauthenticated Connect cause', () => {
+  const cause = connectError(Code.Unauthenticated, 'missing authentication token');
+  const err = new ChoysumError({
+    domain: 'api',
+    code: 'UNKNOWN',
+    message: 'wrapped transport failure',
+  }).withCause(cause);
+  const copy = resolveViewSurfaceErrorCopy(err);
+  expect(copy.detail).toBe('Sign in required. Your session may have expired.');
+});
+
+test('resolveViewSurfaceErrorCopy: raw unauthenticated string is rewritten', () => {
+  const copy = resolveViewSurfaceErrorCopy('[unauthenticated] missing authentication token');
   expect(copy.detail).toBe('Sign in required. Your session may have expired.');
 });
 

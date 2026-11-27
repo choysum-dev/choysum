@@ -263,8 +263,8 @@ msgstr "属性"
 
 #: service/models/sandbox_record.ts:198
 msgctxt "sandbox.model.SandboxRecord.fields"
-msgid "Same selection options as State; Form binds ChoyStatusbarField."
-msgstr "与状态相同的选项；表单绑定状态条字段。"
+msgid "Same selection options as State; Form hosts ChoyStatusbarField in #statusbar-status."
+msgstr "与 State 相同的选项；表单在 #statusbar-status 中承载 ChoyStatusbarField。"
 
 #: service/models/sandbox_record.ts:307
 msgctxt "sandbox.model.SandboxRecord.fields"
@@ -441,7 +441,7 @@ msgctxt "web/pages/SandboxSettings"
 msgid "Demo label"
 msgstr "演示标签"
 
-#: web/pages/sandbox_settings_page.ts:116
+#: web/pages/sandbox_settings_page.ts:133
 msgctxt "web/pages/SandboxSettings"
 msgid "Load failed"
 msgstr "加载失败"
@@ -451,12 +451,12 @@ msgctxt "web/pages/SandboxSettings"
 msgid "Parameters View"
 msgstr "参数视图"
 
-#: web/pages/sandbox_settings_page.ts:143
+#: web/pages/sandbox_settings_page.ts:164
 msgctxt "web/pages/SandboxSettings"
 msgid "Save failed"
 msgstr "保存失败"
 
-#: web/pages/sandbox_settings_page.ts:141
+#: web/pages/sandbox_settings_page.ts:160
 msgctxt "web/pages/SandboxSettings"
 msgid "Saved successfully"
 msgstr "保存成功"
@@ -626,12 +626,12 @@ msgctxt "web/views/SandboxRecordChartView"
 msgid "View switcher"
 msgstr "视图切换"
 
-#: web/views/SandboxRecordFormView.vue:165
+#: web/views/SandboxRecordFormView.vue:183
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Categories"
 msgstr "分类集合"
 
-#: web/views/SandboxRecordFormView.vue:170
+#: web/views/SandboxRecordFormView.vue:188
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Category Path"
 msgstr "分类路径"
@@ -651,12 +651,12 @@ msgctxt "web/views/SandboxRecordFormView"
 msgid "Delete Sandbox Record"
 msgstr "删除沙箱记录"
 
-#: web/views/SandboxRecordFormView.vue:108
+#: web/views/SandboxRecordFormView.vue:126
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Depth"
 msgstr "深度选项"
 
-#: web/views/SandboxRecordFormView.vue:191
+#: web/views/SandboxRecordFormView.vue:209
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Edit Line"
 msgstr "编辑明细"
@@ -666,57 +666,77 @@ msgctxt "web/views/SandboxRecordFormView"
 msgid "Edit Sandbox Record"
 msgstr "编辑沙箱记录"
 
-#: web/views/SandboxRecordFormView.vue:25
+#: web/views/SandboxRecordFormView.vue:73
+msgctxt "web/views/SandboxRecordFormView"
+msgid "Failed to update state"
+msgstr "更新状态失败"
+
+#: web/views/SandboxRecordFormView.vue:43
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Identity"
 msgstr "基本信息"
 
-#: web/views/SandboxRecordFormView.vue:177
+#: web/views/SandboxRecordFormView.vue:195
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Lines"
 msgstr "明细行"
 
-#: web/views/SandboxRecordFormView.vue:190
+#: web/views/SandboxRecordFormView.vue:208
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Lines (kanban)"
 msgstr "明细行（看板）"
 
-#: web/views/SandboxRecordFormView.vue:182
+#: web/views/SandboxRecordFormView.vue:200
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Lines (table)"
 msgstr "明细行（表格）"
 
-#: web/views/SandboxRecordFormView.vue:191
+#: web/views/SandboxRecordFormView.vue:16
+msgctxt "web/views/SandboxRecordFormView"
+msgid "Mark Done"
+msgstr "标记完成"
+
+#: web/views/SandboxRecordFormView.vue:12
+msgctxt "web/views/SandboxRecordFormView"
+msgid "Mark Open"
+msgstr "标记打开"
+
+#: web/views/SandboxRecordFormView.vue:209
 msgctxt "web/views/SandboxRecordFormView"
 msgid "New Line"
 msgstr "新建明细"
 
-#: web/views/SandboxRecordFormView.vue:51
+#: web/views/SandboxRecordFormView.vue:69
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Numbers"
 msgstr "数值"
 
-#: web/views/SandboxRecordFormView.vue:17
+#: web/views/SandboxRecordFormView.vue:36
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Onchange: Active/State warn → toast; State disables Progress statusbar clicks (options stay visible); Currency/Category rewrite values; negative Int Value → field error; Line Quantity silently clamps to 1…999 (no toast)."
 msgstr "Onchange：Active/State 警告 → toast；State 禁用 Progress 状态栏点击（选项仍可见）；Currency/Category 改写值；负 Int Value → 字段错误；Line Quantity 静默限制到 1…999（无 toast）。"
 
-#: web/views/SandboxRecordFormView.vue:196
+#: web/views/SandboxRecordFormView.vue:214
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Qty"
 msgstr "数量"
 
-#: web/views/SandboxRecordFormView.vue:130
+#: web/views/SandboxRecordFormView.vue:148
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Relations"
 msgstr "关联"
 
-#: web/views/SandboxRecordFormView.vue:59
+#: web/views/SandboxRecordFormView.vue:62
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Required"
 msgstr "必填"
 
-#: web/views/SandboxRecordFormView.vue:88
+#: web/views/SandboxRecordFormView.vue:20
+msgctxt "web/views/SandboxRecordFormView"
+msgid "Reset to Draft"
+msgstr "重置为草稿"
+
+#: web/views/SandboxRecordFormView.vue:106
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Rich Content"
 msgstr "富内容"
@@ -726,57 +746,57 @@ msgctxt "web/views/SandboxRecordFormView"
 msgid "Sandbox Record"
 msgstr "沙箱记录"
 
-#: web/views/SandboxRecordFormView.vue:133
+#: web/views/SandboxRecordFormView.vue:151
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Select Category"
 msgstr "选择分类"
 
-#: web/views/SandboxRecordFormView.vue:138
+#: web/views/SandboxRecordFormView.vue:156
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Select Category Ref"
 msgstr "选择分类引用"
 
-#: web/views/SandboxRecordFormView.vue:114
+#: web/views/SandboxRecordFormView.vue:132
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Select Company"
 msgstr "选择公司"
 
-#: web/views/SandboxRecordFormView.vue:66
+#: web/views/SandboxRecordFormView.vue:84
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Select Currency"
 msgstr "选择币种"
 
-#: web/views/SandboxRecordFormView.vue:159
+#: web/views/SandboxRecordFormView.vue:177
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Select Tag Chips"
 msgstr "选择标签芯片"
 
-#: web/views/SandboxRecordFormView.vue:151
+#: web/views/SandboxRecordFormView.vue:169
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Select Tag Ref Table"
 msgstr "选择 Tag Ref 表格"
 
-#: web/views/SandboxRecordFormView.vue:162
+#: web/views/SandboxRecordFormView.vue:180
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Select Tag Refs"
 msgstr "选择标签引用"
 
-#: web/views/SandboxRecordFormView.vue:141
+#: web/views/SandboxRecordFormView.vue:159
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Select Tags"
 msgstr "选择标签"
 
-#: web/views/SandboxRecordFormView.vue:74
+#: web/views/SandboxRecordFormView.vue:92
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Temporal"
 msgstr "时间"
 
-#: web/views/SandboxRecordFormView.vue:194
+#: web/views/SandboxRecordFormView.vue:212
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Unnamed Line"
 msgstr "未命名明细"
 
-#: web/views/SandboxRecordFormView.vue:191
+#: web/views/SandboxRecordFormView.vue:209
 msgctxt "web/views/SandboxRecordFormView"
 msgid "View Line"
 msgstr "查看明细"
@@ -811,17 +831,17 @@ msgctxt "web/views/SandboxRecordKanbanView"
 msgid "Draft"
 msgstr "草稿"
 
-#: web/views/SandboxRecordKanbanView.vue:118 web/views/SandboxRecordKanbanView.vue:123
+#: web/views/SandboxRecordKanbanView.vue:109 web/views/SandboxRecordKanbanView.vue:114
 msgctxt "web/views/SandboxRecordKanbanView"
 msgid "Failed to load kanban"
 msgstr "加载看板失败"
 
-#: web/views/SandboxRecordKanbanView.vue:128
+#: web/views/SandboxRecordKanbanView.vue:119
 msgctxt "web/views/SandboxRecordKanbanView"
 msgid "Failed to load more"
 msgstr "加载更多失败"
 
-#: web/views/SandboxRecordKanbanView.vue:133
+#: web/views/SandboxRecordKanbanView.vue:124
 msgctxt "web/views/SandboxRecordKanbanView"
 msgid "Failed to move card"
 msgstr "移动卡片失败"
@@ -871,30 +891,55 @@ msgctxt "web/views/SandboxRecordKanbanView"
 msgid "View switcher"
 msgstr "视图切换"
 
-#: web/views/SandboxRecordListView.vue:17
+#: web/views/SandboxRecordListView.vue:33
 msgctxt "web/views/SandboxRecordListView"
 msgid "Category"
 msgstr "分类"
 
-#: web/views/SandboxRecordListView.vue:51
+#: web/views/SandboxRecordListView.vue:57
 msgctxt "web/views/SandboxRecordListView"
 msgid "Chart View"
 msgstr "图表视图"
 
-#: web/views/SandboxRecordListView.vue:50
+#: web/views/SandboxRecordListView.vue:94
+msgctxt "web/views/SandboxRecordListView"
+msgid "Failed to update some records"
+msgstr "部分记录更新失败"
+
+#: web/views/SandboxRecordListView.vue:68
+msgctxt "web/views/SandboxRecordListView"
+msgid "Failed to update state"
+msgstr "更新状态失败"
+
+#: web/views/SandboxRecordListView.vue:56
 msgctxt "web/views/SandboxRecordListView"
 msgid "Kanban View"
 msgstr "看板视图"
 
-#: web/views/SandboxRecordListView.vue:49
+#: web/views/SandboxRecordListView.vue:55
 msgctxt "web/views/SandboxRecordListView"
 msgid "List View"
 msgstr "列表视图"
+
+#: web/views/SandboxRecordListView.vue:15
+msgctxt "web/views/SandboxRecordListView"
+msgid "Mark Done"
+msgstr "标记完成"
+
+#: web/views/SandboxRecordListView.vue:11
+msgctxt "web/views/SandboxRecordListView"
+msgid "Mark Open"
+msgstr "标记打开"
 
 #: web/views/sandbox_record_actions.ts:12
 msgctxt "web/views/SandboxRecordListView"
 msgid "Open Sandbox Record Detail"
 msgstr "打开沙箱记录详情"
+
+#: web/views/SandboxRecordListView.vue:19
+msgctxt "web/views/SandboxRecordListView"
+msgid "Reset to Draft"
+msgstr "重置为草稿"
 
 #: web/views/SandboxRecordListView.vue:4
 msgctxt "web/views/SandboxRecordListView"
@@ -943,6 +988,10 @@ msgstr "标签"
 #~ msgctxt "sandbox.model.SandboxRecord.fields"
 #~ msgid "Per-company varchar; open Company Values from the field chrome."
 #~ msgstr "按公司存储的 varchar；可从字段控件打开公司值。"
+
+#~ msgctxt "sandbox.model.SandboxRecord.fields"
+#~ msgid "Same selection options as State; Form binds ChoyStatusbarField."
+#~ msgstr "与状态相同的选项；表单绑定状态条字段。"
 
 #~ msgctxt "web/menu/titles"
 #~ msgid "Configuration"

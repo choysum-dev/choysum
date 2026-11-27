@@ -246,9 +246,9 @@ function openFromHover() {
 
 function closeFromHover() {
   if (!openedByHover) return;
+  clearCloseTimer();
   menuOpen.value = false;
   openedByHover = false;
-  closeTimer = null;
 }
 
 // Escape / trigger toggle / v-model close must drop hover ownership and cancel the delay.

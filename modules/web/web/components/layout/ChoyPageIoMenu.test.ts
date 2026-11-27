@@ -490,11 +490,18 @@ describe('ChoyPageIoMenu', () => {
     ss.closeFromHover?.();
     expect(readOpen()).toBe(false);
 
-    // Escape/v-model close drops ownership; a later click-open must resist hover leave.
-    // Do not leave a pending hover-close timer before writeOpen(false) — wall-clock 160ms
-    // can race the click-open asserts under QuickJS.
+    // Same-tick Escape then click-open (flush:sync ownership clear).
     ss.openFromHover?.();
     expect(readOpen()).toBe(true);
+    writeOpen(false);
+    writeOpen(true);
+    ss.scheduleHoverClose?.();
+    ss.flushHoverClose?.();
+    expect(readOpen()).toBe(true);
+
+    // Async Escape/v-model close then click-open must also resist hover leave.
+    // Do not leave a pending hover-close timer before writeOpen(false) — wall-clock 160ms
+    // can race the click-open asserts under QuickJS.
     writeOpen(false);
     await flushPromises();
     expect(readOpen()).toBe(false);
