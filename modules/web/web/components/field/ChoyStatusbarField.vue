@@ -24,7 +24,11 @@ SPDX-License-Identifier: Apache-2.0
     :inline-error-space="inlineErrorSpace"
     :label-for-control="false"
   >
-    <!-- Same chrome in edit + display; interactivity follows isInteractive. -->
+    <!--
+      Same chrome in edit + display; interactivity follows isInteractive.
+      Identity ribbon: tabindex=-1 + group pointer-events — do not set native
+      disabled on every stage (that washes fills via :disabled opacity).
+    -->
     <template #edit="{ fieldValue, record, inputId, labelId, describedBy, invalid }">
       <div
         class="choy-statusbar-field__control"
@@ -48,7 +52,7 @@ SPDX-License-Identifier: Apache-2.0
           :data-stage="item.stage"
           :data-edge="item.edge"
           :aria-checked="item.selected ? 'true' : 'false'"
-          :disabled="!isInteractive || pending || item.opt.disabled ? true : undefined"
+          :disabled="pending || item.opt.disabled ? true : undefined"
           :tabindex="isInteractive ? undefined : -1"
           @click="onSelect(fieldValue, item.opt.value)"
         >
@@ -78,7 +82,7 @@ SPDX-License-Identifier: Apache-2.0
           :data-stage="item.stage"
           :data-edge="item.edge"
           :aria-checked="item.selected ? 'true' : 'false'"
-          :disabled="!isInteractive || pending || item.opt.disabled ? true : undefined"
+          :disabled="pending || item.opt.disabled ? true : undefined"
           :tabindex="isInteractive ? undefined : -1"
           @click="onSelect(fieldValue, item.opt.value)"
         >
