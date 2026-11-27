@@ -780,7 +780,10 @@ function sequenceGetPermissionState(mockState: ReturnType<typeof buildMockState>
   };
 }
 
-test('loadPermissionState: A→B→A starts a third RPC after settling under B', async () => {
+test('loadPermissionState: forced wait recomputes key after A→B→A company bounce', async () => {
+  // Without key = permissionFlightKey() after the forced wait, the waiter keeps the
+  // pre-wait A key, starts a forced flight tagged as A while identity is B, and the
+  // later restore-to-A call joins that flight instead of opening a third RPC.
   const mockState = buildMockState();
   const mockHelpers = buildMockHelpers();
   mockState.tokens.value = {
@@ -788,14 +791,15 @@ test('loadPermissionState: A→B→A starts a third RPC after settling under B',
     refreshToken: 'refresh',
     expiresAt: Date.now() + 3600_000,
   };
-  mockState.identity.value = {
+  const identityA = {
     userId: 'usr_1',
     metadata: {
       permStateVersion: 1,
       activeCompanyId: 'cmp_a',
       enabledCompanyIds: ['cmp_a'],
     },
-  } as any;
+  };
+  mockState.identity.value = { ...identityA, metadata: { ...identityA.metadata } } as any;
 
   let resolveA1: (value: unknown) => void = () => {};
   let resolveB: (value: unknown) => void = () => {};
@@ -814,7 +818,11 @@ test('loadPermissionState: A→B→A starts a third RPC after settling under B',
   const actions = defineAuthActions(mockState as any, mockHelpers as any, { isClient: true });
   const loadA1 = actions.loadPermissionState(false);
 
-  // Switch to B and start a B flight while A1 is still pending.
+  // Forced call shares A's key and waits for the in-flight non-forced RPC.
+  const forced = actions.loadPermissionState(true);
+  expect(mockState._recorders.GetPermissionState.calls.length).toBe(1);
+
+  // Bounce to B while the forced waiter is still blocked on A1.
   mockState.identity.value = {
     userId: 'usr_1',
     metadata: {
@@ -823,10 +831,9 @@ test('loadPermissionState: A→B→A starts a third RPC after settling under B',
       enabledCompanyIds: ['cmp_b'],
     },
   } as any;
-  const loadB = actions.loadPermissionState(false);
-  expect(mockState._recorders.GetPermissionState.calls.length).toBe(2);
 
-  // Complete A1 while B is still the active identity (ownership discards A1).
+  // Complete A1 under B (ownership discards A1). Forced then recomputes key → B and
+  // starts the second RPC.
   resolveA1({
     permStateVersion: 1,
     byCompany: { cmp_a: { ui: { routes: ['stale-a'], menus: ['*'], actions: ['*'] } } },
@@ -834,33 +841,31 @@ test('loadPermissionState: A→B→A starts a third RPC after settling under B',
   expect(await loadA1).toBe(true);
   expect(mockState.permissionState.value).toBe(null);
 
-  // Keep B pending, bounce back to A, and start a new A request.
-  mockState.identity.value = {
-    userId: 'usr_1',
-    metadata: {
-      permStateVersion: 3,
-      activeCompanyId: 'cmp_a',
-      enabledCompanyIds: ['cmp_a'],
-    },
-  } as any;
+  await Promise.resolve();
+  await Promise.resolve();
+  expect(mockState._recorders.GetPermissionState.calls.length).toBe(2);
+
+  // Keep B's forced flight pending and restore the original A key.
+  mockState.identity.value = { ...identityA, metadata: { ...identityA.metadata } } as any;
   const loadA2 = actions.loadPermissionState(false);
   expect(mockState._recorders.GetPermissionState.calls.length).toBe(3);
 
   resolveA2({
-    permStateVersion: 3,
+    permStateVersion: 1,
     byCompany: { cmp_a: { ui: { routes: ['home'], menus: ['*'], actions: ['*'] } } },
   });
   expect(await loadA2).toBe(true);
-  expect((mockState.permissionState.value as any)?.permStateVersion).toBe(3);
+  expect((mockState.permissionState.value as any)?.permStateVersion).toBe(1);
   expect((mockState.permissionState.value as any)?.byCompany?.cmp_a?.ui?.routes?.[0]).toBe('home');
 
-  // Late B settlement must not clobber the restored A snapshot.
+  // Late B settlement from the forced waiter must not clobber the restored A snapshot.
   resolveB({
     permStateVersion: 2,
     byCompany: { cmp_b: { ui: { routes: ['b'], menus: ['*'], actions: ['*'] } } },
   });
-  expect(await loadB).toBe(true);
-  expect((mockState.permissionState.value as any)?.permStateVersion).toBe(3);
+  expect(await forced).toBe(true);
+  expect((mockState.permissionState.value as any)?.permStateVersion).toBe(1);
+  expect((mockState.permissionState.value as any)?.byCompany?.cmp_a?.ui?.routes?.[0]).toBe('home');
 });
 
 test('loadPermissionState: forced call waits for in-flight non-forced then refreshes', async () => {
