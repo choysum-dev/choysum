@@ -213,17 +213,16 @@ SPDX-License-Identifier: Apache-2.0
       Buttons: display only (side-path workflow). Status ribbon: stays across
       display/edit/create when slotted (identity); Progress stays mounted for
       cancel/refresh beginDisplay browse selection.
-      Root hidden when editing and only buttons exist (no empty chrome).
+      Slot omitted when editing with buttons only (no empty header-extra gap).
       Omitted when settings or both sides empty.
       #contextual-actions / #user-actions → buttons (deprecated).
       #statusbar → status (deprecated).
     -->
     <template
-      v-if="!isSettingsPresentation && (hasStatusbarButtons() || hasStatusbarStatus())"
+      v-if="!isSettingsPresentation && (hasStatusbarStatus() || (!isEditing && hasStatusbarButtons()))"
       #header-extra
     >
       <div
-        v-show="hasStatusbarStatus() || (!isEditing && hasStatusbarButtons())"
         data-anchor="choy.form.statusbar"
         data-testid="form-statusbar"
         class="flex min-h-control-sm min-w-0 w-full flex-nowrap items-center justify-between gap-3"

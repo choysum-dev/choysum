@@ -337,7 +337,7 @@ describe('ChoyFormView workspace height', () => {
     mounted.unmount();
   });
 
-  test('create/edit with only statusbar-buttons hides the whole statusbar chrome', async () => {
+  test('create/edit with only statusbar-buttons omits header-extra (no empty gap)', async () => {
     const store = loginStore();
     const { router } = createFeStubRouter({
       route: { name: 'login', path: '/web/login', fullPath: '/web/login', params: {}, query: {}, meta: {} },
@@ -373,10 +373,9 @@ describe('ChoyFormView workspace height', () => {
     const mounted = mountApp(Host, { plugins: [createPinia(), router] });
     await flushPromises();
 
-    const statusbar = mounted.q('[data-testid=form-statusbar]') as HTMLElement | null;
-    expect(statusbar).not.toBeNull();
-    // v-show sets inline display:none (jsdom getComputedStyle is unreliable here).
-    expect(statusbar!.style.display).toBe('none');
+    // Slot omitted entirely so ChoyViewBase does not keep an empty header-extra gap.
+    expect(mounted.q('[data-testid=form-statusbar]')).toBeNull();
+    expect(mounted.q('[data-slot=view-header-extra]')).toBeNull();
     expect(mounted.q('[data-testid=domain-activate]')).toBeNull();
 
     mounted.unmount();

@@ -153,7 +153,9 @@ describe('ChoyStatusbarField mount wiring', () => {
       'done',
     ]);
     expect(optionValues(m).map((o) => o.text)).toEqual(['Draft', 'Confirmed', 'Done']);
-    expect(optionValues(m).every((o) => o.disabled)).toBe(false);
+    // Non-interactive: stages stay out of the tab order / activation path.
+    expect(optionValues(m).every((o) => o.disabled)).toBe(true);
+    expect(optionValues(m).every((o) => o.el.getAttribute('tabindex') === '-1')).toBe(true);
     const opts = optionValues(m);
     expect(opts[0]?.el.getAttribute('data-selected')).toBe('true');
     expect(opts[1]?.el.getAttribute('data-selected')).toBeFalsy();
@@ -168,9 +170,14 @@ describe('ChoyStatusbarField mount wiring', () => {
     const root = statusbarRoot(m);
     expect(root?.getAttribute('data-clickable')).toBeFalsy();
     expect(root?.getAttribute('aria-disabled')).toBe('true');
+    expect(optionValues(m).every((o) => o.disabled)).toBe(true);
     m.click('[data-value=done]');
     await flushPromises();
     expect(value.value).toBe('draft');
+    // Identity ribbon omits option validation so stale stages cannot block saves.
+    const rules = lastBaseProps.current?.rules as unknown[] | undefined;
+    expect(Array.isArray(rules) ? rules.length : -1).toBe(0);
+    expect(lastBaseProps.current?.readonly).toBe(true);
     m.unmount();
   });
 
@@ -181,6 +188,7 @@ describe('ChoyStatusbarField mount wiring', () => {
     await flushPromises();
     expect(statusbarRoot(m)?.getAttribute('data-clickable')).toBeFalsy();
     expect(statusbarRoot(m)?.getAttribute('aria-disabled')).toBe('true');
+    expect(optionValues(m).every((o) => o.disabled)).toBe(true);
     m.click('[data-value=done]');
     await flushPromises();
     expect(value.value).toBe('draft');
@@ -189,15 +197,30 @@ describe('ChoyStatusbarField mount wiring', () => {
 
   test('marks selected when clickable true', async () => {
     const store = makeStore();
-    const { binding } = makeBinding({ meta: staticMeta, store, value: 'confirmed', isEditMode: false });
+    const { binding } = makeBinding({ meta: staticMeta, store, value: 'confirmed', isEditMode: true });
     const m = mountStatusbar({ clickable: true }, binding);
     await flushPromises();
     const root = statusbarRoot(m);
     expect(root?.getAttribute('role')).toBe('radiogroup');
     expect(root?.getAttribute('data-clickable')).toBe('true');
+    expect(optionValues(m).every((o) => o.disabled)).toBe(false);
     const opts = optionValues(m);
     expect(opts.find((o) => o.value === 'confirmed')?.el.getAttribute('data-selected')).toBe('true');
     expect(opts.find((o) => o.value === 'draft')?.el.getAttribute('data-selected')).toBeFalsy();
+    m.unmount();
+  });
+
+  test('clickable true stays inert in display mode', async () => {
+    const store = makeStore();
+    const { binding, value } = makeBinding({ meta: staticMeta, store, value: 'draft', isEditMode: false });
+    const m = mountStatusbar({ clickable: true }, binding);
+    await flushPromises();
+    expect(statusbarRoot(m)?.getAttribute('data-clickable')).toBeFalsy();
+    expect(statusbarRoot(m)?.getAttribute('aria-disabled')).toBe('true');
+    expect(optionValues(m).every((o) => o.disabled)).toBe(true);
+    m.click('[data-value=done]');
+    await flushPromises();
+    expect(value.value).toBe('draft');
     m.unmount();
   });
 
