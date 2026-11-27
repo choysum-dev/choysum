@@ -145,9 +145,14 @@ describe('ChoyKanbanView chrome', () => {
     expect(counts[0]!.textContent?.trim()).toBe('1');
     expect(counts[1]!.textContent?.trim()).toBe('0');
     expect(mounted.q('.choy-kanban-view__card')?.className).toContain('hover:bg-accent/40');
+    // Nested radius: lane/card sm, below sheet md (see choy-view-sheet.md).
+    expect(mounted.q('.choy-kanban-view__card')?.className).toContain('rounded-sm');
+    expect(mounted.q('.choy-kanban-view__card')?.className).not.toContain('rounded-md');
     // Soft lane wash, no outer bordered frame (cards carry the border).
     const laneClass = mounted.q('.choy-kanban-view__lane')?.className ?? '';
     expect(laneClass).toContain('bg-muted/70');
+    expect(laneClass).toContain('rounded-sm');
+    expect(laneClass).not.toContain('rounded-md');
     expect(laneClass).not.toMatch(/\bborder\b/);
     mounted.unmount();
   });

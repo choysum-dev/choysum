@@ -46,9 +46,9 @@ describe('ChoyKanbanView workspace height', () => {
     expect(sheet!.className).toContain('shadow-xs');
     expect(sheet!.className).toContain('mx-[var(--choy-view-sheet-gutter)]');
     const host = mounted.q('[data-slot=view-body-host]') as HTMLElement | null;
-    expect(host!.getAttribute('data-sheet-pad')).toBe('board');
-    expect(host!.className).toContain('p-[var(--choy-layout-section-gap)]');
-    expect(host!.className).not.toContain('p-[var(--choy-view-sheet-pad)]');
+    expect(host!.getAttribute('data-sheet-pad')).toBe('form');
+    expect(host!.className).toContain('p-[var(--choy-view-sheet-pad)]');
+    expect(host!.className).not.toContain('p-[var(--choy-layout-section-gap)]');
 
     const body = mounted.q('.choy-kanban-view__body') as HTMLElement | null;
     expect(body).not.toBeNull();

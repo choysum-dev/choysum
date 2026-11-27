@@ -52,7 +52,7 @@ SPDX-License-Identifier: Apache-2.0
           >
             <template #card="{ item, index }">
               <div
-                class="choy-m2m-kanban-card cursor-pointer rounded-md border border-border bg-card p-3 shadow-xs outline-none transition-colors hover:bg-accent/40"
+                class="choy-m2m-kanban-card cursor-pointer rounded-sm border border-border bg-card p-3 shadow-xs outline-none transition-colors hover:bg-accent/40"
                 data-testid="choy-m2m-kanban-card"
                 role="button"
                 tabindex="0"
@@ -75,7 +75,7 @@ SPDX-License-Identifier: Apache-2.0
             </template>
             <template #empty>
               <div
-                class="col-span-full flex min-h-[72px] items-center justify-center rounded-md border border-dashed border-border text-sm text-muted-foreground"
+                class="col-span-full flex min-h-[72px] items-center justify-center rounded-sm border border-dashed border-border text-sm text-muted-foreground"
               >
                 <slot name="empty">{{ effectiveEmptyText }}</slot>
               </div>
@@ -108,7 +108,7 @@ SPDX-License-Identifier: Apache-2.0
           >
             <template #card="{ item, index }">
               <div
-                class="choy-m2m-kanban-card cursor-pointer rounded-md border border-border bg-card p-3 shadow-xs outline-none transition-colors hover:bg-accent/30"
+                class="choy-m2m-kanban-card cursor-pointer rounded-sm border border-border bg-card p-3 shadow-xs outline-none transition-colors hover:bg-accent/30"
                 data-testid="choy-m2m-kanban-card"
                 role="button"
                 tabindex="0"
@@ -131,7 +131,7 @@ SPDX-License-Identifier: Apache-2.0
             </template>
             <template #empty>
               <div
-                class="col-span-full flex min-h-[72px] items-center justify-center rounded-md border border-dashed border-border text-sm text-muted-foreground"
+                class="col-span-full flex min-h-[72px] items-center justify-center rounded-sm border border-dashed border-border text-sm text-muted-foreground"
               >
                 <slot name="empty">{{ effectiveEmptyText }}</slot>
               </div>

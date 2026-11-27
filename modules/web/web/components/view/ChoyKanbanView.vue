@@ -26,7 +26,7 @@ SPDX-License-Identifier: Apache-2.0
     :busy="boardBusy"
     :mode="boardBusyMode"
     :sheet-surface="true"
-    sheet-pad="board"
+    sheet-pad="form"
     busy-host-class="choy-kanban-view__body flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-hidden"
     :error="boardSurfaceError"
     :has-frame="boardHasFrame"
@@ -113,7 +113,7 @@ SPDX-License-Identifier: Apache-2.0
       <!-- Ungrouped: tile cards across the board (Odoo-style flat kanban). -->
       <div
         v-if="isFlatBoard"
-        class="choy-kanban-view__board choy-kanban-view__board--flat grid min-h-0 flex-1 content-start gap-3 overflow-y-auto pb-1 [grid-template-columns:repeat(auto-fill,minmax(18rem,1fr))]"
+        class="choy-kanban-view__board choy-kanban-view__board--flat grid min-h-0 flex-1 content-start gap-4 overflow-y-auto pb-1 [grid-template-columns:repeat(auto-fill,minmax(18rem,1fr))]"
         role="list"
         data-testid="choy-kanban-flat-board"
         :aria-label="_t('Kanban board')"
@@ -122,7 +122,7 @@ SPDX-License-Identifier: Apache-2.0
           <article
             v-for="card in lane.cards"
             :key="card.id"
-            class="choy-kanban-view__card flex flex-col cursor-pointer rounded-md border border-border bg-card p-3 shadow-xs outline-none transition-colors hover:bg-accent/40 focus-visible:ring-2 focus-visible:ring-ring"
+            class="choy-kanban-view__card flex flex-col cursor-pointer rounded-sm border border-border bg-card p-3 shadow-xs outline-none transition-colors hover:bg-accent/40 focus-visible:ring-2 focus-visible:ring-ring"
             :data-card-id="card.id"
             tabindex="0"
             role="listitem"
@@ -137,7 +137,7 @@ SPDX-License-Identifier: Apache-2.0
 
           <div
             v-if="lane.cards.length === 0"
-            class="col-span-full rounded-md border border-dashed border-border px-3 py-12 text-center text-sm text-foreground/50"
+            class="col-span-full rounded-sm border border-dashed border-border px-3 py-12 text-center text-sm text-foreground/50"
             role="status"
           >
             <slot name="card-empty" :lane="lane">{{ _t('No cards') }}</slot>
@@ -180,7 +180,7 @@ SPDX-License-Identifier: Apache-2.0
 
       <div
         v-else
-        class="choy-kanban-view__board flex min-h-0 flex-1 gap-3 overflow-x-auto overflow-y-hidden pb-1"
+        class="choy-kanban-view__board flex min-h-0 flex-1 gap-4 overflow-x-auto overflow-y-hidden pb-1"
         role="list"
         :aria-label="_t('Kanban board')"
         :data-drag-mode="resolvedDragMode"
@@ -190,7 +190,7 @@ SPDX-License-Identifier: Apache-2.0
         <section
           v-for="lane in displayLanes"
           :key="lane.key"
-          class="choy-kanban-view__lane flex h-full min-h-0 w-72 shrink-0 flex-col rounded-md bg-muted/70"
+          class="choy-kanban-view__lane flex h-full min-h-0 w-72 shrink-0 flex-col rounded-sm bg-muted/70"
           :class="{ 'ring-2 ring-ring/40': laneDropActiveKey === lane.key }"
           role="listitem"
           :aria-label="lane.label"
@@ -269,7 +269,7 @@ SPDX-License-Identifier: Apache-2.0
 
         <div
           v-if="laneCount === 0"
-          class="flex w-full items-center justify-center rounded-md border border-dashed border-border py-12 text-sm text-foreground/50"
+          class="flex w-full items-center justify-center rounded-sm border border-dashed border-border py-12 text-sm text-foreground/50"
           role="status"
         >
           {{ _t('No lanes') }}

@@ -41,15 +41,16 @@ sheetPad?: 'form' | 'board' | 'flush' | 'none'; // default 'flush'
 
 ### Unification matrix
 
-Two in-paper densities: **document** (`form`) vs **collection/canvas** (`board`).
-Shell chrome (gutter, container `gap-2`, paper radius/border) is shared.
+Two in-paper densities: **document / card-canvas** (`form`) vs **dense collection**
+(`board`, List/Chart). Shell chrome (gutter, container `gap-2`, paper
+radius/border) is shared. Kanban uses `form` so tiles clear the paper edge.
 
 | View | sheetSurface | sheetPad | Container gap | header-extra |
 | --- | --- | --- | --- | --- |
 | Form page / settings | on | `form` (four-side `--choy-view-sheet-pad`) | `gap-2` | statusbar; no own py |
 | Form embedded | off | `none` | ViewBase default | — |
 | List | on | `board` (four-side `--choy-layout-section-gap`) | `gap-2` | — |
-| Kanban | on | `board` | `gap-2` | — |
+| Kanban | on | `form` (card grids need paper-edge air like Form) | `gap-2` | — |
 | Chart | on | `board` | `gap-2` | controls; no own py (header gap only) |
 
 `flush` remains on the ViewBase API for rare full-bleed hosts; page List /
@@ -61,7 +62,7 @@ Kanban / Chart do not use it.
    host padding — otherwise the paper fills the canvas and rounded corners lose
    the pane reveal.
 2. In-paper density is **padding** on `view-body-host` only (`form` / `board`).
-   Document views use `form`; collection/canvas views share `board`.
+   Form and Kanban use `form`; List and Chart use denser `board`.
 3. Do not reintroduce Form `border-t` as a fake paper edge; the paper uses
    `rounded-md` + `shadow-xs` + a hairline `border-border` so edges stay readable
    when pane ≈ card white.
@@ -69,3 +70,8 @@ Kanban / Chart do not use it.
    do not double-frame.
 5. Chart / Form `header-extra` must not add vertical padding; Action Bar ↔ extra
    ↔ paper rhythm is view-header `gap-2` only.
+6. Kanban nested radius: sheet stays `rounded-md` (`--choy-view-sheet-radius`).
+   In-paper lanes (`bg-muted` wash) and cards (plus dashed empty placeholders)
+   use `rounded-sm` so they stay smaller than the paper. Do not nest the same
+   radius as the sheet (md on lane/card). Relation-field kanban cards follow the
+   same card/`empty` step-down.
