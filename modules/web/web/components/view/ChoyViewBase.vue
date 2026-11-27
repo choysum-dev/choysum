@@ -24,7 +24,7 @@ SPDX-License-Identifier: Apache-2.0
     <!--
       Action Bar + optional header-extra (Form statusbar / Chart controls) share
       view-header; vertical rhythm is view-header gap (not padding on extra).
-      Paper shell / in-paper density: sheetSurface + sheetPad (see choy-view-sheet.md).
+      Paper shell / in-paper density: sheetSurface + sheetPad (see .dev/docs/web/choy-view-sheet.md).
     -->
     <template v-if="showChromeHeader()" #header>
       <div v-if="showHeaderRegion()" :data-anchor="chromeAnchor || undefined">
@@ -149,7 +149,7 @@ export type ChoyViewBaseTitleActionsIo = {
   actionCompanyId?: string;
 };
 
-/** In-paper density on view-body-host (see choy-view-sheet.md). */
+/** In-paper density on view-body-host (see .dev/docs/web/choy-view-sheet.md). */
 export type ChoyViewSheetPad = 'form' | 'board' | 'flush' | 'none';
 
 const props = withDefaults(

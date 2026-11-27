@@ -227,7 +227,7 @@ const sidebarSide = computed<'left' | 'right'>(() => {
   --choy-shell-pane: oklch(0.985 0 0);
   /*
    * Workspace behind the inset; inset uses pane. Floating paper is view-body
-   * (sheetSurface) — see modules/web/docs/choy-view-sheet.md.
+   * (sheetSurface) — see .dev/docs/web/choy-view-sheet.md.
    */
   /* Same as sidebar header/footer chrome so inset gutters match the rail poles. */
   --choy-shell-workspace: var(--choy-shell-chrome);

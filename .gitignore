@@ -73,6 +73,8 @@ tryon/
 
 # Local dev files
 .dev/
+# Maintainer view notes belong in .dev/docs/web/ — do not reintroduce modules/web/docs/.
+modules/web/docs/
 /cert/
 # Local / generated tsconfigs (modules type-fetch writes modules/tsconfig.json).
 **/tsconfig.json
