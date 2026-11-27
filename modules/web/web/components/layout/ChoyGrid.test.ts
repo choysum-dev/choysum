@@ -17,7 +17,16 @@ describe('ChoyGrid', () => {
     expect(root).not.toBeNull();
     expect(root!.className).toContain('gap-2');
     expect(root!.style.gridTemplateColumns).toContain('repeat(12');
+    expect(root!.getAttribute('data-responsive')).toBe('true');
     expect(mounted.q('[data-test=cell]')?.textContent).toBe('c');
+    mounted.unmount();
+  });
+
+  test('honors responsive=false', async () => {
+    const mounted = mountApp(ChoyGrid as any, { props: { responsive: false } });
+    await flushPromises();
+    const root = mounted.q('[data-anchor="choy.grid"]') as HTMLElement | null;
+    expect(root!.getAttribute('data-responsive')).toBe('false');
     mounted.unmount();
   });
 

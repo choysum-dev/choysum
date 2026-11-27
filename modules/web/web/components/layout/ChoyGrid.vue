@@ -6,6 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 <template>
   <div
     data-anchor="choy.grid"
+    :data-responsive="responsiveOn ? 'true' : 'false'"
     :class="cn('choy-grid grid w-full', gapClass, props.class)"
     :style="style"
   >
@@ -16,28 +17,37 @@ SPDX-License-Identifier: Apache-2.0
 <script setup lang="ts">
 import { computed, provide } from 'vue';
 import { cn, type ClassValue } from '../../lib/utils';
-import { ChoyGridColsKey, normalizeChoyGridCols } from './choyGridContext';
+import {
+  ChoyGridColsKey,
+  ChoyGridResponsiveKey,
+  normalizeChoyGridCols,
+} from './choyGridContext';
 
 /**
  * CSS grid host for ChoyCol children.
- * Track count is the `cols` prop (not Tailwind `grid-cols-*` on `class`);
- * change `cols` / `span` for layout — inline styles intentionally own the tracks.
+ * Track count is the `cols` prop (not Tailwind `grid-cols-*` on `class`).
+ * Default `responsive` remaps ChoyCol spans by this element's container width (421).
  */
 const props = withDefaults(
   defineProps<{
     class?: ClassValue;
     cols?: number;
     gap?: 'none' | 'sm' | 'md' | 'lg';
+    /** When true (default), ChoyCol spans follow container 421 bands. */
+    responsive?: boolean;
   }>(),
   {
     cols: 12,
     gap: 'md',
+    responsive: true,
   },
 );
 
 const safeCols = computed(() => normalizeChoyGridCols(props.cols));
+const responsiveOn = computed(() => props.responsive !== false);
 
 provide(ChoyGridColsKey, safeCols);
+provide(ChoyGridResponsiveKey, responsiveOn);
 
 const gapClass = computed(() => {
   switch (props.gap) {
@@ -57,3 +67,9 @@ const style = computed(() => ({
   gridTemplateColumns: `repeat(${safeCols.value}, minmax(0, 1fr))`,
 }));
 </script>
+
+<style scoped>
+.choy-grid {
+  container-type: inline-size;
+}
+</style>

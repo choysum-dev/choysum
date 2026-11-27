@@ -104,6 +104,13 @@ html {
   --choy-view-sheet-pad: var(--choy-layout-content-padding);
   --choy-view-sheet-radius: var(--choy-radius-md);
 
+  /*
+   * ChoyGrid container bands (must match literal @container min-widths in ChoyCol.vue).
+   * md ≈ 2×~16rem field; lg ≈ 4× field — not viewport Tailwind breakpoints.
+   */
+  --choy-grid-break-md: 36rem;
+  --choy-grid-break-lg: 56rem;
+
   --choy-motion-duration-fast: 120ms;
   --choy-motion-duration-normal: 200ms;
   --choy-motion-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);

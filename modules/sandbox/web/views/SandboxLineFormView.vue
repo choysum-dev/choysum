@@ -9,14 +9,14 @@ SPDX-License-Identifier: Apache-2.0
     v-on="$attrs"
   >
     <ChoySection :title="_t('Line')">
-      <ChoyGrid :cols="12">
+      <ChoyGrid>
         <ChoyCol :span="6">
           <ChoyVarcharField :store="store" prop="Name" :rules="requiredRules" />
         </ChoyCol>
-        <ChoyCol :span="3">
+        <ChoyCol>
           <ChoyIntField :store="store" prop="Quantity" />
         </ChoyCol>
-        <ChoyCol :span="3">
+        <ChoyCol>
           <ChoyIntField :store="store" prop="Sequence" />
         </ChoyCol>
         <ChoyCol :span="6">
