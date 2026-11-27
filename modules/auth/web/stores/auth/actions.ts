@@ -46,6 +46,10 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
   let initInFlight: Promise<void> | null = null;
   // Cached GetInitialSetupState result for route guards (null = not probed yet).
   let setupCompleteCache: boolean | null = null;
+  // Deduplicate concurrent loadPermissionState(false) (login watcher + route guard).
+  let permissionInFlight: Promise<boolean> | null = null;
+  let permissionInFlightForced = false;
+  let permissionInFlightKey = '';
   const clientSide = deps?.isClient ?? isClient;
   const clearStoredAuth = deps?.clearAuthStorage ?? (() => authStorage.clearAuthStorage());
 
@@ -78,6 +82,12 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
 
     // Drop the cached permission snapshot.
     state.permissionState.value = null;
+
+    // Detach any permission request started by the previous session so a later
+    // login cannot join (and inherit failure from) the obsolete flight.
+    permissionInFlight = null;
+    permissionInFlightForced = false;
+    permissionInFlightKey = '';
 
     // Clear persisted auth storage in the browser.
     if (clientSide) {
@@ -792,8 +802,62 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
   const logout = withLoading(logoutImpl, state.loading);
   const refreshToken = refreshTokenImpl;
   const loadUser = withLoading(loadUserImpl, state.loading);
-  const loadPermissionState = withLoading(loadPermissionStateImpl, state.loading);
+  const loadPermissionStateWithLoading = withLoading(loadPermissionStateImpl, state.loading);
   const switchCompanyScope = withLoading(switchCompanyScopeImpl, state.loading);
+
+  /** Identity epoch key so company/user switches do not join an obsolete flight. */
+  function permissionFlightKey(): string {
+    const userId = String(state.identity.value?.userId || '').trim();
+    const meta = ((state.identity.value as any)?.metadata ?? {}) as Record<string, unknown>;
+    const active = String(meta.activeCompanyId ?? '').trim();
+    const enabled = Array.isArray(meta.enabledCompanyIds)
+      ? meta.enabledCompanyIds.map(x => String(x ?? '').trim()).filter(Boolean).slice().sort().join(',')
+      : '';
+    const version =
+      typeof meta.permStateVersion === 'number' ? String(meta.permStateVersion) : '';
+    return `${userId}|${active}|${enabled}|${version}`;
+  }
+
+  /**
+   * Load permission state with single-flight for matching identity epochs.
+   */
+  async function loadPermissionState(forceRefresh = false): Promise<boolean> {
+    let key = permissionFlightKey();
+    while (permissionInFlight) {
+      if (permissionInFlightKey === key && (!forceRefresh || permissionInFlightForced)) {
+        return permissionInFlight;
+      }
+      if (permissionInFlightKey === key && forceRefresh && !permissionInFlightForced) {
+        try {
+          await permissionInFlight;
+        } catch {
+          // Prior flight failed; re-check before starting a forced refresh.
+        }
+        // Identity may have changed (e.g. company switch) while we waited.
+        key = permissionFlightKey();
+        continue;
+      }
+      // Different identity epoch: start a new flight; ownership checks discard the stale result.
+      break;
+    }
+
+    permissionInFlightForced = forceRefresh;
+    permissionInFlightKey = key;
+    let flight!: Promise<boolean>;
+    flight = (async (): Promise<boolean> => {
+      try {
+        return await loadPermissionStateWithLoading(forceRefresh);
+      } finally {
+        if (permissionInFlight === flight) {
+          permissionInFlight = null;
+          permissionInFlightForced = false;
+          permissionInFlightKey = '';
+        }
+      }
+    })();
+    permissionInFlight = flight;
+    return flight;
+  }
 
   return {
     clearAuth,

@@ -367,3 +367,96 @@ END`).Error; err != nil {
 		})
 	}
 }
+
+func TestModuleUninstallerCleanModelsDeletesRoleUiResourceGrants(t *testing.T) {
+	t.Parallel()
+	runtimeScope := newLifecycleCommitTestScope(t)
+	db := runtimeScope.Session().DB
+	seed := seedCleanModelsFixture(t, db)
+
+	if err := db.Exec(`CREATE TABLE auth_role_ui_resource (
+		id TEXT PRIMARY KEY,
+		role_id TEXT NOT NULL,
+		mode TEXT NOT NULL DEFAULT 'allow',
+		meta_ui_resource_id TEXT,
+		deleted_at DATETIME
+	)`).Error; err != nil {
+		t.Fatalf("create auth_role_ui_resource: %v", err)
+	}
+	keepID := xid.New().String()
+	dropGrantID := xid.New().String()
+	keepGrantID := xid.New().String()
+	if err := db.Exec(
+		`INSERT INTO auth_role_ui_resource (id, role_id, mode, meta_ui_resource_id) VALUES (?, ?, 'allow', ?), (?, ?, 'allow', ?)`,
+		dropGrantID, "role_demo", seed.menuUI.Id.String,
+		keepGrantID, "role_other", keepID,
+	).Error; err != nil {
+		t.Fatalf("seed role ui grants: %v", err)
+	}
+
+	uninstaller := &moduleUninstaller{
+		runtimeScope:  runtimeScope,
+		module:        seed.module,
+		moduleManager: &ModuleManager{runtimeScope: runtimeScope},
+		ctx:           newOpContext(),
+	}
+	if err := uninstaller.cleanModels(); err != nil {
+		t.Fatalf("cleanModels() error = %v", err)
+	}
+
+	var remaining int64
+	if err := db.Raw(`SELECT COUNT(1) FROM auth_role_ui_resource WHERE id = ?`, dropGrantID).Scan(&remaining).Error; err != nil {
+		t.Fatalf("count dropped grant: %v", err)
+	}
+	if remaining != 0 {
+		t.Fatalf("expected module UI grants deleted, remaining=%d", remaining)
+	}
+	var kept int64
+	if err := db.Raw(`SELECT COUNT(1) FROM auth_role_ui_resource WHERE id = ?`, keepGrantID).Scan(&kept).Error; err != nil {
+		t.Fatalf("count kept grant: %v", err)
+	}
+	if kept != 1 {
+		t.Fatalf("expected unrelated grant to remain, got %d", kept)
+	}
+}
+
+func TestModuleUninstallerCleanModelsPropagatesRoleUiResourceGrantDeleteError(t *testing.T) {
+	t.Parallel()
+	runtimeScope := newLifecycleCommitTestScope(t)
+	db := runtimeScope.Session().DB
+	seed := seedCleanModelsFixture(t, db)
+
+	if err := db.Exec(`CREATE TABLE auth_role_ui_resource (
+		id TEXT PRIMARY KEY,
+		role_id TEXT NOT NULL,
+		mode TEXT NOT NULL DEFAULT 'allow',
+		meta_ui_resource_id TEXT,
+		deleted_at DATETIME
+	)`).Error; err != nil {
+		t.Fatalf("create auth_role_ui_resource: %v", err)
+	}
+	if err := db.Exec(
+		`INSERT INTO auth_role_ui_resource (id, role_id, mode, meta_ui_resource_id) VALUES (?, ?, 'allow', ?)`,
+		xid.New().String(), "role_demo", seed.menuUI.Id.String,
+	).Error; err != nil {
+		t.Fatalf("seed role ui grant: %v", err)
+	}
+	if err := db.Exec(`CREATE TRIGGER block_auth_role_ui_resource_delete
+		BEFORE DELETE ON auth_role_ui_resource
+		BEGIN
+			SELECT RAISE(ABORT, 'blocked grant delete');
+		END`).Error; err != nil {
+		t.Fatalf("create delete trigger: %v", err)
+	}
+
+	uninstaller := &moduleUninstaller{
+		runtimeScope:  runtimeScope,
+		module:        seed.module,
+		moduleManager: &ModuleManager{runtimeScope: runtimeScope},
+		ctx:           newOpContext(),
+	}
+	err := uninstaller.cleanModels()
+	if err == nil || !strings.Contains(err.Error(), "error deleting role UI resource grants") {
+		t.Fatalf("cleanModels() error = %v, want grant delete failure", err)
+	}
+}

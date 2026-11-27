@@ -93,10 +93,10 @@ type roleCodeRow struct {
 
 type roleUiResourceGrantRow struct {
 	meta.BaseModel
-	RoleId            sql.NullString `gorm:"type:char(20);not null;index"`
+	RoleId            sql.NullString `gorm:"type:char(20);not null;uniqueIndex:uidx_auth_role_ui_resource_role_resource;index"`
 	Mode              string         `gorm:"type:varchar(16);not null;default:allow;index"`
 	MetaApplicationId sql.NullString `gorm:"type:char(20);index"`
-	MetaUiResourceId  sql.NullString `gorm:"type:char(20);index"`
+	MetaUiResourceId  sql.NullString `gorm:"type:char(20);uniqueIndex:uidx_auth_role_ui_resource_role_resource;index"`
 }
 
 func (roleUiResourceGrantRow) TableName() string {
@@ -1655,7 +1655,11 @@ func (b *WebModuleBuilder) persistModuleUiResources(moduleID string, uiResources
 			Find(&existingRows); result.Error != nil {
 			return result.Error
 		}
-		if err := b.deleteUiResourceRelationsByIDs(collectUiResourceIDs(existingRows)); err != nil {
+		existingIDs := collectUiResourceIDs(existingRows)
+		if err := b.deleteUiResourceRelationsByIDs(existingIDs); err != nil {
+			return err
+		}
+		if err := b.deleteUiResourceGrantsByIDs(existingIDs); err != nil {
 			return err
 		}
 		if result := b.runtimeScope.Session().
@@ -1741,6 +1745,9 @@ func (b *WebModuleBuilder) persistModuleUiResources(moduleID string, uiResources
 		if id == "" {
 			continue
 		}
+		// Keep in-memory Ids aligned with the DB after name upsert so defaultRoles
+		// seeding and later consumers do not bind grants to ephemeral BeforeCreate xids.
+		r.Id = sql.NullString{String: id, Valid: true}
 
 		updates := map[string]any{
 			"parent_id":   nil,
@@ -1785,6 +1792,12 @@ func (b *WebModuleBuilder) persistModuleUiResources(moduleID string, uiResources
 	}
 	moduleResourceIDs := collectUiResourceIDs(moduleRows)
 	if err := b.replaceUiResourceRelations(moduleResourceIDs, menuRoutes, routeActions); err != nil {
+		return err
+	}
+
+	removedIDs := uiResourceRemovedIDs(moduleRows, names)
+	// Menu/route edges for these ids were already cleared in replaceUiResourceRelations.
+	if err := b.deleteUiResourceGrantsByIDs(removedIDs); err != nil {
 		return err
 	}
 
@@ -1894,6 +1907,25 @@ func collectUiResourceIDs(rows []*meta.UiResource) []string {
 	return ids
 }
 
+// uiResourceRemovedIDs returns persisted resource ids whose names are not in keepNames.
+func uiResourceRemovedIDs(moduleRows []*meta.UiResource, keepNames []string) []string {
+	nameSet := make(map[string]bool, len(keepNames))
+	for _, name := range keepNames {
+		nameSet[name] = true
+	}
+	removedIDs := make([]string, 0)
+	for _, row := range moduleRows {
+		if row == nil || !row.Id.Valid {
+			continue
+		}
+		if nameSet[strings.TrimSpace(row.Name)] {
+			continue
+		}
+		removedIDs = append(removedIDs, row.Id.String)
+	}
+	return removedIDs
+}
+
 func (b *WebModuleBuilder) deleteUiResourceRelationsByIDs(resourceIDs []string) error {
 	if len(resourceIDs) == 0 {
 		return nil
@@ -1908,6 +1940,25 @@ func (b *WebModuleBuilder) deleteUiResourceRelationsByIDs(resourceIDs []string) 
 		Unscoped().
 		Where("route_ui_resource_id IN ? OR action_ui_resource_id IN ?", resourceIDs, resourceIDs).
 		Delete(&meta.UiResourceRouteAction{}); result.Error != nil {
+		return result.Error
+	}
+	return nil
+}
+
+// deleteUiResourceGrantsByIDs removes role UI grants for the given resource IDs.
+// Call only when resources are removed/uninstalled — not when replacing menu/route edges.
+func (b *WebModuleBuilder) deleteUiResourceGrantsByIDs(resourceIDs []string) error {
+	if len(resourceIDs) == 0 {
+		return nil
+	}
+	if !b.runtimeScope.Session().Migrator().HasTable("auth_role_ui_resource") {
+		return nil
+	}
+	if result := b.runtimeScope.Session().
+		Unscoped().
+		Table("auth_role_ui_resource").
+		Where("meta_ui_resource_id IN ?", resourceIDs).
+		Delete(&roleUiResourceGrantRow{}); result.Error != nil {
 		return result.Error
 	}
 	return nil
@@ -2208,9 +2259,13 @@ func parseJSONStrings(raw []byte) []string {
 	return norm
 }
 
+// Overridable in tests to exercise empty role/resource pair skipping.
+var collectUiResourceDefaultRoleRowsFn = collectUiResourceDefaultRoleRows
+
 func collectUiResourceDefaultRoleRows(
 	uiResources []*meta.UiResource,
 	roleIDByCode map[string]string,
+	skipRoleIDs map[string]bool,
 ) ([]roleUiResourceGrantRow, error) {
 	if len(uiResources) == 0 {
 		return nil, nil
@@ -2223,13 +2278,14 @@ func collectUiResourceDefaultRoleRows(
 			continue
 		}
 		for _, roleCode := range parseJSONStrings(resource.DefaultRoles) {
+			// parseJSONStrings already trims and drops blanks.
 			code := strings.TrimSpace(roleCode)
-			if code == "" {
-				continue
-			}
 			roleID := strings.TrimSpace(roleIDByCode[code])
 			if roleID == "" {
 				return nil, xfmt.Errorf("defaultRoles role %q not found", code)
+			}
+			if skipRoleIDs[roleID] {
+				continue
 			}
 
 			grantKey := roleID + "/" + resource.Id.String
@@ -2291,6 +2347,7 @@ func (b *WebModuleBuilder) persistUiResourceDefaultRoles(uiResources []*meta.UiR
 	}
 
 	roleIDByCode := make(map[string]string, len(roleRows))
+	roleIDs := make([]string, 0, len(roleRows))
 	for _, row := range roleRows {
 		code := strings.TrimSpace(row.Code)
 		id := strings.TrimSpace(row.Id)
@@ -2298,9 +2355,37 @@ func (b *WebModuleBuilder) persistUiResourceDefaultRoles(uiResources []*meta.UiR
 			continue
 		}
 		roleIDByCode[code] = id
+		roleIDs = append(roleIDs, id)
 	}
 
-	grantRows, err := collectUiResourceDefaultRoleRows(uiResources, roleIDByCode)
+	// Roles with an explicit global UI allow already cover every resource; skip
+	// per-resource defaultRoles materialization for those roles.
+	skipRoleIDs := make(map[string]bool)
+	if len(roleIDs) > 0 {
+		type globalAllowRow struct {
+			RoleId string
+		}
+		globalRows := make([]globalAllowRow, 0)
+		if result := session.
+			Table("auth_role_ui_resource").
+			Select("role_id").
+			Where("role_id IN ?", roleIDs).
+			Where("deleted_at IS NULL").
+			Where("mode = ?", "allow").
+			Where("meta_ui_resource_id IS NULL").
+			Where("meta_application_id IS NULL").
+			Find(&globalRows); result.Error != nil {
+			return xfmt.Errorf("query global UI allows failed: %w", result.Error)
+		}
+		for _, row := range globalRows {
+			id := strings.TrimSpace(row.RoleId)
+			if id != "" {
+				skipRoleIDs[id] = true
+			}
+		}
+	}
+
+	grantRows, err := collectUiResourceDefaultRoleRowsFn(uiResources, roleIDByCode, skipRoleIDs)
 	if err != nil {
 		return err
 	}
@@ -2308,14 +2393,112 @@ func (b *WebModuleBuilder) persistUiResourceDefaultRoles(uiResources []*meta.UiR
 		return nil
 	}
 
-	if result := session.
-		Table("auth_role_ui_resource").
-		Clauses(clause.OnConflict{DoNothing: true}).
-		Create(&grantRows); result.Error != nil {
+	// Soft-deleted rows still occupy the unique pair; clear only the exact pairs
+	// we are about to insert so unrelated tombstones stay intact.
+	pairClauses := make([]clause.Expression, 0, len(grantRows))
+	for _, row := range grantRows {
+		rid := strings.TrimSpace(row.RoleId.String)
+		uid := strings.TrimSpace(row.MetaUiResourceId.String)
+		if rid == "" || uid == "" {
+			continue
+		}
+		pairClauses = append(pairClauses, clause.And(
+			clause.Eq{Column: "role_id", Value: rid},
+			clause.Eq{Column: "meta_ui_resource_id", Value: uid},
+		))
+	}
+	// Batch OR chains so SQLite's expression-depth limit (~1000) is not exceeded
+	// when a module seeds many defaultRoles pairs.
+	const purgePairBatchSize = 500
+	for start := 0; start < len(pairClauses); start += purgePairBatchSize {
+		end := start + purgePairBatchSize
+		if end > len(pairClauses) {
+			end = len(pairClauses)
+		}
+		if result := session.
+			Unscoped().
+			Table("auth_role_ui_resource").
+			Where("deleted_at IS NOT NULL").
+			Where(clause.Or(pairClauses[start:end]...)).
+			Delete(&roleUiResourceGrantRow{}); result.Error != nil {
+			return xfmt.Errorf("purge soft-deleted defaultRoles grants failed: %w", result.Error)
+		}
+	}
+
+	insert := session.Table("auth_role_ui_resource")
+	if session.Migrator().HasIndex("auth_role_ui_resource", "uidx_auth_role_ui_resource_role_resource") {
+		insert = insert.Clauses(clause.OnConflict{
+			Columns:   []clause.Column{{Name: "role_id"}, {Name: "meta_ui_resource_id"}},
+			DoNothing: true,
+		})
+	} else {
+		// Without the unique index, ON CONFLICT is unavailable — skip live pairs
+		// so re-seeding does not duplicate grants (including conflicting modes).
+		grantRows, err = filterNewUiResourceDefaultRoleRowsFn(session, grantRows)
+		if err != nil {
+			return err
+		}
+		if len(grantRows) == 0 {
+			return nil
+		}
+	}
+	if result := insert.Create(&grantRows); result.Error != nil {
 		return xfmt.Errorf("insert defaultRoles role UI resources failed: %w", result.Error)
 	}
 
 	return nil
+}
+
+// Overridable in tests to force the no-index filter error path.
+var filterNewUiResourceDefaultRoleRowsFn = filterNewUiResourceDefaultRoleRows
+
+// filterNewUiResourceDefaultRoleRows drops grant rows whose live (role, resource)
+// pair already exists when the unique conflict index is unavailable.
+func filterNewUiResourceDefaultRoleRows(session *scope.Session, grantRows []roleUiResourceGrantRow) ([]roleUiResourceGrantRow, error) {
+	resourceIDs := make([]string, 0, len(grantRows))
+	seenRes := make(map[string]bool, len(grantRows))
+	for _, row := range grantRows {
+		uid := strings.TrimSpace(row.MetaUiResourceId.String)
+		if uid == "" || seenRes[uid] {
+			continue
+		}
+		seenRes[uid] = true
+		resourceIDs = append(resourceIDs, uid)
+	}
+	if len(resourceIDs) == 0 {
+		return nil, nil
+	}
+	type livePairRow struct {
+		RoleId           string
+		MetaUiResourceId string
+	}
+	liveRows := make([]livePairRow, 0)
+	if result := session.
+		Table("auth_role_ui_resource").
+		Select("role_id", "meta_ui_resource_id").
+		Where("deleted_at IS NULL").
+		Where("meta_ui_resource_id IN ?", resourceIDs).
+		Find(&liveRows); result.Error != nil {
+		return nil, xfmt.Errorf("query existing defaultRoles grants failed: %w", result.Error)
+	}
+	existing := make(map[string]bool, len(liveRows))
+	for _, row := range liveRows {
+		existing[strings.TrimSpace(row.RoleId)+"/"+strings.TrimSpace(row.MetaUiResourceId)] = true
+	}
+	filtered := make([]roleUiResourceGrantRow, 0, len(grantRows))
+	for _, row := range grantRows {
+		rid := strings.TrimSpace(row.RoleId.String)
+		uid := strings.TrimSpace(row.MetaUiResourceId.String)
+		if rid == "" || uid == "" {
+			continue
+		}
+		key := rid + "/" + uid
+		if existing[key] {
+			continue
+		}
+		filtered = append(filtered, row)
+	}
+	return filtered, nil
 }
 
 func (b *WebModuleBuilder) buildOptions(prebuild bool, extraEsbOpts ...esbplugins.EsbPluginOptions) *api.BuildOptions {
