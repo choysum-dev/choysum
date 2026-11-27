@@ -28,8 +28,6 @@ SPDX-License-Identifier: Apache-2.0
                 :help="_t('Turn sandbox demo mode on or off.')"
                 widget="switch"
               />
-            </ChoyCol>
-            <ChoyCol :span="12">
               <ChoyVarcharField
                 v-if="formStore"
                 :store="formStore"

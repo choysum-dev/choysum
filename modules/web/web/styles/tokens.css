@@ -200,14 +200,19 @@ html {
   /* Slightly open vs leading-none so CJK glyphs are not clipped. */
   --choy-field-label-line-height: 1.25;
   /*
-   * Form horizontal label track (CSS grid on ChoyFieldBase).
-   * Sized for ~4 CJK glyphs + required mark + help tip on one line; % basis
-   * may grow on wide cells but must not crush below min (see index.css).
+   * Form horizontal label track. ChoyCol stack + horizontal Field display:contents
+   * use minmax(min, max-content); long labels cap via label-row max-width (max/width).
+   * Avoid minmax(var(--min), min(var(--max), max-content)) — Chromium collapses to 1 col.
+   * Do not use spanning subgrid for this.
+   * --choy-field-label-basis is deprecated (ignored).
+   * --choy-field-label-stack-break: multi-field Col CQ horizontal → vertical
+   * (literal in index.css; single-field 421 slots never auto-vertical).
    */
   --choy-field-label-min: 6rem;
-  --choy-field-label-basis: 25%;
+  --choy-field-label-basis: 25%; /* deprecated: do not use for track sizing */
   --choy-field-label-max: 8rem;
   --choy-field-label-control-gap: 0.75rem;
+  --choy-field-label-stack-break: 36rem;
 
   /*
    * Short aliases matching shadcn-vue Theming var(--popover) etc.
@@ -318,9 +323,10 @@ html[data-density='compact'] {
   --choy-field-group-gap: 0.375rem;
   --choy-field-label-inline-gap: 0.2rem;
   --choy-field-label-min: 5.5rem;
-  --choy-field-label-basis: 25%;
+  --choy-field-label-basis: 25%; /* deprecated */
   --choy-field-label-max: 7.5rem;
   --choy-field-label-control-gap: 0.5rem;
+  --choy-field-label-stack-break: 36rem;
 }
 
 @media (prefers-reduced-motion: reduce) {

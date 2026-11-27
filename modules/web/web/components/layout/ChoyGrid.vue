@@ -69,7 +69,9 @@ const style = computed(() => ({
 </script>
 
 <style scoped>
+/* Named so ChoyCol span CQ does not match nested choy-col containers. */
 .choy-grid {
   container-type: inline-size;
+  container-name: choy-grid;
 }
 </style>

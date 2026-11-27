@@ -44,21 +44,26 @@ SPDX-License-Identifier: Apache-2.0
                 <div class="text-sm font-medium text-foreground">
                   {{ _t('Identity') }}
                 </div>
-                <ChoyVarcharField
-                  :store="formStore"
-                  prop="Name"
-                  orientation="horizontal"
-                  buffer-strategy="live"
-                  :required="!readonly"
-                  data-testid="choy-properties-definition-name"
-                />
-                <ChoySelectionField
-                  :store="formStore"
-                  prop="Type"
-                  orientation="horizontal"
-                  :clearable="false"
-                  data-testid="choy-properties-definition-type"
-                />
+                <ChoyCol
+                  label-width="5.5rem"
+                  class="choy-properties-definition-item-fields"
+                >
+                  <ChoyVarcharField
+                    :store="formStore"
+                    prop="Name"
+                    orientation="horizontal"
+                    buffer-strategy="live"
+                    :required="!readonly"
+                    data-testid="choy-properties-definition-name"
+                  />
+                  <ChoySelectionField
+                    :store="formStore"
+                    prop="Type"
+                    orientation="horizontal"
+                    :clearable="false"
+                    data-testid="choy-properties-definition-type"
+                  />
+                </ChoyCol>
               </section>
 
               <section
@@ -68,53 +73,58 @@ SPDX-License-Identifier: Apache-2.0
                 <div class="text-sm font-medium text-foreground">
                   {{ _t('Presentation') }}
                 </div>
-                <div class="flex min-w-0 items-center gap-1">
-                  <ChoyVarcharField
-                    class="min-w-0 flex-1"
-                    :store="formStore"
-                    prop="Label"
-                    orientation="horizontal"
-                    buffer-strategy="live"
-                    data-testid="choy-properties-definition-string"
-                  />
-                  <ChoyButton
-                    v-if="!readonly"
-                    type="button"
-                    size="icon"
-                    variant="ghost"
-                    class="size-8 shrink-0 text-muted-foreground hover:text-foreground"
-                    :aria-label="_t('Translate label')"
-                    :title="_t('Translate label')"
-                    data-testid="choy-properties-definition-translate-string"
-                    @click="openStringTranslate"
-                  >
-                    <Languages class="size-4" aria-hidden="true" />
-                  </ChoyButton>
-                </div>
-                <div class="flex min-w-0 items-start gap-1">
-                  <ChoyTextField
-                    class="min-w-0 flex-1"
-                    :store="formStore"
-                    prop="Help"
-                    orientation="horizontal"
-                    buffer-strategy="live"
-                    :rows="2"
-                    data-testid="choy-properties-definition-help"
-                  />
-                  <ChoyButton
-                    v-if="!readonly"
-                    type="button"
-                    size="icon"
-                    variant="ghost"
-                    class="mt-0.5 size-8 shrink-0 text-muted-foreground hover:text-foreground"
-                    :aria-label="_t('Translate help')"
-                    :title="_t('Translate help')"
-                    data-testid="choy-properties-definition-translate-help"
-                    @click="openHelpTranslate"
-                  >
-                    <Languages class="size-4" aria-hidden="true" />
-                  </ChoyButton>
-                </div>
+                <ChoyCol
+                  label-width="5.5rem"
+                  class="choy-properties-definition-item-fields"
+                >
+                  <div class="flex min-w-0 items-center gap-1">
+                    <ChoyVarcharField
+                      class="min-w-0 flex-1"
+                      :store="formStore"
+                      prop="Label"
+                      orientation="horizontal"
+                      buffer-strategy="live"
+                      data-testid="choy-properties-definition-string"
+                    />
+                    <ChoyButton
+                      v-if="!readonly"
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      class="size-8 shrink-0 text-muted-foreground hover:text-foreground"
+                      :aria-label="_t('Translate label')"
+                      :title="_t('Translate label')"
+                      data-testid="choy-properties-definition-translate-string"
+                      @click="openStringTranslate"
+                    >
+                      <Languages class="size-4" aria-hidden="true" />
+                    </ChoyButton>
+                  </div>
+                  <div class="flex min-w-0 items-start gap-1">
+                    <ChoyTextField
+                      class="min-w-0 flex-1"
+                      :store="formStore"
+                      prop="Help"
+                      orientation="horizontal"
+                      buffer-strategy="live"
+                      :rows="2"
+                      data-testid="choy-properties-definition-help"
+                    />
+                    <ChoyButton
+                      v-if="!readonly"
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      class="mt-0.5 size-8 shrink-0 text-muted-foreground hover:text-foreground"
+                      :aria-label="_t('Translate help')"
+                      :title="_t('Translate help')"
+                      data-testid="choy-properties-definition-translate-help"
+                      @click="openHelpTranslate"
+                    >
+                      <Languages class="size-4" aria-hidden="true" />
+                    </ChoyButton>
+                  </div>
+                </ChoyCol>
               </section>
 
               <section
@@ -124,28 +134,33 @@ SPDX-License-Identifier: Apache-2.0
                 <div class="text-sm font-medium text-foreground">
                   {{ _t('Constraints') }}
                 </div>
-                <div class="flex min-w-0 items-center gap-3">
-                  <ChoyVarcharField
-                    class="min-w-0 flex-1"
-                    :store="formStore"
-                    prop="Default"
-                    orientation="horizontal"
-                    buffer-strategy="live"
-                    data-testid="choy-properties-definition-default"
-                  />
-                  <ChoyBooleanField
-                    class="shrink-0"
-                    :store="formStore"
-                    prop="Readonly"
-                    widget="checkbox"
-                    render-mode="form"
-                    orientation="horizontal"
-                    hide-label
-                    :checkbox-label="_t('Readonly')"
-                    buffer-strategy="live"
-                    data-testid="choy-properties-definition-readonly"
-                  />
-                </div>
+                <ChoyCol
+                  label-width="5.5rem"
+                  class="choy-properties-definition-item-fields"
+                >
+                  <div class="flex min-w-0 items-center gap-3">
+                    <ChoyVarcharField
+                      class="min-w-0 flex-1"
+                      :store="formStore"
+                      prop="Default"
+                      orientation="horizontal"
+                      buffer-strategy="live"
+                      data-testid="choy-properties-definition-default"
+                    />
+                    <ChoyBooleanField
+                      class="shrink-0"
+                      :store="formStore"
+                      prop="Readonly"
+                      widget="checkbox"
+                      render-mode="form"
+                      orientation="horizontal"
+                      hide-label
+                      :checkbox-label="_t('Readonly')"
+                      buffer-strategy="live"
+                      data-testid="choy-properties-definition-readonly"
+                    />
+                  </div>
+                </ChoyCol>
               </section>
 
               <section
@@ -256,6 +271,7 @@ import ChoyActionButton from '@/web/web/components/button/ChoyActionButton.vue';
 import ChoyFormView from '@/web/web/components/view/ChoyFormView.vue';
 import type { FormSubmitHandler } from '@/web/web/components/view/formViewTypes';
 import type { ViewMode } from '@/web/web/components/view/viewScopeKeys';
+import ChoyCol from '@/web/web/components/layout/ChoyCol.vue';
 import ChoyVarcharField from '@/web/web/components/field/ChoyVarcharField.vue';
 import ChoyTextField from '@/web/web/components/field/ChoyTextField.vue';
 import ChoyBooleanField from '@/web/web/components/field/ChoyBooleanField.vue';
@@ -611,19 +627,11 @@ watch(
 
 <style scoped>
 /*
-  Dialog form uses horizontal fields: pin label column width so Name/Type/Label/…
-  share one gutter. Selection table is outside these field rows.
-*/
-.choy-properties-definition-item-form
-  :deep([data-slot='field'][data-orientation='horizontal'] > [data-slot='field-label']) {
-  width: 5.5rem;
-  min-width: 5.5rem;
-  flex: 0 0 5.5rem;
-}
-
-.choy-properties-definition-item-form
-  :deep([data-slot='field'][data-orientation='horizontal']) {
-  align-items: flex-start;
+ * Dense dialog labels: lower CJK floor so label-width="5.5rem" is not clamped
+ * by the global --choy-field-label-min (6rem).
+ */
+.choy-properties-definition-item-fields {
+  --choy-field-label-min: 5.5rem;
 }
 
 /* Embedded dialog: keep form host scroll/overflow out of DialogContent's own pad. */

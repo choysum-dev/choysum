@@ -71,6 +71,7 @@ SPDX-License-Identifier: Apache-2.0
       <!--
         ChoyGrid defaults to container 421 (omit span = one field slot).
         Use :span="12" for full-bleed; object span for custom bands; :responsive="false" to freeze.
+        Label gutter is per ChoyCol (contents + max-content); keep one field per Col for 421 demos.
       -->
       <!-- divided for title trailing rule; mt-0 so tip mb-8 is not doubled. -->
       <ChoySection :title="_t('Identity')" divided class="mt-0">
