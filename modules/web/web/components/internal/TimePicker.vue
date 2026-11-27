@@ -5,7 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 
 <template>
   <Popover v-model:open="open">
-    <div class="relative w-full min-w-0">
+    <div class="flex w-full min-w-0 items-center gap-1">
       <PopoverTrigger as-child>
         <Button
           type="button"
@@ -18,7 +18,7 @@ SPDX-License-Identifier: Apache-2.0
           :aria-describedby="props['aria-describedby']"
           :class="
             cn(
-              'choy-time-picker w-full min-w-0 justify-between bg-transparent font-normal',
+              'choy-time-picker min-w-0 flex-1 justify-between bg-transparent font-normal',
               !displayText && 'text-muted-foreground',
               props.class,
             )
@@ -27,16 +27,13 @@ SPDX-License-Identifier: Apache-2.0
           <span class="min-w-0 flex-1 truncate text-start tabular-nums">{{
             displayText || effectivePlaceholder
           }}</span>
-          <span class="inline-flex shrink-0 items-center gap-1">
-            <span v-if="showClear" class="size-3.5" aria-hidden="true" />
-            <Clock class="size-4 opacity-50" aria-hidden="true" />
-          </span>
+          <Clock class="size-4 shrink-0 opacity-50" aria-hidden="true" />
         </Button>
       </PopoverTrigger>
       <button
         v-if="showClear"
         type="button"
-        class="choy-time-picker__clear absolute end-9 top-1/2 inline-flex -translate-y-1/2 text-foreground/50 hover:text-foreground"
+        class="choy-time-picker__clear inline-flex size-control shrink-0 items-center justify-center rounded-md border border-input text-foreground/50 hover:bg-muted hover:text-foreground"
         :aria-label="_t('Clear')"
         data-testid="choy-time-picker-clear"
         @click.stop.prevent="onClear"
