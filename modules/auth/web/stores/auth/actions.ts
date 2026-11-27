@@ -46,6 +46,10 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
   let initInFlight: Promise<void> | null = null;
   // Cached GetInitialSetupState result for route guards (null = not probed yet).
   let setupCompleteCache: boolean | null = null;
+  // Deduplicate concurrent loadPermissionState(false) (login watcher + route guard).
+  let permissionInFlight: Promise<boolean> | null = null;
+  let permissionInFlightForced = false;
+  let permissionInFlightKey = '';
   const clientSide = deps?.isClient ?? isClient;
   const clearStoredAuth = deps?.clearAuthStorage ?? (() => authStorage.clearAuthStorage());
 
@@ -78,6 +82,12 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
 
     // Drop the cached permission snapshot.
     state.permissionState.value = null;
+
+    // Detach any permission request started by the previous session so a later
+    // login cannot join (and inherit failure from) the obsolete flight.
+    permissionInFlight = null;
+    permissionInFlightForced = false;
+    permissionInFlightKey = '';
 
     // Clear persisted auth storage in the browser.
     if (clientSide) {
@@ -794,11 +804,6 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
   const loadUser = withLoading(loadUserImpl, state.loading);
   const loadPermissionStateWithLoading = withLoading(loadPermissionStateImpl, state.loading);
   const switchCompanyScope = withLoading(switchCompanyScopeImpl, state.loading);
-
-  // Deduplicate concurrent loadPermissionState(false) (login watcher + route guard).
-  let permissionInFlight: Promise<boolean> | null = null;
-  let permissionInFlightForced = false;
-  let permissionInFlightKey = '';
 
   /** Identity epoch key so company/user switches do not join an obsolete flight. */
   function permissionFlightKey(): string {

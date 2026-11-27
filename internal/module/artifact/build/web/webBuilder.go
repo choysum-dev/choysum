@@ -2407,12 +2407,19 @@ func (b *WebModuleBuilder) persistUiResourceDefaultRoles(uiResources []*meta.UiR
 			clause.Eq{Column: "meta_ui_resource_id", Value: uid},
 		))
 	}
-	if len(pairClauses) > 0 {
+	// Batch OR chains so SQLite's expression-depth limit (~1000) is not exceeded
+	// when a module seeds many defaultRoles pairs.
+	const purgePairBatchSize = 500
+	for start := 0; start < len(pairClauses); start += purgePairBatchSize {
+		end := start + purgePairBatchSize
+		if end > len(pairClauses) {
+			end = len(pairClauses)
+		}
 		if result := session.
 			Unscoped().
 			Table("auth_role_ui_resource").
 			Where("deleted_at IS NOT NULL").
-			Where(clause.Or(pairClauses...)).
+			Where(clause.Or(pairClauses[start:end]...)).
 			Delete(&roleUiResourceGrantRow{}); result.Error != nil {
 			return xfmt.Errorf("purge soft-deleted defaultRoles grants failed: %w", result.Error)
 		}

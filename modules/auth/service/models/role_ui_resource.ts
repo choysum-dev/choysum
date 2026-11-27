@@ -177,8 +177,12 @@ export default class RoleUiResource extends AuthzMutationModel {
     const rows = values || [];
     const out: Array<RowOrProjected<RowOf<C>, F>> = [];
     const toCreate: Partial<Insertable<RowOf<C>>>[] = [];
+    // Validate the whole batch before reviving any tombstone so a later invalid
+    // row cannot leave an earlier soft-deleted grant restored.
     for (const v of rows) {
       RoleUiResource._prepareValues(v as Record<string, unknown>, 'create');
+    }
+    for (const v of rows) {
       const revivedId = await RoleUiResource._reviveSoftDeletedPair(v as Record<string, unknown>);
       if (revivedId) {
         out.push((await super.Browse<C, F>(revivedId, returnFields)) as RowOrProjected<RowOf<C>, F>);

@@ -4682,6 +4682,50 @@ func TestPersistModuleUiResourcesRemovesGrantsOnEmptyAndPrune(t *testing.T) {
 	}
 }
 
+func TestPersistUiResourceDefaultRolesPurgesSoftDeletedPairsInBatches(t *testing.T) {
+	testRuntimeScope := newTestScopeWithDB(t).(*testScope)
+	mustExec(t, testRuntimeScope.db, `CREATE TABLE auth_role (id TEXT PRIMARY KEY, code TEXT)`)
+	if err := testRuntimeScope.db.AutoMigrate(&roleUiResourceGrantRow{}); err != nil {
+		t.Fatalf("automigrate auth_role_ui_resource failed: %v", err)
+	}
+	b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
+	if err := testRuntimeScope.db.Exec(`INSERT INTO auth_role (id, code) VALUES (?, ?)`, "role_user", "base.user").Error; err != nil {
+		t.Fatalf("seed auth_role failed: %v", err)
+	}
+
+	const pairCount = 1001
+	resources := make([]*meta.UiResource, 0, pairCount)
+	for i := 0; i < pairCount; i++ {
+		uiID := fmt.Sprintf("ui_%04d", i)
+		resources = append(resources, &meta.UiResource{
+			BaseModel:    meta.BaseModel{Id: sql.NullString{String: uiID, Valid: true}},
+			Name:         "menu." + uiID,
+			DefaultRoles: []byte(`["base.user"]`),
+		})
+		if err := testRuntimeScope.db.Table("auth_role_ui_resource").Create(&roleUiResourceGrantRow{
+			RoleId:           sql.NullString{String: "role_user", Valid: true},
+			Mode:             "allow",
+			MetaUiResourceId: sql.NullString{String: uiID, Valid: true},
+		}).Error; err != nil {
+			t.Fatalf("seed grant %s: %v", uiID, err)
+		}
+	}
+	if err := testRuntimeScope.db.Exec(`UPDATE auth_role_ui_resource SET deleted_at = CURRENT_TIMESTAMP`).Error; err != nil {
+		t.Fatalf("soft-delete grants: %v", err)
+	}
+
+	if err := b.persistUiResourceDefaultRoles(resources); err != nil {
+		t.Fatalf("batched purge/insert failed: %v", err)
+	}
+	var live int64
+	if err := testRuntimeScope.db.Table("auth_role_ui_resource").Count(&live).Error; err != nil {
+		t.Fatalf("count live grants: %v", err)
+	}
+	if live != pairCount {
+		t.Fatalf("expected %d live grants after batched purge, got %d", pairCount, live)
+	}
+}
+
 func TestPersistUiResourceDefaultRolesPurgesSoftDeletedPairs(t *testing.T) {
 	testRuntimeScope := newTestScopeWithDB(t).(*testScope)
 	mustExec(t, testRuntimeScope.db, `CREATE TABLE auth_role (id TEXT PRIMARY KEY, code TEXT)`)

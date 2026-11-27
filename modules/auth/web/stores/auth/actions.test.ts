@@ -926,6 +926,68 @@ test('loadPermissionState: different identity epoch starts a new flight', async 
   expect((mockState.permissionState.value as any)?.permStateVersion).toBe(2);
 });
 
+test('clearAuth: detaches in-flight permission load so a later session cannot join it', async () => {
+  const mockState = buildMockState();
+  const mockHelpers = buildMockHelpers();
+  mockState.tokens.value = {
+    accessToken: 'access',
+    refreshToken: 'refresh',
+    expiresAt: Date.now() + 3600_000,
+  };
+  mockState.identity.value = {
+    userId: 'usr_1',
+    metadata: {
+      permStateVersion: 1,
+      activeCompanyId: 'cmp_a',
+      enabledCompanyIds: ['cmp_a'],
+    },
+  } as any;
+
+  let rejectPermission: (reason: unknown) => void = () => {};
+  const permissionDeferred = new Promise((_resolve, reject) => {
+    rejectPermission = reject;
+  });
+  mockState._recorders.GetPermissionState.returnValue(permissionDeferred);
+
+  const actions = defineAuthActions(mockState as any, mockHelpers as any, {
+    isClient: true,
+    clearAuthStorage: () => {},
+  });
+  const stale = actions.loadPermissionState(false);
+  actions.clearAuth();
+
+  mockState.tokens.value = {
+    accessToken: 'access-2',
+    refreshToken: 'refresh-2',
+    expiresAt: Date.now() + 3600_000,
+  };
+  mockState.identity.value = {
+    userId: 'usr_1',
+    metadata: {
+      permStateVersion: 1,
+      activeCompanyId: 'cmp_a',
+      enabledCompanyIds: ['cmp_a'],
+    },
+  } as any;
+  mockState._recorders.GetPermissionState.returnValue({
+    permStateVersion: 1,
+    byCompany: { cmp_a: { ui: { routes: ['*'], menus: ['*'], actions: ['*'] } } },
+  });
+
+  expect(await actions.loadPermissionState(false)).toBe(true);
+  expect(mockState._recorders.GetPermissionState.calls.length).toBe(2);
+
+  rejectPermission(new Error('stale session flight'));
+  let staleErr: unknown;
+  try {
+    await stale;
+  } catch (err) {
+    staleErr = err;
+  }
+  expect(Boolean(staleErr)).toBe(true);
+  expect((mockState.permissionState.value as any)?.permStateVersion).toBe(1);
+});
+
 test('loadPermissionState: concurrent forced calls share one forced flight', async () => {
   const mockState = buildMockState();
   const mockHelpers = buildMockHelpers();
