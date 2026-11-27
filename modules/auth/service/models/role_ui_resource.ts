@@ -10,6 +10,7 @@ import Role from './role';
 import type MetaApplication from '@/meta/service/models/application';
 import type MetaUiResource from '@/meta/service/models/ui_resource';
 import AuthzMutationModel from '../mixins/authz_mutation_model';
+import { normalizeRefId } from '@/core/service/utils/normalization';
 import { assertExclusiveScope } from './_rule_scope_helpers';
 
 /**
@@ -115,6 +116,39 @@ export default class RoleUiResource extends AuthzMutationModel {
   }
 
   /**
+   * Revive a soft-deleted (role, resource) grant when re-granting the same pair so
+   * uidx_auth_role_ui_resource_role_resource does not reject the insert.
+   * Returns the revived Id, or null when no tombstone exists.
+   */
+  private static async _reviveSoftDeletedPair(values: Record<string, unknown>): Promise<string | null> {
+    const roleId = normalizeRefId(values.RoleId);
+    const resourceId = normalizeRefId(values.MetaUiResourceId);
+    if (!roleId || !resourceId) return null;
+    const rows = await this.Search(
+      {
+        And: [
+          ['RoleId', '=', roleId],
+          ['MetaUiResourceId', '=', resourceId],
+        ],
+      } as any,
+      { fields: ['Id'], limit: 10, onlyDeleted: true } as any
+    );
+    const id = normalizeRefId((rows?.[0] as any)?.Id);
+    if (!id) return null;
+    await this.UpdateById(
+      id,
+      {
+        Mode: this._normalizeMode(values.Mode),
+        MetaApplicationId: (values.MetaApplicationId as string | null | undefined) ?? null,
+        DeletedAt: null,
+      } as any,
+      ['Id'] as any,
+      { onlyDeleted: true } as SoftDeleteOptions
+    );
+    return id;
+  }
+
+  /**
    * Create one RoleUiResource row and invalidate request-scoped auth caches.
    */
   static override async Create<C extends ModelCtor, F extends FieldSelection<RowOf<C>> | undefined = undefined>(
@@ -123,6 +157,10 @@ export default class RoleUiResource extends AuthzMutationModel {
     returnFields?: F
   ): Promise<RowOrProjected<RowOf<C>, F>> {
     RoleUiResource._prepareValues(value as Record<string, unknown>, 'create');
+    const revivedId = await RoleUiResource._reviveSoftDeletedPair(value as Record<string, unknown>);
+    if (revivedId) {
+      return (await super.Browse<C, F>(revivedId, returnFields)) as RowOrProjected<RowOf<C>, F>;
+    }
     return await super.Create<C, F>(value, returnFields);
   }
 
@@ -135,8 +173,22 @@ export default class RoleUiResource extends AuthzMutationModel {
     returnFields?: F
   ): Promise<Array<RowOrProjected<RowOf<C>, F>>> {
     const rows = values || [];
-    for (const v of rows) RoleUiResource._prepareValues(v as Record<string, unknown>, 'create');
-    return await super.CreateMany<C, F>(rows, returnFields);
+    const out: Array<RowOrProjected<RowOf<C>, F>> = [];
+    const toCreate: Partial<Insertable<RowOf<C>>>[] = [];
+    for (const v of rows) {
+      RoleUiResource._prepareValues(v as Record<string, unknown>, 'create');
+      const revivedId = await RoleUiResource._reviveSoftDeletedPair(v as Record<string, unknown>);
+      if (revivedId) {
+        out.push((await super.Browse<C, F>(revivedId, returnFields)) as RowOrProjected<RowOf<C>, F>);
+      } else {
+        toCreate.push(v);
+      }
+    }
+    if (toCreate.length) {
+      const created = await super.CreateMany<C, F>(toCreate, returnFields);
+      out.push(...created);
+    }
+    return out;
   }
 
   /**

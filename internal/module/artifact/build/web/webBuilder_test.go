@@ -2607,15 +2607,40 @@ func TestPersistModuleUiResources_PersistsUiResourceRelations(t *testing.T) {
 		}
 		stableIDs[r.Name] = r.Id.String
 	}
-	if err := b.persistModuleUiResources(module.Id.String, resources, menuRoutes, routeActions); err != nil {
+
+	// Second persist uses fresh in-memory objects (empty Ids) for existing names,
+	// matching hot-reload / re-extract callers.
+	freshResources, freshWarnings, err := extractUiResources(module, []*parser.ParserResult{pr})
+	if err != nil {
+		t.Fatalf("re-extract ui resources failed: %v", err)
+	}
+	if len(freshWarnings) != 0 {
+		t.Fatalf("expected no warnings on re-extract, got %d", len(freshWarnings))
+	}
+	freshMenuRoutes, freshRouteActions, err := extractUiResourceRelations(freshResources, []*parser.ParserResult{pr})
+	if err != nil {
+		t.Fatalf("re-extract ui resource relations failed: %v", err)
+	}
+	if err := b.persistModuleUiResources(module.Id.String, freshResources, freshMenuRoutes, freshRouteActions); err != nil {
 		t.Fatalf("persist module ui resources second time failed: %v", err)
 	}
-	for _, r := range resources {
+	for _, r := range freshResources {
 		if r == nil || !r.Id.Valid {
 			t.Fatalf("expected in-memory ui resource Id after second persist")
 		}
-		if got, want := r.Id.String, stableIDs[r.Name]; got != want {
+		want, ok := stableIDs[r.Name]
+		if !ok {
+			t.Fatalf("unexpected ui resource %q after second persist", r.Name)
+		}
+		if got := r.Id.String; got != want {
 			t.Fatalf("ui resource %q Id drifted after upsert: got %q want %q", r.Name, got, want)
+		}
+		var dbID string
+		if err := tenv.db.Model(&meta.UiResource{}).Select("id").Where("name = ?", r.Name).Limit(1).Scan(&dbID).Error; err != nil {
+			t.Fatalf("load db id for %q failed: %v", r.Name, err)
+		}
+		if dbID != want {
+			t.Fatalf("ui resource %q memory Id %q does not match db Id %q", r.Name, r.Id.String, dbID)
 		}
 	}
 
@@ -3784,6 +3809,16 @@ func TestCollectUiResourceDefaultRoleRows_BuildsDistinctRows(t *testing.T) {
 	}
 	if len(skipped) != 2 {
 		t.Fatalf("expected 2 rows after skipping sys.admin, got %d", len(skipped))
+	}
+	skippedPairs := map[string]bool{}
+	for _, row := range skipped {
+		if row.RoleId.String == "role_sys_admin" {
+			t.Fatalf("sys.admin grant should have been skipped, got %#v", row)
+		}
+		skippedPairs[row.RoleId.String+"/"+row.MetaUiResourceId.String] = true
+	}
+	if !skippedPairs["role_base_user/ui_1"] || !skippedPairs["role_base_user/ui_2"] {
+		t.Fatalf("expected only base.user grants after skip, got %#v", skippedPairs)
 	}
 }
 

@@ -798,29 +798,53 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
   // Deduplicate concurrent loadPermissionState(false) (login watcher + route guard).
   let permissionInFlight: Promise<boolean> | null = null;
   let permissionInFlightForced = false;
+  let permissionInFlightKey = '';
+
+  /** Identity epoch key so company/user switches do not join an obsolete flight. */
+  function permissionFlightKey(): string {
+    const userId = String(state.identity.value?.userId || '').trim();
+    const meta = ((state.identity.value as any)?.metadata ?? {}) as Record<string, unknown>;
+    const active = String(meta.activeCompanyId ?? '').trim();
+    const enabled = Array.isArray(meta.enabledCompanyIds)
+      ? meta.enabledCompanyIds.map(x => String(x ?? '').trim()).filter(Boolean).slice().sort().join(',')
+      : '';
+    const version =
+      typeof meta.permStateVersion === 'number' ? String(meta.permStateVersion) : '';
+    return `${userId}|${active}|${enabled}|${version}`;
+  }
 
   /**
-   * Load permission state with single-flight for non-force callers.
+   * Load permission state with single-flight for matching identity epochs.
    */
   async function loadPermissionState(forceRefresh = false): Promise<boolean> {
-    if (permissionInFlight) {
-      if (!forceRefresh) return permissionInFlight;
-      if (permissionInFlightForced) return permissionInFlight;
-      try {
-        await permissionInFlight;
-      } catch {
-        // Prior flight failed; continue with a forced refresh.
+    const key = permissionFlightKey();
+    while (permissionInFlight) {
+      if (permissionInFlightKey === key && (!forceRefresh || permissionInFlightForced)) {
+        return permissionInFlight;
       }
+      if (permissionInFlightKey === key && forceRefresh && !permissionInFlightForced) {
+        try {
+          await permissionInFlight;
+        } catch {
+          // Prior flight failed; re-check before starting a forced refresh.
+        }
+        continue;
+      }
+      // Different identity epoch: start a new flight; ownership checks discard the stale result.
+      break;
     }
 
     permissionInFlightForced = forceRefresh;
-    const flight = (async (): Promise<boolean> => {
+    permissionInFlightKey = key;
+    let flight!: Promise<boolean>;
+    flight = (async (): Promise<boolean> => {
       try {
         return await loadPermissionStateWithLoading(forceRefresh);
       } finally {
         if (permissionInFlight === flight) {
           permissionInFlight = null;
           permissionInFlightForced = false;
+          permissionInFlightKey = '';
         }
       }
     })();

@@ -767,7 +767,7 @@ test('loadPermissionState: concurrent non-force calls share one GetPermissionSta
   expect(await first).toBe(true);
   expect(await second).toBe(true);
   expect(mockState._recorders.GetPermissionState.calls.length).toBe(1);
-  expect(mockState.permissionState.value?.permStateVersion).toBe(1);
+  expect((mockState.permissionState.value as any)?.permStateVersion).toBe(1);
 });
 
 test('loadPermissionState: late failure after company switch keeps the newer snapshot', async () => {
