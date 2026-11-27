@@ -89,6 +89,10 @@ import type { UseField } from '@/web/web/composables/useField';
 import type { NarrowAggProp, NonNumericAggFns } from '@/web/web/composables/useField';
 import { useBufferedCommit, type CommitStrategy } from '@/web/web/composables/useBufferedCommit';
 import Input from '../vendor/ui/input/Input.vue';
+import InputGroup from '../vendor/ui/input-group/InputGroup.vue';
+import InputGroupAddon from '../vendor/ui/input-group/InputGroupAddon.vue';
+import InputGroupInput from '../vendor/ui/input-group/InputGroupInput.vue';
+import InputGroupText from '../vendor/ui/input-group/InputGroupText.vue';
 import ChoyButton from '../button/ChoyButton.vue';
 import ChoyFieldBase, { type FieldStateExpr, type FormItemProps } from './ChoyFieldBase.vue';
 import { ChoyMessage } from '../../composables/useChoyMessage';
@@ -337,27 +341,29 @@ const ChoyVarcharCell = defineComponent({
       const showLimit = !!p.showWordLimit && max != null && Number.isFinite(max) && max > 0;
       const rest = { ...(attrs as Record<string, unknown>) };
       delete rest.type;
-      const input = h(Input, {
+      const controlProps = {
         ...rest,
         type: p.inputType || 'text',
-        class: showLimit ? 'choy-varchar-input w-full pe-14' : 'choy-varchar-input w-full',
+        class: 'choy-varchar-input w-full',
         placeholder: p.placeholder,
         maxlength: p.maxlength,
         modelValue: text,
         'onUpdate:modelValue': (v: string) => buffer.setEditing(v ?? ''),
         onBlur,
-      });
-      if (!showLimit) return input;
-      return h('div', { class: 'choy-varchar-input-wrap relative w-full' }, [
-        input,
-        h(
-          'span',
-          {
-            class:
-              'choy-varchar-word-limit pointer-events-none absolute end-2 top-1/2 -translate-y-1/2 text-xs tabular-nums text-muted-foreground',
-            'aria-hidden': 'true',
-          },
-          `${strLen(text)} / ${max}`,
+      };
+      if (!showLimit) return h(Input, controlProps);
+      // Word-limit in an inline-end addon so the counter owns width (no absolute overlay).
+      return h(InputGroup, { class: 'choy-varchar-input-wrap w-full shadow-none' }, () => [
+        h(InputGroupInput, controlProps),
+        h(InputGroupAddon, { align: 'inline-end' }, () =>
+          h(
+            InputGroupText,
+            {
+              class: 'choy-varchar-word-limit text-xs tabular-nums',
+              'aria-hidden': 'true',
+            },
+            () => `${strLen(text)} / ${max}`,
+          ),
         ),
       ]);
     };

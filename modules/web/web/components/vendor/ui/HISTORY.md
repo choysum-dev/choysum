@@ -36,6 +36,18 @@ new HISTORY entry describing what was re-copied vs re-patched.
 
 ## Entries (newest first)
 
+### 2026-11-27 — InputGroupAddon focuses textarea as well as input
+
+**What:** `InputGroupAddon` click-to-focus used `querySelector("input")` only;
+with `InputGroupTextarea` the addon never focused the control.
+
+**Why not product-only:** Every textarea InputGroup (e.g. field word-limit
+`block-end` counters) needs the same focus contract; patching each call site
+is brittle vs fixing the kit once.
+
+**Do not regress:** Keep `querySelector("input, textarea")` (or equivalent)
+when re-copying upstream InputGroupAddon.
+
 ### 2026-11-26 — Button `soft-primary` / `soft-destructive` variants
 
 - **What:** Added Action Bar accents `soft-primary`

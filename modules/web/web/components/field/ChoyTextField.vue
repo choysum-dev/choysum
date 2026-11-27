@@ -61,6 +61,10 @@ import type { UseField } from '@/web/web/composables/useField';
 import type { NarrowAggProp, NonNumericAggFns } from '@/web/web/composables/useField';
 import { useBufferedCommit, type CommitStrategy } from '@/web/web/composables/useBufferedCommit';
 import Textarea from '../vendor/ui/textarea/Textarea.vue';
+import InputGroup from '../vendor/ui/input-group/InputGroup.vue';
+import InputGroupAddon from '../vendor/ui/input-group/InputGroupAddon.vue';
+import InputGroupText from '../vendor/ui/input-group/InputGroupText.vue';
+import InputGroupTextarea from '../vendor/ui/input-group/InputGroupTextarea.vue';
 import ChoyFieldBase, { type FieldStateExpr, type FormItemProps } from './ChoyFieldBase.vue';
 import { createTranslate } from '@/web/web/i18n';
 
@@ -285,10 +289,15 @@ const ChoyTextCell = defineComponent({
         p.maxlength == null || p.maxlength === '' ? undefined : Number(p.maxlength);
       const showLimit = !!p.showWordLimit && max != null && Number.isFinite(max) && max > 0;
       const bounds = resolveAutosizeBounds(p.autosize as AutosizeOpts | undefined, p.rows ?? 3);
-      const baseClass = showLimit ? 'choy-textarea w-full pb-6' : 'choy-textarea w-full';
-      const textarea = h(Textarea, {
+      const baseClass = 'choy-textarea w-full';
+      // InputGroupTextarea ships resize-none; pass resize-y so twMerge restores
+      // manual resize when autosize is off.
+      const controlClass = bounds.enabled
+        ? `${baseClass} resize-none`
+        : `${baseClass} resize-y`;
+      const controlProps = {
         ...attrs,
-        class: bounds.enabled ? `${baseClass} resize-none` : baseClass,
+        class: controlClass,
         placeholder: p.placeholder,
         rows: bounds.minRows,
         maxlength: p.maxlength,
@@ -306,18 +315,23 @@ const ChoyTextCell = defineComponent({
           bindTextareaEl(vnode.el);
           queueMicrotask(syncAutosize);
         },
-      });
-      if (!showLimit) return textarea;
-      return h('div', { class: 'choy-textarea-wrap relative w-full' }, [
-        textarea,
+      };
+      if (!showLimit) return h(Textarea, controlProps);
+      // Word-limit in a block-end addon so the counter owns a row (no absolute overlay).
+      return h(InputGroup, { class: 'choy-textarea-wrap w-full shadow-none' }, () => [
+        h(InputGroupTextarea, controlProps),
         h(
-          'span',
-          {
-            class:
-              'choy-textarea-word-limit pointer-events-none absolute bottom-2 end-2 text-xs tabular-nums text-muted-foreground',
-            'aria-hidden': 'true',
-          },
-          `${strLen(text)} / ${max}`,
+          InputGroupAddon,
+          { align: 'block-end', class: 'justify-end' },
+          () =>
+            h(
+              InputGroupText,
+              {
+                class: 'choy-textarea-word-limit text-xs tabular-nums',
+                'aria-hidden': 'true',
+              },
+              () => `${strLen(text)} / ${max}`,
+            ),
         ),
       ]);
     };
