@@ -93,10 +93,10 @@ type roleCodeRow struct {
 
 type roleUiResourceGrantRow struct {
 	meta.BaseModel
-	RoleId            sql.NullString `gorm:"type:char(20);not null;index"`
+	RoleId            sql.NullString `gorm:"type:char(20);not null;uniqueIndex:uidx_auth_role_ui_resource_role_resource;index"`
 	Mode              string         `gorm:"type:varchar(16);not null;default:allow;index"`
 	MetaApplicationId sql.NullString `gorm:"type:char(20);index"`
-	MetaUiResourceId  sql.NullString `gorm:"type:char(20);index"`
+	MetaUiResourceId  sql.NullString `gorm:"type:char(20);uniqueIndex:uidx_auth_role_ui_resource_role_resource;index"`
 }
 
 func (roleUiResourceGrantRow) TableName() string {
@@ -1741,6 +1741,9 @@ func (b *WebModuleBuilder) persistModuleUiResources(moduleID string, uiResources
 		if id == "" {
 			continue
 		}
+		// Keep in-memory Ids aligned with the DB after name upsert so defaultRoles
+		// seeding and later consumers do not bind grants to ephemeral BeforeCreate xids.
+		r.Id = sql.NullString{String: id, Valid: true}
 
 		updates := map[string]any{
 			"parent_id":   nil,
@@ -1785,6 +1788,24 @@ func (b *WebModuleBuilder) persistModuleUiResources(moduleID string, uiResources
 	}
 	moduleResourceIDs := collectUiResourceIDs(moduleRows)
 	if err := b.replaceUiResourceRelations(moduleResourceIDs, menuRoutes, routeActions); err != nil {
+		return err
+	}
+
+	removedIDs := make([]string, 0)
+	nameSet := make(map[string]bool, len(names))
+	for _, name := range names {
+		nameSet[name] = true
+	}
+	for _, row := range moduleRows {
+		if row == nil || !row.Id.Valid {
+			continue
+		}
+		if nameSet[strings.TrimSpace(row.Name)] {
+			continue
+		}
+		removedIDs = append(removedIDs, row.Id.String)
+	}
+	if err := b.deleteUiResourceRelationsByIDs(removedIDs); err != nil {
 		return err
 	}
 
@@ -1909,6 +1930,15 @@ func (b *WebModuleBuilder) deleteUiResourceRelationsByIDs(resourceIDs []string) 
 		Where("route_ui_resource_id IN ? OR action_ui_resource_id IN ?", resourceIDs, resourceIDs).
 		Delete(&meta.UiResourceRouteAction{}); result.Error != nil {
 		return result.Error
+	}
+	if b.runtimeScope.Session().Migrator().HasTable("auth_role_ui_resource") {
+		if result := b.runtimeScope.Session().
+			Unscoped().
+			Table("auth_role_ui_resource").
+			Where("meta_ui_resource_id IN ?", resourceIDs).
+			Delete(&roleUiResourceGrantRow{}); result.Error != nil {
+			return result.Error
+		}
 	}
 	return nil
 }
@@ -2211,6 +2241,7 @@ func parseJSONStrings(raw []byte) []string {
 func collectUiResourceDefaultRoleRows(
 	uiResources []*meta.UiResource,
 	roleIDByCode map[string]string,
+	skipRoleIDs map[string]bool,
 ) ([]roleUiResourceGrantRow, error) {
 	if len(uiResources) == 0 {
 		return nil, nil
@@ -2230,6 +2261,9 @@ func collectUiResourceDefaultRoleRows(
 			roleID := strings.TrimSpace(roleIDByCode[code])
 			if roleID == "" {
 				return nil, xfmt.Errorf("defaultRoles role %q not found", code)
+			}
+			if skipRoleIDs[roleID] {
+				continue
 			}
 
 			grantKey := roleID + "/" + resource.Id.String
@@ -2291,6 +2325,7 @@ func (b *WebModuleBuilder) persistUiResourceDefaultRoles(uiResources []*meta.UiR
 	}
 
 	roleIDByCode := make(map[string]string, len(roleRows))
+	roleIDs := make([]string, 0, len(roleRows))
 	for _, row := range roleRows {
 		code := strings.TrimSpace(row.Code)
 		id := strings.TrimSpace(row.Id)
@@ -2298,9 +2333,37 @@ func (b *WebModuleBuilder) persistUiResourceDefaultRoles(uiResources []*meta.UiR
 			continue
 		}
 		roleIDByCode[code] = id
+		roleIDs = append(roleIDs, id)
 	}
 
-	grantRows, err := collectUiResourceDefaultRoleRows(uiResources, roleIDByCode)
+	// Roles with an explicit global UI allow already cover every resource; skip
+	// per-resource defaultRoles materialization for those roles.
+	skipRoleIDs := make(map[string]bool)
+	if len(roleIDs) > 0 {
+		type globalAllowRow struct {
+			RoleId string
+		}
+		globalRows := make([]globalAllowRow, 0)
+		if result := session.
+			Table("auth_role_ui_resource").
+			Select("role_id").
+			Where("role_id IN ?", roleIDs).
+			Where("deleted_at IS NULL").
+			Where("mode = ?", "allow").
+			Where("meta_ui_resource_id IS NULL").
+			Where("meta_application_id IS NULL").
+			Find(&globalRows); result.Error != nil {
+			return xfmt.Errorf("query global UI allows failed: %w", result.Error)
+		}
+		for _, row := range globalRows {
+			id := strings.TrimSpace(row.RoleId)
+			if id != "" {
+				skipRoleIDs[id] = true
+			}
+		}
+	}
+
+	grantRows, err := collectUiResourceDefaultRoleRows(uiResources, roleIDByCode, skipRoleIDs)
 	if err != nil {
 		return err
 	}
@@ -2308,9 +2371,42 @@ func (b *WebModuleBuilder) persistUiResourceDefaultRoles(uiResources []*meta.UiR
 		return nil
 	}
 
+	resourceIDs := make([]string, 0, len(grantRows))
+	resourceSeen := make(map[string]bool, len(grantRows))
+	insertRoleIDs := make([]string, 0, len(grantRows))
+	insertRoleSeen := make(map[string]bool, len(grantRows))
+	for _, row := range grantRows {
+		rid := strings.TrimSpace(row.RoleId.String)
+		uid := strings.TrimSpace(row.MetaUiResourceId.String)
+		if rid != "" && !insertRoleSeen[rid] {
+			insertRoleSeen[rid] = true
+			insertRoleIDs = append(insertRoleIDs, rid)
+		}
+		if uid != "" && !resourceSeen[uid] {
+			resourceSeen[uid] = true
+			resourceIDs = append(resourceIDs, uid)
+		}
+	}
+
+	// Soft-deleted rows still occupy the unique pair; clear them so reseed can insert.
+	if len(insertRoleIDs) > 0 && len(resourceIDs) > 0 {
+		if result := session.
+			Unscoped().
+			Table("auth_role_ui_resource").
+			Where("role_id IN ?", insertRoleIDs).
+			Where("meta_ui_resource_id IN ?", resourceIDs).
+			Where("deleted_at IS NOT NULL").
+			Delete(&roleUiResourceGrantRow{}); result.Error != nil {
+			return xfmt.Errorf("purge soft-deleted defaultRoles grants failed: %w", result.Error)
+		}
+	}
+
 	if result := session.
 		Table("auth_role_ui_resource").
-		Clauses(clause.OnConflict{DoNothing: true}).
+		Clauses(clause.OnConflict{
+			Columns:   []clause.Column{{Name: "role_id"}, {Name: "meta_ui_resource_id"}},
+			DoNothing: true,
+		}).
 		Create(&grantRows); result.Error != nil {
 		return xfmt.Errorf("insert defaultRoles role UI resources failed: %w", result.Error)
 	}

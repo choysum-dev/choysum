@@ -29,6 +29,7 @@ export default class RoleUiResource extends AuthzMutationModel {
   @Field({
     type: 'ManyToOne',
     relation: { targetModel: () => Role },
+    uniqueIndex: 'uidx_auth_role_ui_resource_role_resource',
     string: _lt('Role', { scope: 'auth.model.RoleUiResource.fields' }),
   })
   RoleId: Role;
@@ -73,6 +74,7 @@ export default class RoleUiResource extends AuthzMutationModel {
     notNull: false,
     size: 20,
     index: true,
+    uniqueIndex: 'uidx_auth_role_ui_resource_role_resource',
     checkConstraint: `(
         (deleted_at IS NOT NULL)
         OR (meta_ui_resource_id IS NOT NULL AND meta_application_id IS NULL)

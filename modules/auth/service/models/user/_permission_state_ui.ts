@@ -54,7 +54,7 @@ export async function buildUiPermissionProjection(
 
   // 3) Generate ui.routes, ui.menus, and ui.actions from UI grants and RPC requires.
   const uiGrants = await RoleUiResource.Search(['RoleId', 'in', roleIds], {
-    fields: ['RoleId', 'MetaApplicationId', 'MetaUiResourceId', 'Mode'],
+    fields: [{ RoleId: ['Id'] }, 'MetaApplicationId', 'MetaUiResourceId', 'Mode'],
     limit: 50000,
   });
 
@@ -133,6 +133,47 @@ export async function buildUiPermissionProjection(
     }
   }
 
+  const companyKeys = Array.from(new Set(['*', ...(enabledCompanyIds || [])]));
+
+  // When every company can take routes/menus/actions=['*'] (same gate as the late
+  // short-circuit below, including Method deny), skip the Meta UI catalog loads.
+  const canSkipUiCatalog = companyKeys.every(companyKey => {
+    const hasGlobalAllow = acl.companyGlobalAllow.has(companyKey) || (companyKey !== '*' && acl.companyGlobalAllow.has('*'));
+    const hasGlobalDeny = acl.companyGlobalDeny.has(companyKey) || (companyKey !== '*' && acl.companyGlobalDeny.has('*'));
+    const hasExplicitGlobalUiAllow =
+      explicitGlobalUiAllowByCompany.has(companyKey) ||
+      (companyKey !== '*' && explicitGlobalUiAllowByCompany.has('*'));
+    const hasExplicitGlobalUiDeny =
+      explicitGlobalUiDenyByCompany.has(companyKey) ||
+      (companyKey !== '*' && explicitGlobalUiDenyByCompany.has('*'));
+    const explicitAppDeny = new Set<string>([
+      ...(explicitAppUiDenyByCompany.get(companyKey) ?? []),
+      ...(companyKey !== '*' ? (explicitAppUiDenyByCompany.get('*') ?? []) : []),
+    ]);
+    const explicitResourceDeny = new Set<string>([
+      ...(explicitResourceUiDenyByCompany.get(companyKey) ?? []),
+      ...(companyKey !== '*' ? (explicitResourceUiDenyByCompany.get('*') ?? []) : []),
+    ]);
+    const hasAnyExplicitUiDeny = hasExplicitGlobalUiDeny || explicitAppDeny.size > 0 || explicitResourceDeny.size > 0;
+    if (hasAnyExplicitUiDeny) return false;
+    if (!((hasGlobalAllow && !hasGlobalDeny) || hasExplicitGlobalUiAllow)) return false;
+    const requiresDenySet = new Set<string>([
+      ...(acl.requiresDenyKeysByCompany.get(companyKey) ?? []),
+      ...(companyKey !== '*' ? (acl.requiresDenyKeysByCompany.get('*') ?? []) : []),
+    ]);
+    return requiresDenySet.size === 0;
+  });
+
+  if (canSkipUiCatalog) {
+    for (const companyKey of companyKeys) {
+      const bucket = ensureBucket(byCompany, companyKey);
+      bucket.ui!.routes = ['*'];
+      bucket.ui!.menus = ['*'];
+      bucket.ui!.actions = ['*'];
+    }
+    return byCompany;
+  }
+
   const resources = await MetaUiResource.Search([], {
     fields: ['Id', 'Name', 'Type', 'ParentId', 'MetaApplicationId', 'Requires'],
     limit: 100000,
@@ -207,7 +248,6 @@ export async function buildUiPermissionProjection(
     routeIds.add(routeId);
   }
 
-  const companyKeys = Array.from(new Set(['*', ...(enabledCompanyIds || [])]));
   for (const companyKey of companyKeys) {
     const bucket = ensureBucket(byCompany, companyKey);
     const ui = bucket.ui!;

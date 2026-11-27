@@ -97,6 +97,14 @@ func (m *moduleUninstaller) cleanModels() error {
 	if err := db.Where("route_ui_resource_id IN (?) OR action_ui_resource_id IN (?)", uiResourceIDs, uiResourceIDs).Delete(&meta.UiResourceRouteAction{}).Error; err != nil {
 		return xfmt.Errorf("error deleting UI resource route-action relations: %w", err)
 	}
+	if db.Migrator().HasTable("auth_role_ui_resource") {
+		if err := db.Exec(
+			"DELETE FROM auth_role_ui_resource WHERE meta_ui_resource_id IN ?",
+			uiResourceIDs,
+		).Error; err != nil {
+			return xfmt.Errorf("error deleting role UI resource grants: %w", err)
+		}
+	}
 	if err := db.Where("id IN (?)", uiResourceIDs).Delete(&meta.UiResource{}).Error; err != nil {
 		return xfmt.Errorf("error deleting UI resources: %w", err)
 	}

@@ -2600,8 +2600,23 @@ func TestPersistModuleUiResources_PersistsUiResourceRelations(t *testing.T) {
 	if err := b.persistModuleUiResources(module.Id.String, resources, menuRoutes, routeActions); err != nil {
 		t.Fatalf("persist module ui resources failed: %v", err)
 	}
+	stableIDs := make(map[string]string, len(resources))
+	for _, r := range resources {
+		if r == nil || !r.Id.Valid {
+			t.Fatalf("expected in-memory ui resource Id after first persist")
+		}
+		stableIDs[r.Name] = r.Id.String
+	}
 	if err := b.persistModuleUiResources(module.Id.String, resources, menuRoutes, routeActions); err != nil {
 		t.Fatalf("persist module ui resources second time failed: %v", err)
+	}
+	for _, r := range resources {
+		if r == nil || !r.Id.Valid {
+			t.Fatalf("expected in-memory ui resource Id after second persist")
+		}
+		if got, want := r.Id.String, stableIDs[r.Name]; got != want {
+			t.Fatalf("ui resource %q Id drifted after upsert: got %q want %q", r.Name, got, want)
+		}
 	}
 
 	var menuRouteCount int64
@@ -2794,8 +2809,9 @@ func TestPersist_IntegratesUiResourcesComponentsAndWarnings(t *testing.T) {
 		t.Fatalf("automigrate failed: %v", err)
 	}
 	mustExec(t, testRuntimeScope.db, `CREATE TABLE auth_role (id TEXT PRIMARY KEY, code TEXT)`)
-	mustExec(t, testRuntimeScope.db, `CREATE TABLE auth_role_ui_resource (id TEXT, role_id TEXT, mode TEXT, meta_application_id TEXT, meta_ui_resource_id TEXT, created_at DATETIME, updated_at DATETIME, deleted_at DATETIME, created_uid TEXT, updated_uid TEXT, deleted_uid TEXT)`)
-	mustExec(t, testRuntimeScope.db, `CREATE UNIQUE INDEX idx_auth_role_ui_resource_pair ON auth_role_ui_resource(role_id, meta_ui_resource_id)`)
+	if err := testRuntimeScope.db.AutoMigrate(&roleUiResourceGrantRow{}); err != nil {
+		t.Fatalf("automigrate auth_role_ui_resource failed: %v", err)
+	}
 	b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
 
 	if err := testRuntimeScope.db.Create(&meta.Model{
@@ -3733,7 +3749,7 @@ func TestCollectUiResourceDefaultRoleRows_BuildsDistinctRows(t *testing.T) {
 	rows, err := collectUiResourceDefaultRoleRows(uiResources, map[string]string{
 		"base.user": "role_base_user",
 		"sys.admin": "role_sys_admin",
-	})
+	}, nil)
 	if err != nil {
 		t.Fatalf("collectUiResourceDefaultRoleRows returned error: %v", err)
 	}
@@ -3758,6 +3774,17 @@ func TestCollectUiResourceDefaultRoleRows_BuildsDistinctRows(t *testing.T) {
 	if !pairSet["role_base_user/ui_2"] {
 		t.Fatalf("expected base.user grant for ui_2")
 	}
+
+	skipped, err := collectUiResourceDefaultRoleRows(uiResources, map[string]string{
+		"base.user": "role_base_user",
+		"sys.admin": "role_sys_admin",
+	}, map[string]bool{"role_sys_admin": true})
+	if err != nil {
+		t.Fatalf("collectUiResourceDefaultRoleRows with skip returned error: %v", err)
+	}
+	if len(skipped) != 2 {
+		t.Fatalf("expected 2 rows after skipping sys.admin, got %d", len(skipped))
+	}
 }
 
 func TestCollectUiResourceDefaultRoleRows_MissingRoleFails(t *testing.T) {
@@ -3769,7 +3796,7 @@ func TestCollectUiResourceDefaultRoleRows_MissingRoleFails(t *testing.T) {
 		},
 	}
 
-	_, err := collectUiResourceDefaultRoleRows(uiResources, map[string]string{})
+	_, err := collectUiResourceDefaultRoleRows(uiResources, map[string]string{}, nil)
 	if err == nil {
 		t.Fatalf("expected missing role error")
 	}
@@ -4418,8 +4445,9 @@ func TestReplaceUiResourceRelationsDeleteError(t *testing.T) {
 func TestPersistUiResourceDefaultRolesInsertsAndDedupes(t *testing.T) {
 	testRuntimeScope := newTestScopeWithDB(t).(*testScope)
 	mustExec(t, testRuntimeScope.db, `CREATE TABLE auth_role (id TEXT PRIMARY KEY, code TEXT)`)
-	mustExec(t, testRuntimeScope.db, `CREATE TABLE auth_role_ui_resource (id TEXT, role_id TEXT, mode TEXT, meta_application_id TEXT, meta_ui_resource_id TEXT, created_at DATETIME, updated_at DATETIME, deleted_at DATETIME, created_uid TEXT, updated_uid TEXT, deleted_uid TEXT)`)
-	mustExec(t, testRuntimeScope.db, `CREATE UNIQUE INDEX idx_auth_role_ui_resource_pair ON auth_role_ui_resource(role_id, meta_ui_resource_id)`)
+	if err := testRuntimeScope.db.AutoMigrate(&roleUiResourceGrantRow{}); err != nil {
+		t.Fatalf("automigrate auth_role_ui_resource failed: %v", err)
+	}
 	b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
 
 	if err := testRuntimeScope.db.Exec(`INSERT INTO auth_role (id, code) VALUES (?, ?), (?, ?)`, "role_user", "base.user", "role_admin", "sys.admin").Error; err != nil {
@@ -4459,6 +4487,58 @@ func TestPersistUiResourceDefaultRolesInsertsAndDedupes(t *testing.T) {
 
 	if err := b.persistUiResourceDefaultRoles([]*meta.UiResource{{Name: "menu.empty"}}); err != nil {
 		t.Fatalf("expected no-defaultRoles fast path to succeed, got %v", err)
+	}
+}
+
+func TestPersistUiResourceDefaultRolesSkipsRolesWithGlobalAllow(t *testing.T) {
+	testRuntimeScope := newTestScopeWithDB(t).(*testScope)
+	mustExec(t, testRuntimeScope.db, `CREATE TABLE auth_role (id TEXT PRIMARY KEY, code TEXT)`)
+	if err := testRuntimeScope.db.AutoMigrate(&roleUiResourceGrantRow{}); err != nil {
+		t.Fatalf("automigrate auth_role_ui_resource failed: %v", err)
+	}
+	b := &WebModuleBuilder{runtimeScope: testRuntimeScope}
+
+	if err := testRuntimeScope.db.Exec(`INSERT INTO auth_role (id, code) VALUES (?, ?), (?, ?)`, "role_user", "base.user", "role_admin", "sys.admin").Error; err != nil {
+		t.Fatalf("seed auth_role failed: %v", err)
+	}
+	if err := testRuntimeScope.db.Table("auth_role_ui_resource").Create(&roleUiResourceGrantRow{
+		RoleId: sql.NullString{String: "role_admin", Valid: true},
+		Mode:   "allow",
+	}).Error; err != nil {
+		t.Fatalf("seed global allow failed: %v", err)
+	}
+
+	resources := []*meta.UiResource{
+		{BaseModel: meta.BaseModel{Id: sql.NullString{String: "ui_1", Valid: true}}, Name: "menu.root", DefaultRoles: []byte(`["base.user","sys.admin"]`)},
+		{BaseModel: meta.BaseModel{Id: sql.NullString{String: "ui_2", Valid: true}}, Name: "route.home", DefaultRoles: []byte(`["sys.admin"]`)},
+	}
+	if err := b.persistUiResourceDefaultRoles(resources); err != nil {
+		t.Fatalf("persistUiResourceDefaultRoles returned error: %v", err)
+	}
+
+	var rows []roleUiResourceGrantRow
+	if err := testRuntimeScope.db.Table("auth_role_ui_resource").Order("role_id, meta_ui_resource_id").Find(&rows).Error; err != nil {
+		t.Fatalf("query auth_role_ui_resource failed: %v", err)
+	}
+	if len(rows) != 2 {
+		t.Fatalf("expected global allow + one base.user grant, got %d (%#v)", len(rows), rows)
+	}
+	seen := map[string]bool{}
+	for _, row := range rows {
+		key := row.RoleId.String + "/"
+		if row.MetaUiResourceId.Valid {
+			key += row.MetaUiResourceId.String
+		}
+		seen[key] = true
+	}
+	if !seen["role_admin/"] {
+		t.Fatalf("expected sys.admin global allow to remain, got %#v", rows)
+	}
+	if !seen["role_user/ui_1"] {
+		t.Fatalf("expected base.user resource grant, got %#v", rows)
+	}
+	if seen["role_admin/ui_1"] || seen["role_admin/ui_2"] {
+		t.Fatalf("sys.admin with global allow must not receive per-resource defaultRoles, got %#v", rows)
 	}
 }
 

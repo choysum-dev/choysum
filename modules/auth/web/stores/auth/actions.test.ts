@@ -730,6 +730,46 @@ test('refreshToken: superseded invalid RefreshTokens response keeps the switched
   expect(mockHelpers._recorders.resetAuthState.calls.length).toBe(0);
 });
 
+test('loadPermissionState: concurrent non-force calls share one GetPermissionState RPC', async () => {
+  const mockState = buildMockState();
+  const mockHelpers = buildMockHelpers();
+  mockState.tokens.value = {
+    accessToken: 'access',
+    refreshToken: 'refresh',
+    expiresAt: Date.now() + 3600_000,
+  };
+  mockState.identity.value = {
+    userId: 'usr_1',
+    metadata: {
+      permStateVersion: 1,
+      activeCompanyId: 'cmp_a',
+      enabledCompanyIds: ['cmp_a'],
+    },
+  } as any;
+
+  let resolvePermission: (value: unknown) => void = () => {};
+  const permissionDeferred = new Promise(resolve => {
+    resolvePermission = resolve;
+  });
+  mockState._recorders.GetPermissionState.returnValue(permissionDeferred);
+
+  const actions = defineAuthActions(mockState as any, mockHelpers as any, { isClient: true });
+  const first = actions.loadPermissionState(false);
+  const second = actions.loadPermissionState(false);
+
+  expect(mockState._recorders.GetPermissionState.calls.length).toBe(1);
+
+  resolvePermission({
+    permStateVersion: 1,
+    byCompany: { cmp_a: { ui: { routes: ['*'], menus: ['*'], actions: ['*'] } } },
+  });
+
+  expect(await first).toBe(true);
+  expect(await second).toBe(true);
+  expect(mockState._recorders.GetPermissionState.calls.length).toBe(1);
+  expect(mockState.permissionState.value?.permStateVersion).toBe(1);
+});
+
 test('loadPermissionState: late failure after company switch keeps the newer snapshot', async () => {
   const mockState = buildMockState();
   const mockHelpers = buildMockHelpers();

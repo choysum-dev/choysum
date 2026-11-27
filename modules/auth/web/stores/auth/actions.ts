@@ -792,8 +792,41 @@ export function defineAuthActions(state: AuthState, helpers: AuthHelpers, deps?:
   const logout = withLoading(logoutImpl, state.loading);
   const refreshToken = refreshTokenImpl;
   const loadUser = withLoading(loadUserImpl, state.loading);
-  const loadPermissionState = withLoading(loadPermissionStateImpl, state.loading);
+  const loadPermissionStateWithLoading = withLoading(loadPermissionStateImpl, state.loading);
   const switchCompanyScope = withLoading(switchCompanyScopeImpl, state.loading);
+
+  // Deduplicate concurrent loadPermissionState(false) (login watcher + route guard).
+  let permissionInFlight: Promise<boolean> | null = null;
+  let permissionInFlightForced = false;
+
+  /**
+   * Load permission state with single-flight for non-force callers.
+   */
+  async function loadPermissionState(forceRefresh = false): Promise<boolean> {
+    if (permissionInFlight) {
+      if (!forceRefresh) return permissionInFlight;
+      if (permissionInFlightForced) return permissionInFlight;
+      try {
+        await permissionInFlight;
+      } catch {
+        // Prior flight failed; continue with a forced refresh.
+      }
+    }
+
+    permissionInFlightForced = forceRefresh;
+    const flight = (async (): Promise<boolean> => {
+      try {
+        return await loadPermissionStateWithLoading(forceRefresh);
+      } finally {
+        if (permissionInFlight === flight) {
+          permissionInFlight = null;
+          permissionInFlightForced = false;
+        }
+      }
+    })();
+    permissionInFlight = flight;
+    return flight;
+  }
 
   return {
     clearAuth,
