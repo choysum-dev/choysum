@@ -283,6 +283,105 @@ describe('ChoyFormView workspace height', () => {
     mounted.unmount();
   });
 
+  test('create/edit keeps statusbar-status ribbon and hides statusbar-buttons', async () => {
+    // viewMode create reliably enters isEditing (edit+recordId depends on Browse).
+    const store = loginStore();
+    const { router } = createFeStubRouter({
+      route: { name: 'login', path: '/web/login', fullPath: '/web/login', params: {}, query: {}, meta: {} },
+    });
+    const Host = defineComponent({
+      setup() {
+        return () =>
+          h(
+            ChoyPage as any,
+            { store, title: 'Module' },
+            {
+              default: () =>
+                h(
+                  ChoyFormView as any,
+                  {
+                    store,
+                    viewMode: 'create',
+                    resolveRecordIdFromRoute: false,
+                    showHeader: true,
+                    showActions: true,
+                    showMessages: false,
+                    hasAction: () => true,
+                  },
+                  {
+                    'statusbar-buttons': () =>
+                      h('button', { type: 'button', 'data-testid': 'domain-primary' }, 'Install'),
+                    'statusbar-status': () =>
+                      h('div', { 'data-testid': 'domain-status' }, 'Installed'),
+                  },
+                ),
+            },
+          );
+      },
+    });
+    const mounted = mountApp(Host, { plugins: [createPinia(), router] });
+    await flushPromises();
+
+    const leading = mounted.q('[data-slot=view-action-bar-leading]') as HTMLElement | null;
+    expect(leading).not.toBeNull();
+    const order = actionBarLeadingOrder(leading!);
+    expect(order.some((t) => t.includes('Save') || t.includes('保存'))).toBe(true);
+    const statusbar = mounted.q('[data-testid=form-statusbar]') as HTMLElement | null;
+    expect(statusbar).not.toBeNull();
+    expect(statusbar!.style.display).not.toBe('none');
+    expect(statusbar!.querySelector('[data-testid=form-statusbar-buttons]')).toBeNull();
+    expect(mounted.q('[data-testid=domain-primary]')).toBeNull();
+    expect(statusbar!.querySelector('[data-testid=form-statusbar-status]')).not.toBeNull();
+    expect(mounted.q('[data-testid=domain-status]')?.textContent).toBe('Installed');
+
+    mounted.unmount();
+  });
+
+  test('create/edit with only statusbar-buttons hides the whole statusbar chrome', async () => {
+    const store = loginStore();
+    const { router } = createFeStubRouter({
+      route: { name: 'login', path: '/web/login', fullPath: '/web/login', params: {}, query: {}, meta: {} },
+    });
+    const Host = defineComponent({
+      setup() {
+        return () =>
+          h(
+            ChoyPage as any,
+            { store, title: 'Language' },
+            {
+              default: () =>
+                h(
+                  ChoyFormView as any,
+                  {
+                    store,
+                    viewMode: 'create',
+                    resolveRecordIdFromRoute: false,
+                    showHeader: true,
+                    showActions: true,
+                    showMessages: false,
+                    hasAction: () => true,
+                  },
+                  {
+                    'statusbar-buttons': () =>
+                      h('button', { type: 'button', 'data-testid': 'domain-activate' }, 'Activate'),
+                  },
+                ),
+            },
+          );
+      },
+    });
+    const mounted = mountApp(Host, { plugins: [createPinia(), router] });
+    await flushPromises();
+
+    const statusbar = mounted.q('[data-testid=form-statusbar]') as HTMLElement | null;
+    expect(statusbar).not.toBeNull();
+    // v-show sets inline display:none (jsdom getComputedStyle is unreliable here).
+    expect(statusbar!.style.display).toBe('none');
+    expect(mounted.q('[data-testid=domain-activate]')).toBeNull();
+
+    mounted.unmount();
+  });
+
   test('create left chrome is title → Save/Cancel → ⋮ (Reset in overflow)', async () => {
     const store = loginStore();
     const { router } = createFeStubRouter({

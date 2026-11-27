@@ -38,7 +38,8 @@ SPDX-License-Identifier: Apache-2.0
     <!--
       Action Bar contract:
       [identity: title] [主 → 次 → ⋯] | [找] | [看]
-      create/edit: platform Save/Cancel; Reset/New/Copy/Delete in ⋮; statusbar hidden.
+      create/edit: platform Save/Cancel; Reset/New/Copy/Delete in ⋮;
+        statusbar-buttons hidden; statusbar-status ribbon stays when present.
       display: platform Edit; domain flow → optional statusbar (#statusbar-buttons | #statusbar-status).
       settings: Save/Discard only (no CRUD / Reset overflow / statusbar).
     -->
@@ -207,10 +208,12 @@ SPDX-License-Identifier: Apache-2.0
     </template>
 
     <!--
-      Optional Form statusbar under Action Bar (Odoo-aligned):
+      Optional Form statusbar under Action Bar:
       statusbar = #statusbar-buttons | #statusbar-status.
-      Visually hidden while editing (v-show) so status fields (e.g. Progress)
-      stay registered for cancel/refresh beginDisplay browse selection.
+      Buttons: display only (side-path workflow). Status ribbon: stays across
+      display/edit/create when slotted (identity); Progress stays mounted for
+      cancel/refresh beginDisplay browse selection.
+      Root hidden when editing and only buttons exist (no empty chrome).
       Omitted when settings or both sides empty.
       #contextual-actions / #user-actions → buttons (deprecated).
       #statusbar → status (deprecated).
@@ -220,7 +223,7 @@ SPDX-License-Identifier: Apache-2.0
       #header-extra
     >
       <div
-        v-show="!isEditing"
+        v-show="hasStatusbarStatus() || (!isEditing && hasStatusbarButtons())"
         data-anchor="choy.form.statusbar"
         data-testid="form-statusbar"
         class="flex min-h-control-sm min-w-0 w-full flex-nowrap items-center justify-between gap-3"
@@ -228,7 +231,7 @@ SPDX-License-Identifier: Apache-2.0
         :aria-label="_t('Status bar')"
       >
         <div
-          v-if="hasStatusbarButtons()"
+          v-if="!isEditing && hasStatusbarButtons()"
           data-anchor="choy.form.statusbar-buttons"
           data-testid="form-statusbar-buttons"
           class="flex min-w-0 flex-nowrap items-center gap-2 overflow-x-auto"
@@ -505,7 +508,7 @@ defineSlots<{
     loading: boolean;
   }): any;
   /**
-   * Domain workflow actions on the Form statusbar (left).
+   * Domain workflow actions on the Form statusbar (left; display only).
    */
   'statusbar-buttons'(props: {
     formData: Partial<ClientModel<T>>;
@@ -514,7 +517,7 @@ defineSlots<{
     loading: boolean;
   }): any;
   /**
-   * Status stage ribbon on the Form statusbar (right).
+   * Status stage ribbon on the Form statusbar (right; stays in edit/create).
    */
   'statusbar-status'(): any;
   /**

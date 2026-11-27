@@ -160,18 +160,17 @@ describe('ChoyStatusbarField mount wiring', () => {
     m.unmount();
   });
 
-  test('edit mode is clickable by default', async () => {
+  test('edit mode stays non-clickable by default', async () => {
     const store = makeStore();
     const { binding, value } = makeBinding({ meta: staticMeta, store, value: 'draft', isEditMode: true });
     const m = mountStatusbar({}, binding);
     await flushPromises();
     const root = statusbarRoot(m);
-    expect(root?.getAttribute('data-clickable')).toBe('true');
-    expect(root?.getAttribute('aria-disabled')).toBeFalsy();
-    expect(optionValues(m).every((o) => o.disabled)).toBe(false);
+    expect(root?.getAttribute('data-clickable')).toBeFalsy();
+    expect(root?.getAttribute('aria-disabled')).toBe('true');
     m.click('[data-value=done]');
     await flushPromises();
-    expect(value.value).toBe('done');
+    expect(value.value).toBe('draft');
     m.unmount();
   });
 

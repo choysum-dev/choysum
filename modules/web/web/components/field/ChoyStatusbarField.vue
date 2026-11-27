@@ -136,11 +136,10 @@ const props = withDefaults(
 
     /**
      * Write gate for stage clicks.
-     * null/omit: clickable in form edit mode.
-     * true: always when not readonly; false: never.
-     * (null default avoids Vue Boolean-prop coercing omit → false.)
+     * false/omit (default): identity ribbon — not interactive.
+     * true: allow stage clicks to write the field (when not readonly/disabled).
      */
-    clickable?: boolean | null;
+    clickable?: boolean;
     disabled?: boolean;
     /** Write gate before assigning fieldValue. */
     beforeChange?: StatusbarBeforeChange;
@@ -166,7 +165,7 @@ const props = withDefaults(
   }>(),
   {
     rules: () => [],
-    clickable: null,
+    clickable: false,
     disabled: false,
     formItemProps: () => ({}),
     vColumnProps: () => ({}),
@@ -236,9 +235,7 @@ const exprReadonly = computed(() => {
 
 const isInteractive = computed(() => {
   if (props.disabled || exprReadonly.value || metaReadonly.value) return false;
-  if (props.clickable === false) return false;
-  if (props.clickable === true) return true;
-  return binding.env?.isEditMode === true;
+  return props.clickable === true;
 });
 
 const whitelist = computed(() => resolveStatusbarWhitelist(props.statusbarVisible, props.selection));

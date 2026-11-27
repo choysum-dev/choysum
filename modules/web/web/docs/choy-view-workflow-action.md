@@ -16,6 +16,10 @@ Use:
 - `useFormWorkflowAction` — Form `#statusbar-buttons` after Activate / Mark Open / …
 - `useListWorkflowAction` — List `#contextual-actions` after bulk domain writes
 
+Form statusbar slots: `#statusbar-buttons` are **display-only** (side-path commit).
+`#statusbar-status` (e.g. `ChoyStatusbarField`) may stay visible in edit/create as
+document-stage identity; stage clicks require `:clickable="true"` (default is off).
+
 Platform **Refresh** (Form/List overflow) is **not** this flow: Refresh *is* the surface
 reload (`handleRefresh` → `beginDisplay` / `apply` + toast). Domain CTA = `call` then
 optional silent sync; Refresh = user-requested reload.
