@@ -145,7 +145,7 @@ describe('ChoyKanbanView chrome', () => {
     expect(counts[0]!.textContent?.trim()).toBe('1');
     expect(counts[1]!.textContent?.trim()).toBe('0');
     expect(mounted.q('.choy-kanban-view__card')?.className).toContain('hover:bg-accent/40');
-    // Nested radius: lane/card sm, below sheet md (see choy-view-sheet.md).
+    // Nested radius: lane/card sm, below sheet md.
     const cardClass = mounted.q('.choy-kanban-view__card')?.className ?? '';
     expect(cardClass).toMatch(/\brounded-sm\b/);
     expect(cardClass).not.toMatch(/\brounded-md\b/);
