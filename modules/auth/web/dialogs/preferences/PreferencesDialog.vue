@@ -582,13 +582,6 @@ async function onPreferencesSubmit(ctx: {
 .choy-preferences-dialog__setting :deep([data-anchor='choy.field-base'][data-orientation='horizontal']) {
   gap: var(--choy-field-label-control-gap);
 }
-.choy-preferences-dialog__setting :deep(.choy-field-base__label-row) {
-  width: var(--choy-field-label-min);
-  flex-shrink: 0;
-  padding-top: 0.5rem;
-  font-size: 0.875rem;
-  line-height: 1.25rem;
-}
 .choy-preferences-dialog__setting :deep(.choy-field-base__content) {
   min-width: 0;
 }
