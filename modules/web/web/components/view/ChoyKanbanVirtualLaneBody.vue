@@ -21,7 +21,7 @@ SPDX-License-Identifier: Apache-2.0
         :key="String(item.key)"
         :ref="measureElement"
         :data-index="item.index"
-        class="choy-kanban-view__card absolute start-0 top-0 w-full rounded-md border border-border bg-card p-3 shadow-xs outline-none transition-colors hover:bg-accent/40 focus-visible:ring-2 focus-visible:ring-ring"
+        class="choy-kanban-view__card absolute start-0 top-0 w-full rounded-sm border border-border bg-card p-3 shadow-xs outline-none transition-colors hover:bg-accent/40 focus-visible:ring-2 focus-visible:ring-ring"
         :class="laneDrag ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'"
         :style="{ transform: `translateY(${item.start}px)` }"
         :data-card-id="cards[item.index]?.id"
@@ -74,7 +74,7 @@ SPDX-License-Identifier: Apache-2.0
       <article
         v-for="card in cards"
         :key="card.id"
-        class="choy-kanban-view__card rounded-md border border-border bg-card p-3 shadow-xs outline-none transition-colors hover:bg-accent/40 focus-visible:ring-2 focus-visible:ring-ring"
+        class="choy-kanban-view__card rounded-sm border border-border bg-card p-3 shadow-xs outline-none transition-colors hover:bg-accent/40 focus-visible:ring-2 focus-visible:ring-ring"
         :class="laneDrag ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'"
         :data-card-id="card.id"
         :draggable="laneDrag"
@@ -122,7 +122,7 @@ SPDX-License-Identifier: Apache-2.0
 
     <div
       v-if="cards.length === 0"
-      class="shrink-0 rounded-md border border-dashed border-border/70 px-3 py-6 text-center text-xs text-muted-foreground"
+      class="shrink-0 rounded-sm border border-dashed border-border/70 px-3 py-6 text-center text-xs text-muted-foreground"
     >
       <slot name="card-empty" :lane="lane">{{ emptyLabel }}</slot>
     </div>

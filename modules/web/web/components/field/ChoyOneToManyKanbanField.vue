@@ -64,7 +64,7 @@ SPDX-License-Identifier: Apache-2.0
           >
             <template #card="{ item, index }">
               <div
-                class="choy-o2m-kanban-card group/card relative cursor-pointer rounded-md border border-border bg-card p-3 shadow-xs outline-none transition-colors hover:bg-accent/40"
+                class="choy-o2m-kanban-card group/card relative cursor-pointer rounded-sm border border-border bg-card p-3 shadow-xs outline-none transition-colors hover:bg-accent/40"
                 :class="kanbanCardDragClass(index)"
                 data-testid="choy-o2m-kanban-card"
                 role="button"
@@ -133,7 +133,7 @@ SPDX-License-Identifier: Apache-2.0
 
             <template v-if="!editable" #empty>
               <div
-                class="col-span-full flex min-h-[72px] items-center justify-center rounded-md border border-dashed border-border text-sm text-muted-foreground"
+                class="col-span-full flex min-h-[72px] items-center justify-center rounded-sm border border-dashed border-border text-sm text-muted-foreground"
               >
                 <slot name="empty">{{ effectiveEmptyText }}</slot>
               </div>
@@ -141,7 +141,7 @@ SPDX-License-Identifier: Apache-2.0
 
             <template v-if="editable" #trailing>
               <div
-                class="flex min-h-[72px] cursor-pointer select-none items-center justify-center rounded-md border border-dashed border-border bg-muted/30 text-sm text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+                class="flex min-h-[72px] cursor-pointer select-none items-center justify-center rounded-sm border border-dashed border-border bg-muted/30 text-sm text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
                 data-testid="choy-o2m-kanban-add"
                 role="button"
                 tabindex="0"
@@ -178,7 +178,7 @@ SPDX-License-Identifier: Apache-2.0
           >
             <template #card="{ item, index }">
               <div
-                class="choy-o2m-kanban-card cursor-default rounded-md border border-border bg-card p-3 shadow-xs outline-none transition-colors hover:bg-accent/30"
+                class="choy-o2m-kanban-card cursor-default rounded-sm border border-border bg-card p-3 shadow-xs outline-none transition-colors hover:bg-accent/30"
                 data-testid="choy-o2m-kanban-card"
                 role="button"
                 tabindex="0"
@@ -209,7 +209,7 @@ SPDX-License-Identifier: Apache-2.0
 
             <template v-if="$slots.empty" #empty>
               <div
-                class="col-span-full flex min-h-[72px] items-center justify-center rounded-md border border-dashed border-border text-sm text-muted-foreground"
+                class="col-span-full flex min-h-[72px] items-center justify-center rounded-sm border border-dashed border-border text-sm text-muted-foreground"
               >
                 <slot name="empty" />
               </div>
