@@ -16,7 +16,11 @@ SPDX-License-Identifier: Apache-2.0
     :has-action="hasAction"
     v-on="$attrs"
   >
-    <!-- Workflow CTAs → Form statusbar left (display). Writes State; onchange mirrors Progress. -->
+    <!--
+      Workflow CTAs → Form statusbar left (display only; side-path UpdateById).
+      Progress ribbon → right (stays in edit/create; default non-clickable identity).
+      Stage writes in edit: sheet State selection; display: buttons below.
+    -->
     <template #statusbar-buttons="{ formData, recordId: slotRecordId, loading }">
       <ChoyStatusbarButton
         v-if="!loading && showMarkOpen(formData, slotRecordId)"
@@ -47,14 +51,13 @@ SPDX-License-Identifier: Apache-2.0
       </ChoyStatusbarButton>
     </template>
 
-    <!-- Progress ribbon → Form statusbar right (not in sheet body). -->
     <template #statusbar-status>
       <ChoyStatusbarField :store="store" prop="Progress" />
     </template>
 
     <!--
-      Sheet tip chrome + ChoySection `divided` for phase breaks (padless sections,
-      not nested cards). Avoid stacking flex gap with divided mt-* (double rhythm).
+      Sheet tip chrome + padless ChoySections (not nested cards).
+      Identity mt-0 so tip mb-8 is not doubled by section margin.
     -->
     <div data-anchor="choy.form.sheet" class="flex min-h-full flex-col">
       <aside
@@ -73,8 +76,7 @@ SPDX-License-Identifier: Apache-2.0
         Use :span="12" for full-bleed; object span for custom bands; :responsive="false" to freeze.
         Label gutter is per ChoyCol (contents + max-content); keep one field per Col for 421 demos.
       -->
-      <!-- divided for title trailing rule; mt-0 so tip mb-8 is not doubled. -->
-      <ChoySection :title="_t('Identity')" divided class="mt-0">
+      <ChoySection :title="_t('Identity')" class="mt-0">
         <ChoyGrid>
           <ChoyCol>
             <ChoyCharField :store="store" prop="NameChar" :rules="requiredRules" />
@@ -100,7 +102,7 @@ SPDX-License-Identifier: Apache-2.0
         </ChoyGrid>
       </ChoySection>
 
-      <ChoySection :title="_t('Numbers')" divided>
+      <ChoySection :title="_t('Numbers')">
         <ChoyGrid>
           <ChoyCol>
             <ChoyIntField :store="store" prop="IntValue" />
@@ -128,7 +130,7 @@ SPDX-License-Identifier: Apache-2.0
         </ChoyGrid>
       </ChoySection>
 
-      <ChoySection :title="_t('Temporal')" divided>
+      <ChoySection :title="_t('Temporal')">
         <!-- Object span: container bands (not viewport) — three columns when wide. -->
         <ChoyGrid>
           <ChoyCol :span="{ base: 12, md: 6, lg: 4 }">
@@ -143,7 +145,7 @@ SPDX-License-Identifier: Apache-2.0
         </ChoyGrid>
       </ChoySection>
 
-      <ChoySection :title="_t('Rich Content')" divided>
+      <ChoySection :title="_t('Rich Content')">
         <ChoyGrid>
           <ChoyCol :span="12">
             <ChoyHtmlField :store="store" prop="BodyHtml" orientation="vertical" />
@@ -163,7 +165,7 @@ SPDX-License-Identifier: Apache-2.0
         </ChoyGrid>
       </ChoySection>
 
-      <ChoySection :title="_t('Depth')" divided>
+      <ChoySection :title="_t('Depth')">
         <ChoyGrid>
           <!-- Numeric span = lg target; scales up under 421 (6→12→12). -->
           <ChoyCol :span="6">
@@ -191,7 +193,7 @@ SPDX-License-Identifier: Apache-2.0
         </ChoyGrid>
       </ChoySection>
 
-      <ChoySection :title="_t('Relations')" divided>
+      <ChoySection :title="_t('Relations')">
         <ChoyGrid>
           <ChoyCol :span="6">
             <ChoyManyToOneField
@@ -291,7 +293,7 @@ SPDX-License-Identifier: Apache-2.0
         </ChoyGrid>
       </ChoySection>
 
-      <ChoySection :title="_t('Lines')" divided>
+      <ChoySection :title="_t('Lines')">
         <div class="flex flex-col gap-4">
           <SandboxLinesVirtTools :store="store" />
           <ChoyTabs v-model="linesTab">
