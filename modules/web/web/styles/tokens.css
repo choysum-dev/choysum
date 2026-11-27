@@ -96,7 +96,7 @@ html {
   /* Vertical rhythm between header, canvas, and footer. Tighter than the inline gutter. */
   --choy-layout-section-gap: 0.5rem;
   /*
-   * View sheet contract (see .dev/docs/web/choy-view-sheet.md):
+   * View sheet tokens:
    * gutter = paper vs canvas (same rhythm as nav-pane end margin);
    * pad = in-paper density; radius matches nav-pane.
    */
