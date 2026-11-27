@@ -175,26 +175,31 @@ export default class RoleUiResource extends AuthzMutationModel {
     returnFields?: F
   ): Promise<Array<RowOrProjected<RowOf<C>, F>>> {
     const rows = values || [];
-    const out: Array<RowOrProjected<RowOf<C>, F>> = [];
+    const out: Array<RowOrProjected<RowOf<C>, F> | undefined> = new Array(rows.length);
     const toCreate: Partial<Insertable<RowOf<C>>>[] = [];
+    const createIndexes: number[] = [];
     // Validate the whole batch before reviving any tombstone so a later invalid
     // row cannot leave an earlier soft-deleted grant restored.
     for (const v of rows) {
       RoleUiResource._prepareValues(v as Record<string, unknown>, 'create');
     }
-    for (const v of rows) {
+    for (let i = 0; i < rows.length; i++) {
+      const v = rows[i];
       const revivedId = await RoleUiResource._reviveSoftDeletedPair(v as Record<string, unknown>);
       if (revivedId) {
-        out.push((await super.Browse<C, F>(revivedId, returnFields)) as RowOrProjected<RowOf<C>, F>);
+        out[i] = (await super.Browse<C, F>(revivedId, returnFields)) as RowOrProjected<RowOf<C>, F>;
       } else {
         toCreate.push(v);
+        createIndexes.push(i);
       }
     }
     if (toCreate.length) {
       const created = await super.CreateMany<C, F>(toCreate, returnFields);
-      out.push(...created);
+      created.forEach((row, idx) => {
+        out[createIndexes[idx]] = row;
+      });
     }
-    return out;
+    return out as Array<RowOrProjected<RowOf<C>, F>>;
   }
 
   /**
