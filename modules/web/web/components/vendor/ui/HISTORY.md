@@ -36,6 +36,22 @@ new HISTORY entry describing what was re-copied vs re-patched.
 
 ## Entries (newest first)
 
+### 2026-11-28 — InputGroup denser inline addon / control padding
+
+**What:**
+- `inputGroupAddonVariants` inline-start/end: outer inset stays `ps/pe-3` (12px);
+  button/kbd nudge uses logical `-ms` / `-me` (was physical `ml` / `mr`).
+- `InputGroup.vue` style: with an inline-end addon only, control
+  `padding-inline-start: 0.75rem` (match addon outer 12px) and
+  `padding-inline-end: 0.25rem` toward the counter; with inline-start addon,
+  tighten start to `0.25rem`. Kit `has-[…]` utilities are not always emitted.
+
+**Why not product-only:** Word-limit Varchar/Text and Search all share InputGroup;
+density belongs on the kit host. Logical insets keep LTR/RTL mirrored.
+
+**Do not regress:** Keep the `<style>` block (or equivalent emitted utilities)
+and logical addon insets on re-copy.
+
 ### 2026-11-28 — Input / Textarea default `autocomplete="off"`
 
 **What:** `Input` and `Textarea` set `autocomplete="off"` before `$attrs` so
