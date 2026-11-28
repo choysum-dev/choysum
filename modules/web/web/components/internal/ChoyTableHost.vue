@@ -50,6 +50,7 @@ SPDX-License-Identifier: Apache-2.0
         :sorting="headerSorting"
         :show-empty="!sizeToContent"
         :enable-column-resize="enableColumnResize"
+        :show-reset-column-widths="enableColumnResize && hasColumnWidthOverrides"
         track-width-mode="fill"
         sorting-mode="server"
         @row-click="onDataTableRowClick"
@@ -58,6 +59,7 @@ SPDX-License-Identifier: Apache-2.0
         @column-resize="onColumnResize"
         @column-resize-end="onColumnResizeEnd"
         @column-resize-reset="onColumnResizeReset"
+        @reset-column-widths="resetColumnWidths"
       >
         <!-- Fixed-height hosts: empty lives in the body so it never covers the header. -->
         <template v-if="!sizeToContent" #empty>

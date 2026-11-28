@@ -280,27 +280,27 @@ msgctxt "web/components/field/ChoyDecimalField"
 msgid "Total digits must not exceed %s"
 msgstr ""
 
-#: web/components/field/ChoyFieldBase.vue:299
+#: web/components/field/ChoyFieldBase.vue:325
 msgctxt "web/components/field/ChoyFieldBase"
 msgid "Company values"
 msgstr ""
 
-#: web/components/field/ChoyFieldBase.vue:299
+#: web/components/field/ChoyFieldBase.vue:325
 msgctxt "web/components/field/ChoyFieldBase"
 msgid "Company values: %s"
 msgstr ""
 
-#: web/components/field/ChoyFieldBase.vue:681
+#: web/components/field/ChoyFieldBase.vue:738
 msgctxt "web/components/field/ChoyFieldBase"
 msgid "Required"
 msgstr ""
 
-#: web/components/field/ChoyFieldBase.vue:292
+#: web/components/field/ChoyFieldBase.vue:318
 msgctxt "web/components/field/ChoyFieldBase"
 msgid "Translate field"
 msgstr ""
 
-#: web/components/field/ChoyFieldBase.vue:292
+#: web/components/field/ChoyFieldBase.vue:318
 msgctxt "web/components/field/ChoyFieldBase"
 msgid "Translate: %s"
 msgstr ""
@@ -566,7 +566,7 @@ msgctxt "web/components/field/ChoyManyToManyField"
 msgid "Picker is not configured"
 msgstr ""
 
-#: web/components/field/ChoyManyToManyField.vue:123
+#: web/components/field/ChoyManyToManyField.vue:128
 msgctxt "web/components/field/ChoyManyToManyField"
 msgid "Select related items"
 msgstr ""
@@ -611,7 +611,7 @@ msgctxt "web/components/field/ChoyManyToManyRefField"
 msgid "Picker is not configured"
 msgstr ""
 
-#: web/components/field/ChoyManyToManyRefField.vue:134
+#: web/components/field/ChoyManyToManyRefField.vue:139
 msgctxt "web/components/field/ChoyManyToManyRefField"
 msgid "Select related items"
 msgstr ""
@@ -786,23 +786,23 @@ msgctxt "web/components/field/ChoyOneToManyField"
 msgid "Add a line…"
 msgstr ""
 
-#: web/components/field/ChoyOneToManyField.vue:225
+#: web/components/field/ChoyOneToManyField.vue:245
 msgctxt "web/components/field/ChoyOneToManyField"
 msgid "Are you sure you want to delete this record? This action cannot be undone."
 msgstr ""
 
-#: web/components/field/ChoyOneToManyField.vue:230
+#: web/components/field/ChoyOneToManyField.vue:250
 msgctxt "web/components/field/ChoyOneToManyField"
 msgid "Cancel"
 msgstr ""
 
-#: web/components/field/ChoyOneToManyField.vue:226
+#: web/components/field/ChoyOneToManyField.vue:246
 msgctxt "web/components/field/ChoyOneToManyField"
 msgid "Confirm delete"
 msgstr ""
 
 #: web/components/field/ChoyOneToManyField.vue:14
-#: web/components/field/ChoyOneToManyField.vue:229
+#: web/components/field/ChoyOneToManyField.vue:249
 msgctxt "web/components/field/ChoyOneToManyField"
 msgid "Delete"
 msgstr ""
@@ -1185,17 +1185,17 @@ msgctxt "web/components/field/ChoyStatusbarField"
 msgid "Value must be a string"
 msgstr ""
 
-#: web/components/field/ChoyTextField.vue:293
+#: web/components/field/ChoyTextField.vue:304
 msgctxt "web/components/field/ChoyTextField"
 msgid "Cannot be empty"
 msgstr ""
 
-#: web/components/field/ChoyTextField.vue:298
+#: web/components/field/ChoyTextField.vue:309
 msgctxt "web/components/field/ChoyTextField"
 msgid "Length must not exceed %s"
 msgstr ""
 
-#: web/components/field/ChoyTextField.vue:295
+#: web/components/field/ChoyTextField.vue:306
 msgctxt "web/components/field/ChoyTextField"
 msgid "Must be a string"
 msgstr ""
@@ -1225,17 +1225,17 @@ msgctxt "web/components/field/ChoyVarcharField"
 msgid "Copy failed"
 msgstr ""
 
-#: web/components/field/ChoyVarcharField.vue:304
+#: web/components/field/ChoyVarcharField.vue:318
 msgctxt "web/components/field/ChoyVarcharField"
 msgid "Length must not exceed %s"
 msgstr ""
 
-#: web/components/field/ChoyVarcharField.vue:298
+#: web/components/field/ChoyVarcharField.vue:312
 msgctxt "web/components/field/ChoyVarcharField"
 msgid "Value is required"
 msgstr ""
 
-#: web/components/field/ChoyVarcharField.vue:300
+#: web/components/field/ChoyVarcharField.vue:314
 msgctxt "web/components/field/ChoyVarcharField"
 msgid "Value must be a string"
 msgstr ""
@@ -1357,10 +1357,20 @@ msgctxt "web/components/field/relationCountSummary@formatRelationCountSummary"
 msgid "%s records"
 msgstr ""
 
-#: web/components/internal/ChoyTableHost.vue:26
-#: web/components/internal/ChoyTableHost.vue:37
+#: web/components/internal/ChoyTableHost.vue:28
+#: web/components/internal/ChoyTableHost.vue:39
 msgctxt "web/components/internal/ChoyTableHost"
 msgid "No data"
+msgstr ""
+
+#: web/components/internal/DataTable.vue:47
+msgctxt "web/components/internal/DataTable"
+msgid "Reset column widths"
+msgstr ""
+
+#: web/components/internal/DataTable.vue:39
+msgctxt "web/components/internal/DataTable"
+msgid "Resize column"
 msgstr ""
 
 #: web/components/internal/DatePicker.vue:16
@@ -1878,7 +1888,7 @@ msgctxt "web/components/view/FormView"
 msgid "Details"
 msgstr ""
 
-#: web/components/view/ChoyFormView.vue:573
+#: web/components/view/ChoyFormView.vue:576
 msgctxt "web/components/view/FormView"
 msgid "Discard"
 msgstr ""
@@ -1919,8 +1929,8 @@ msgctxt "web/components/view/FormView"
 msgid "Reset"
 msgstr ""
 
-#: web/components/view/ChoyFormView.vue:566
-#: web/components/view/ChoyFormView.vue:571
+#: web/components/view/ChoyFormView.vue:569
+#: web/components/view/ChoyFormView.vue:574
 msgctxt "web/components/view/FormView"
 msgid "Save"
 msgstr ""
@@ -1931,8 +1941,8 @@ msgctxt "web/components/view/FormView"
 msgid "Saved successfully"
 msgstr ""
 
-#: web/components/view/ChoyFormView.vue:566
-#: web/components/view/ChoyFormView.vue:571
+#: web/components/view/ChoyFormView.vue:569
+#: web/components/view/ChoyFormView.vue:574
 msgctxt "web/components/view/FormView"
 msgid "Saving..."
 msgstr ""
@@ -2036,23 +2046,23 @@ msgctxt "web/components/view/ListView"
 msgid "Discard"
 msgstr ""
 
-#: web/components/view/ChoyListView.vue:366
+#: web/components/view/ChoyListView.vue:388
 msgctxt "web/components/view/ListView"
 msgid "Editing was discarded because the row is no longer visible."
 msgstr ""
 
 #: web/components/view/ChoyListView.vue:2
-#: web/components/view/ChoyListView.vue:725
+#: web/components/view/ChoyListView.vue:747
 msgctxt "web/components/view/ListView"
 msgid "Failed to load list"
 msgstr ""
 
-#: web/components/view/ChoyListView.vue:432
+#: web/components/view/ChoyListView.vue:454
 msgctxt "web/components/view/ListView"
 msgid "Failed to refresh after reorder"
 msgstr ""
 
-#: web/components/view/ChoyListView.vue:432
+#: web/components/view/ChoyListView.vue:454
 msgctxt "web/components/view/ListView"
 msgid "Failed to reorder rows"
 msgstr ""

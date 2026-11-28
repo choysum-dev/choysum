@@ -271,27 +271,27 @@ msgctxt "web/components/field/ChoyDecimalField"
 msgid "Total digits must not exceed %s"
 msgstr "总位数不得超过 %s"
 
-#: web/components/field/ChoyFieldBase.vue:299
+#: web/components/field/ChoyFieldBase.vue:325
 msgctxt "web/components/field/ChoyFieldBase"
 msgid "Company values"
 msgstr "公司值"
 
-#: web/components/field/ChoyFieldBase.vue:299
+#: web/components/field/ChoyFieldBase.vue:325
 msgctxt "web/components/field/ChoyFieldBase"
 msgid "Company values: %s"
 msgstr "公司值：%s"
 
-#: web/components/field/ChoyFieldBase.vue:681
+#: web/components/field/ChoyFieldBase.vue:738
 msgctxt "web/components/field/ChoyFieldBase"
 msgid "Required"
 msgstr "必填"
 
-#: web/components/field/ChoyFieldBase.vue:292
+#: web/components/field/ChoyFieldBase.vue:318
 msgctxt "web/components/field/ChoyFieldBase"
 msgid "Translate field"
 msgstr "翻译字段"
 
-#: web/components/field/ChoyFieldBase.vue:292
+#: web/components/field/ChoyFieldBase.vue:318
 msgctxt "web/components/field/ChoyFieldBase"
 msgid "Translate: %s"
 msgstr "翻译：%s"
@@ -546,7 +546,7 @@ msgctxt "web/components/field/ChoyManyToManyField"
 msgid "Picker is not configured"
 msgstr "未配置选择器"
 
-#: web/components/field/ChoyManyToManyField.vue:123
+#: web/components/field/ChoyManyToManyField.vue:128
 msgctxt "web/components/field/ChoyManyToManyField"
 msgid "Select related items"
 msgstr "选择关联项"
@@ -591,7 +591,7 @@ msgctxt "web/components/field/ChoyManyToManyRefField"
 msgid "Picker is not configured"
 msgstr "未配置选择器"
 
-#: web/components/field/ChoyManyToManyRefField.vue:134
+#: web/components/field/ChoyManyToManyRefField.vue:139
 msgctxt "web/components/field/ChoyManyToManyRefField"
 msgid "Select related items"
 msgstr "选择关联项"
@@ -766,22 +766,22 @@ msgctxt "web/components/field/ChoyOneToManyField"
 msgid "Add a line…"
 msgstr "添加一行…"
 
-#: web/components/field/ChoyOneToManyField.vue:225
+#: web/components/field/ChoyOneToManyField.vue:245
 msgctxt "web/components/field/ChoyOneToManyField"
 msgid "Are you sure you want to delete this record? This action cannot be undone."
 msgstr "确定要删除这条记录吗？此操作无法撤销。"
 
-#: web/components/field/ChoyOneToManyField.vue:230
+#: web/components/field/ChoyOneToManyField.vue:250
 msgctxt "web/components/field/ChoyOneToManyField"
 msgid "Cancel"
 msgstr "取消"
 
-#: web/components/field/ChoyOneToManyField.vue:226
+#: web/components/field/ChoyOneToManyField.vue:246
 msgctxt "web/components/field/ChoyOneToManyField"
 msgid "Confirm delete"
 msgstr "确认删除"
 
-#: web/components/field/ChoyOneToManyField.vue:14 web/components/field/ChoyOneToManyField.vue:229
+#: web/components/field/ChoyOneToManyField.vue:14 web/components/field/ChoyOneToManyField.vue:249
 msgctxt "web/components/field/ChoyOneToManyField"
 msgid "Delete"
 msgstr "删除"
@@ -1146,17 +1146,17 @@ msgctxt "web/components/field/ChoyStatusbarField"
 msgid "Value must be a string"
 msgstr "值必须是字符串"
 
-#: web/components/field/ChoyTextField.vue:293
+#: web/components/field/ChoyTextField.vue:304
 msgctxt "web/components/field/ChoyTextField"
 msgid "Cannot be empty"
 msgstr "不能为空"
 
-#: web/components/field/ChoyTextField.vue:298
+#: web/components/field/ChoyTextField.vue:309
 msgctxt "web/components/field/ChoyTextField"
 msgid "Length must not exceed %s"
 msgstr "长度不能超过 %s"
 
-#: web/components/field/ChoyTextField.vue:295
+#: web/components/field/ChoyTextField.vue:306
 msgctxt "web/components/field/ChoyTextField"
 msgid "Must be a string"
 msgstr "必须是字符串"
@@ -1186,17 +1186,17 @@ msgctxt "web/components/field/ChoyVarcharField"
 msgid "Copy failed"
 msgstr "复制失败"
 
-#: web/components/field/ChoyVarcharField.vue:304
+#: web/components/field/ChoyVarcharField.vue:318
 msgctxt "web/components/field/ChoyVarcharField"
 msgid "Length must not exceed %s"
 msgstr "长度不得超过 %s"
 
-#: web/components/field/ChoyVarcharField.vue:298
+#: web/components/field/ChoyVarcharField.vue:312
 msgctxt "web/components/field/ChoyVarcharField"
 msgid "Value is required"
 msgstr "值为必填项"
 
-#: web/components/field/ChoyVarcharField.vue:300
+#: web/components/field/ChoyVarcharField.vue:314
 msgctxt "web/components/field/ChoyVarcharField"
 msgid "Value must be a string"
 msgstr "值必须为字符串"
@@ -1316,10 +1316,20 @@ msgctxt "web/components/field/relationCountSummary@formatRelationCountSummary"
 msgid "%s records"
 msgstr "%s 条记录"
 
-#: web/components/internal/ChoyTableHost.vue:26 web/components/internal/ChoyTableHost.vue:37
+#: web/components/internal/ChoyTableHost.vue:28 web/components/internal/ChoyTableHost.vue:39
 msgctxt "web/components/internal/ChoyTableHost"
 msgid "No data"
 msgstr "暂无数据"
+
+#: web/components/internal/DataTable.vue:47
+msgctxt "web/components/internal/DataTable"
+msgid "Reset column widths"
+msgstr "恢复默认列宽"
+
+#: web/components/internal/DataTable.vue:39
+msgctxt "web/components/internal/DataTable"
+msgid "Resize column"
+msgstr "调整列宽"
 
 #: web/components/internal/DatePicker.vue:16 web/components/internal/DatePicker.vue:53
 msgctxt "web/components/internal/DatePicker"
@@ -1826,7 +1836,7 @@ msgctxt "web/components/view/FormView"
 msgid "Details"
 msgstr "详情"
 
-#: web/components/view/ChoyFormView.vue:573
+#: web/components/view/ChoyFormView.vue:576
 msgctxt "web/components/view/FormView"
 msgid "Discard"
 msgstr "放弃"
@@ -1866,7 +1876,7 @@ msgctxt "web/components/view/FormView"
 msgid "Reset"
 msgstr "重置"
 
-#: web/components/view/ChoyFormView.vue:566 web/components/view/ChoyFormView.vue:571
+#: web/components/view/ChoyFormView.vue:569 web/components/view/ChoyFormView.vue:574
 msgctxt "web/components/view/FormView"
 msgid "Save"
 msgstr "保存"
@@ -1876,7 +1886,7 @@ msgctxt "web/components/view/FormView"
 msgid "Saved successfully"
 msgstr "保存成功"
 
-#: web/components/view/ChoyFormView.vue:566 web/components/view/ChoyFormView.vue:571
+#: web/components/view/ChoyFormView.vue:569 web/components/view/ChoyFormView.vue:574
 msgctxt "web/components/view/FormView"
 msgid "Saving..."
 msgstr "保存中..."
@@ -1976,22 +1986,22 @@ msgctxt "web/components/view/ListView"
 msgid "Discard"
 msgstr "放弃"
 
-#: web/components/view/ChoyListView.vue:366
+#: web/components/view/ChoyListView.vue:388
 msgctxt "web/components/view/ListView"
 msgid "Editing was discarded because the row is no longer visible."
 msgstr "该行已不可见，编辑已放弃。"
 
-#: web/components/view/ChoyListView.vue:2 web/components/view/ChoyListView.vue:725
+#: web/components/view/ChoyListView.vue:2 web/components/view/ChoyListView.vue:747
 msgctxt "web/components/view/ListView"
 msgid "Failed to load list"
 msgstr "列表加载失败"
 
-#: web/components/view/ChoyListView.vue:432
+#: web/components/view/ChoyListView.vue:454
 msgctxt "web/components/view/ListView"
 msgid "Failed to refresh after reorder"
 msgstr "重排后刷新失败"
 
-#: web/components/view/ChoyListView.vue:432
+#: web/components/view/ChoyListView.vue:454
 msgctxt "web/components/view/ListView"
 msgid "Failed to reorder rows"
 msgstr "行重排失败"

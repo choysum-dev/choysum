@@ -19,12 +19,13 @@ SPDX-License-Identifier: Apache-2.0
     :style="rootHeightStyle"
     @mouseleave="clearHoveredColumn"
   >
-    <div
-      ref="headerRef"
-      role="rowgroup"
-      class="choy-data-table__header shrink-0 overflow-x-auto overflow-y-hidden scrollbar-none scroll-contain border-b border-border bg-muted text-sm font-medium text-muted-foreground"
-      @scroll.passive="onHeaderScroll"
-    >
+    <div class="choy-data-table__header relative shrink-0 border-b border-border bg-muted text-sm font-medium text-muted-foreground">
+      <div
+        ref="headerRef"
+        role="rowgroup"
+        class="overflow-x-auto overflow-y-hidden scrollbar-none scroll-contain"
+        @scroll.passive="onHeaderScroll"
+      >
       <div
         role="row"
         aria-rowindex="1"
@@ -104,7 +105,7 @@ SPDX-License-Identifier: Apache-2.0
             class="choy-data-table__col-resize absolute inset-y-0 end-0 z-10 w-2 cursor-col-resize touch-none"
             role="separator"
             aria-orientation="vertical"
-            :aria-label="'Resize column'"
+            :aria-label="_t('Resize column')"
             data-testid="choy-data-table-col-resize"
             @pointerdown.stop.prevent="onColumnResizePointerDown($event, header.column)"
             @dblclick.stop.prevent="onColumnResizeReset(header.column.id)"
@@ -119,6 +120,18 @@ SPDX-License-Identifier: Apache-2.0
           </div>
         </div>
       </div>
+      </div>
+      <button
+        v-if="showResetColumnWidths"
+        type="button"
+        class="absolute end-1 top-1/2 z-20 inline-flex size-7 -translate-y-1/2 items-center justify-center rounded-md border border-border bg-background/95 text-muted-foreground shadow-xs hover:bg-accent hover:text-foreground"
+        data-testid="choy-data-table-reset-column-widths"
+        :aria-label="_t('Reset column widths')"
+        :title="_t('Reset column widths')"
+        @click.stop="emit('reset-column-widths')"
+      >
+        <History class="size-3.5" aria-hidden="true" />
+      </button>
     </div>
 
     <div
@@ -248,7 +261,8 @@ import {
   type SortingState
 } from '@tanstack/vue-table';
 import { useVirtualizer } from '@tanstack/vue-virtual';
-import { ChevronDown, ChevronsUpDown, ChevronUp } from 'lucide-vue-next';
+import { ChevronDown, ChevronsUpDown, ChevronUp, History } from 'lucide-vue-next';
+import { createTranslate } from '@/web/web/i18n';
 import { CHOY_LIST_ROW_HEIGHT } from '../../composables/listDensity';
 import {
   LIST_HANDLE_API_KEY,
@@ -285,6 +299,8 @@ import {
   type DataTableRowId,
   type DataTableWidthSpec,
 } from './dataTableHelpers';
+
+const { _t } = createTranslate('web', { scope: 'web/components/internal/DataTable' });
 
 /** Optional list/O2M handle reorder API (absent when the host has no handle column). */
 const handleApi = inject<ListHandleReorderApi | null>(LIST_HANDLE_API_KEY, null);
@@ -331,6 +347,8 @@ const props = withDefaults(
     trackWidthMode?: 'fill' | 'fit-max';
     /** Show header drag handles for columns marked `meta.resizable`. */
     enableColumnResize?: boolean;
+    /** Table-local control to clear user width overrides (Host-owned). */
+    showResetColumnWidths?: boolean;
   }>(),
   {
     height: 280,
@@ -343,6 +361,7 @@ const props = withDefaults(
     highlightColumnOnHover: true,
     trackWidthMode: 'fill',
     enableColumnResize: false,
+    showResetColumnWidths: false,
   },
 );
 
@@ -386,6 +405,7 @@ const emit = defineEmits<{
   'column-resize': [payload: { columnId: string; width: number }];
   'column-resize-end': [payload: { columnId: string; width: number }];
   'column-resize-reset': [payload: { columnId: string }];
+  'reset-column-widths': [];
 }>();
 
 type ColumnResizeState = {
