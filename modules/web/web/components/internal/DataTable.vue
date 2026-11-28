@@ -19,11 +19,12 @@ SPDX-License-Identifier: Apache-2.0
     :style="rootHeightStyle"
     @mouseleave="clearHoveredColumn"
   >
-    <div class="choy-data-table__header relative shrink-0 border-b border-border bg-muted text-sm font-medium text-muted-foreground">
+    <!-- Shell is relative so the reset control can stick to the visible end while the header scrolls. -->
+    <div class="choy-data-table__header-shell relative shrink-0">
       <div
         ref="headerRef"
         role="rowgroup"
-        class="overflow-x-auto overflow-y-hidden scrollbar-none scroll-contain"
+        class="choy-data-table__header overflow-x-auto overflow-y-hidden scrollbar-none scroll-contain border-b border-border bg-muted text-sm font-medium text-muted-foreground"
         @scroll.passive="onHeaderScroll"
       >
       <div
