@@ -257,7 +257,7 @@ describe('ChoyFieldBase label and help', () => {
     m.unmount();
   });
 
-  test('shows required asterisk on form label in display and edit', () => {
+  test('shows required asterisk on form label only while editable', () => {
     const display = mountBase(
       {
         binding: makeBinding({ string: 'NameChar', notNull: true }, { isEditMode: false }),
@@ -270,7 +270,8 @@ describe('ChoyFieldBase label and help', () => {
         },
       },
     );
-    expect(display.q('[data-slot="field-label"]')?.textContent).toContain('*');
+    expect(display.q('[data-slot="field-label"]')?.textContent).not.toContain('*');
+    expect(display.q('[data-slot="field-required"]')).toBeTruthy();
     display.unmount();
 
     const edit = mountBase(
@@ -286,6 +287,7 @@ describe('ChoyFieldBase label and help', () => {
       },
     );
     expect(edit.q('[data-slot="field-label"]')?.textContent).toContain('*');
+    expect(edit.q('[data-slot="field-required"]')).toBeTruthy();
     edit.unmount();
 
     const optionalDisplay = mountBase(

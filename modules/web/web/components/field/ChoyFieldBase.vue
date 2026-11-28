@@ -31,7 +31,18 @@ SPDX-License-Identifier: Apache-2.0
         class="text-sm font-normal text-muted-foreground"
       >
         {{ resolvedLabel }}
-        <span v-if="showRequiredMark" class="text-destructive" aria-hidden="true">*</span>
+        <!--
+          Reserve * width whenever conceptually required so display↔edit does not
+          shift the help icon / label track (Col gutter keeps contentX; row still jitters).
+        -->
+        <span
+          v-if="fieldRequired"
+          data-slot="field-required"
+          class="choy-field-base__required-slot inline-block w-[0.5em] shrink-0 text-center"
+          aria-hidden="true"
+        >
+          <span v-if="showRequiredMark" class="text-destructive">*</span>
+        </span>
       </FieldLabel>
       <div
         v-else-if="resolvedLabel"
@@ -40,9 +51,23 @@ SPDX-License-Identifier: Apache-2.0
         class="flex w-fit select-none items-center gap-2 text-sm font-normal leading-none text-muted-foreground"
       >
         {{ resolvedLabel }}
-        <span v-if="showRequiredMark" class="text-destructive" aria-hidden="true">*</span>
+        <span
+          v-if="fieldRequired"
+          data-slot="field-required"
+          class="choy-field-base__required-slot inline-block w-[0.5em] shrink-0 text-center"
+          aria-hidden="true"
+        >
+          <span v-if="showRequiredMark" class="text-destructive">*</span>
+        </span>
       </div>
-      <span v-else-if="showRequiredMark" class="text-destructive" aria-hidden="true">*</span>
+      <span
+        v-else-if="fieldRequired"
+        data-slot="field-required"
+        class="choy-field-base__required-slot inline-block w-[0.5em] shrink-0 text-center"
+        aria-hidden="true"
+      >
+        <span v-if="showRequiredMark" class="text-destructive">*</span>
+      </span>
       <TooltipProvider v-if="effectiveHelp">
         <Tooltip>
           <TooltipTrigger as-child>
@@ -981,7 +1006,7 @@ const readonlyForm = computed(() => {
   if (metaReadonly.value) return true;
   return evalFlag(props.readonly, recordForm().value, rawValueForm().value, false);
 });
-/** Conceptual required (meta / prop) — drives the label * in display and edit. */
+/** Conceptual required (meta.notNull / :required) — client rules and edit-time chrome. */
 const fieldRequired = computed(() => {
   if (metaRequired.value) return true;
   return evalFlag(props.required, recordForm().value, rawValueForm().value, false);
@@ -992,8 +1017,8 @@ const requiredForm = computed(() => {
   if (readonlyForm.value) return false;
   return fieldRequired.value;
 });
-/** Label asterisk stays visible in display so label-column width matches edit. */
-const showRequiredMark = computed(() => fieldRequired.value);
+/** Paint * only while editable; fieldRequired still reserves the slot in display. */
+const showRequiredMark = computed(() => requiredForm.value);
 
 /** Form label chrome (title / * / help tip). Off when hideLabel. */
 const showLabelRow = computed(
