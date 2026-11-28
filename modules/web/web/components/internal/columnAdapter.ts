@@ -100,8 +100,6 @@ export function resolveIndexDisplayMaxText(
         ? Math.floor(gi)
         : base + i;
     if (n > max) max = n;
-    // Digit budget caps around 7–8 digits; further rows cannot widen chrome.
-    if (String(Math.floor(max)).length >= 8) break;
   }
   return max > 0 ? String(Math.floor(max)) : '';
 }
