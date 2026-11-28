@@ -2,12 +2,196 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { type ColumnDef } from '@tanstack/vue-table';
-import type { Column } from '@/web/web/composables/useTable';
+import {
+  getTableColumnMeta,
+  type Column,
+  type TableColumnMeta,
+} from '@/web/web/composables/useTable';
+import {
+  defaultListColumnMaxWidth,
+  estimateListHeaderMinWidth,
+  listColumnIsHard,
+  listColumnPrefersStretch,
+} from '@/web/web/components/field/listColumnSizeDefaults';
+import {
+  LIST_SOFT_SAMPLE_ROW_LIMIT,
+  sampleSoftColumnMinWidths,
+  type ListTextMeasureFn,
+} from '@/web/web/components/field/listColumnTextMeasure';
+import {
+  applyUserColumnWidthOverride,
+  clampListColumnWidthPx,
+} from '@/web/web/composables/listColumnWidthPrefs';
 
-const DEFAULT_COLUMN_SIZE = 150;
+/** Fallback track size when a column has no explicit width (20px scale). */
+export const FALLBACK_COLUMN_SIZE = 140;
+
+/**
+ * Legacy host flag. Soft/hard sizing is shared by List and embeds; promotion to
+ * unbounded `1fr` is no longer applied. Kept so callers need not change props yet.
+ */
+export type ColumnFillMode = 'none' | 'embed-auto';
+
+export type ColumnsToColumnDefsOptions = {
+  columnFillMode?: ColumnFillMode;
+  /** First-screen rows for soft-column content min raise (List / O2M). */
+  sampleRows?: readonly Record<string, unknown>[];
+  /** Injectable text measure (tests); browser uses canvas by default. */
+  textMeasure?: ListTextMeasureFn | null;
+  /** Cap how many sample rows are scanned (default 20). */
+  sampleRowLimit?: number;
+  /**
+   * User-dragged fixed widths (localStorage). Applied after type/sample defaults;
+   * skipped when the author set an explicit width / widthSpec.
+   */
+  userWidths?: Readonly<Record<string, number>>;
+};
+
+export type ResolveColumnSizeOptions = {
+  textMeasure?: ListTextMeasureFn | null;
+  /** Soft sample raise for this column key, when present. */
+  softSampleMin?: number;
+  /** User-dragged fixed width for this column, when present. */
+  userWidth?: number;
+};
 
 function columnKey(col: Column): string {
   return String(col.key ?? col.dataKey ?? '');
+}
+
+function columnPropKey(col: Column): string {
+  return String(col.dataKey ?? col.key ?? '');
+}
+
+/** Selection / handle / index / group chrome — never soft-stretch. */
+export function isSystemListColumn(col: Column): boolean {
+  const k = columnKey(col);
+  if (
+    k === '__selection__' ||
+    k === '__select' ||
+    k === '__handle__' ||
+    k === '__index__' ||
+    k === '__group_label'
+  ) {
+    return true;
+  }
+  const t = col.type;
+  return t === 'selection' || t === 'handle' || t === 'index';
+}
+
+function hasAuthorWidthSpec(spec: TableColumnMeta['widthSpec'] | undefined): boolean {
+  return (
+    spec?.type === 'flex' ||
+    spec?.type === 'auto' ||
+    spec?.type === 'percent' ||
+    spec?.type === 'capped'
+  );
+}
+
+/**
+ * Resolved pixel size for a registry column.
+ * Explicit width wins as the base; minWidth alone (type defaults) is the track size;
+ * only when neither is set do we use FALLBACK. When both exist, size = max(width, minWidth).
+ * Hard columns may raise size via header font/char budget; soft columns may raise via sample.
+ */
+export function resolveColumnSizePx(
+  col: Column,
+  opts?: ResolveColumnSizeOptions,
+): {
+  size: number;
+  minSize: number | undefined;
+} {
+  const explicitWidth =
+    typeof col.width === 'number' && col.width > 0 ? col.width : undefined;
+  let minSize =
+    typeof col.minWidth === 'number' && col.minWidth > 0 ? col.minWidth : undefined;
+  let size: number;
+  if (explicitWidth != null && minSize != null) {
+    size = Math.max(explicitWidth, minSize);
+  } else if (explicitWidth != null) {
+    size = explicitWidth;
+  } else if (minSize != null) {
+    size = minSize;
+  } else {
+    size = FALLBACK_COLUMN_SIZE;
+  }
+
+  // Header / sample raise only when width was not an author-fixed pixel width on chrome/system.
+  if (!isSystemListColumn(col) && explicitWidth == null) {
+    const fieldType = getTableColumnMeta(col)?.fieldType;
+    if (listColumnIsHard(fieldType)) {
+      const raised = estimateListHeaderMinWidth(col.title, size, {
+        measure: opts?.textMeasure,
+      });
+      if (raised > size) {
+        size = raised;
+        minSize = minSize != null ? Math.max(minSize, raised) : raised;
+      }
+    } else if (
+      listColumnPrefersStretch(fieldType) &&
+      typeof opts?.softSampleMin === 'number' &&
+      opts.softSampleMin > size
+    ) {
+      size = opts.softSampleMin;
+      minSize = minSize != null ? Math.max(minSize, opts.softSampleMin) : opts.softSampleMin;
+    }
+
+    // User drag override (fixed px) beats type/sample, loses to author explicit width.
+    const authorSpec = getTableColumnMeta(col)?.widthSpec;
+    if (!hasAuthorWidthSpec(authorSpec)) {
+      const next = applyUserColumnWidthOverride(size, opts?.userWidth);
+      if (next !== size) {
+        size = next;
+        minSize = next;
+      }
+    }
+  }
+  return { size, minSize };
+}
+
+/** Whether the column may show a header resize handle. */
+export function listColumnIsResizable(col: Column): boolean {
+  if (isSystemListColumn(col)) return false;
+  // Explicit pixel width (incl. narrow chrome / Actions) stays fixed.
+  if (typeof col.width === 'number' && col.width > 0) return false;
+  if (hasAuthorWidthSpec(getTableColumnMeta(col)?.widthSpec)) return false;
+  const k = columnKey(col).toLowerCase();
+  if (k === 'actions' || k.includes('__actions')) return false;
+  // Narrow chrome without dataKey and without an explicit width (delete affordance).
+  if (
+    !col.dataKey &&
+    typeof col.minWidth === 'number' &&
+    col.minWidth > 0 &&
+    col.minWidth <= 48
+  ) {
+    return false;
+  }
+  return true;
+}
+
+/**
+ * Soft / semi-hard columns without an author widthSpec get a capped track.
+ * Explicit numeric width stays fixed px. Author flex/auto/percent/capped wins.
+ */
+export function resolveColumnWidthSpec(
+  col: Column,
+  size: number,
+): TableColumnMeta['widthSpec'] | undefined {
+  const fromCol = getTableColumnMeta(col)?.widthSpec;
+  if (hasAuthorWidthSpec(fromCol)) return fromCol;
+  // Explicit pixel width → fixed track (no soft growth).
+  if (typeof col.width === 'number' && col.width > 0) return undefined;
+  if (isSystemListColumn(col)) return undefined;
+  const fieldType = getTableColumnMeta(col)?.fieldType;
+  // Cap from the author/type floor, not the post-sample size (avoids raising the
+  // growth ceiling again after sampling already hit the original max).
+  const baseMin =
+    typeof col.minWidth === 'number' && col.minWidth > 0
+      ? col.minWidth
+      : FALLBACK_COLUMN_SIZE;
+  const max = defaultListColumnMaxWidth(fieldType, baseMin, columnPropKey(col));
+  if (max == null || max <= size) return undefined;
+  return { type: 'capped', max };
 }
 
 /**
@@ -42,16 +226,65 @@ export function orderListTableColumns(columns: readonly Column[]): Column[] {
 /**
  * Maps ChoyTableColumn registry entries (legacy Column) to TanStack ColumnDef for DataTable.
  * Cell/header renderers stay on the Column so slot-built VNodes keep working.
+ *
+ * Soft (text-like) columns share leftover host width up to a type max; hard columns
+ * stay fixed. Past sum(max), trailing gutter is left (no unbounded single-column fr).
  */
 export function columnsToColumnDefs<T extends Record<string, unknown>>(
   columns: readonly Column[],
+  options?: ColumnsToColumnDefsOptions,
 ): ColumnDef<T, unknown>[] {
-  return orderListTableColumns(columns).map((col, index) => {
+  const ordered = orderListTableColumns(columns);
+  const sampleRows = options?.sampleRows;
+  const textMeasure = options?.textMeasure;
+  const softMins =
+    sampleRows && sampleRows.length > 0
+      ? sampleSoftColumnMinWidths(
+          ordered.map((col, index) => {
+            const id = String(col.key ?? col.dataKey ?? `col_${index}`);
+            const meta = getTableColumnMeta(col);
+            const fieldType = meta?.fieldType;
+            const explicitWidth =
+              typeof col.width === 'number' && col.width > 0 ? col.width : undefined;
+            const minWidth =
+              typeof col.minWidth === 'number' && col.minWidth > 0
+                ? col.minWidth
+                : FALLBACK_COLUMN_SIZE;
+            const maxWidth = defaultListColumnMaxWidth(fieldType, minWidth, columnPropKey(col));
+            return {
+              key: id,
+              dataKey: col.dataKey != null ? String(col.dataKey) : undefined,
+              title: col.title,
+              fieldType,
+              explicitWidth,
+              minWidth,
+              maxWidth,
+              skipSample: hasAuthorWidthSpec(meta?.widthSpec) || explicitWidth != null,
+            };
+          }),
+          sampleRows,
+          {
+            measure: textMeasure,
+            rowLimit: options?.sampleRowLimit ?? LIST_SOFT_SAMPLE_ROW_LIMIT,
+          },
+        )
+      : null;
+
+  const userWidths = options?.userWidths;
+
+  return ordered.map((col, index) => {
     const id = String(col.key ?? col.dataKey ?? `col_${index}`);
-    const size =
-      typeof col.width === 'number' && col.width > 0 ? col.width : DEFAULT_COLUMN_SIZE;
-    const minSize =
-      typeof col.minWidth === 'number' && col.minWidth > 0 ? col.minWidth : undefined;
+    const userWidth = userWidths ? clampListColumnWidthPx(userWidths[id]) ?? undefined : undefined;
+    const { size, minSize } = resolveColumnSizePx(col, {
+      textMeasure,
+      softSampleMin: softMins?.get(id),
+      userWidth,
+    });
+    const fromCol = getTableColumnMeta(col);
+    const resizable = listColumnIsResizable(col);
+    // User override forces a fixed track (leave soft share).
+    const widthSpec =
+      userWidth != null && resizable ? undefined : resolveColumnWidthSpec(col, size);
 
     const def: ColumnDef<T, unknown> = {
       id,
@@ -80,10 +313,17 @@ export function columnsToColumnDefs<T extends Record<string, unknown>>(
         fixed: col.fixed,
         // List host selection column (ChoyTableColumn type="selection"); key is the fallback.
         selectColumn: id === '__selection__' || id === '__select' || col.type === 'selection',
+        resizable,
+        userSized: userWidth != null && resizable,
+        ...(widthSpec ? { widthSpec } : {}),
+        ...(fromCol?.fieldType ? { fieldType: fromCol.fieldType } : {}),
       },
     };
     if (minSize != null) {
       def.minSize = minSize;
+    }
+    if (widthSpec?.type === 'capped') {
+      def.maxSize = widthSpec.max;
     }
     if (col.dataKey != null) {
       (def as { accessorKey?: string }).accessorKey = String(col.dataKey);

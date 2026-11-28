@@ -19,29 +19,32 @@ SPDX-License-Identifier: Apache-2.0
     :style="rootHeightStyle"
     @mouseleave="clearHoveredColumn"
   >
-    <div
-      ref="headerRef"
-      role="rowgroup"
-      class="choy-data-table__header shrink-0 overflow-x-auto overflow-y-hidden scrollbar-none scroll-contain border-b border-border bg-muted text-sm font-medium text-muted-foreground"
-      @scroll.passive="onHeaderScroll"
-    >
+    <!-- Shell is relative so the reset control can stick to the visible end while the header scrolls. -->
+    <div class="choy-data-table__header-shell relative shrink-0">
+      <div
+        ref="headerRef"
+        role="rowgroup"
+        class="choy-data-table__header overflow-x-auto overflow-y-hidden scrollbar-none scroll-contain border-b border-border bg-muted text-sm font-medium text-muted-foreground"
+        @scroll.passive="onHeaderScroll"
+      >
       <div
         role="row"
         aria-rowindex="1"
         class="grid min-h-list-header"
-        :style="{ minWidth: `${tableMinWidth}px`, gridTemplateColumns: gridTemplate }"
+        :style="{ ...tableTrackStyle, gridTemplateColumns: gridTemplate }"
       >
         <div
           v-for="header in (table.getHeaderGroups().slice(-1)[0]?.headers ?? [])"
           :key="header.id"
           role="columnheader"
-          class="flex min-h-list-header items-center gap-1 px-2 py-1 transition-colors"
+          class="group/col relative flex min-h-list-header items-center gap-1 px-2 py-1 transition-colors"
           :class="[
             isSelectColumn(header.column)
               ? 'cursor-pointer justify-center'
               : columnJustifyClass(header.column),
             columnHoverClass(header.column.id),
           ]"
+          :data-column-id="header.column.id"
           :data-col-hover="isColumnHovered(header.column.id) ? '' : undefined"
           :data-no-row-click="isSelectColumn(header.column) ? '' : undefined"
           :aria-sort="
@@ -72,7 +75,7 @@ SPDX-License-Identifier: Apache-2.0
           <button
             v-else
             type="button"
-            class="group flex flex-1 items-center gap-1 border-0 bg-transparent p-0 text-start text-sm font-medium text-muted-foreground hover:text-foreground"
+            class="group flex min-w-0 flex-1 items-center gap-1 border-0 bg-transparent p-0 text-start text-sm font-medium text-muted-foreground hover:text-foreground"
             :class="[
               columnJustifyClass(header.column),
               !header.column.getCanSort() ? 'cursor-default' : 'cursor-pointer',
@@ -98,8 +101,38 @@ SPDX-License-Identifier: Apache-2.0
               aria-hidden="true"
             />
           </button>
+          <div
+            v-if="canResizeColumn(header.column)"
+            class="choy-data-table__col-resize absolute inset-y-0 end-0 z-10 w-2 cursor-col-resize touch-none"
+            role="separator"
+            aria-orientation="vertical"
+            :aria-label="_t('Resize column')"
+            data-testid="choy-data-table-col-resize"
+            @pointerdown.stop.prevent="onColumnResizePointerDown($event, header.column)"
+            @dblclick.stop.prevent="onColumnResizeReset(header.column.id)"
+          >
+            <span
+              class="pointer-events-none absolute inset-y-1 end-0 w-px bg-border opacity-0 transition-opacity group-hover/col:opacity-100"
+              :class="
+                resizeState?.columnId === header.column.id ? 'opacity-100! bg-primary' : undefined
+              "
+              aria-hidden="true"
+            />
+          </div>
         </div>
       </div>
+      </div>
+      <button
+        v-if="showResetColumnWidths"
+        type="button"
+        class="absolute end-1 top-1/2 z-20 inline-flex size-7 -translate-y-1/2 items-center justify-center rounded-md border border-border bg-background/95 text-muted-foreground shadow-xs hover:bg-accent hover:text-foreground"
+        data-testid="choy-data-table-reset-column-widths"
+        :aria-label="_t('Reset column widths')"
+        :title="_t('Reset column widths')"
+        @click.stop="emit('reset-column-widths')"
+      >
+        <History class="size-3.5" aria-hidden="true" />
+      </button>
     </div>
 
     <div
@@ -115,12 +148,12 @@ SPDX-License-Identifier: Apache-2.0
             ? {
                 height: `${totalSize}px`,
                 position: 'relative',
-                minWidth: `${tableMinWidth}px`,
-                width: '100%',
+                ...tableTrackStyle,
+                ...(tableTrackWidthPx == null ? { width: '100%' } : {}),
               }
             : {
-                minWidth: `${tableMinWidth}px`,
-                width: '100%',
+                ...tableTrackStyle,
+                ...(tableTrackWidthPx == null ? { width: '100%' } : {}),
               }
         "
       >
@@ -229,7 +262,8 @@ import {
   type SortingState
 } from '@tanstack/vue-table';
 import { useVirtualizer } from '@tanstack/vue-virtual';
-import { ChevronDown, ChevronsUpDown, ChevronUp } from 'lucide-vue-next';
+import { ChevronDown, ChevronsUpDown, ChevronUp, History } from 'lucide-vue-next';
+import { createTranslate } from '@/web/web/i18n';
 import { CHOY_LIST_ROW_HEIGHT } from '../../composables/listDensity';
 import {
   LIST_HANDLE_API_KEY,
@@ -242,6 +276,7 @@ import {
   applyDataTableScrollToRow,
   compareDataTableValues,
   dataTableColumnJustifyClass,
+  dataTableGridTemplate,
   dataTableIsGroupLikeRow,
   dataTableIsVirtualized,
   createDataTableScrollParentResizeHandler,
@@ -262,8 +297,11 @@ import {
   pruneDataTableSelection,
   resolveDataTableEstimateSize,
   resolveDataTableRowId,
-  type DataTableRowId
+  type DataTableRowId,
+  type DataTableWidthSpec,
 } from './dataTableHelpers';
+
+const { _t } = createTranslate('web', { scope: 'web/components/internal/DataTable' });
 
 /** Optional list/O2M handle reorder API (absent when the host has no handle column). */
 const handleApi = inject<ListHandleReorderApi | null>(LIST_HANDLE_API_KEY, null);
@@ -303,6 +341,15 @@ const props = withDefaults(
     showEmpty?: boolean;
     /** Highlight the hovered column (header + body cells) with the row hover. */
     highlightColumnOnHover?: boolean;
+    /**
+     * `fill` — grid row stretches to host width (List).
+     * `fit-max` — width hugs sum of track maxes (few-column embeds); max-width 100%.
+     */
+    trackWidthMode?: 'fill' | 'fit-max';
+    /** Show header drag handles for columns marked `meta.resizable`. */
+    enableColumnResize?: boolean;
+    /** Table-local control to clear user width overrides (Host-owned). */
+    showResetColumnWidths?: boolean;
   }>(),
   {
     height: 280,
@@ -313,6 +360,9 @@ const props = withDefaults(
     enableRowSelection: true,
     showEmpty: true,
     highlightColumnOnHover: true,
+    trackWidthMode: 'fill',
+    enableColumnResize: false,
+    showResetColumnWidths: false,
   },
 );
 
@@ -349,7 +399,142 @@ const emit = defineEmits<{
   'update:rowSelection': [ids: DataTableRowId[]];
   'row-click': [row: T];
   'sort-change': [payload: { field: string; direction?: 'asc' | 'desc' }];
+  /** Fired once on pointerdown with DOM-measured widths (freeze siblings during drag). */
+  'column-resize-start': [
+    payload: { columnId: string; width: number; snapshot: Record<string, number> },
+  ];
+  'column-resize': [payload: { columnId: string; width: number }];
+  'column-resize-end': [payload: { columnId: string; width: number }];
+  'column-resize-reset': [payload: { columnId: string }];
+  'reset-column-widths': [];
 }>();
+
+type ColumnResizeState = {
+  columnId: string;
+  startX: number;
+  startWidth: number;
+  /** Last width emitted during the drag (used when blur/unmount ends early). */
+  lastWidth: number;
+  pointerId: number;
+  /** +1 LTR / -1 RTL so dragging the end-edge tracks the pointer. */
+  axisSign: number;
+};
+
+const resizeState = ref<ColumnResizeState | null>(null);
+
+function canResizeColumn(column: { columnDef?: { meta?: unknown }; id?: string }): boolean {
+  if (!props.enableColumnResize) return false;
+  const meta = column.columnDef?.meta as { resizable?: boolean; selectColumn?: boolean } | undefined;
+  if (meta?.selectColumn) return false;
+  return meta?.resizable === true;
+}
+
+/** Measure visible header cells — TanStack getSize() is the type min for soft columns, not paint width. */
+function measureHeaderColumnWidths(fromEl: HTMLElement | null): Record<string, number> {
+  const out: Record<string, number> = {};
+  const row = fromEl?.closest('[role="row"]');
+  if (!row) return out;
+  // Query role first, then filter data-column-id (compound attr selectors are
+  // unavailable in the FE unit DOM harness).
+  row.querySelectorAll<HTMLElement>('[role="columnheader"]').forEach((cell) => {
+    const id = cell.getAttribute('data-column-id');
+    if (!id) return;
+    const w = Math.round(cell.getBoundingClientRect().width);
+    if (w > 0) out[id] = w;
+  });
+  return out;
+}
+
+function resizeDeltaPx(state: ColumnResizeState, clientX: number): number {
+  return Math.round((clientX - state.startX) * state.axisSign);
+}
+
+function clearColumnResizeListeners(): void {
+  window.removeEventListener('pointermove', onColumnResizePointerMove);
+  window.removeEventListener('pointerup', onColumnResizePointerUp);
+  window.removeEventListener('pointercancel', onColumnResizePointerUp);
+  window.removeEventListener('blur', onColumnResizeWindowBlur);
+}
+
+function endColumnResizeDrag(width: number, columnId: string): void {
+  resizeState.value = null;
+  clearColumnResizeListeners();
+  emit('column-resize-end', { columnId, width });
+}
+
+function onColumnResizePointerDown(
+  event: PointerEvent,
+  column: { id: string; getSize: () => number },
+): void {
+  if (!canResizeColumn(column as { columnDef?: { meta?: unknown } })) return;
+  // Drop a stuck prior drag (lost pointerup) before starting a new one.
+  if (resizeState.value) {
+    clearColumnResizeListeners();
+    resizeState.value = null;
+  }
+  const handle = event.currentTarget as HTMLElement | null;
+  const cell = handle?.closest('[role="columnheader"]') as HTMLElement | null;
+  const snapshot = measureHeaderColumnWidths(handle);
+  const measured = snapshot[column.id] ?? Math.round(cell?.getBoundingClientRect().width || 0);
+  const startWidth = Math.max(1, measured || Math.round(column.getSize() || 0));
+  let axisSign = 1;
+  try {
+    const dir =
+      (cell && typeof getComputedStyle === 'function' && getComputedStyle(cell).direction) ||
+      (typeof document !== 'undefined' && document.documentElement?.dir) ||
+      'ltr';
+    if (String(dir).toLowerCase() === 'rtl') axisSign = -1;
+  } catch {
+    axisSign = 1;
+  }
+  resizeState.value = {
+    columnId: column.id,
+    startX: event.clientX,
+    startWidth,
+    lastWidth: startWidth,
+    pointerId: event.pointerId,
+    axisSign,
+  };
+  emit('column-resize-start', {
+    columnId: column.id,
+    width: startWidth,
+    snapshot,
+  });
+  try {
+    handle?.setPointerCapture?.(event.pointerId);
+  } catch {
+    // ignore
+  }
+  window.addEventListener('pointermove', onColumnResizePointerMove);
+  window.addEventListener('pointerup', onColumnResizePointerUp);
+  window.addEventListener('pointercancel', onColumnResizePointerUp);
+  window.addEventListener('blur', onColumnResizeWindowBlur);
+}
+
+function onColumnResizePointerMove(event: PointerEvent): void {
+  const state = resizeState.value;
+  if (!state || event.pointerId !== state.pointerId) return;
+  const width = state.startWidth + resizeDeltaPx(state, event.clientX);
+  state.lastWidth = width;
+  emit('column-resize', { columnId: state.columnId, width });
+}
+
+function onColumnResizePointerUp(event: PointerEvent): void {
+  const state = resizeState.value;
+  if (!state || event.pointerId !== state.pointerId) return;
+  const width = state.startWidth + resizeDeltaPx(state, event.clientX);
+  endColumnResizeDrag(width, state.columnId);
+}
+
+function onColumnResizeWindowBlur(): void {
+  const state = resizeState.value;
+  if (!state) return;
+  endColumnResizeDrag(state.lastWidth, state.columnId);
+}
+
+function onColumnResizeReset(columnId: string): void {
+  emit('column-resize-reset', { columnId });
+}
 
 defineSlots<{
   empty?: () => any;
@@ -669,6 +854,10 @@ onMounted(() => {
 onBeforeUnmount(() => {
   scrollParentObserver?.disconnect();
   scrollParentObserver = null;
+  const state = resizeState.value;
+  if (state) {
+    endColumnResizeDrag(state.lastWidth, state.columnId);
+  }
 });
 
 // Cached heights win over `estimateSize`; drop them when the estimate changes.
@@ -723,15 +912,37 @@ const bodyRows = computed(() =>
 function measureRowElement(el: Element | null): void {
   dataTableMeasureRow(el, isVirtualized.value, virtualizer.value);
 }
-const gridTemplate = computed(() =>
-  table
-    .getVisibleLeafColumns()
-    .map((col) => `${col.getSize()}px`)
-    .join(' '),
-);
-const tableMinWidth = computed(() =>
-  table.getVisibleLeafColumns().reduce((sum, col) => sum + col.getSize(), 0),
-);
+const gridLayout = computed(() => {
+  const cols = table.getVisibleLeafColumns().map((col) => {
+    const meta = col.columnDef.meta as { widthSpec?: DataTableWidthSpec } | undefined;
+    return {
+      size: col.getSize(),
+      minSize: col.columnDef.minSize,
+      widthSpec: meta?.widthSpec,
+    };
+  });
+  return dataTableGridTemplate(cols);
+});
+const gridTemplate = computed(() => gridLayout.value.gridTemplate);
+const tableMinWidth = computed(() => gridLayout.value.tableMinWidth);
+const tableMaxWidth = computed(() => gridLayout.value.tableMaxWidth);
+/** When fit-max, pin track cluster width; otherwise stretch with the host. */
+const tableTrackWidthPx = computed(() => {
+  if (props.trackWidthMode !== 'fit-max') return null;
+  const max = tableMaxWidth.value;
+  return typeof max === 'number' && max > 0 ? max : null;
+});
+const tableTrackStyle = computed(() => {
+  const fit = tableTrackWidthPx.value;
+  if (fit == null) {
+    return { minWidth: `${tableMinWidth.value}px` };
+  }
+  return {
+    minWidth: `${tableMinWidth.value}px`,
+    width: `${fit}px`,
+    maxWidth: '100%',
+  };
+});
 
 // After column width changes, re-lock header to body (RTL scrollLeft zero point can drift).
 watch(tableMinWidth, () => {

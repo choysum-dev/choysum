@@ -3,7 +3,7 @@
 
 /**
  * Client loading registry (chrome bar + userBusy / slow-hint + surface/control).
- * Product rules: modules/web/web/docs/choy-loading-feedback.md
+ * Product rules: .dev/docs/web/choy-loading-feedback.md
  */
 import { computed, ref, toValue, type ComputedRef, type MaybeRefOrGetter, type Ref } from 'vue';
 

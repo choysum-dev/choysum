@@ -189,6 +189,9 @@ SPDX-License-Identifier: Apache-2.0
           :base-index="baseIndex"
           :store="store"
           :order-by="tableOrderBy"
+          :enable-column-resize="true"
+          :column-width-bucket="listColumnWidthBucket"
+          :prefs-user-id="listPrefsUserId"
           @selection-change="onSelectionChange"
           @row-click="onRowClick"
           @sort-change="onTableSortChange"
@@ -352,6 +355,11 @@ import { isConnectivityUnreachable } from '@/web/web/stores/connectivityStore';
 import { Separator } from '@/web/web/components/vendor/ui/separator';
 import { Check, ChevronDown, ChevronRight, Plus, Trash2, X } from 'lucide-vue-next';
 import ChoyViewOverflowRefreshItem from '@/web/web/components/view/ChoyViewOverflowRefreshItem.vue';
+import { useAuthStore } from '@/auth/web/stores/auth';
+import {
+  resolveListColumnPrefsUserId,
+  type ListColumnWidthBucket,
+} from '@/web/web/composables/listColumnWidthPrefs';
 import { useViewTitleOverflow } from '@/web/web/components/view/useViewTitleOverflow';
 import { useCollectionBusyMode } from '@/web/web/components/view/useCollectionBusyMode';
 import { useControllerSoftFailSurface } from '@/web/web/components/view/useControllerSoftFailSurface';
@@ -476,6 +484,23 @@ try {
   router = null;
   route = null;
 }
+
+const authStore = useAuthStore();
+
+const listPrefsUserId = computed(() =>
+  resolveListColumnPrefsUserId({
+    identity: authStore.identity as { userId?: unknown } | null,
+    currentUser: authStore.currentUser as { Id?: unknown } | null,
+  }),
+);
+
+const listColumnWidthBucket = computed<ListColumnWidthBucket>(() => ({
+  kind: 'list',
+  application: String((store as { application?: string }).application || '').trim(),
+  modelName: String((store as { modelName?: string }).modelName || '').trim(),
+  scopePath: String(route?.path || ''),
+}));
+
 useDetailPathRecordSetHygiene({
   detailPath: () => props.detailPath,
   modelName: () => (store as { modelName?: string })?.modelName,

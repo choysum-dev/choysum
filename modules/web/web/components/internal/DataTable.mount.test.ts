@@ -56,6 +56,46 @@ describe('DataTable chrome', () => {
     mounted.unmount();
   });
 
+  test('widthSpec capped produces minmax px tracks and keeps hard columns fixed', async () => {
+    const mixed: ColumnDef<Row, unknown>[] = [
+      {
+        id: 'sel',
+        header: '',
+        size: 36,
+        cell: () => '',
+      },
+      {
+        accessorKey: 'Name',
+        header: 'Name',
+        size: 140,
+        minSize: 140,
+        maxSize: 350,
+        meta: { widthSpec: { type: 'capped', max: 350 } },
+        cell: (ctx) => String(ctx.getValue() ?? ''),
+      },
+      {
+        id: 'Qty',
+        header: 'Qty',
+        size: 80,
+        cell: () => '1',
+      },
+    ];
+    const mounted = mountApp(DataTable as any, {
+      props: {
+        columns: mixed,
+        data: rows,
+        height: 120,
+        virtualize: false,
+        enableRowSelection: false,
+      },
+    });
+    await flushPromises();
+    const ss = mounted.setupState() as { gridTemplate?: string; tableMinWidth?: number };
+    expect(ss.gridTemplate).toBe('36px minmax(140px, 350px) 80px');
+    expect(ss.tableMinWidth).toBe(256);
+    mounted.unmount();
+  });
+
   test('column meta.align end applies justify-end on header and body cells', async () => {
     const numericColumns: ColumnDef<Row, unknown>[] = [
       {
@@ -605,6 +645,249 @@ describe('DataTable virtualize', () => {
     mounted.root?.scrollToRow?.(-1);
     mounted.root?.scrollToRow?.(Number.NaN);
     mounted.unmount();
+  });
+
+  test('column resize pointer drag emits start/move/end and cleans up on blur', async () => {
+    const resizableColumns: ColumnDef<Row, unknown>[] = [
+      {
+        id: 'Name',
+        accessorKey: 'Name',
+        header: 'Name',
+        size: 160,
+        minSize: 140,
+        meta: { resizable: true, widthSpec: { type: 'capped', max: 350 } },
+        cell: (ctx) => String(ctx.getValue() ?? ''),
+      },
+      {
+        id: 'Id',
+        accessorKey: 'Id',
+        header: 'Id',
+        size: 80,
+        meta: { resizable: false },
+        cell: (ctx) => String(ctx.getValue() ?? ''),
+      },
+    ];
+    const onStart = fnRecorder();
+    const onMove = fnRecorder();
+    const onEnd = fnRecorder();
+    const onReset = fnRecorder();
+    const onResetAll = fnRecorder();
+    const mounted = mountApp(DataTable as any, {
+      props: {
+        columns: resizableColumns,
+        data: rows,
+        height: 160,
+        virtualize: false,
+        enableRowSelection: false,
+        enableColumnResize: true,
+        showResetColumnWidths: true,
+      },
+      on: {
+        onColumnResizeStart: onStart,
+        onColumnResize: onMove,
+        onColumnResizeEnd: onEnd,
+        onColumnResizeReset: onReset,
+        onResetColumnWidths: onResetAll,
+      },
+    });
+    await flushPromises();
+
+    const ss = mounted.setupState() as {
+      canResizeColumn?: (col: {
+        columnDef?: { meta?: unknown };
+        id?: string;
+        getSize?: () => number;
+      }) => boolean;
+      onColumnResizePointerDown?: (event: any, column: any) => void;
+      onColumnResizePointerMove?: (event: any) => void;
+      onColumnResizePointerUp?: (event: any) => void;
+      onColumnResizeWindowBlur?: () => void;
+      onColumnResizeReset?: (columnId: string) => void;
+    };
+    expect(ss.canResizeColumn?.({ columnDef: { meta: { resizable: true } } })).toBe(true);
+    expect(ss.canResizeColumn?.({ columnDef: { meta: { selectColumn: true } } })).toBe(false);
+    expect(ss.canResizeColumn?.({ columnDef: { meta: { resizable: false } } })).toBe(false);
+
+    const handle = mounted.q('[data-testid=choy-data-table-col-resize]') as HTMLElement | null;
+    expect(handle).toBeTruthy();
+    const headerCell = handle!.closest('[role=columnheader]') as HTMLElement;
+    Object.defineProperty(headerCell, 'getBoundingClientRect', {
+      configurable: true,
+      value: () => ({
+        width: 180,
+        height: 32,
+        top: 0,
+        left: 0,
+        right: 180,
+        bottom: 32,
+        x: 0,
+        y: 0,
+        toJSON() {},
+      }),
+    });
+
+    const column = {
+      id: 'Name',
+      getSize: () => 160,
+      columnDef: { meta: { resizable: true } },
+    };
+    const pointerDown = (pointerId: number, clientX: number) =>
+      ss.onColumnResizePointerDown?.(
+        {
+          clientX,
+          pointerId,
+          currentTarget: handle,
+          preventDefault() {},
+          stopPropagation() {},
+        },
+        column,
+      );
+
+    pointerDown(7, 200);
+    expect(onStart.calls.length).toBe(1);
+
+    // getComputedStyle throw keeps LTR axisSign.
+    const realGcs = globalThis.getComputedStyle;
+    (globalThis as any).getComputedStyle = () => {
+      throw new Error('style unavailable');
+    };
+    try {
+      pointerDown(71, 200);
+      expect(onStart.calls.length).toBe(2);
+      ss.onColumnResizePointerUp?.({ clientX: 200, pointerId: 71 });
+    } finally {
+      (globalThis as any).getComputedStyle = realGcs;
+    }
+
+    // Re-entry while a drag is active should replace the stuck state.
+    pointerDown(8, 200);
+    expect(onStart.calls.length).toBe(3);
+
+    ss.onColumnResizePointerMove?.({ clientX: 260, pointerId: 8 });
+    expect(onMove.calls.length).toBeGreaterThan(0);
+
+    ss.onColumnResizePointerUp?.({ clientX: 280, pointerId: 8 });
+    expect(onEnd.calls.length).toBeGreaterThan(0);
+
+    // Blur ends an in-flight drag.
+    pointerDown(9, 200);
+    ss.onColumnResizeWindowBlur?.();
+    expect(onEnd.calls.length).toBeGreaterThan(1);
+
+    ss.onColumnResizeReset?.('Name');
+    expect(onReset.calls.length).toBe(1);
+
+    const resetBtn = mounted.q(
+      '[data-testid=choy-data-table-reset-column-widths]',
+    ) as HTMLElement | null;
+    expect(resetBtn).toBeTruthy();
+    resetBtn!.click();
+    expect(onResetAll.calls.length).toBe(1);
+
+    // Unmount mid-drag clears listeners via endColumnResizeDrag.
+    pointerDown(10, 200);
+    mounted.unmount();
+  });
+
+  test('trackWidthMode fit-max pins table track width from capped max', async () => {
+    const cols: ColumnDef<Row, unknown>[] = [
+      {
+        accessorKey: 'Name',
+        header: 'Name',
+        size: 140,
+        minSize: 140,
+        maxSize: 350,
+        meta: { widthSpec: { type: 'capped', max: 350 } },
+        cell: (ctx) => String(ctx.getValue() ?? ''),
+      },
+    ];
+    const mounted = mountApp(DataTable as any, {
+      props: {
+        columns: cols,
+        data: rows,
+        height: 120,
+        virtualize: false,
+        enableRowSelection: false,
+        trackWidthMode: 'fit-max',
+      },
+    });
+    await flushPromises();
+    const ss = mounted.setupState() as {
+      tableTrackWidthPx?: number | null;
+      tableTrackStyle?: Record<string, string>;
+    };
+    expect(ss.tableTrackWidthPx).toBe(350);
+    expect(ss.tableTrackStyle?.width).toBe('350px');
+    mounted.unmount();
+  });
+
+  test('RTL resize inverts pointer axis sign', async () => {
+    const prevDir = document.documentElement.dir;
+    document.documentElement.dir = 'rtl';
+    try {
+      const cols: ColumnDef<Row, unknown>[] = [
+        {
+          id: 'Name',
+          accessorKey: 'Name',
+          header: 'Name',
+          size: 160,
+          meta: { resizable: true },
+          cell: (ctx) => String(ctx.getValue() ?? ''),
+        },
+      ];
+      const onEnd = fnRecorder();
+      const mounted = mountApp(DataTable as any, {
+        props: {
+          columns: cols,
+          data: rows,
+          height: 120,
+          virtualize: false,
+          enableRowSelection: false,
+          enableColumnResize: true,
+        },
+        on: { onColumnResizeEnd: onEnd },
+      });
+      await flushPromises();
+      const ss = mounted.setupState() as {
+        onColumnResizePointerDown?: (event: any, column: any) => void;
+        onColumnResizePointerUp?: (event: any) => void;
+      };
+      const handle = mounted.q('[data-testid=choy-data-table-col-resize]') as HTMLElement;
+      expect(handle).toBeTruthy();
+      const headerCell = handle.closest('[role=columnheader]') as HTMLElement;
+      Object.defineProperty(headerCell, 'getBoundingClientRect', {
+        configurable: true,
+        value: () => ({
+          width: 160,
+          height: 32,
+          top: 0,
+          left: 0,
+          right: 160,
+          bottom: 32,
+          x: 0,
+          y: 0,
+          toJSON() {},
+        }),
+      });
+      ss.onColumnResizePointerDown?.(
+        {
+          clientX: 100,
+          pointerId: 1,
+          currentTarget: handle,
+          preventDefault() {},
+          stopPropagation() {},
+        },
+        { id: 'Name', getSize: () => 160, columnDef: { meta: { resizable: true } } },
+      );
+      ss.onColumnResizePointerUp?.({ clientX: 80, pointerId: 1 });
+      expect(onEnd.calls.length).toBe(1);
+      const payload = onEnd.calls[0]?.[0] as { width?: number };
+      // RTL: moving left (clientX decreases) grows the column.
+      expect(Number(payload?.width)).toBeGreaterThan(160);
+      mounted.unmount();
+    } finally {
+      document.documentElement.dir = prevDir;
+    }
   });
 
   test('header and body horizontal scrollLeft stay locked', async () => {

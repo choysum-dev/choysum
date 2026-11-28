@@ -7,6 +7,7 @@ import { flushPromises, fnRecorder, mountApp } from '@/web/web/__tests__/mountAp
 import ChoyTableColumn from '@/web/web/components/table/ChoyTableColumn.vue';
 import { LIST_HANDLE_API_KEY, useListHandleReorder } from '@/web/web/composables/useListHandleReorder';
 import {
+  getTableColumnMeta,
   useTableProvideBuildContext,
   useTableProvideColumnRegistry,
   type ColumnRegistry,
@@ -236,6 +237,52 @@ describe('ChoyTableColumn handle type', () => {
     expect(preventDefault.calls.length).toBeGreaterThan(0);
     expect(setDragImage.calls.length).toBe(0);
     mounted.unmount();
+  });
+
+  test('persists percent and flex widthSpec plus fieldType on column meta', async () => {
+    let registry: ColumnRegistry | null = null;
+    const Host = defineComponent({
+      setup() {
+        registry = useTableProvideColumnRegistry();
+        useTableProvideBuildContext({ getRows: () => [], baseIndex: ref(1) });
+        return () =>
+          h(ChoyTableColumn as any, {
+            prop: 'Name',
+            label: 'Name',
+            fieldType: 'varchar',
+            width: '30%',
+          });
+      },
+    });
+    const mounted = mountApp(Host);
+    await nextTick();
+    await flushPromises();
+    const col = registry!.columns.value[0] as any;
+    const meta = getTableColumnMeta(col);
+    expect(meta?.fieldType).toBe('varchar');
+    expect(meta?.widthSpec?.type).toBe('percent');
+    mounted.unmount();
+
+    let registry2: ColumnRegistry | null = null;
+    const HostFlex = defineComponent({
+      setup() {
+        registry2 = useTableProvideColumnRegistry();
+        useTableProvideBuildContext({ getRows: () => [], baseIndex: ref(1) });
+        return () =>
+          h(ChoyTableColumn as any, {
+            prop: 'Title',
+            label: 'Title',
+            width: '2fr',
+          });
+      },
+    });
+    const m2 = mountApp(HostFlex);
+    await nextTick();
+    await flushPromises();
+    const col2 = registry2!.columns.value[0] as any;
+    const meta2 = getTableColumnMeta(col2);
+    expect(meta2?.widthSpec).toEqual({ type: 'flex', weight: 2 });
+    m2.unmount();
   });
 
   test('skips re-registration when the column signature is unchanged', async () => {

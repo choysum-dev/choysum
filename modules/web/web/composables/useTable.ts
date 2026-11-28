@@ -184,9 +184,18 @@ export function useTableUseBuildContext(): TableBuildContext {
 
 /**
  * Internal metadata attached to columns for width semantics.
+ * - unset / px → fixed `Npx`
+ * - `capped` → `minmax(min, max)` soft growth (shared leftover; trailing gutter past sum(max))
+ * - `flex` / `auto` / `percent` → author opt-in fr tracks
+ * `fieldType` drives soft vs hard defaults in columnAdapter.
  */
 export type TableColumnMeta = {
-  widthSpec?: { type: 'percent'; ratio: number } | { type: 'flex'; weight: number } | { type: 'auto' };
+  widthSpec?:
+    | { type: 'percent'; ratio: number }
+    | { type: 'flex'; weight: number }
+    | { type: 'auto' }
+    | { type: 'capped'; max: number };
+  fieldType?: string;
 };
 const TABLE_COL_META_KEY = Symbol('choy-table:col-meta');
 
