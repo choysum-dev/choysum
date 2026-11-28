@@ -18,7 +18,7 @@ import { exportFieldSelection } from '@/web/web/query/utils/registry/field';
 import { awaitFieldSelection } from '@/web/web/query/utils/registry/fieldReady';
 import { filtersToQuery } from '@/web/web/query/utils/condition/builder';
 import { combineFilters, combinePresentConditions } from '@/web/web/query/utils/condition/absent';
-import { metadataOrderByToState } from '@/web/web/query/orderBy';
+import { filterOrderByForGroupKeys, metadataOrderByToState } from '@/web/web/query/orderBy';
 
 // ListViewModel & GroupBySpec now centralized in query/types.ts
 
@@ -324,12 +324,12 @@ export function createListController(store: ModelStore<any>): IListController {
         resolvedOrderBy = isGroupedRequest ? undefined : modelDefaultOrderBy;
       }
       if (isGroupedRequest && resolvedOrderBy?.length) {
-        const keySet = new Set((groupKeysForOrder || []).map(k => String(k)));
-        const filtered = resolvedOrderBy.filter(row => keySet.has(String(row?.field || '')));
-        resolvedOrderBy = filtered.length ? filtered : undefined;
+        // Filter for this RPC only; store may still hold collection orderBy (e.g. List CreatedAt).
+        resolvedOrderBy = filterOrderByForGroupKeys(resolvedOrderBy, groupKeysForOrder);
       }
-      // Grouped requests always persist (including undefined) so header chevrons match the query.
-      if (resolvedOrderBy !== undefined || hasOrderByOverride || isGroupedRequest) {
+      // Persist on explicit override (including clear) or flat seed/keep. Grouped apply
+      // without orderBy override must not wipe collection orderBy left by List.
+      if (hasOrderByOverride || (resolvedOrderBy !== undefined && !isGroupedRequest)) {
         writeQs({ orderBy: resolvedOrderBy });
       }
 

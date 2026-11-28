@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { buildUnifiedQuery } from './context';
+import { buildSearchOrGroupContext, buildUnifiedQuery } from './context';
 
 function makeStore(queryState: Record<string, unknown> = {}) {
   return {
@@ -16,6 +16,32 @@ function makeStore(queryState: Record<string, unknown> = {}) {
     },
   } as any;
 }
+
+test('buildSearchOrGroupContext: explicit undefined orderBy wins over store for groups', () => {
+  const store = makeStore({
+    orderBy: [{ field: 'CreatedAt', direction: 'asc' }],
+    appliedGroups: ['Revoked'],
+  });
+  const ctx = buildSearchOrGroupContext(store, {
+    shape: 'groups',
+    queryState: {
+      appliedGroups: ['Revoked'],
+      orderBy: undefined,
+    },
+  });
+  expect(ctx.queryState.orderBy).toBeUndefined();
+});
+
+test('buildSearchOrGroupContext: omitted orderBy still inherits store orderBy', () => {
+  const store = makeStore({
+    orderBy: [{ field: 'CreatedAt', direction: 'asc' }],
+  });
+  const ctx = buildSearchOrGroupContext(store, {
+    shape: 'collection',
+    queryState: {},
+  });
+  expect(ctx.queryState.orderBy).toEqual([{ field: 'CreatedAt', direction: 'asc' }]);
+});
 
 test('buildUnifiedQuery condition merge: merges ui, forced, and parent conditions via combinePresentConditions', () => {
   const store = makeStore({

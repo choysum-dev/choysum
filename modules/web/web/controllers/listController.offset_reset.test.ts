@@ -120,7 +120,7 @@ test('listController: paginate alone keeps requested offset', async () => {
   expect(store.state.queryState.pagination.offset).toBe(20);
 });
 
-test('listController: grouped apply drops leftover List orderBy from ReadGroup', async () => {
+test('listController: grouped apply drops leftover List orderBy from ReadGroup only', async () => {
   const readGroupOrderBys: unknown[] = [];
   const { store } = makeStore({
     ReadGroup: async (_gb: unknown, _cond: unknown, opts: { orderBy?: unknown } = {}) => {
@@ -134,7 +134,8 @@ test('listController: grouped apply drops leftover List orderBy from ReadGroup',
   expect(store.state.queryState.orderBy).toEqual([{ field: 'CreatedAt', direction: 'asc' }]);
   readGroupOrderBys.length = 0;
   await ctrl.apply({ appliedGroups: ['Revoked'] as any });
-  expect(store.state.queryState.orderBy).toBeUndefined();
+  // Collection orderBy stays in store; only the grouped RPC omits it.
+  expect(store.state.queryState.orderBy).toEqual([{ field: 'CreatedAt', direction: 'asc' }]);
   expect(readGroupOrderBys.length).toBeGreaterThan(0);
   for (const ob of readGroupOrderBys) {
     expect(ob == null || (Array.isArray(ob) && ob.length === 0)).toBe(true);
