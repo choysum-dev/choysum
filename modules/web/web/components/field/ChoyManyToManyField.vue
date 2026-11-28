@@ -61,7 +61,7 @@ SPDX-License-Identifier: Apache-2.0
             :prefs-user-id="embedPrefsUserId"
             @row-click="onTableRowClick"
           >
-            <ChoyTableColumn v-if="showIndex" type="index" label="#" :vColumnProps="{ align: 'end', width: 44 }" />
+            <ChoyTableColumn v-if="showIndex" type="index" label="#" :vColumnProps="{ align: 'end' }" />
             <slot />
             <ChoyTableColumn :label="_t('Actions')" :width="44" :vColumnProps="{ align: 'center', width: 44 }">
               <template #default="{ $index }">
@@ -129,7 +129,7 @@ SPDX-License-Identifier: Apache-2.0
             :prefs-user-id="embedPrefsUserId"
             @row-click="onTableRowClick"
           >
-            <ChoyTableColumn v-if="showIndex" type="index" label="#" :vColumnProps="{ align: 'end', width: 44 }" />
+            <ChoyTableColumn v-if="showIndex" type="index" label="#" :vColumnProps="{ align: 'end' }" />
             <slot />
             <!-- Header-only empty: suppress host default "No data". -->
             <template #empty />

@@ -27,6 +27,7 @@ import {
   skipTableColumnReregister,
   tableColumnPropSignature,
 } from './choyTableColumnSignature';
+import { LIST_INDEX_COLUMN_MIN_WIDTH } from '@/web/web/components/field/listColumnSizeDefaults';
 
 defineOptions({ name: 'ChoyTableColumn' });
 
@@ -279,8 +280,8 @@ function buildColumn(): Column {
         ),
     };
   } else if (type === 'index') {
-    // 44 matches O2M/M2M index columns and PropertiesDefinition `w-11` rows.
-    const width = colProps.width ?? 44;
+    // Floor matches PropertiesDefinition `w-11`; digit budget may raise in columnAdapter.
+    const width = colProps.width ?? LIST_INDEX_COLUMN_MIN_WIDTH;
     const indexClass = 'tabular-nums text-muted-foreground';
     const indexHeader = slots.header
       ? headerVNode

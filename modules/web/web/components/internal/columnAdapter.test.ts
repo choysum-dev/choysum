@@ -8,7 +8,9 @@ import {
   orderListTableColumns,
   resolveColumnSizePx,
   resolveColumnWidthSpec,
+  resolveIndexDisplayMaxText,
 } from './columnAdapter';
+import { LIST_INDEX_COLUMN_MIN_WIDTH } from '@/web/web/components/field/listColumnSizeDefaults';
 import { setTableColumnMeta, type Column } from '@/web/web/composables/useTable';
 
 describe('columnsToColumnDefs', () => {
@@ -225,6 +227,47 @@ describe('columnsToColumnDefs', () => {
     expect((defs[0].meta as { widthSpec?: { type: string } } | undefined)?.widthSpec).toEqual({
       type: 'auto',
     });
+  });
+
+  test('index digit budget raises from current-page max display text', () => {
+    const idx: Column = { key: '__index__', type: 'index', width: LIST_INDEX_COLUMN_MIN_WIDTH };
+    expect(listColumnIsResizable(idx)).toBe(false);
+
+    const narrow = resolveColumnSizePx(idx, {
+      indexDisplayMaxText: '20',
+      textMeasure: null,
+    });
+    expect(narrow.size).toBe(44);
+
+    const wide = resolveColumnSizePx(idx, {
+      indexDisplayMaxText: '10000',
+      textMeasure: null,
+    });
+    expect(wide.size).toBeGreaterThan(44);
+    expect(wide.size).toBeLessThanOrEqual(80);
+
+    expect(
+      resolveIndexDisplayMaxText({
+        baseIndex: 981,
+        sampleRows: [{ Id: 'a' }, { Id: 'b' }],
+      }),
+    ).toBe('982');
+
+    const defs = columnsToColumnDefs([idx], {
+      baseIndex: 9990,
+      sampleRows: Array.from({ length: 10 }, (_, i) => ({ Id: String(i) })),
+      textMeasure: null,
+    });
+    expect(defs[0].size).toBeGreaterThan(44);
+    expect((defs[0].meta as { resizable?: boolean }).resizable).toBe(false);
+
+    // userWidths must not resize index chrome.
+    const blocked = columnsToColumnDefs([idx], {
+      indexDisplayMaxText: '9',
+      userWidths: { __index__: 120 },
+      textMeasure: null,
+    });
+    expect(blocked[0].size).toBe(44);
   });
 });
 

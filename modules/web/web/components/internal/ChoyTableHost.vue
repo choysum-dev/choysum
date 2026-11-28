@@ -415,6 +415,8 @@ const columnDefs = computed(() =>
     // Soft columns raise min from first-screen cell text (capped by type max).
     sampleRows: rowsAsRecords.value,
     userWidths: effectiveUserWidths.value,
+    // Index chrome digit budget (current-page max display number).
+    baseIndex: baseIndexRef.value,
   }),
 );
 

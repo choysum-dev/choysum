@@ -5,10 +5,15 @@ import {
   defaultListColumnMaxWidth,
   defaultListColumnMinWidth,
   estimateListHeaderMinWidth,
+  estimateListIndexColumnWidth,
   isListCodeLikeLeaf,
+  LIST_INDEX_COLUMN_MAX_WIDTH,
+  LIST_INDEX_COLUMN_MIN_WIDTH,
   listColumnIsHard,
   listColumnPrefersStretch,
+  maxListIndexDisplayText,
   snapListColumnWidthUp,
+  snapListIndexColumnWidthUp,
 } from './listColumnSizeDefaults';
 
 test('defaultListColumnMinWidth covers the locked 20px scale', () => {
@@ -72,4 +77,27 @@ test('estimateListHeaderMinWidth raises hard mins on a 20px scale', () => {
   expect(long).toBeLessThanOrEqual(80 + 80);
   expect(snapListColumnWidthUp(81)).toBe(100);
   expect(snapListColumnWidthUp(100)).toBe(100);
+});
+
+test('index chrome floor and digit budget', () => {
+  expect(LIST_INDEX_COLUMN_MIN_WIDTH).toBe(44);
+  expect(LIST_INDEX_COLUMN_MAX_WIDTH).toBe(80);
+  expect(snapListIndexColumnWidthUp(40)).toBe(44);
+  expect(snapListIndexColumnWidthUp(45)).toBe(52);
+  expect(snapListIndexColumnWidthUp(100)).toBe(80);
+
+  expect(maxListIndexDisplayText({ baseIndex: 1, rowCount: 20 })).toBe('20');
+  expect(maxListIndexDisplayText({ baseIndex: 981, rowCount: 20 })).toBe('1000');
+  expect(maxListIndexDisplayText({ baseIndex: 1, rowCount: 5, groupIndexes: [2, 9, 4] })).toBe(
+    '9',
+  );
+  expect(maxListIndexDisplayText({ rowCount: 0 })).toBe('');
+
+  expect(estimateListIndexColumnWidth('', { measure: null })).toBe(44);
+  expect(estimateListIndexColumnWidth('1', { measure: null })).toBe(44);
+  expect(estimateListIndexColumnWidth('999', { measure: null })).toBe(44);
+  const four = estimateListIndexColumnWidth('9999', { measure: null });
+  expect(four).toBeGreaterThan(44);
+  expect(four).toBeLessThanOrEqual(80);
+  expect(estimateListIndexColumnWidth('99999999', { measure: null })).toBe(80);
 });

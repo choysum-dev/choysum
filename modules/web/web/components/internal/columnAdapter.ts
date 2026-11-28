@@ -10,8 +10,11 @@ import {
 import {
   defaultListColumnMaxWidth,
   estimateListHeaderMinWidth,
+  estimateListIndexColumnWidth,
+  LIST_INDEX_COLUMN_MIN_WIDTH,
   listColumnIsHard,
   listColumnPrefersStretch,
+  maxListIndexDisplayText,
 } from '@/web/web/components/field/listColumnSizeDefaults';
 import {
   LIST_SOFT_SAMPLE_ROW_LIMIT,
@@ -45,6 +48,13 @@ export type ColumnsToColumnDefsOptions = {
    * skipped when the author set an explicit width / widthSpec.
    */
   userWidths?: Readonly<Record<string, number>>;
+  /** 1-based first row number on the current page (pagination offset + 1). */
+  baseIndex?: number;
+  /**
+   * Precomputed max index display text for the current page. When omitted,
+   * derived from sampleRows + baseIndex / groupIndex.
+   */
+  indexDisplayMaxText?: string;
 };
 
 export type ResolveColumnSizeOptions = {
@@ -53,7 +63,34 @@ export type ResolveColumnSizeOptions = {
   softSampleMin?: number;
   /** User-dragged fixed width for this column, when present. */
   userWidth?: number;
+  /** Max row-number text on the current page (index chrome digit budget). */
+  indexDisplayMaxText?: string;
 };
+
+function isIndexListColumn(col: Column): boolean {
+  return columnKey(col) === '__index__' || col.type === 'index';
+}
+
+/** Build the widest index label from current-page rows + baseIndex. */
+export function resolveIndexDisplayMaxText(
+  options?: Pick<ColumnsToColumnDefsOptions, 'sampleRows' | 'baseIndex' | 'indexDisplayMaxText'>,
+): string {
+  const pre = String(options?.indexDisplayMaxText ?? '').trim();
+  if (pre) return pre;
+  const rows = options?.sampleRows;
+  const groupIndexes: number[] = [];
+  if (rows) {
+    for (const row of rows) {
+      const gi = (row as { groupIndex?: unknown })?.groupIndex;
+      if (typeof gi === 'number' && Number.isFinite(gi)) groupIndexes.push(gi);
+    }
+  }
+  return maxListIndexDisplayText({
+    baseIndex: options?.baseIndex,
+    rowCount: rows?.length ?? 0,
+    groupIndexes: groupIndexes.length > 0 ? groupIndexes : undefined,
+  });
+}
 
 function columnKey(col: Column): string {
   return String(col.key ?? col.dataKey ?? '');
@@ -114,6 +151,20 @@ export function resolveColumnSizePx(
     size = minSize;
   } else {
     size = FALLBACK_COLUMN_SIZE;
+  }
+
+  // Index chrome: digit budget may raise above the floor; never soft/user prefs.
+  if (isIndexListColumn(col)) {
+    const floor = Math.max(
+      LIST_INDEX_COLUMN_MIN_WIDTH,
+      explicitWidth != null ? explicitWidth : LIST_INDEX_COLUMN_MIN_WIDTH,
+    );
+    const raised = estimateListIndexColumnWidth(opts?.indexDisplayMaxText, {
+      measure: opts?.textMeasure,
+    });
+    size = Math.max(floor, raised);
+    minSize = size;
+    return { size, minSize };
   }
 
   // Header / sample raise only when width was not an author-fixed pixel width on chrome/system.
@@ -271,6 +322,7 @@ export function columnsToColumnDefs<T extends Record<string, unknown>>(
       : null;
 
   const userWidths = options?.userWidths;
+  const indexDisplayMaxText = resolveIndexDisplayMaxText(options);
 
   return ordered.map((col, index) => {
     const id = String(col.key ?? col.dataKey ?? `col_${index}`);
@@ -279,6 +331,7 @@ export function columnsToColumnDefs<T extends Record<string, unknown>>(
       textMeasure,
       softSampleMin: softMins?.get(id),
       userWidth,
+      indexDisplayMaxText,
     });
     const fromCol = getTableColumnMeta(col);
     const resizable = listColumnIsResizable(col);

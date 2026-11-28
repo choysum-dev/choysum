@@ -67,6 +67,58 @@ export function listColumnIsHard(fieldType: unknown): boolean {
 export const LIST_CODE_LIKE_MIN_WIDTH = 100;
 export const LIST_CODE_LIKE_MAX_WIDTH = 160;
 
+/** Index chrome floor (matches Tailwind `w-11` / prior kit default). */
+export const LIST_INDEX_COLUMN_MIN_WIDTH = 44;
+/** Index chrome cap (~6–7 tabular digits + pad). */
+export const LIST_INDEX_COLUMN_MAX_WIDTH = 80;
+/** Snap steps above the index floor (not the data-column 20px scale). */
+const LIST_INDEX_CHROME_STEP_PX = 8;
+
+/**
+ * Snap index chrome width up from the 44px floor in 8px steps, capped at MAX.
+ * Do not use {@link snapListColumnWidthUp} (that ladder starts at 80).
+ */
+export function snapListIndexColumnWidthUp(px: number): number {
+  const min = LIST_INDEX_COLUMN_MIN_WIDTH;
+  const max = LIST_INDEX_COLUMN_MAX_WIDTH;
+  if (!(Number.isFinite(px) && px > 0)) return min;
+  if (px <= min) return min;
+  const snapped = min + Math.ceil((px - min) / LIST_INDEX_CHROME_STEP_PX) * LIST_INDEX_CHROME_STEP_PX;
+  return Math.min(max, Math.max(min, snapped));
+}
+
+/**
+ * Largest row-number string shown on the current page.
+ * Prefers max(groupIndex) when any are present; else baseIndex + rowCount - 1.
+ */
+export function maxListIndexDisplayText(opts: {
+  baseIndex?: number;
+  rowCount?: number;
+  groupIndexes?: readonly number[];
+}): string {
+  let max = 0;
+  const groups = opts.groupIndexes;
+  if (groups && groups.length > 0) {
+    for (const g of groups) {
+      if (typeof g === 'number' && Number.isFinite(g) && g > max) max = g;
+    }
+  }
+  if (!(max > 0)) {
+    const base =
+      typeof opts.baseIndex === 'number' && Number.isFinite(opts.baseIndex) && opts.baseIndex > 0
+        ? Math.floor(opts.baseIndex)
+        : 1;
+    const count =
+      typeof opts.rowCount === 'number' && Number.isFinite(opts.rowCount) && opts.rowCount > 0
+        ? Math.floor(opts.rowCount)
+        : 0;
+    if (count <= 0) return '';
+    max = base + count - 1;
+  }
+  if (!(max > 0)) return '';
+  return String(Math.floor(max));
+}
+
 /**
  * Returns a type default minWidth, or undefined when the type has no opinion
  * (caller keeps FALLBACK-only sizing). Code-like leaves on stretch types use 100.
@@ -152,9 +204,10 @@ export function snapListColumnWidthUp(px: number): number {
   return Math.ceil(px / 20) * 20;
 }
 
-// Re-export after snapListColumnWidthUp so the circular import with
-// listColumnTextMeasure resolves to an initialized snap binding.
+// Re-export after snap helpers so the circular import with
+// listColumnTextMeasure resolves to initialized bindings.
 export {
   estimateListHeaderMinWidth,
+  estimateListIndexColumnWidth,
   type ListTextMeasureFn,
 } from './listColumnTextMeasure';
