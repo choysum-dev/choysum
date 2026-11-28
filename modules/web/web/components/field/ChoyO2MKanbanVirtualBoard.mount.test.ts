@@ -52,18 +52,24 @@ test('virtualized board keeps gap outside measured row size', async () => {
   // measureElement must not swallow gap — it lives on virtualizer.gap.
   expect(mounted.root.estimateSize).toBe(80);
   expect(mounted.root.gapPx).toBe(10);
-  const rows = mounted.root.cols > 0 ? Math.ceil(items.length / mounted.root.cols) : items.length;
+  expect(mounted.root.cols).toBeGreaterThan(0);
+  const rows = Math.ceil(items.length / mounted.root.cols);
   expect(rows).toBeGreaterThan(1);
   // Pre-measure: n card strides + (n-1) gaps (TanStack Virtual totalSize).
   expect(mounted.root.totalSize).toBe(80 * rows + 10 * (rows - 1));
 
   // Measured path: stub every row taller than the estimate; gap must still apply.
+  // Connect stubs so measureElement matches TanStack's connected-node path.
   const measuredHeight = 120;
-  for (let i = 0; i < rows; i += 1) {
-    mounted.root.measureElement(stubMeasuredRow(i, measuredHeight));
+  const stubs = Array.from({ length: rows }, (_, i) => stubMeasuredRow(i, measuredHeight));
+  for (const el of stubs) document.body.appendChild(el);
+  try {
+    for (const el of stubs) mounted.root.measureElement(el);
+    await nextTick();
+    expect(mounted.root.totalSize).toBe(measuredHeight * rows + 10 * (rows - 1));
+  } finally {
+    for (const el of stubs) el.remove();
   }
-  await nextTick();
-  expect(mounted.root.totalSize).toBe(measuredHeight * rows + 10 * (rows - 1));
 
   mounted.unmount();
 });
