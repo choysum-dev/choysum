@@ -64,16 +64,16 @@ SPDX-License-Identifier: Apache-2.0
     <ChoyTableColumn type="selection" :vColumnProps="{ align: 'center' }" />
     <ChoyTableColumn type="index" :vColumnProps="{ align: 'end' }" />
 
-    <ChoyCharField prop="NameChar" :store="store" :vColumnProps="{ minWidth: 120 }" />
-    <ChoyVarcharField prop="Title" :store="store" :vColumnProps="{ minWidth: 160 }" />
-    <ChoyVarcharField prop="Code" :store="store" :vColumnProps="{ minWidth: 100 }" />
-    <ChoySelectionField prop="State" :store="store" :vColumnProps="{ minWidth: 100 }" />
+    <ChoyCharField prop="NameChar" :store="store" />
+    <ChoyVarcharField prop="Title" :store="store" />
+    <ChoyVarcharField prop="Code" :store="store" />
+    <ChoySelectionField prop="State" :store="store" />
     <ChoyBooleanField :store="store" prop="IsActive" widget="checkbox" />
-    <ChoyIntField prop="Sequence" :store="store" :vColumnProps="{ minWidth: 80 }" />
+    <ChoyIntField prop="Sequence" :store="store" />
     <ChoyManyToOneField :store="store" prop="CategoryId">
       <ChoyVarcharField :store="store" prop="CategoryId.Name" :label="_t('Category')" />
     </ChoyManyToOneField>
-    <ChoyDatetimeField prop="UpdatedAt" mode="datetime" :store="store" :vColumnProps="{ minWidth: 160 }" />
+    <ChoyDatetimeField prop="UpdatedAt" mode="datetime" :store="store" />
   </ChoyListView>
 </template>
 

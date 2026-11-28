@@ -7,6 +7,9 @@ import {
   clampDataTableVirtualWindow,
   compareDataTableValues,
   dataTableColumnJustifyClass,
+  dataTableColumnTrack,
+  dataTableGridTemplate,
+  embedTableShouldFitContent,
   dataTableIsGroupLikeRow,
   dataTableIsVirtualized,
   dataTableMaybeMeasure,
@@ -523,3 +526,58 @@ test('dataTableColumnJustifyClass maps logical and physical align values', () =>
   expect(dataTableColumnJustifyClass(undefined)).toBeUndefined();
   expect(dataTableColumnJustifyClass('')).toBeUndefined();
 });
+
+test('dataTableColumnTrack keeps px, caps soft growth, and expands author fr', () => {
+  expect(dataTableColumnTrack({ size: 120 })).toEqual({ track: '120px', minPx: 120, maxPx: 120 });
+  expect(
+    dataTableColumnTrack({ size: 140, minSize: 140, widthSpec: { type: 'capped', max: 350 } }),
+  ).toEqual({
+    track: 'minmax(140px, 350px)',
+    minPx: 140,
+    maxPx: 350,
+  });
+  expect(dataTableColumnTrack({ size: 140, minSize: 140, widthSpec: { type: 'auto' } })).toEqual({
+    track: 'minmax(140px, 1fr)',
+    minPx: 140,
+    maxPx: null,
+  });
+  expect(dataTableColumnTrack({ size: 100, minSize: 80, widthSpec: { type: 'flex', weight: 2 } })).toEqual({
+    track: 'minmax(80px, 2fr)',
+    minPx: 80,
+    maxPx: null,
+  });
+  expect(dataTableColumnTrack({ size: 140, widthSpec: { type: 'percent', ratio: 0.5 } })).toEqual({
+    track: 'minmax(140px, 0.5fr)',
+    minPx: 140,
+    maxPx: null,
+  });
+});
+
+test('dataTableGridTemplate mixes fixed and capped tracks for min/max widths', () => {
+  const layout = dataTableGridTemplate([
+    { size: 44 },
+    { size: 140, minSize: 140, widthSpec: { type: 'capped', max: 350 } },
+    { size: 80 },
+  ]);
+  expect(layout.gridTemplate).toBe('44px minmax(140px, 350px) 80px');
+  expect(layout.tableMinWidth).toBe(44 + 140 + 80);
+  expect(layout.tableMaxWidth).toBe(44 + 350 + 80);
+});
+
+test('embedTableShouldFitContent stays off (full-width embed frames)', () => {
+  expect(
+    embedTableShouldFitContent({
+      columnFillMode: 'embed-auto',
+      dataColumnCount: 3,
+      tableMaxWidth: 654,
+    }),
+  ).toBe(false);
+  expect(
+    embedTableShouldFitContent({
+      columnFillMode: 'none',
+      dataColumnCount: 3,
+      tableMaxWidth: 654,
+    }),
+  ).toBe(false);
+});
+

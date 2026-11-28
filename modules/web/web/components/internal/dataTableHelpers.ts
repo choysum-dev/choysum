@@ -567,3 +567,83 @@ export function dataTableColumnJustifyClass(align: unknown): string | undefined 
   return undefined;
 }
 
+/** Width semantics mirrored from TableColumnMeta / columnAdapter. */
+export type DataTableWidthSpec =
+  | { type: 'percent'; ratio: number }
+  | { type: 'flex'; weight: number }
+  | { type: 'auto' }
+  | { type: 'capped'; max: number };
+
+/**
+ * One CSS grid track + min/max contributions.
+ * Fixed → `Npx`; capped soft → `minmax(min, max)`; author flex/auto/percent → fr (unbounded max).
+ */
+export function dataTableColumnTrack(opts: {
+  size: number;
+  minSize?: number;
+  widthSpec?: DataTableWidthSpec | null;
+}): { track: string; minPx: number; maxPx: number | null } {
+  const size = Number.isFinite(opts.size) && opts.size > 0 ? opts.size : 0;
+  const minFromProp =
+    typeof opts.minSize === 'number' && opts.minSize > 0 ? opts.minSize : undefined;
+  const minPx = minFromProp != null ? Math.max(minFromProp, 0) : size;
+  const spec = opts.widthSpec;
+  if (spec?.type === 'capped') {
+    const max = Number.isFinite(spec.max) && spec.max > 0 ? Math.max(spec.max, minPx) : minPx;
+    return { track: `minmax(${minPx}px, ${max}px)`, minPx, maxPx: max };
+  }
+  if (spec?.type === 'flex') {
+    const weight = Number.isFinite(spec.weight) && spec.weight > 0 ? spec.weight : 1;
+    return { track: `minmax(${minPx}px, ${weight}fr)`, minPx, maxPx: null };
+  }
+  if (spec?.type === 'auto') {
+    return { track: `minmax(${minPx}px, 1fr)`, minPx, maxPx: null };
+  }
+  if (spec?.type === 'percent') {
+    const ratio = Number.isFinite(spec.ratio) ? Math.min(Math.max(spec.ratio, 0.01), 1) : 0.01;
+    return { track: `minmax(${minPx}px, ${ratio}fr)`, minPx, maxPx: null };
+  }
+  return { track: `${size}px`, minPx: size, maxPx: size };
+}
+
+/** Builds grid tracks plus min/max table widths (max null if any fr track). */
+export function dataTableGridTemplate(columns: ReadonlyArray<{
+  size: number;
+  minSize?: number;
+  widthSpec?: DataTableWidthSpec | null;
+}>): { gridTemplate: string; tableMinWidth: number; tableMaxWidth: number | null } {
+  if (!columns.length) {
+    return { gridTemplate: '', tableMinWidth: 0, tableMaxWidth: 0 };
+  }
+  const tracks = columns.map((col) => dataTableColumnTrack(col));
+  let tableMaxWidth: number | null = 0;
+  for (const t of tracks) {
+    if (t.maxPx == null) {
+      tableMaxWidth = null;
+      break;
+    }
+    tableMaxWidth += t.maxPx;
+  }
+  return {
+    gridTemplate: tracks.map((t) => t.track).join(' '),
+    tableMinWidth: tracks.reduce((sum, t) => sum + t.minPx, 0),
+    tableMaxWidth,
+  };
+}
+
+/**
+ * Whether an embed host should shrink-wrap to sum(track max).
+ * Always false: product keeps O2M/M2M frames full-width; leftover space is the
+ * trailing gutter inside the table (strategy A). DataTable still accepts
+ * `trackWidthMode: 'fit-max'` if a future surface opts in.
+ */
+export const EMBED_FIT_MAX_DATA_COLUMNS = 4;
+
+export function embedTableShouldFitContent(_opts: {
+  columnFillMode?: 'none' | 'embed-auto' | string | null;
+  dataColumnCount: number;
+  tableMaxWidth: number | null | undefined;
+}): boolean {
+  return false;
+}
+

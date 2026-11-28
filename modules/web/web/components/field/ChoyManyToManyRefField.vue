@@ -35,7 +35,7 @@ SPDX-License-Identifier: Apache-2.0
         :field-prefix="String(prop)"
       >
         <div
-          class="choy-m2m-list w-full min-w-0 overflow-hidden rounded-md border border-border"
+          class="choy-m2m-list w-full min-w-0"
           :id="inputId || undefined"
           tabindex="-1"
           :aria-labelledby="labelId || undefined"
@@ -55,6 +55,10 @@ SPDX-License-Identifier: Apache-2.0
             :base-index="1"
             :virtualize="'auto'"
             :frameless="true"
+            column-fill-mode="embed-auto"
+            :enable-column-resize="true"
+            :column-width-bucket="embedColumnWidthBucket"
+            :prefs-user-id="embedPrefsUserId"
           >
             <ChoyTableColumn v-if="showIndex" type="index" label="#" :vColumnProps="{ align: 'end', width: 44 }" />
             <slot :ref-store="relationStore" />
@@ -107,7 +111,7 @@ SPDX-License-Identifier: Apache-2.0
       >{{ cellSummaryText }}</span>
       <ChoyViewScope v-else view-mode="display" :kind="'List'" :field-prefix="String(prop)">
         <!-- Always mount Host (incl. 0 rows) so nested columns register before Browse. -->
-        <div class="choy-m2m-list w-full min-w-0 overflow-hidden rounded-md border border-border">
+        <div class="choy-m2m-list w-full min-w-0">
           <ChoyTableHost
             :data="tableRows"
             :row-key="'__rowKey'"
@@ -118,6 +122,10 @@ SPDX-License-Identifier: Apache-2.0
             :base-index="1"
             :virtualize="'auto'"
             :frameless="true"
+            column-fill-mode="embed-auto"
+            :enable-column-resize="true"
+            :column-width-bucket="embedColumnWidthBucket"
+            :prefs-user-id="embedPrefsUserId"
           >
             <ChoyTableColumn v-if="showIndex" type="index" label="#" :vColumnProps="{ align: 'end', width: 44 }" />
             <slot :ref-store="relationStore" />
@@ -204,6 +212,11 @@ import { createTranslate } from '@/web/web/i18n';
 import { formatRelationCountSummary } from './relationCountSummary';
 import { buildRelationConditionSource } from '@/web/web/composables/relationalForField';
 import { CHOY_LIST_HEADER_HEIGHT, CHOY_LIST_ROW_HEIGHT } from '@/web/web/composables/listDensity';
+import { useAuthStore } from '@/auth/web/stores/auth';
+import {
+  resolveListColumnPrefsUserId,
+  type ListColumnWidthBucket,
+} from '@/web/web/composables/listColumnWidthPrefs';
 import {
   exportFieldSelection,
   registerFieldPath,
@@ -303,6 +316,21 @@ const effectiveSearchViewTitle = computed(() => props.searchViewTitle || _t('Sel
 const addLineFooterHeight = 36;
 
 const binding = (props.binding ?? useField<T, P, V>({ store: props.store as ModelStore<T>, prop: props.prop as P })) as UseField<T, V>;
+
+const authStore = useAuthStore();
+const embedPrefsUserId = computed(() =>
+  resolveListColumnPrefsUserId({
+    identity: authStore.identity as { userId?: unknown } | null,
+    currentUser: authStore.currentUser as { Id?: unknown } | null,
+  }),
+);
+const embedColumnWidthBucket = computed<ListColumnWidthBucket>(() => ({
+  kind: 'embed',
+  application: String((props.store as { application?: string } | undefined)?.application || '').trim(),
+  parentModel: String((props.store as { modelName?: string } | undefined)?.modelName || '').trim(),
+  fieldProp: String(binding.prop || '').trim(),
+  relation: 'm2m',
+}));
 
 const relationStore = computed<ModelStore<any> | undefined>(() => {
   if (binding.relationStore) return binding.relationStore as ModelStore<any>;

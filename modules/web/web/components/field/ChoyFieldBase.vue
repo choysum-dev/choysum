@@ -280,6 +280,7 @@ SPDX-License-Identifier: Apache-2.0
     :prop="String(binding.prop)"
     :label="resolvedLabel"
     :sortable="resolvedVColumnProps.sortable === true"
+    :field-type="listFieldType"
     :vColumnProps="resolvedVColumnProps"
     v-slot="{ row, $index }"
   >
@@ -530,6 +531,7 @@ import FieldTranslationsDialog from './ChoyFieldTranslationsDialog.vue';
 import FieldCompanyValuesDialog from './ChoyFieldCompanyValuesDialog.vue';
 import { defaultListColumnAlignForFieldType } from './numericFieldHelpers';
 import { defaultListColumnSortable } from './listColumnSortable';
+import { defaultListColumnMinWidth } from './listColumnSizeDefaults';
 import { dataTableColumnJustifyClass } from '@/web/web/components/internal/dataTableHelpers';
 
 export type { ChoyInlineErrorSpace };
@@ -645,11 +647,26 @@ const effectiveFieldMeta = computed(() => {
   return modelStore.value?.getFieldMeta?.(leaf) ?? binding.meta;
 });
 
-/** List columns: default align + sortable by field type/storage; explicit vColumnProps win. */
-const resolvedVColumnProps = computed(() => {
-  const incoming = { ...(props.vColumnProps || {}) } as Record<string, unknown>;
+/** Field type used for list column defaults (align / sortable / minWidth / embed-auto). */
+const listFieldType = computed(() => {
   // Dotted related paths must use binding.meta (the leaf field), never a same-named
   // root-store field from effectiveFieldMeta.
+  const propPath = String(binding.prop || '');
+  const isDotted = propPath.includes('.');
+  const typeMeta = (
+    isDotted
+      ? ((binding.meta as { type?: unknown } | undefined) ??
+        (effectiveFieldMeta.value as { type?: unknown } | undefined))
+      : ((effectiveFieldMeta.value as { type?: unknown } | undefined) ??
+        (binding.meta as { type?: unknown } | undefined))
+  ) as { type?: unknown } | undefined;
+  const t = typeMeta?.type;
+  return t == null || t === '' ? '' : String(t);
+});
+
+/** List columns: default align + sortable + minWidth by field type; explicit vColumnProps win. */
+const resolvedVColumnProps = computed(() => {
+  const incoming = { ...(props.vColumnProps || {}) } as Record<string, unknown>;
   const propPath = String(binding.prop || '');
   const isDotted = propPath.includes('.');
   const typeMeta = (
@@ -666,7 +683,7 @@ const resolvedVColumnProps = computed(() => {
         computedKind?: string;
       }
     | undefined;
-  const fieldType = typeMeta?.type;
+  const fieldType = typeMeta?.type ?? listFieldType.value;
 
   let next = incoming;
   if (incoming.align == null || String(incoming.align).trim() === '') {
@@ -675,6 +692,15 @@ const resolvedVColumnProps = computed(() => {
   }
   if (incoming.sortable == null) {
     next = { ...next, sortable: defaultListColumnSortable(fieldType, typeMeta) };
+  }
+  const hasWidth = incoming.width != null && String(incoming.width).trim() !== '';
+  const hasMinWidth =
+    typeof incoming.minWidth === 'number'
+      ? incoming.minWidth > 0
+      : incoming.minWidth != null && String(incoming.minWidth).trim() !== '';
+  if (!hasWidth && !hasMinWidth) {
+    const minWidth = defaultListColumnMinWidth(fieldType, binding.prop);
+    if (minWidth != null) next = { ...next, minWidth };
   }
   return next;
 });
@@ -1355,7 +1381,8 @@ defineSlots<{
     [data-anchor='choy.internal.datetime-picker'],
     [data-anchor='choy.internal.time-picker'],
     .choy-m2m-tags__shell,
-    .choy-m2m-list,
+    .choy-m2m-list .choy-table-host,
+    .choy-o2m-list .choy-table-host,
     .choy-image-avatar--empty,
     .choy-attachment-upload,
     .choy-attachment-current--compact,

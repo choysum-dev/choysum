@@ -56,6 +56,46 @@ describe('DataTable chrome', () => {
     mounted.unmount();
   });
 
+  test('widthSpec capped produces minmax px tracks and keeps hard columns fixed', async () => {
+    const mixed: ColumnDef<Row, unknown>[] = [
+      {
+        id: 'sel',
+        header: '',
+        size: 36,
+        cell: () => '',
+      },
+      {
+        accessorKey: 'Name',
+        header: 'Name',
+        size: 140,
+        minSize: 140,
+        maxSize: 350,
+        meta: { widthSpec: { type: 'capped', max: 350 } },
+        cell: (ctx) => String(ctx.getValue() ?? ''),
+      },
+      {
+        id: 'Qty',
+        header: 'Qty',
+        size: 80,
+        cell: () => '1',
+      },
+    ];
+    const mounted = mountApp(DataTable as any, {
+      props: {
+        columns: mixed,
+        data: rows,
+        height: 120,
+        virtualize: false,
+        enableRowSelection: false,
+      },
+    });
+    await flushPromises();
+    const ss = mounted.setupState() as { gridTemplate?: string; tableMinWidth?: number };
+    expect(ss.gridTemplate).toBe('36px minmax(140px, 350px) 80px');
+    expect(ss.tableMinWidth).toBe(256);
+    mounted.unmount();
+  });
+
   test('column meta.align end applies justify-end on header and body cells', async () => {
     const numericColumns: ColumnDef<Row, unknown>[] = [
       {

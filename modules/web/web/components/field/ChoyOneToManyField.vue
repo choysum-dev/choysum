@@ -29,7 +29,7 @@ SPDX-License-Identifier: Apache-2.0
       >{{ cellSummaryText }}</span>
       <ChoyViewScope v-else :view-mode="binding.env.viewMode" :kind="'List'" :field-prefix="String(prop)">
         <div
-          class="choy-o2m-list w-full min-w-0 overflow-hidden rounded-md border border-border"
+          class="choy-o2m-list w-full min-w-0"
           :id="inputId || undefined"
           tabindex="-1"
           :aria-labelledby="labelId || undefined"
@@ -49,6 +49,10 @@ SPDX-License-Identifier: Apache-2.0
             :base-index="1"
             :virtualize="'auto'"
             :frameless="true"
+            column-fill-mode="embed-auto"
+            :enable-column-resize="true"
+            :column-width-bucket="embedColumnWidthBucket"
+            :prefs-user-id="embedPrefsUserId"
           >
             <ChoyTableColumn
               v-if="showHandleColumn"
@@ -99,7 +103,7 @@ SPDX-License-Identifier: Apache-2.0
         data-testid="choy-o2m-summary"
       >{{ cellSummaryText }}</span>
       <ChoyViewScope v-else view-mode="display" :kind="'List'" :field-prefix="String(prop)">
-        <div class="choy-o2m-list w-full min-w-0 overflow-hidden rounded-md border border-border">
+        <div class="choy-o2m-list w-full min-w-0">
           <ChoyTableHost
             :data="tableRows"
             :row-key="'__rowKey'"
@@ -110,6 +114,10 @@ SPDX-License-Identifier: Apache-2.0
             :base-index="1"
             :virtualize="'auto'"
             :frameless="true"
+            column-fill-mode="embed-auto"
+            :enable-column-resize="true"
+            :column-width-bucket="embedColumnWidthBucket"
+            :prefs-user-id="embedPrefsUserId"
           >
             <ChoyTableColumn v-if="showIndex" type="index" label="#" :vColumnProps="{ align: 'end', width: 44 }" />
             <slot />
@@ -141,6 +149,11 @@ import { hasHandleField } from '@/web/web/composables/listRowEdit';
 import { LIST_HANDLE_API_KEY, useListHandleReorder } from '@/web/web/composables/useListHandleReorder';
 import { formatRelationCountSummary } from './relationCountSummary';
 import { CHOY_LIST_HEADER_HEIGHT, CHOY_LIST_ROW_HEIGHT } from '@/web/web/composables/listDensity';
+import { useAuthStore } from '@/auth/web/stores/auth';
+import {
+  resolveListColumnPrefsUserId,
+  type ListColumnWidthBucket,
+} from '@/web/web/composables/listColumnWidthPrefs';
 
 const { _t } = createTranslate('web', { scope: 'web/components/field/ChoyOneToManyField' });
 
@@ -226,6 +239,21 @@ binding.registerFields(`${binding.prop}.DisplayName`);
 
 const { getItems, insertItem, removeItemAt } = binding.asMutableArray<any>();
 const store = props.store;
+
+const authStore = useAuthStore();
+const embedPrefsUserId = computed(() =>
+  resolveListColumnPrefsUserId({
+    identity: authStore.identity as { userId?: unknown } | null,
+    currentUser: authStore.currentUser as { Id?: unknown } | null,
+  }),
+);
+const embedColumnWidthBucket = computed<ListColumnWidthBucket>(() => ({
+  kind: 'embed',
+  application: String((store as { application?: string } | undefined)?.application || '').trim(),
+  parentModel: String((store as { modelName?: string } | undefined)?.modelName || '').trim(),
+  fieldProp: String(binding.prop || '').trim(),
+  relation: 'o2m',
+}));
 
 const itemCount = computed(() => getItems()?.length ?? 0);
 /** Explicit length dep so the embedded table refreshes when the collection is replaced. */

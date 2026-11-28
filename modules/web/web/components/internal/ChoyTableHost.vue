@@ -10,7 +10,9 @@ SPDX-License-Identifier: Apache-2.0
     :data-empty="isEmpty ? '' : undefined"
     :class="
       cn(
-        'choy-table-host flex w-full min-h-0 flex-col',
+        'choy-table-host flex min-h-0 w-full flex-col',
+        // Frameless embeds: host owns the outline (O2M/M2M wrappers are borderless).
+        props.frameless && 'overflow-hidden rounded-md border border-border',
         sizeToContent ? undefined : 'overflow-hidden',
         !sizeToContent && !tableHeight && 'h-full',
         props.class,
@@ -47,9 +49,15 @@ SPDX-License-Identifier: Apache-2.0
         :enable-sorting="true"
         :sorting="headerSorting"
         :show-empty="!sizeToContent"
+        :enable-column-resize="enableColumnResize"
+        track-width-mode="fill"
         sorting-mode="server"
         @row-click="onDataTableRowClick"
         @sort-change="onSortChange"
+        @column-resize-start="onColumnResizeStart"
+        @column-resize="onColumnResize"
+        @column-resize-end="onColumnResizeEnd"
+        @column-resize-reset="onColumnResizeReset"
       >
         <!-- Fixed-height hosts: empty lives in the body so it never covers the header. -->
         <template v-if="!sizeToContent" #empty>
@@ -81,7 +89,7 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { computed, watch, ref, isRef, type Ref } from 'vue';
+import { computed, watch, ref, isRef, onBeforeUnmount, type Ref } from 'vue';
 import {
   useTableSelection,
   useTableProvideColumnRegistry,
@@ -91,8 +99,16 @@ import {
 import { createTranslate } from '@/web/web/i18n';
 import { cn, type ClassValue } from '@/web/web/lib/utils';
 import { CHOY_LIST_HEADER_HEIGHT, CHOY_LIST_ROW_HEIGHT } from '@/web/web/composables/listDensity';
+import {
+  clearListColumnWidthPrefs,
+  clampListColumnWidthPx,
+  LIST_COLUMN_WIDTH_WRITE_DEBOUNCE_MS,
+  readListColumnWidthPrefs,
+  writeListColumnWidthPrefs,
+  type ListColumnWidthBucket,
+} from '@/web/web/composables/listColumnWidthPrefs';
 import DataTable from './DataTable.vue';
-import { columnsToColumnDefs } from './columnAdapter';
+import { columnsToColumnDefs, type ColumnFillMode } from './columnAdapter';
 import {
   embeddedTableWantsVirtualLayout,
   resolveEmbeddedTableVirtualize,
@@ -126,11 +142,22 @@ const props = withDefaults(
      * (e.g. M2M edit chrome) owns the outline without double borders.
      */
     frameless?: boolean;
+    /**
+     * Legacy flag (List `none`, O2M/M2M `embed-auto`). Soft/hard column sizing is
+     * shared for both; unbounded single-column `1fr` promotion is no longer applied.
+     */
+    columnFillMode?: ColumnFillMode;
     selectionApi?: ReturnType<typeof useTableSelection>;
     baseIndex?: number | Ref<number>;
     store?: any;
     /** Sync header chevrons with List queryState.orderBy (direction or order). */
     orderBy?: OrderByState[] | Array<{ field: string; order?: 'asc' | 'desc'; direction?: 'asc' | 'desc' }>;
+    /** Enable header drag-resize; persists when `columnWidthBucket` + `prefsUserId` are set. */
+    enableColumnResize?: boolean;
+    /** localStorage bucket (list vs embed). Omit → resize is session-only. */
+    columnWidthBucket?: ListColumnWidthBucket | null;
+    /** Auth user id for prefs isolation (`anon` when empty). */
+    prefsUserId?: string | number | null;
   }>(),
   {
     rowKey: 'Id',
@@ -139,6 +166,10 @@ const props = withDefaults(
     footerHeight: 0,
     virtualize: true,
     frameless: false,
+    columnFillMode: 'none',
+    enableColumnResize: false,
+    columnWidthBucket: null,
+    prefsUserId: null,
   },
 );
 
@@ -148,6 +179,7 @@ const emit = defineEmits<{
   (e: 'row-dblclick', payload: RowEventHandlerParams): void;
   (e: 'selection-change', rows: any[]): void;
   (e: 'sort-change', payload: { field: string; direction?: 'asc' | 'desc' }): void;
+  (e: 'column-widths-change', widths: Record<string, number>): void;
 }>();
 
 defineSlots<{
@@ -203,7 +235,133 @@ const columnsToUse = computed<Column[]>(() => {
   return props.columns && props.columns.length > 0 ? props.columns : regColumns.value;
 });
 
-const columnDefs = computed(() => columnsToColumnDefs(columnsToUse.value));
+/** Persisted / committed user width overrides. */
+const userWidths = ref<Record<string, number>>({});
+/**
+ * DOM snapshot for the active drag only — freezes sibling soft columns so the
+ * dragged edge tracks the pointer (getSize() alone is the type min, not paint width).
+ */
+const dragFreezeWidths = ref<Record<string, number> | null>(null);
+let persistTimer: ReturnType<typeof setTimeout> | null = null;
+
+const effectiveUserWidths = computed(() => {
+  if (!dragFreezeWidths.value) return userWidths.value;
+  return { ...dragFreezeWidths.value, ...userWidths.value };
+});
+
+function loadUserWidthsFromStorage(): void {
+  const bucket = props.columnWidthBucket;
+  if (!bucket) {
+    userWidths.value = {};
+    emit('column-widths-change', {});
+    return;
+  }
+  userWidths.value = { ...readListColumnWidthPrefs(bucket, props.prefsUserId).columns };
+  emit('column-widths-change', { ...userWidths.value });
+}
+
+watch(
+  () =>
+    [
+      props.columnWidthBucket ? JSON.stringify(props.columnWidthBucket) : '',
+      String(props.prefsUserId ?? ''),
+    ] as const,
+  () => {
+    loadUserWidthsFromStorage();
+  },
+  { immediate: true },
+);
+
+const hasColumnWidthOverrides = computed(() => Object.keys(userWidths.value).length > 0);
+
+function schedulePersistUserWidths(): void {
+  const bucket = props.columnWidthBucket;
+  if (!bucket) return;
+  if (persistTimer) clearTimeout(persistTimer);
+  persistTimer = setTimeout(() => {
+    persistTimer = null;
+    writeListColumnWidthPrefs(
+      bucket,
+      props.prefsUserId,
+      { columns: { ...userWidths.value }, updatedAt: Date.now() },
+    );
+    emit('column-widths-change', { ...userWidths.value });
+  }, LIST_COLUMN_WIDTH_WRITE_DEBOUNCE_MS);
+}
+
+function onColumnResizeStart(payload: {
+  columnId: string;
+  width: number;
+  snapshot: Record<string, number>;
+}): void {
+  const freeze: Record<string, number> = {};
+  for (const [id, w] of Object.entries(payload.snapshot || {})) {
+    const clamped = clampListColumnWidthPx(w);
+    if (clamped != null) freeze[id] = clamped;
+  }
+  const start = clampListColumnWidthPx(payload.width);
+  if (start != null) freeze[payload.columnId] = start;
+  dragFreezeWidths.value = freeze;
+  // Seed the live override so the first move does not fall back to type min.
+  if (start != null) {
+    userWidths.value = { ...userWidths.value, [payload.columnId]: start };
+  }
+}
+
+function onColumnResize(payload: { columnId: string; width: number }): void {
+  const clamped = clampListColumnWidthPx(payload.width);
+  if (clamped == null) return;
+  userWidths.value = { ...userWidths.value, [payload.columnId]: clamped };
+}
+
+function onColumnResizeEnd(payload: { columnId: string; width: number }): void {
+  const clamped = clampListColumnWidthPx(payload.width);
+  if (clamped == null) {
+    dragFreezeWidths.value = null;
+    return;
+  }
+  userWidths.value = { ...userWidths.value, [payload.columnId]: clamped };
+  dragFreezeWidths.value = null;
+  schedulePersistUserWidths();
+  emit('column-widths-change', { ...userWidths.value });
+}
+
+function onColumnResizeReset(payload: { columnId: string }): void {
+  dragFreezeWidths.value = null;
+  const next = { ...userWidths.value };
+  delete next[payload.columnId];
+  userWidths.value = next;
+  if (props.columnWidthBucket) {
+    clearListColumnWidthPrefs(props.columnWidthBucket, props.prefsUserId, payload.columnId);
+  }
+  emit('column-widths-change', { ...userWidths.value });
+}
+
+/** Clear all user width overrides for this host bucket (restore auto widths). */
+function resetColumnWidths(): void {
+  dragFreezeWidths.value = null;
+  userWidths.value = {};
+  if (props.columnWidthBucket) {
+    clearListColumnWidthPrefs(props.columnWidthBucket, props.prefsUserId);
+  }
+  emit('column-widths-change', {});
+}
+
+onBeforeUnmount(() => {
+  if (persistTimer) {
+    clearTimeout(persistTimer);
+    persistTimer = null;
+  }
+});
+
+const columnDefs = computed(() =>
+  columnsToColumnDefs(columnsToUse.value, {
+    columnFillMode: props.columnFillMode,
+    // Soft columns raise min from first-screen cell text (capped by type max).
+    sampleRows: rowsAsRecords.value,
+    userWidths: effectiveUserWidths.value,
+  }),
+);
 
 const headerSorting = computed(() => orderByToSortingState(props.orderBy));
 
@@ -334,6 +492,8 @@ function emitSortChange(payload: { field: string; direction?: 'asc' | 'desc' }) 
 defineExpose({
   selectedItems,
   emitSortChange,
+  hasColumnWidthOverrides,
+  resetColumnWidths,
   scrollTo: (_left?: number, _top?: number) => {},
   scrollToRow: (rowIndex: number, align?: string) => {
     dataTableRef.value?.scrollToRow?.(rowIndex, align as 'start' | 'center' | 'end' | 'auto');

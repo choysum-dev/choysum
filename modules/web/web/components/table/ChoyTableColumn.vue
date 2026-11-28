@@ -41,17 +41,21 @@ const props = withDefaults(
     colKey?: string;
     label?: string;
     vColumnProps?: {
-      width?: number | string; // Supports percentage and flex width semantics.
+      /** Pixel number, or `auto` / `Nfr` / `flex:N` / `%` (percent maps to a relative fr weight). */
+      width?: number | string;
       minWidth?: number;
       align?: 'start' | 'center' | 'end' | 'left' | 'right';
       fixed?: 'left' | 'right';
       sortable?: boolean;
     };
-    width?: number | string; // Supports percentage and flex width semantics.
+    /** Pixel number, or `auto` / `Nfr` / `flex:N` / `%`. Unset → fixed px from size/minWidth. */
+    width?: number | string;
     minWidth?: number;
     align?: 'start' | 'center' | 'end' | 'left' | 'right';
     fixed?: 'left' | 'right';
     sortable?: boolean;
+    /** Model field type; used by embed-auto to prefer text-like stretch columns. */
+    fieldType?: string;
   }>(),
   {
     label: '',
@@ -98,6 +102,7 @@ function columnPropSignature(): string {
     align: props.align ?? null,
     fixed: props.fixed ?? null,
     sortable: props.sortable ?? null,
+    fieldType: props.fieldType ?? null,
     vColumnProps: props.vColumnProps ?? null,
   });
 }
@@ -395,18 +400,20 @@ function buildColumn(): Column {
     };
   }
 
-  // Persist percentage, flex, and auto width semantics for the table host.
+  // Persist explicit flex/auto/percent only; unset width stays fixed px via adapter size.
+  const meta: TableColumnMeta = {};
   if (widthSpec && widthSpec.type !== 'px') {
-    const meta: TableColumnMeta =
+    meta.widthSpec =
       widthSpec.type === 'percent'
-        ? { widthSpec: { type: 'percent' as const, ratio: widthSpec.ratio } }
+        ? { type: 'percent' as const, ratio: widthSpec.ratio }
         : widthSpec.type === 'flex'
-          ? { widthSpec: { type: 'flex' as const, weight: widthSpec.weight } }
-          : { widthSpec: { type: 'auto' as const } };
+          ? { type: 'flex' as const, weight: widthSpec.weight }
+          : { type: 'auto' as const };
+  }
+  const ft = String(props.fieldType || '').trim();
+  if (ft) meta.fieldType = ft;
+  if (meta.widthSpec || meta.fieldType) {
     setTableColumnMeta(col, meta);
-  } else if (typeof (col as any).width !== 'number') {
-    // Treat unspecified non-pixel widths as auto as well.
-    setTableColumnMeta(col, { widthSpec: { type: 'auto' as const } });
   }
 
   return col;

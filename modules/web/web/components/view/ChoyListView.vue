@@ -125,12 +125,24 @@ SPDX-License-Identifier: Apache-2.0
       </slot>
     </template>
 
-    <template v-if="showRefreshInOverflow || !!slots['overflow-actions']" #overflow-actions>
+    <template
+      v-if="showRefreshInOverflow || hasColumnWidthOverrides || !!slots['overflow-actions']"
+      #overflow-actions
+    >
       <ChoyViewOverflowRefreshItem
         v-if="showRefreshInOverflow"
         test-id="list-overflow-refresh"
         @select="handleRefresh"
       />
+      <ChoyActionMenuItem
+        v-if="hasColumnWidthOverrides"
+        data-testid="list-overflow-reset-column-widths"
+        :requires-connectivity="false"
+        @execute="resetListColumnWidths"
+      >
+        <History class="size-4" aria-hidden="true" />
+        {{ _t('Reset column widths') }}
+      </ChoyActionMenuItem>
       <slot name="overflow-actions" :selected-items="selectedItems" />
     </template>
 
@@ -179,6 +191,7 @@ SPDX-License-Identifier: Apache-2.0
         :view-mode="inlineTableViewMode"
       >
         <ChoyTableHost
+          ref="tableHostRef"
           class="min-h-0 flex-1"
           :data="tableItems"
           :row-key="computedRowKey"
@@ -189,9 +202,13 @@ SPDX-License-Identifier: Apache-2.0
           :base-index="baseIndex"
           :store="store"
           :order-by="tableOrderBy"
+          :enable-column-resize="true"
+          :column-width-bucket="listColumnWidthBucket"
+          :prefs-user-id="listPrefsUserId"
           @selection-change="onSelectionChange"
           @row-click="onRowClick"
           @sort-change="onTableSortChange"
+          @column-widths-change="onListColumnWidthsChange"
         >
           <ChoyTableColumn v-if="showHandleColumn" type="handle" col-key="__handle__" :vColumnProps="{ width: 36, align: 'center' }" />
           <!-- Automatically inject the leading group column in grouped mode -->
@@ -348,10 +365,16 @@ import { snapshotFromListStore } from '@/web/web/navigation/snapshotFromListStor
 import { useRecordSetStore } from '@/web/web/stores/recordSetStore';
 import ChoyButton from '@/web/web/components/button/ChoyButton.vue';
 import ChoyActionButton from '@/web/web/components/button/ChoyActionButton.vue';
+import ChoyActionMenuItem from '@/web/web/components/button/ChoyActionMenuItem.vue';
 import { isConnectivityUnreachable } from '@/web/web/stores/connectivityStore';
 import { Separator } from '@/web/web/components/vendor/ui/separator';
-import { Check, ChevronDown, ChevronRight, Plus, Trash2, X } from 'lucide-vue-next';
+import { Check, ChevronDown, ChevronRight, History, Plus, Trash2, X } from 'lucide-vue-next';
 import ChoyViewOverflowRefreshItem from '@/web/web/components/view/ChoyViewOverflowRefreshItem.vue';
+import { useAuthStore } from '@/auth/web/stores/auth';
+import {
+  resolveListColumnPrefsUserId,
+  type ListColumnWidthBucket,
+} from '@/web/web/composables/listColumnWidthPrefs';
 import { useViewTitleOverflow } from '@/web/web/components/view/useViewTitleOverflow';
 import { useCollectionBusyMode } from '@/web/web/components/view/useCollectionBusyMode';
 import { useControllerSoftFailSurface } from '@/web/web/components/view/useControllerSoftFailSurface';
@@ -476,6 +499,36 @@ try {
   router = null;
   route = null;
 }
+
+const authStore = useAuthStore();
+const tableHostRef = ref<{
+  resetColumnWidths?: () => void;
+  hasColumnWidthOverrides?: { value?: boolean } | boolean;
+} | null>(null);
+const hasColumnWidthOverrides = ref(false);
+
+const listPrefsUserId = computed(() =>
+  resolveListColumnPrefsUserId({
+    identity: authStore.identity as { userId?: unknown } | null,
+    currentUser: authStore.currentUser as { Id?: unknown } | null,
+  }),
+);
+
+const listColumnWidthBucket = computed<ListColumnWidthBucket>(() => ({
+  kind: 'list',
+  application: String((store as { application?: string }).application || '').trim(),
+  modelName: String((store as { modelName?: string }).modelName || '').trim(),
+  scopePath: String(route?.path || ''),
+}));
+
+function onListColumnWidthsChange(widths: Record<string, number>): void {
+  hasColumnWidthOverrides.value = Object.keys(widths || {}).length > 0;
+}
+
+function resetListColumnWidths(): void {
+  tableHostRef.value?.resetColumnWidths?.();
+  hasColumnWidthOverrides.value = false;
+}
 useDetailPathRecordSetHygiene({
   detailPath: () => props.detailPath,
   modelName: () => (store as { modelName?: string })?.modelName,
@@ -541,7 +594,7 @@ const sessionUnreachable = computed(() => isConnectivityUnreachable());
 const { showRefreshInOverflow, showTitleOverflow } = useViewTitleOverflow({
   pageTitleActionsIo,
   showRefresh: () => props.showActions && props.refreshAction && canRefresh.value,
-  hasOverflowSlot: () => !!slots['overflow-actions'],
+  hasOverflowSlot: () => !!slots['overflow-actions'] || hasColumnWidthOverrides.value,
 });
 // List controller
 const controller = createListController(store as any);
