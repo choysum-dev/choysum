@@ -104,6 +104,7 @@ import { CHOY_LIST_HEADER_HEIGHT, CHOY_LIST_ROW_HEIGHT } from '@/web/web/composa
 import {
   clearListColumnWidthPrefs,
   clampListColumnWidthPx,
+  listColumnWidthBucketId,
   LIST_COLUMN_WIDTH_WRITE_DEBOUNCE_MS,
   readListColumnWidthPrefs,
   writeListColumnWidthPrefs,
@@ -262,13 +263,43 @@ function loadUserWidthsFromStorage(): void {
   emit('column-widths-change', { ...userWidths.value });
 }
 
+type PendingPersist = {
+  bucket: ListColumnWidthBucket;
+  userId: unknown;
+  columns: Record<string, number>;
+};
+
+let pendingPersist: PendingPersist | null = null;
+
+function cancelPendingPersist(): void {
+  if (persistTimer) {
+    clearTimeout(persistTimer);
+    persistTimer = null;
+  }
+  pendingPersist = null;
+}
+
+function flushPendingPersist(): void {
+  const pending = pendingPersist;
+  cancelPendingPersist();
+  if (!pending) return;
+  writeListColumnWidthPrefs(pending.bucket, pending.userId, {
+    columns: { ...pending.columns },
+    updatedAt: Date.now(),
+  });
+  emit('column-widths-change', { ...pending.columns });
+}
+
 watch(
   () =>
     [
-      props.columnWidthBucket ? JSON.stringify(props.columnWidthBucket) : '',
+      props.columnWidthBucket ? listColumnWidthBucketId(props.columnWidthBucket) : '',
       String(props.prefsUserId ?? ''),
     ] as const,
   () => {
+    // Flush the prior scope's committed resize before reloading this bucket.
+    flushPendingPersist();
+    dragFreezeWidths.value = null;
     loadUserWidthsFromStorage();
   },
   { immediate: true },
@@ -279,15 +310,16 @@ const hasColumnWidthOverrides = computed(() => Object.keys(userWidths.value).len
 function schedulePersistUserWidths(): void {
   const bucket = props.columnWidthBucket;
   if (!bucket) return;
+  // Capture scope + widths at schedule time so a later bucket/user switch cannot
+  // rewrite the wrong key, and reset cannot race a stale timer.
+  pendingPersist = {
+    bucket,
+    userId: props.prefsUserId,
+    columns: { ...userWidths.value },
+  };
   if (persistTimer) clearTimeout(persistTimer);
   persistTimer = setTimeout(() => {
-    persistTimer = null;
-    writeListColumnWidthPrefs(
-      bucket,
-      props.prefsUserId,
-      { columns: { ...userWidths.value }, updatedAt: Date.now() },
-    );
-    emit('column-widths-change', { ...userWidths.value });
+    flushPendingPersist();
   }, LIST_COLUMN_WIDTH_WRITE_DEBOUNCE_MS);
 }
 
@@ -329,6 +361,7 @@ function onColumnResizeEnd(payload: { columnId: string; width: number }): void {
 }
 
 function onColumnResizeReset(payload: { columnId: string }): void {
+  cancelPendingPersist();
   dragFreezeWidths.value = null;
   const next = { ...userWidths.value };
   delete next[payload.columnId];
@@ -341,6 +374,7 @@ function onColumnResizeReset(payload: { columnId: string }): void {
 
 /** Clear all user width overrides for this host bucket (restore auto widths). */
 function resetColumnWidths(): void {
+  cancelPendingPersist();
   dragFreezeWidths.value = null;
   userWidths.value = {};
   if (props.columnWidthBucket) {
@@ -350,10 +384,7 @@ function resetColumnWidths(): void {
 }
 
 onBeforeUnmount(() => {
-  if (persistTimer) {
-    clearTimeout(persistTimer);
-    persistTimer = null;
-  }
+  flushPendingPersist();
 });
 
 const columnDefs = computed(() =>

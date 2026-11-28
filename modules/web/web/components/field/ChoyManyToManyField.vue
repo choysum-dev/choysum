@@ -317,13 +317,19 @@ const embedPrefsUserId = computed(() =>
     currentUser: authStore.currentUser as { Id?: unknown } | null,
   }),
 );
-const embedColumnWidthBucket = computed<ListColumnWidthBucket>(() => ({
-  kind: 'embed',
-  application: String((props.store as { application?: string } | undefined)?.application || '').trim(),
-  parentModel: String((props.store as { modelName?: string } | undefined)?.modelName || '').trim(),
-  fieldProp: String(binding.prop || '').trim(),
-  relation: 'm2m',
-}));
+const embedColumnWidthBucket = computed<ListColumnWidthBucket>(() => {
+  // Prefer props.store; fall back to binding.store when only binding is passed.
+  const parent = (props.store ?? binding.store) as
+    | { application?: string; modelName?: string }
+    | undefined;
+  return {
+    kind: 'embed',
+    application: String(parent?.application || '').trim(),
+    parentModel: String(parent?.modelName || '').trim(),
+    fieldProp: String(binding.prop || '').trim(),
+    relation: 'm2m',
+  };
+});
 
 const relationStore = computed<ModelStore<any> | undefined>(() => {
   if (binding.relationStore) return binding.relationStore as ModelStore<any>;

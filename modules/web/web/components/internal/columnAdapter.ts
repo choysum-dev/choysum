@@ -152,12 +152,18 @@ export function resolveColumnSizePx(
 /** Whether the column may show a header resize handle. */
 export function listColumnIsResizable(col: Column): boolean {
   if (isSystemListColumn(col)) return false;
+  // Explicit pixel width (incl. narrow chrome / Actions) stays fixed.
   if (typeof col.width === 'number' && col.width > 0) return false;
   if (hasAuthorWidthSpec(getTableColumnMeta(col)?.widthSpec)) return false;
   const k = columnKey(col).toLowerCase();
   if (k === 'actions' || k.includes('__actions')) return false;
-  // Narrow chrome without dataKey (O2M delete column).
-  if (typeof col.width === 'number' && col.width > 0 && col.width <= 48 && !col.dataKey) {
+  // Narrow chrome without dataKey and without an explicit width (delete affordance).
+  if (
+    !col.dataKey &&
+    typeof col.minWidth === 'number' &&
+    col.minWidth > 0 &&
+    col.minWidth <= 48
+  ) {
     return false;
   }
   return true;
@@ -177,7 +183,13 @@ export function resolveColumnWidthSpec(
   if (typeof col.width === 'number' && col.width > 0) return undefined;
   if (isSystemListColumn(col)) return undefined;
   const fieldType = getTableColumnMeta(col)?.fieldType;
-  const max = defaultListColumnMaxWidth(fieldType, size, columnPropKey(col));
+  // Cap from the author/type floor, not the post-sample size (avoids raising the
+  // growth ceiling again after sampling already hit the original max).
+  const baseMin =
+    typeof col.minWidth === 'number' && col.minWidth > 0
+      ? col.minWidth
+      : FALLBACK_COLUMN_SIZE;
+  const max = defaultListColumnMaxWidth(fieldType, baseMin, columnPropKey(col));
   if (max == null || max <= size) return undefined;
   return { type: 'capped', max };
 }

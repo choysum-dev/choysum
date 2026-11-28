@@ -247,13 +247,19 @@ const embedPrefsUserId = computed(() =>
     currentUser: authStore.currentUser as { Id?: unknown } | null,
   }),
 );
-const embedColumnWidthBucket = computed<ListColumnWidthBucket>(() => ({
-  kind: 'embed',
-  application: String((store as { application?: string } | undefined)?.application || '').trim(),
-  parentModel: String((store as { modelName?: string } | undefined)?.modelName || '').trim(),
-  fieldProp: String(binding.prop || '').trim(),
-  relation: 'o2m',
-}));
+const embedColumnWidthBucket = computed<ListColumnWidthBucket>(() => {
+  // Prefer props.store; fall back to binding.store when only binding is passed.
+  const parent = (store ?? binding.store) as
+    | { application?: string; modelName?: string }
+    | undefined;
+  return {
+    kind: 'embed',
+    application: String(parent?.application || '').trim(),
+    parentModel: String(parent?.modelName || '').trim(),
+    fieldProp: String(binding.prop || '').trim(),
+    relation: 'o2m',
+  };
+});
 
 const itemCount = computed(() => getItems()?.length ?? 0);
 /** Explicit length dep so the embedded table refreshes when the collection is replaced. */

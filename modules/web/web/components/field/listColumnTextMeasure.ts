@@ -125,6 +125,26 @@ export function formatListSampleCellText(value: unknown): string {
   return '';
 }
 
+/**
+ * Read a sample cell value: prefer a literal row key (e.g. `"Partner.Name"`),
+ * then walk dotted paths like ChoyTableColumn `getByPath`.
+ */
+export function readListSampleCellValue(
+  row: Record<string, unknown> | null | undefined,
+  dataKey: string,
+): unknown {
+  if (!row || !dataKey) return undefined;
+  if (Object.prototype.hasOwnProperty.call(row, dataKey)) return row[dataKey];
+  if (!dataKey.includes('.')) return row[dataKey];
+  const segs = dataKey.split('.').filter(Boolean);
+  let cur: unknown = row;
+  for (const s of segs) {
+    if (cur == null || typeof cur !== 'object') return undefined;
+    cur = (cur as Record<string, unknown>)[s];
+  }
+  return cur;
+}
+
 export type SoftSampleColumnInput = {
   key: string;
   dataKey?: string;
@@ -175,7 +195,7 @@ export function sampleSoftColumnMinWidths(
     let bestW = listTextWidthPx(bestText, opts?.measure);
     if (dataKey) {
       for (const row of sample) {
-        const text = formatListSampleCellText(row?.[dataKey]);
+        const text = formatListSampleCellText(readListSampleCellValue(row, dataKey));
         if (!text) continue;
         const w = listTextWidthPx(text, opts?.measure);
         if (w > bestW) {

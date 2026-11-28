@@ -5,6 +5,7 @@ import { estimateListHeaderMinWidth } from './listColumnSizeDefaults';
 import {
   formatListSampleCellText,
   listTextWidthPx,
+  readListSampleCellValue,
   sampleSoftColumnMinWidths,
   type ListTextMeasureFn,
 } from './listColumnTextMeasure';
@@ -32,6 +33,33 @@ test('formatListSampleCellText reads scalars and M2O-like objects', () => {
   expect(formatListSampleCellText(12)).toBe('12');
   expect(formatListSampleCellText({ DisplayName: 'Acme' })).toBe('Acme');
   expect(formatListSampleCellText({ Name: 'Beta' })).toBe('Beta');
+});
+
+test('readListSampleCellValue prefers literal keys then dotted paths', () => {
+  expect(readListSampleCellValue({ 'Partner.Name': 'Flat' }, 'Partner.Name')).toBe('Flat');
+  expect(
+    readListSampleCellValue({ Partner: { Name: 'NestedAcmeCorpXXXXXXXX' } }, 'Partner.Name'),
+  ).toBe('NestedAcmeCorpXXXXXXXX');
+  expect(readListSampleCellValue({ Title: 'plain' }, 'Title')).toBe('plain');
+});
+
+test('sampleSoftColumnMinWidths walks nested dotted dataKeys', () => {
+  const raised = sampleSoftColumnMinWidths(
+    [
+      {
+        key: 'Partner.Name',
+        dataKey: 'Partner.Name',
+        title: 'Partner',
+        fieldType: 'varchar',
+        minWidth: 140,
+        maxWidth: 350,
+      },
+    ],
+    [{ Partner: { Name: 'XXXXXXXXXXXXXXXXXXXXXXXXXXXX' } }],
+    { measure: measure10 },
+  );
+  expect(raised.get('Partner.Name')).toBeGreaterThan(140);
+  expect(raised.get('Partner.Name')).toBeLessThanOrEqual(350);
 });
 
 test('sampleSoftColumnMinWidths raises soft mins from first-screen cells', () => {

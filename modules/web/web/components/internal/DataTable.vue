@@ -413,6 +413,8 @@ type ColumnResizeState = {
   columnId: string;
   startX: number;
   startWidth: number;
+  /** Last width emitted during the drag (used when blur/unmount ends early). */
+  lastWidth: number;
   pointerId: number;
   /** +1 LTR / -1 RTL so dragging the end-edge tracks the pointer. */
   axisSign: number;
@@ -445,11 +447,29 @@ function resizeDeltaPx(state: ColumnResizeState, clientX: number): number {
   return Math.round((clientX - state.startX) * state.axisSign);
 }
 
+function clearColumnResizeListeners(): void {
+  window.removeEventListener('pointermove', onColumnResizePointerMove);
+  window.removeEventListener('pointerup', onColumnResizePointerUp);
+  window.removeEventListener('pointercancel', onColumnResizePointerUp);
+  window.removeEventListener('blur', onColumnResizeWindowBlur);
+}
+
+function endColumnResizeDrag(width: number, columnId: string): void {
+  resizeState.value = null;
+  clearColumnResizeListeners();
+  emit('column-resize-end', { columnId, width });
+}
+
 function onColumnResizePointerDown(
   event: PointerEvent,
   column: { id: string; getSize: () => number },
 ): void {
   if (!canResizeColumn(column as { columnDef?: { meta?: unknown } })) return;
+  // Drop a stuck prior drag (lost pointerup) before starting a new one.
+  if (resizeState.value) {
+    clearColumnResizeListeners();
+    resizeState.value = null;
+  }
   const handle = event.currentTarget as HTMLElement | null;
   const cell = handle?.closest('[role="columnheader"]') as HTMLElement | null;
   const snapshot = measureHeaderColumnWidths(handle);
@@ -469,6 +489,7 @@ function onColumnResizePointerDown(
     columnId: column.id,
     startX: event.clientX,
     startWidth,
+    lastWidth: startWidth,
     pointerId: event.pointerId,
     axisSign,
   };
@@ -485,12 +506,14 @@ function onColumnResizePointerDown(
   window.addEventListener('pointermove', onColumnResizePointerMove);
   window.addEventListener('pointerup', onColumnResizePointerUp);
   window.addEventListener('pointercancel', onColumnResizePointerUp);
+  window.addEventListener('blur', onColumnResizeWindowBlur);
 }
 
 function onColumnResizePointerMove(event: PointerEvent): void {
   const state = resizeState.value;
   if (!state || event.pointerId !== state.pointerId) return;
   const width = state.startWidth + resizeDeltaPx(state, event.clientX);
+  state.lastWidth = width;
   emit('column-resize', { columnId: state.columnId, width });
 }
 
@@ -498,11 +521,13 @@ function onColumnResizePointerUp(event: PointerEvent): void {
   const state = resizeState.value;
   if (!state || event.pointerId !== state.pointerId) return;
   const width = state.startWidth + resizeDeltaPx(state, event.clientX);
-  resizeState.value = null;
-  window.removeEventListener('pointermove', onColumnResizePointerMove);
-  window.removeEventListener('pointerup', onColumnResizePointerUp);
-  window.removeEventListener('pointercancel', onColumnResizePointerUp);
-  emit('column-resize-end', { columnId: state.columnId, width });
+  endColumnResizeDrag(width, state.columnId);
+}
+
+function onColumnResizeWindowBlur(): void {
+  const state = resizeState.value;
+  if (!state) return;
+  endColumnResizeDrag(state.lastWidth, state.columnId);
 }
 
 function onColumnResizeReset(columnId: string): void {
@@ -827,6 +852,10 @@ onMounted(() => {
 onBeforeUnmount(() => {
   scrollParentObserver?.disconnect();
   scrollParentObserver = null;
+  const state = resizeState.value;
+  if (state) {
+    endColumnResizeDrag(state.lastWidth, state.columnId);
+  }
 });
 
 // Cached heights win over `estimateSize`; drop them when the estimate changes.

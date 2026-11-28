@@ -122,6 +122,14 @@ describe('columnsToColumnDefs', () => {
     expect(resolveColumnWidthSpec(title, 140)).toEqual({ type: 'capped', max: 350 });
   });
 
+  test('growth cap uses author min, not post-sample size', () => {
+    const title: Column = { key: 'Title', dataKey: 'Title', minWidth: 140 };
+    setTableColumnMeta(title, { fieldType: 'text' });
+    // Sample already raised size to the original cap (140*3 → 420); do not recompute to 560.
+    expect(resolveColumnWidthSpec(title, 420)).toBeUndefined();
+    expect(resolveColumnWidthSpec(title, 300)).toEqual({ type: 'capped', max: 420 });
+  });
+
   test('explicit minWidth 180 on Code is not crushed below 180', () => {
     const code: Column = { key: 'Code', dataKey: 'Code', minWidth: 180 };
     setTableColumnMeta(code, { fieldType: 'varchar' });
