@@ -8,7 +8,9 @@ import {
   orderListTableColumns,
   resolveColumnSizePx,
   resolveColumnWidthSpec,
+  resolveIndexDisplayMaxText,
 } from './columnAdapter';
+import { LIST_INDEX_COLUMN_MIN_WIDTH } from '@/web/web/components/field/listColumnSizeDefaults';
 import { setTableColumnMeta, type Column } from '@/web/web/composables/useTable';
 
 describe('columnsToColumnDefs', () => {
@@ -225,6 +227,94 @@ describe('columnsToColumnDefs', () => {
     expect((defs[0].meta as { widthSpec?: { type: string } } | undefined)?.widthSpec).toEqual({
       type: 'auto',
     });
+  });
+
+  test('index digit budget raises from current-page max display text', () => {
+    const idx: Column = { key: '__index__', type: 'index', width: LIST_INDEX_COLUMN_MIN_WIDTH };
+    expect(listColumnIsResizable(idx)).toBe(false);
+
+    const narrow = resolveColumnSizePx(idx, {
+      indexDisplayMaxText: '20',
+      textMeasure: null,
+    });
+    expect(narrow.size).toBe(44);
+
+    const wide = resolveColumnSizePx(idx, {
+      indexDisplayMaxText: '10000',
+      textMeasure: null,
+    });
+    expect(wide.size).toBeGreaterThan(44);
+    expect(wide.size).toBeLessThanOrEqual(80);
+
+    expect(
+      resolveIndexDisplayMaxText({
+        baseIndex: 981,
+        sampleRows: [{ Id: 'a' }, { Id: 'b' }],
+      }),
+    ).toBe('982');
+
+    const defs = columnsToColumnDefs([idx], {
+      baseIndex: 9990,
+      sampleRows: Array.from({ length: 10 }, (_, i) => ({ Id: String(i) })),
+      textMeasure: null,
+    });
+    expect(defs[0].size).toBeGreaterThan(44);
+    expect((defs[0].meta as { resizable?: boolean }).resizable).toBe(false);
+
+    // userWidths must not resize index chrome.
+    const blocked = columnsToColumnDefs([idx], {
+      indexDisplayMaxText: '9',
+      userWidths: { __index__: 120 },
+      textMeasure: null,
+    });
+    expect(blocked[0].size).toBe(44);
+
+    // Per-row groupIndex (mirrors cell renderer) widens when larger than base+i.
+    const grouped = columnsToColumnDefs([idx], {
+      baseIndex: 1,
+      sampleRows: [
+        { Id: 'a', groupIndex: 2 },
+        { Id: 'b', groupIndex: 12345 },
+      ],
+      textMeasure: null,
+    });
+    expect(grouped[0].size).toBeGreaterThan(44);
+    expect(grouped[0].size).toBeLessThanOrEqual(80);
+    expect(
+      resolveIndexDisplayMaxText({
+        baseIndex: 100,
+        sampleRows: [{ Id: 'x' }, { Id: 'y', groupIndex: 3 }],
+      }),
+    ).toBe('100'); // row0 → 100, row1 groupIndex 3 → max stays 100
+    expect(
+      resolveIndexDisplayMaxText({
+        baseIndex: 10,
+        sampleRows: [{ Id: 'z', groupIndex: 0 }, { Id: 'w', groupIndex: 2.9 }],
+      }),
+    ).toBe('10'); // 0 ignored → base+0=10; 2.9 floors to 2 → max 10
+
+    // Author wider floor wins over a short digit budget.
+    const custom: Column = { key: '__index__', type: 'index', width: 72 };
+    const floored = resolveColumnSizePx(custom, {
+      indexDisplayMaxText: '9',
+      textMeasure: null,
+    });
+    expect(floored.size).toBe(72);
+
+    // Authored minWidth is preserved as floor for short labels.
+    const minOnly: Column = { key: '__index__', type: 'index', minWidth: 120 };
+    const kept = resolveColumnSizePx(minOnly, {
+      indexDisplayMaxText: '9',
+      textMeasure: null,
+    });
+    expect(kept.size).toBe(120);
+    expect(kept.minSize).toBe(120);
+
+    // Custom dataKey still recognized via type: 'index'.
+    const typed: Column = { key: 'rowNumber', dataKey: 'rowNumber', type: 'index', width: 44 };
+    expect(
+      resolveColumnSizePx(typed, { indexDisplayMaxText: '12345', textMeasure: null }).size,
+    ).toBeGreaterThan(44);
   });
 });
 

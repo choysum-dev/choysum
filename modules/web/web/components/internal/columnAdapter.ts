@@ -10,8 +10,11 @@ import {
 import {
   defaultListColumnMaxWidth,
   estimateListHeaderMinWidth,
+  estimateListIndexColumnWidth,
+  LIST_INDEX_COLUMN_MIN_WIDTH,
   listColumnIsHard,
   listColumnPrefersStretch,
+  maxListIndexDisplayText,
 } from '@/web/web/components/field/listColumnSizeDefaults';
 import {
   LIST_SOFT_SAMPLE_ROW_LIMIT,
@@ -45,6 +48,13 @@ export type ColumnsToColumnDefsOptions = {
    * skipped when the author set an explicit width / widthSpec.
    */
   userWidths?: Readonly<Record<string, number>>;
+  /** 1-based first row number on the current page (pagination offset + 1). */
+  baseIndex?: number;
+  /**
+   * Precomputed max index display text for the current page. When omitted,
+   * derived from sampleRows + baseIndex / groupIndex.
+   */
+  indexDisplayMaxText?: string;
 };
 
 export type ResolveColumnSizeOptions = {
@@ -53,7 +63,46 @@ export type ResolveColumnSizeOptions = {
   softSampleMin?: number;
   /** User-dragged fixed width for this column, when present. */
   userWidth?: number;
+  /** Max row-number text on the current page (index chrome digit budget). */
+  indexDisplayMaxText?: string;
 };
+
+function isIndexListColumn(col: Column): boolean {
+  return columnKey(col) === '__index__' || col.type === 'index';
+}
+
+/**
+ * Widest index label on the current page — mirrors ChoyTableColumn index cell:
+ * `groupIndex` when set, else `baseIndex + rowIndex`. Uses the full `sampleRows`
+ * array (soft `sampleRowLimit` does not trim this path).
+ */
+export function resolveIndexDisplayMaxText(
+  options?: Pick<ColumnsToColumnDefsOptions, 'sampleRows' | 'baseIndex' | 'indexDisplayMaxText'>,
+): string {
+  const pre = String(options?.indexDisplayMaxText ?? '').trim();
+  if (pre) return pre;
+  const rows = options?.sampleRows;
+  const base =
+    typeof options?.baseIndex === 'number' &&
+    Number.isFinite(options.baseIndex) &&
+    options.baseIndex > 0
+      ? Math.floor(options.baseIndex)
+      : 1;
+  if (!rows || rows.length === 0) {
+    return maxListIndexDisplayText({ baseIndex: base, rowCount: 0 });
+  }
+  let max = 0;
+  for (let i = 0; i < rows.length; i++) {
+    const gi = (rows[i] as { groupIndex?: unknown } | undefined)?.groupIndex;
+    // Match maxListIndexDisplayText: only positive finite indexes; floor fractions.
+    const n =
+      typeof gi === 'number' && Number.isFinite(gi) && gi > 0
+        ? Math.floor(gi)
+        : base + i;
+    if (n > max) max = n;
+  }
+  return max > 0 ? String(Math.floor(max)) : '';
+}
 
 function columnKey(col: Column): string {
   return String(col.key ?? col.dataKey ?? '');
@@ -114,6 +163,21 @@ export function resolveColumnSizePx(
     size = minSize;
   } else {
     size = FALLBACK_COLUMN_SIZE;
+  }
+
+  // Index chrome: digit budget may raise above the floor; never soft/user prefs.
+  // Author width / minWidth raise the floor (may exceed LIST_INDEX_COLUMN_MAX_WIDTH);
+  // the digit estimator itself stays capped at MAX.
+  if (isIndexListColumn(col)) {
+    let floor = LIST_INDEX_COLUMN_MIN_WIDTH;
+    if (explicitWidth != null) floor = Math.max(floor, explicitWidth);
+    if (minSize != null) floor = Math.max(floor, minSize);
+    const raised = estimateListIndexColumnWidth(opts?.indexDisplayMaxText, {
+      measure: opts?.textMeasure,
+    });
+    size = Math.max(floor, raised);
+    minSize = size;
+    return { size, minSize };
   }
 
   // Header / sample raise only when width was not an author-fixed pixel width on chrome/system.
@@ -271,6 +335,10 @@ export function columnsToColumnDefs<T extends Record<string, unknown>>(
       : null;
 
   const userWidths = options?.userWidths;
+  // Skip page scan when no index chrome column is registered.
+  const indexDisplayMaxText = ordered.some(isIndexListColumn)
+    ? resolveIndexDisplayMaxText(options)
+    : '';
 
   return ordered.map((col, index) => {
     const id = String(col.key ?? col.dataKey ?? `col_${index}`);
@@ -279,6 +347,7 @@ export function columnsToColumnDefs<T extends Record<string, unknown>>(
       textMeasure,
       softSampleMin: softMins?.get(id),
       userWidth,
+      indexDisplayMaxText,
     });
     const fromCol = getTableColumnMeta(col);
     const resizable = listColumnIsResizable(col);

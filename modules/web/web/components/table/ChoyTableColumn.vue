@@ -27,6 +27,7 @@ import {
   skipTableColumnReregister,
   tableColumnPropSignature,
 } from './choyTableColumnSignature';
+import { LIST_INDEX_COLUMN_MIN_WIDTH } from '@/web/web/components/field/listColumnSizeDefaults';
 
 defineOptions({ name: 'ChoyTableColumn' });
 
@@ -279,8 +280,8 @@ function buildColumn(): Column {
         ),
     };
   } else if (type === 'index') {
-    // 44 matches O2M/M2M index columns and PropertiesDefinition `w-11` rows.
-    const width = colProps.width ?? 44;
+    // Floor matches PropertiesDefinition `w-11`; digit budget may raise in columnAdapter.
+    const width = colProps.width ?? LIST_INDEX_COLUMN_MIN_WIDTH;
     const indexClass = 'tabular-nums text-muted-foreground';
     const indexHeader = slots.header
       ? headerVNode
@@ -293,16 +294,20 @@ function buildColumn(): Column {
       align: 'end',
       sortable: false,
       ...colProps,
+      // Keep type after spread so prop/dataKey keys still classify as index chrome.
+      type: 'index',
       headerCellRenderer: indexHeader,
       cellRenderer: ({ rowData, rowIndex }: any) => {
-        // Group detail rows prefer the per-group index.
+        // Group detail rows prefer the per-group index (positive only).
         const gi = (rowData as any)?.groupIndex;
-        if (typeof gi === 'number') {
-          return h('span', { class: indexClass }, String(gi));
+        if (typeof gi === 'number' && Number.isFinite(gi) && gi > 0) {
+          return h('span', { class: indexClass }, String(Math.floor(gi)));
         }
         // Other rows fall back to the global row index with pagination offset.
         const raw = (ctx as any).baseIndex;
-        const base = typeof raw === 'number' ? raw : Number(raw?.value ?? 1);
+        const baseRaw = typeof raw === 'number' ? raw : Number(raw?.value ?? 1);
+        const base =
+          Number.isFinite(baseRaw) && baseRaw > 0 ? Math.floor(baseRaw) : 1;
         return h('span', { class: indexClass }, String(base + rowIndex));
       },
     };

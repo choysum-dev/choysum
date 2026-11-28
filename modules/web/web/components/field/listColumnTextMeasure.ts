@@ -7,8 +7,10 @@
  */
 
 import {
+  LIST_INDEX_COLUMN_MIN_WIDTH,
   listColumnPrefersStretch,
   snapListColumnWidthUp,
+  snapListIndexColumnWidthUp,
 } from './listColumnSizeDefaults';
 
 /** Matches list header/cell `px-2` both sides. */
@@ -16,6 +18,9 @@ export const LIST_COLUMN_CELL_PAD_PX = 16;
 
 /** Conservative fallback when canvas is unavailable (~CJK-safe). */
 export const LIST_COLUMN_CHAR_PX = 12;
+
+/** Tabular digit fallback for index chrome when canvas is unavailable. */
+export const LIST_INDEX_DIGIT_CHAR_PX = 8;
 
 /** First-screen row sample for soft min raise (~one viewport of dense rows). */
 export const LIST_SOFT_SAMPLE_ROW_LIMIT = 20;
@@ -106,6 +111,36 @@ export function estimateListHeaderMinWidth(
   const budget = content + LIST_COLUMN_CELL_PAD_PX;
   const raised = Math.max(base, Math.min(base + HEADER_RAISE_CAP_PX, budget));
   return snapListColumnWidthUp(raised);
+}
+
+/**
+ * Index chrome digit budget: floor at LIST_INDEX_COLUMN_MIN_WIDTH, snap on the
+ * index ladder, cap at LIST_INDEX_COLUMN_MAX_WIDTH. Empty text → floor only.
+ * Digit-only labels use a tighter char fallback than generic CJK budget so
+ * 1–3 digit pages stay on the 44px floor without canvas.
+ */
+export function estimateListIndexColumnWidth(
+  displayText: unknown,
+  opts?: { measure?: ListTextMeasureFn | null },
+): number {
+  const base = LIST_INDEX_COLUMN_MIN_WIDTH;
+  const text = String(displayText ?? '').trim();
+  if (!text) return base;
+  let content: number;
+  if (/^\d+$/.test(text)) {
+    const fn = opts?.measure === undefined ? getDefaultListTextMeasure() : opts.measure;
+    const fallback = Math.ceil(text.length * LIST_INDEX_DIGIT_CHAR_PX);
+    if (typeof fn === 'function') {
+      const w = fn(text);
+      content = Number.isFinite(w) && w > 0 ? Math.ceil(w) : fallback;
+    } else {
+      content = fallback;
+    }
+  } else {
+    content = listTextWidthPx(text, opts?.measure);
+  }
+  const budget = content + LIST_COLUMN_CELL_PAD_PX;
+  return snapListIndexColumnWidthUp(Math.max(base, budget));
 }
 
 /** Best-effort display string for sample cells (scalars + M2O-like objects). */
