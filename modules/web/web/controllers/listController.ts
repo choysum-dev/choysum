@@ -18,7 +18,7 @@ import { exportFieldSelection } from '@/web/web/query/utils/registry/field';
 import { awaitFieldSelection } from '@/web/web/query/utils/registry/fieldReady';
 import { filtersToQuery } from '@/web/web/query/utils/condition/builder';
 import { combineFilters, combinePresentConditions } from '@/web/web/query/utils/condition/absent';
-import { metadataOrderByToState } from '@/web/web/query/orderBy';
+import { filterOrderByForGroupKeys, metadataOrderByToState } from '@/web/web/query/orderBy';
 
 // ListViewModel & GroupBySpec now centralized in query/types.ts
 
@@ -324,13 +324,60 @@ export function createListController(store: ModelStore<any>): IListController {
         resolvedOrderBy = isGroupedRequest ? undefined : modelDefaultOrderBy;
       }
       if (isGroupedRequest && resolvedOrderBy?.length) {
-        const keySet = new Set((groupKeysForOrder || []).map(k => String(k)));
-        const filtered = resolvedOrderBy.filter(row => keySet.has(String(row?.field || '')));
-        resolvedOrderBy = filtered.length ? filtered : undefined;
+        // Filter for this RPC only; store may still hold collection orderBy (e.g. List CreatedAt).
+        resolvedOrderBy = filterOrderByForGroupKeys(resolvedOrderBy, groupKeysForOrder);
       }
-      // Grouped requests always persist (including undefined) so header chevrons match the query.
-      if (resolvedOrderBy !== undefined || hasOrderByOverride || isGroupedRequest) {
+      // Persist on explicit override (including clear) or flat seed/keep. Grouped apply
+      // without orderBy override must not wipe collection orderBy left by List.
+      if (hasOrderByOverride || (resolvedOrderBy !== undefined && !isGroupedRequest)) {
         writeQs({ orderBy: resolvedOrderBy });
+      }
+
+      // Query-dimension change (sort / filters / keyword / groups / FC) resets to page 1
+      // unless the caller passed an explicit pagination (paginate / URL hydrate).
+      const hasPaginationOverride =
+        !!overrides && Object.prototype.hasOwnProperty.call(overrides, 'pagination');
+      const hasKeywordFieldsOverride =
+        !!overrides && Object.prototype.hasOwnProperty.call(overrides, 'keywordFields');
+      if (!hasPaginationOverride && effectiveOverrides) {
+        const sameJson = (a: unknown, b: unknown) => stableStringify(a) === stableStringify(b);
+        const committedGroups = normalizeGroupbyToStrings(
+          (qsCommitted.appliedGroups as Array<string | GroupBySpec> | undefined) ?? null,
+        );
+        let queryDimChanged = false;
+        if (hasOrderByOverride && !sameJson(resolvedOrderBy, qsCommitted.orderBy)) {
+          queryDimChanged = true;
+        }
+        if (hasKeywordOverride && !sameJson(overrides!.keyword, qsCommitted.keyword)) {
+          queryDimChanged = true;
+        }
+        if (hasAppliedFiltersOverride && !sameJson(overrides!.appliedFilters, qsCommitted.appliedFilters)) {
+          queryDimChanged = true;
+        }
+        if (
+          overrides?.appliedGroups !== undefined &&
+          !sameJson(gbStrings ?? [], committedGroups)
+        ) {
+          queryDimChanged = true;
+        }
+        if (hasForcedConditionOverride && !sameJson(overrides!.forcedCondition, qsCommitted.forcedCondition)) {
+          queryDimChanged = true;
+        }
+        if (
+          hasKeywordFieldsOverride &&
+          !sameJson(overrides!.keywordFields, qsCommitted.keywordFields)
+        ) {
+          queryDimChanged = true;
+        }
+        if (
+          queryDimChanged &&
+          !Object.prototype.hasOwnProperty.call(effectiveOverrides, 'pagination')
+        ) {
+          const existingPag = (qsCommitted.pagination || {}) as PaginationState;
+          const limitRaw = Number(existingPag.limit);
+          const limit = Number.isFinite(limitRaw) && limitRaw > 0 ? limitRaw : 20;
+          effectiveOverrides.pagination = { limit, offset: 0 };
+        }
       }
 
       const ctx = buildSearchOrGroupContext(store, {
@@ -539,7 +586,8 @@ export function createListController(store: ModelStore<any>): IListController {
     const ctx = buildUnifiedQuery(store, {
       groupby: remaining,
       pagination: { ...(store.state as any)?.queryState?.pagination, offset: 0 },
-      orderBy: (store.state as any)?.queryState?.orderBy,
+      // Child ReadGroup only accepts ORDER BY on remaining group keys.
+      orderBy: filterOrderByForGroupKeys((store.state as any)?.queryState?.orderBy, remaining),
       parentCondition: parent.__condition,
     });
     const bundle = buildPlan(ctx);
@@ -742,7 +790,8 @@ export function createListController(store: ModelStore<any>): IListController {
     const ctx = buildUnifiedQuery(store, {
       groupby: remaining,
       pagination: { limit, offset },
-      orderBy: (store.state as any)?.queryState?.orderBy,
+      // Child ReadGroup only accepts ORDER BY on remaining group keys.
+      orderBy: filterOrderByForGroupKeys((store.state as any)?.queryState?.orderBy, remaining),
       parentCondition: parent.__condition,
     });
     const bundle = buildPlan(ctx);

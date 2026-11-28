@@ -70,6 +70,24 @@ export function metadataOrderByToState(input: unknown): OrderByState[] | undefin
 }
 
 /**
+ * Keep only orderBy rows whose field is in the groupby key set (ReadGroup / chart).
+ * Empty result is undefined so RPC omits ORDER BY. Callers must not treat this as a
+ * store wipe — collection orderBy can remain in queryState across grouped views.
+ */
+export function filterOrderByForGroupKeys(
+  orderBy: OrderByState[] | undefined | null,
+  groupKeys: Array<string | null | undefined> | undefined | null,
+): OrderByState[] | undefined {
+  if (!orderBy?.length) return undefined;
+  const keySet = new Set(
+    (groupKeys || []).map(k => String(k ?? '').trim()).filter(k => k.length > 0),
+  );
+  if (!keySet.size) return undefined;
+  const filtered = orderBy.filter(row => keySet.has(String(row?.field || '').trim()));
+  return filtered.length ? filtered : undefined;
+}
+
+/**
  * Resolve List header sort from queryState (including explicit clear) or props.
  */
 export function resolveTableOrderBy(

@@ -8,6 +8,7 @@ import type { ModelStore } from '@/web/web/stores/modelStore';
 import type { DataSetSnapshot } from '@/web/web/query/types';
 import type { OrderByState } from '@/web/web/query/state';
 import { buildUnifiedQuery } from '@/web/web/query/context';
+import { filterOrderByForGroupKeys } from '@/web/web/query/orderBy';
 import { normalizeGroupby } from '@/web/web/query/utils/grouping/normalize';
 import { buildPlan } from '@/web/web/query/planner';
 import { execute } from '@/web/web/query/executor';
@@ -99,9 +100,14 @@ export function createChartController(store: ModelStore<any>): IChartController 
       return vm.result as DataSetSnapshot;
     }
 
+    // Filter illegal collection orderBy for grouped RPC; leave store.queryState.orderBy intact.
+    const rpcOrderBy = filterOrderByForGroupKeys(
+      qs.orderBy as OrderByState[] | undefined,
+      currentGroups,
+    );
     const ctx = buildUnifiedQuery(store, {
       groupby: currentGroups,
-      orderBy: qs.orderBy as OrderByState[] | undefined,
+      orderBy: rpcOrderBy,
       pagination: undefined,
       execOptions: { fullGroupHierarchy: true, skipPagination: true },
     });

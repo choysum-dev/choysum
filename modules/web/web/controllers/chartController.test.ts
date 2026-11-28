@@ -102,3 +102,88 @@ test('createChartController clears vm.error on no-group early return', async () 
   expect((ctrl.vm.result as any).rows).toEqual([]);
 });
 
+test('createChartController filters illegal orderBy for RPC and leaves store orderBy', async () => {
+  const readGroupOrderBys: unknown[] = [];
+  const store = {
+    fullModelName: 'base.Company',
+    storeId: 'chart-orderby-filter',
+    metadata: {
+      fields: {
+        StageId: { type: 'many2one' },
+        CreatedAt: { type: 'datetime' },
+      },
+    },
+    state: {
+      queryState: {
+        orderBy: [{ field: 'CreatedAt', direction: 'desc' }],
+        appliedGroups: [],
+        appliedFilters: [],
+        keyword: '',
+        keywordFields: [],
+        pagination: { limit: 100, offset: 0 },
+      },
+      result: null,
+      planCache: new Map(),
+    },
+    setContext: () => {},
+    getContext: () => ({}),
+    withContext: async (_c: unknown, fn: () => unknown) => fn(),
+    Search: async () => [],
+    Count: async () => 0,
+    ReadGroup: async (_gb: unknown, _cond: unknown, opts: { orderBy?: unknown } = {}) => {
+      readGroupOrderBys.push(opts?.orderBy);
+      return { groups: [{ StageId: 's1', __count: 1 }], total: 1 };
+    },
+    ReadGroupCount: async () => 1,
+  } as any;
+  const ctrl = createChartController(store);
+  await ctrl.apply({ defaultGroups: ['StageId'] as any });
+  expect(store.state.queryState.orderBy).toEqual([{ field: 'CreatedAt', direction: 'desc' }]);
+  expect(readGroupOrderBys.length).toBeGreaterThan(0);
+  for (const ob of readGroupOrderBys) {
+    expect(ob == null || (Array.isArray(ob) && ob.length === 0)).toBe(true);
+  }
+});
+
+test('createChartController keeps group-key orderBy on RPC when present in store', async () => {
+  const readGroupOrderBys: unknown[] = [];
+  const store = {
+    fullModelName: 'base.Company',
+    storeId: 'chart-orderby-keep',
+    metadata: {
+      fields: {
+        StageId: { type: 'many2one' },
+      },
+    },
+    state: {
+      queryState: {
+        orderBy: [{ field: 'StageId', direction: 'asc' }],
+        appliedGroups: [],
+        appliedFilters: [],
+        keyword: '',
+        keywordFields: [],
+        pagination: { limit: 100, offset: 0 },
+      },
+      result: null,
+      planCache: new Map(),
+    },
+    setContext: () => {},
+    getContext: () => ({}),
+    withContext: async (_c: unknown, fn: () => unknown) => fn(),
+    Search: async () => [],
+    Count: async () => 0,
+    ReadGroup: async (_gb: unknown, _cond: unknown, opts: { orderBy?: unknown } = {}) => {
+      readGroupOrderBys.push(opts?.orderBy);
+      return { groups: [{ StageId: 's1', __count: 1 }], total: 1 };
+    },
+    ReadGroupCount: async () => 1,
+  } as any;
+  const ctrl = createChartController(store);
+  await ctrl.apply({ defaultGroups: ['StageId'] as any });
+  expect(store.state.queryState.orderBy).toEqual([{ field: 'StageId', direction: 'asc' }]);
+  expect(readGroupOrderBys.length).toBeGreaterThan(0);
+  for (const ob of readGroupOrderBys) {
+    expect(ob).toEqual([{ field: 'StageId', order: 'asc' }]);
+  }
+});
+

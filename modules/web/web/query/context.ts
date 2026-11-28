@@ -63,9 +63,13 @@ export function buildSearchOrGroupContext(store: ModelStore<any>, overrides: Bui
   if (shape === 'collection') {
     const qs: any = (store.state as any)?.queryState || {};
     const base = { orderBy: qs.orderBy as OrderByState[] | undefined, pagination: (qs.pagination as PaginationState) ?? { limit: 100, offset: 0 } };
+    const qsOverride = overrides.queryState;
+    // Honor explicit undefined orderBy (e.g. cleared sort); ?? would revive store orderBy.
+    const hasOrderByOverride =
+      !!qsOverride && Object.prototype.hasOwnProperty.call(qsOverride, 'orderBy');
     const merged = {
-      orderBy: overrides.queryState?.orderBy ?? base.orderBy,
-      pagination: { ...base.pagination, ...(overrides.queryState?.pagination || {}) },
+      orderBy: hasOrderByOverride ? qsOverride!.orderBy : base.orderBy,
+      pagination: { ...base.pagination, ...(qsOverride?.pagination || {}) },
     } as { orderBy?: OrderByState[]; pagination: PaginationState };
     return {
       shape,
@@ -85,10 +89,15 @@ export function buildSearchOrGroupContext(store: ModelStore<any>, overrides: Bui
     orderBy: (qs.orderBy as OrderByState[] | undefined) ?? undefined,
     pagination: (qs.pagination as PaginationState) ?? { limit: 100, offset: 0 },
   };
+  const qsOverrideG = overrides.queryState;
+  const hasOrderByOverrideG =
+    !!qsOverrideG && Object.prototype.hasOwnProperty.call(qsOverrideG, 'orderBy');
   const mergedG = {
-    appliedGroups: (overrides.queryState?.appliedGroups as GroupBySpec<any>[] | undefined) ?? baseG.appliedGroups,
-    orderBy: overrides.queryState?.orderBy ?? baseG.orderBy,
-    pagination: { ...baseG.pagination, ...(overrides.queryState?.pagination || {}) },
+    appliedGroups: (qsOverrideG?.appliedGroups as GroupBySpec<any>[] | undefined) ?? baseG.appliedGroups,
+    // Grouped apply may pass orderBy: undefined after dropping non-group keys; do not
+    // fall back to a leftover List sort (PostgreSQL rejects ORDER BY outside GROUP BY).
+    orderBy: hasOrderByOverrideG ? qsOverrideG!.orderBy : baseG.orderBy,
+    pagination: { ...baseG.pagination, ...(qsOverrideG?.pagination || {}) },
   } as { appliedGroups?: GroupBySpec<any>[]; orderBy?: OrderByState[]; pagination: PaginationState };
   return {
     shape,

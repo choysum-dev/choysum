@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import {
+  filterOrderByForGroupKeys,
   isHandleReorderSortAllowed,
   metadataOrderByToState,
   orderByToSortingState,
@@ -57,6 +58,26 @@ test('metadataOrderByToState maps order onto direction', () => {
   expect(metadataOrderByToState({ field: 'CreatedAt', order: 'desc' })).toEqual([
     { field: 'CreatedAt', direction: 'desc' },
   ]);
+});
+
+test('filterOrderByForGroupKeys keeps group-key rows and drops the rest', () => {
+  expect(filterOrderByForGroupKeys(undefined, ['Name'])).toBeUndefined();
+  expect(filterOrderByForGroupKeys([], ['Name'])).toBeUndefined();
+  expect(
+    filterOrderByForGroupKeys(
+      [
+        { field: 'CreatedAt', direction: 'asc' },
+        { field: 'Name', direction: 'desc' },
+      ],
+      ['Name'],
+    ),
+  ).toEqual([{ field: 'Name', direction: 'desc' }]);
+  expect(
+    filterOrderByForGroupKeys([{ field: 'CreatedAt', direction: 'asc' }], ['StageId']),
+  ).toBeUndefined();
+  expect(
+    filterOrderByForGroupKeys([{ field: 'Name', direction: 'asc' }], ['', null, undefined]),
+  ).toBeUndefined();
 });
 
 test('resolveTableOrderBy prefers queryState.orderBy including explicit clear', () => {
