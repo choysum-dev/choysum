@@ -94,8 +94,11 @@ export function resolveIndexDisplayMaxText(
   let max = 0;
   for (let i = 0; i < rows.length; i++) {
     const gi = (rows[i] as { groupIndex?: unknown } | undefined)?.groupIndex;
+    // Match maxListIndexDisplayText: only positive finite indexes; floor fractions.
     const n =
-      typeof gi === 'number' && Number.isFinite(gi) ? gi : base + i;
+      typeof gi === 'number' && Number.isFinite(gi) && gi > 0
+        ? Math.floor(gi)
+        : base + i;
     if (n > max) max = n;
   }
   return max > 0 ? String(Math.floor(max)) : '';
@@ -332,7 +335,10 @@ export function columnsToColumnDefs<T extends Record<string, unknown>>(
       : null;
 
   const userWidths = options?.userWidths;
-  const indexDisplayMaxText = resolveIndexDisplayMaxText(options);
+  // Skip page scan when no index chrome column is registered.
+  const indexDisplayMaxText = ordered.some(isIndexListColumn)
+    ? resolveIndexDisplayMaxText(options)
+    : '';
 
   return ordered.map((col, index) => {
     const id = String(col.key ?? col.dataKey ?? `col_${index}`);

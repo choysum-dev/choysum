@@ -286,6 +286,12 @@ describe('columnsToColumnDefs', () => {
         sampleRows: [{ Id: 'x' }, { Id: 'y', groupIndex: 3 }],
       }),
     ).toBe('100'); // row0 → 100, row1 groupIndex 3 → max stays 100
+    expect(
+      resolveIndexDisplayMaxText({
+        baseIndex: 10,
+        sampleRows: [{ Id: 'z', groupIndex: 0 }, { Id: 'w', groupIndex: 2.9 }],
+      }),
+    ).toBe('10'); // 0 ignored → base+0=10; 2.9 floors to 2 → max 10
 
     // Author wider floor wins over a short digit budget.
     const custom: Column = { key: '__index__', type: 'index', width: 72 };

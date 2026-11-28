@@ -296,10 +296,10 @@ function buildColumn(): Column {
       ...colProps,
       headerCellRenderer: indexHeader,
       cellRenderer: ({ rowData, rowIndex }: any) => {
-        // Group detail rows prefer the per-group index.
+        // Group detail rows prefer the per-group index (positive only).
         const gi = (rowData as any)?.groupIndex;
-        if (typeof gi === 'number') {
-          return h('span', { class: indexClass }, String(gi));
+        if (typeof gi === 'number' && Number.isFinite(gi) && gi > 0) {
+          return h('span', { class: indexClass }, String(Math.floor(gi)));
         }
         // Other rows fall back to the global row index with pagination offset.
         const raw = (ctx as any).baseIndex;
