@@ -355,7 +355,10 @@ const ChoyVarcharCell = defineComponent({
       // Word-limit in an inline-end addon so the counter owns width (no absolute overlay).
       // Mirror aria-invalid onto the group: Input uses border-0 inside the group, and
       // kit has-[[data-slot][aria-invalid]] utilities are not emitted by tailwind-go.
-      const groupInvalid = controlProps['aria-invalid'] === 'true' || controlProps['aria-invalid'] === true;
+      // aria-invalid arrives via fallthrough attrs (same as ChoyTextField); do not
+      // index the narrowed controlProps object (TS7053).
+      const ariaInvalid = (attrs as Record<string, unknown>)['aria-invalid'];
+      const groupInvalid = ariaInvalid === 'true' || ariaInvalid === true;
       return h(
         InputGroup,
         {

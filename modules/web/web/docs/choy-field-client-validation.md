@@ -13,10 +13,11 @@ label / control) and does **not** paint inline「必填」copy. The asterisk is
 edit/create only — display mode omits the glyph but still reserves its width.
 Server `notNull` remains authoritative.
 
-**`:rules`** are additive (patterns, custom validators, or an explicit
-`required: true` with a custom message). Explicit `required: true` in `rules`
-still paints its message. If `rules` already include `required: true`, the
-default required rule is not inserted again.
+**`:rules`** are additive. Supported checks are `required: true` (with an
+optional custom message) and custom `validator` functions (e.g. wrap a regex
+inside `validator` — a bare `pattern` property is not evaluated). Explicit
+`required: true` in `rules` still paints its message. If `rules` already
+include `required: true`, the default required rule is not inserted again.
 
 Other metadata (`size`, `selection`, `digits`, domain, unique) is not turned
 into generic FieldBase rules — use control constraints, pickers, or server

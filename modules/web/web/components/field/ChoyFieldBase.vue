@@ -254,6 +254,15 @@ SPDX-License-Identifier: Apache-2.0
       <FieldError v-if="showErrorFlow" :id="formErrorId">
         {{ displayError }}
       </FieldError>
+      <!-- Chrome-only required: keep an associated error for aria-describedby. -->
+      <p
+        v-else-if="showChromeOnlySrError"
+        :id="formErrorId"
+        class="sr-only"
+        data-slot="field-error-sr"
+      >
+        {{ accessibleClientError }}
+      </p>
       <p
         v-else-if="showErrorReserve"
         class="choy-field-base__error-reserve invisible text-sm font-normal"
@@ -987,7 +996,14 @@ const recordForRow = ((row: T) => {
 }) as (row: T) => () => ComputedRef<T>;
 
 /* Metadata flags (effective meta includes FieldsGet ACL overlay) */
-const metaRequired = computed(() => effectiveFieldMeta.value?.notNull === true);
+const metaRequired = computed(() => {
+  // Dotted related paths must use binding.meta (leaf), never a same-named root field.
+  const propPath = String(binding.prop || '');
+  if (propPath.includes('.')) {
+    return (binding.meta as { notNull?: boolean } | undefined)?.notNull === true;
+  }
+  return effectiveFieldMeta.value?.notNull === true;
+});
 const metaReadonly = computed(() => effectiveFieldMeta.value?.isReadonly === true);
 
 /* Evaluation helper */
@@ -1101,11 +1117,24 @@ const displayError = computed(() => {
   }
   return undefined;
 });
+/** Revealed client/server message including chrome-only required (for a11y association). */
+const accessibleClientError = computed(() => {
+  if (serverError.value) return serverError.value;
+  if (clientRulesRevealed.value && clientRuleError.value) return clientRuleError.value;
+  return undefined;
+});
+const showChromeOnlySrError = computed(
+  () =>
+    errorPaintActive.value &&
+    !!accessibleClientError.value &&
+    !displayError.value,
+);
 const showErrorReserve = computed(
   () =>
     errorPaintActive.value &&
     inlineErrorSpace.value === 'reserve' &&
-    !displayError.value,
+    !displayError.value &&
+    !showChromeOnlySrError.value,
 );
 /** Document-flow error row (collapse/reserve when a message is present). */
 const showErrorFlow = computed(
@@ -1131,7 +1160,7 @@ const formHelpId = computed(() => (effectiveHelp.value ? `${inputIdForm.value}-h
 const formErrorId = computed(() => `${inputIdForm.value}-error`);
 const formDescribedBy = computed(() => {
   const parts: string[] = [];
-  if (displayError.value) parts.push(formErrorId.value);
+  if (accessibleClientError.value) parts.push(formErrorId.value);
   if (effectiveHelp.value) parts.push(formHelpId.value);
   return parts.length ? parts.join(' ') : undefined;
 });
@@ -1173,18 +1202,43 @@ async function evaluateClientRules(opts?: { reveal?: boolean }): Promise<string>
     return '';
   }
   const seq = ++clientRulesEvalSeq;
-  const value = rawValueForm().value;
-  const chromeOnlyRequired = isChromeOnlyRequiredFailure({
-    required: fieldRequired.value,
-    rules: props.rules,
-    value,
-  });
   const effectiveRules = resolveEffectiveClientRules({
     required: fieldRequired.value,
     rules: props.rules,
     requiredMessage: _t('Required'),
   });
-  const message = await firstRuleError(effectiveRules, value);
+
+  let message = '';
+  let chromeOnlyRequired = false;
+  const prefix = binding.env.fieldPrefix ? String(binding.env.fieldPrefix) : '';
+  if (prefix) {
+    // Nested relation column (one FieldBase per column): validate each line via
+    // row refs. Parent path lookup (e.g. Lines.Name) is undefined — empty tables pass.
+    const draft = recordForm().value as Record<string, unknown> | null | undefined;
+    const collection = draft ? draft[prefix] : undefined;
+    const rows = Array.isArray(collection) ? collection : [];
+    for (const row of rows) {
+      const rowVal = rawValueForRow(row as T)().value;
+      const rowMessage = await firstRuleError(effectiveRules, rowVal);
+      if (rowMessage) {
+        message = rowMessage;
+        chromeOnlyRequired = isChromeOnlyRequiredFailure({
+          required: fieldRequired.value,
+          rules: props.rules,
+          value: rowVal,
+        });
+        break;
+      }
+    }
+  } else {
+    const value = rawValueForm().value;
+    chromeOnlyRequired = isChromeOnlyRequiredFailure({
+      required: fieldRequired.value,
+      rules: props.rules,
+      value,
+    });
+    message = await firstRuleError(effectiveRules, value);
+  }
   // Ignore superseded evaluations so rapid edit/blur/submit cannot paint stale errors.
   if (seq !== clientRulesEvalSeq) return message;
   clientRuleError.value = message;
@@ -1222,19 +1276,25 @@ onBeforeUnmount(() => {
 });
 
 watch(
-  () =>
-    [
-      rawValueForm().value,
+  () => {
+    const prefix = binding.env.fieldPrefix ? String(binding.env.fieldPrefix) : '';
+    const valueSource = prefix
+      ? (recordForm().value as Record<string, unknown> | null | undefined)?.[prefix]
+      : rawValueForm().value;
+    return [
+      valueSource,
       props.rules,
       fieldRequired.value,
       binding.env.isEditMode,
       readonlyForm.value,
       visibleForm.value,
-    ] as const,
+    ] as const;
+  },
   () => {
     void evaluateClientRules();
   },
-  { immediate: true, deep: true }
+  // Shallow: rules arrays are often recreated inline; deep walk re-validates every tick.
+  { immediate: true },
 );
 
 watch(

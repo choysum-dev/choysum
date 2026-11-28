@@ -436,7 +436,7 @@ msgctxt "web/pages/SandboxSettings"
 msgid "Demo flag"
 msgstr "演示开关"
 
-#: web/pages/SandboxSettings.vue:11
+#: web/pages/SandboxSettings.vue:9
 msgctxt "web/pages/SandboxSettings"
 msgid "Demo label"
 msgstr "演示标签"
@@ -471,7 +471,7 @@ msgctxt "web/pages/SandboxSettings"
 msgid "Settings: sandbox"
 msgstr "设置：sandbox"
 
-#: web/pages/SandboxSettings.vue:11
+#: web/pages/SandboxSettings.vue:9
 msgctxt "web/pages/SandboxSettings"
 msgid "Short label shown with sandbox demo mode."
 msgstr "沙箱演示模式旁显示的短标签。"
@@ -571,11 +571,6 @@ msgctxt "web/views/SandboxLineFormView"
 msgid "Line"
 msgstr "明细行"
 
-#: web/views/SandboxLineFormView.vue:20
-msgctxt "web/views/SandboxLineFormView"
-msgid "Required"
-msgstr "必填"
-
 #: web/views/SandboxLinesVirtTools.vue:8
 msgctxt "web/views/SandboxLinesVirtTools"
 msgid "Clear filled lines"
@@ -626,12 +621,12 @@ msgctxt "web/views/SandboxRecordChartView"
 msgid "View switcher"
 msgstr "视图切换"
 
-#: web/views/SandboxRecordFormView.vue:183
+#: web/views/SandboxRecordFormView.vue:180
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Categories"
 msgstr "分类集合"
 
-#: web/views/SandboxRecordFormView.vue:188
+#: web/views/SandboxRecordFormView.vue:185
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Category Path"
 msgstr "分类路径"
@@ -651,12 +646,12 @@ msgctxt "web/views/SandboxRecordFormView"
 msgid "Delete Sandbox Record"
 msgstr "删除沙箱记录"
 
-#: web/views/SandboxRecordFormView.vue:126
+#: web/views/SandboxRecordFormView.vue:122
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Depth"
 msgstr "深度选项"
 
-#: web/views/SandboxRecordFormView.vue:209
+#: web/views/SandboxRecordFormView.vue:206
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Edit Line"
 msgstr "编辑明细"
@@ -666,77 +661,72 @@ msgctxt "web/views/SandboxRecordFormView"
 msgid "Edit Sandbox Record"
 msgstr "编辑沙箱记录"
 
-#: web/views/SandboxRecordFormView.vue:73
+#: web/views/SandboxRecordFormView.vue:72
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Failed to update state"
 msgstr "更新状态失败"
 
-#: web/views/SandboxRecordFormView.vue:43
+#: web/views/SandboxRecordFormView.vue:38
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Identity"
 msgstr "基本信息"
 
-#: web/views/SandboxRecordFormView.vue:195
+#: web/views/SandboxRecordFormView.vue:192
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Lines"
 msgstr "明细行"
 
-#: web/views/SandboxRecordFormView.vue:208
+#: web/views/SandboxRecordFormView.vue:205
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Lines (kanban)"
 msgstr "明细行（看板）"
 
-#: web/views/SandboxRecordFormView.vue:200
+#: web/views/SandboxRecordFormView.vue:197
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Lines (table)"
 msgstr "明细行（表格）"
 
-#: web/views/SandboxRecordFormView.vue:16
+#: web/views/SandboxRecordFormView.vue:20
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Mark Done"
 msgstr "标记完成"
 
-#: web/views/SandboxRecordFormView.vue:12
+#: web/views/SandboxRecordFormView.vue:16
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Mark Open"
 msgstr "标记打开"
 
-#: web/views/SandboxRecordFormView.vue:209
+#: web/views/SandboxRecordFormView.vue:206
 msgctxt "web/views/SandboxRecordFormView"
 msgid "New Line"
 msgstr "新建明细"
 
-#: web/views/SandboxRecordFormView.vue:69
+#: web/views/SandboxRecordFormView.vue:64
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Numbers"
 msgstr "数值"
 
-#: web/views/SandboxRecordFormView.vue:36
+#: web/views/SandboxRecordFormView.vue:225
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Onchange: Active/State warn → toast; State disables Progress statusbar clicks (options stay visible); Currency/Category rewrite values; negative Int Value → field error; Line Quantity silently clamps to 1…999 (no toast)."
 msgstr "Onchange：Active/State 警告 → toast；State 禁用 Progress 状态栏点击（选项仍可见）；Currency/Category 改写值；负 Int Value → 字段错误；Line Quantity 静默限制到 1…999（无 toast）。"
 
-#: web/views/SandboxRecordFormView.vue:214
+#: web/views/SandboxRecordFormView.vue:211
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Qty"
 msgstr "数量"
 
-#: web/views/SandboxRecordFormView.vue:148
+#: web/views/SandboxRecordFormView.vue:145
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Relations"
 msgstr "关联"
 
-#: web/views/SandboxRecordFormView.vue:62
-msgctxt "web/views/SandboxRecordFormView"
-msgid "Required"
-msgstr "必填"
-
-#: web/views/SandboxRecordFormView.vue:20
+#: web/views/SandboxRecordFormView.vue:24
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Reset to Draft"
 msgstr "重置为草稿"
 
-#: web/views/SandboxRecordFormView.vue:106
+#: web/views/SandboxRecordFormView.vue:102
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Rich Content"
 msgstr "富内容"
@@ -746,57 +736,57 @@ msgctxt "web/views/SandboxRecordFormView"
 msgid "Sandbox Record"
 msgstr "沙箱记录"
 
-#: web/views/SandboxRecordFormView.vue:151
+#: web/views/SandboxRecordFormView.vue:148
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Select Category"
 msgstr "选择分类"
 
-#: web/views/SandboxRecordFormView.vue:156
+#: web/views/SandboxRecordFormView.vue:153
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Select Category Ref"
 msgstr "选择分类引用"
 
-#: web/views/SandboxRecordFormView.vue:132
+#: web/views/SandboxRecordFormView.vue:129
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Select Company"
 msgstr "选择公司"
 
-#: web/views/SandboxRecordFormView.vue:84
+#: web/views/SandboxRecordFormView.vue:79
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Select Currency"
 msgstr "选择币种"
 
-#: web/views/SandboxRecordFormView.vue:177
+#: web/views/SandboxRecordFormView.vue:174
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Select Tag Chips"
 msgstr "选择标签芯片"
 
-#: web/views/SandboxRecordFormView.vue:169
+#: web/views/SandboxRecordFormView.vue:166
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Select Tag Ref Table"
 msgstr "选择 Tag Ref 表格"
 
-#: web/views/SandboxRecordFormView.vue:180
+#: web/views/SandboxRecordFormView.vue:177
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Select Tag Refs"
 msgstr "选择标签引用"
 
-#: web/views/SandboxRecordFormView.vue:159
+#: web/views/SandboxRecordFormView.vue:156
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Select Tags"
 msgstr "选择标签"
 
-#: web/views/SandboxRecordFormView.vue:92
+#: web/views/SandboxRecordFormView.vue:87
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Temporal"
 msgstr "时间"
 
-#: web/views/SandboxRecordFormView.vue:212
+#: web/views/SandboxRecordFormView.vue:209
 msgctxt "web/views/SandboxRecordFormView"
 msgid "Unnamed Line"
 msgstr "未命名明细"
 
-#: web/views/SandboxRecordFormView.vue:209
+#: web/views/SandboxRecordFormView.vue:206
 msgctxt "web/views/SandboxRecordFormView"
 msgid "View Line"
 msgstr "查看明细"
@@ -966,11 +956,6 @@ msgctxt "web/views/SandboxTagFormView"
 msgid "Edit Sandbox Tag"
 msgstr "编辑沙箱标签"
 
-#: web/views/SandboxTagFormView.vue:22
-msgctxt "web/views/SandboxTagFormView"
-msgid "Required"
-msgstr "必填"
-
 #: web/views/sandbox_tag_actions.ts:11
 msgctxt "web/views/SandboxTagFormView"
 msgid "Sandbox Tag"
@@ -1024,6 +1009,10 @@ msgstr "标签"
 #~ msgctxt "web/route/routes"
 #~ msgid "Settings"
 #~ msgstr "设置"
+
+#~ msgctxt "web/views/SandboxLineFormView"
+#~ msgid "Required"
+#~ msgstr "必填"
 
 #~ msgctxt "web/views/SandboxPropertyDefinitionFormView"
 #~ msgid "Container Id"
@@ -1121,9 +1110,17 @@ msgstr "标签"
 #~ msgid "Add Line"
 #~ msgstr "添加明细"
 
+#~ msgctxt "web/views/SandboxRecordFormView"
+#~ msgid "Required"
+#~ msgstr "必填"
+
 #~ msgctxt "web/views/SandboxRecordPropertiesDefinitionView"
 #~ msgid "Edit the app-level schema for SandboxRecord.Properties. Labels support multiple languages; use Translate next to each label (and selection options) before Save."
 #~ msgstr "编辑 SandboxRecord.Properties 的应用级 schema。标签支持多语言；请在保存前使用每项标签（及选项）旁的「翻译」。"
+
+#~ msgctxt "web/views/SandboxTagFormView"
+#~ msgid "Required"
+#~ msgstr "必填"
 
 #~ msgctxt "web/views/SandboxTagListView"
 #~ msgid "Copy Sandbox Tag"

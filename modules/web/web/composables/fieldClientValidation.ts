@@ -51,8 +51,7 @@ export function resolveEffectiveClientRules(opts: {
   requiredMessage: string;
 }): RuleItem[] {
   const list = Array.isArray(opts.rules) ? opts.rules.filter((r) => r && typeof r === 'object') : [];
-  const hasRequired = list.some((rule) => (rule as { required?: boolean }).required === true);
-  if (!opts.required || hasRequired) {
+  if (!opts.required || rulesHaveExplicitRequired(list)) {
     return list.slice();
   }
   const message = String(opts.requiredMessage || '').trim() || 'Required';
