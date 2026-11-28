@@ -6,6 +6,27 @@ import { flushPromises, mountApp } from '@/web/web/__tests__/mountApp';
 import ChoyO2MKanbanVirtualBoard from './ChoyO2MKanbanVirtualBoard.vue';
 import { O2M_KANBAN_VIRTUAL_THRESHOLD } from './o2mKanbanVirtualHelpers';
 
+function stubMeasuredRow(index: number, height: number): HTMLElement {
+  const el = document.createElement('div');
+  el.setAttribute('data-index', String(index));
+  Object.defineProperty(el, 'offsetHeight', { value: height, configurable: true });
+  Object.defineProperty(el, 'getBoundingClientRect', {
+    configurable: true,
+    value: () => ({
+      x: 0,
+      y: index * (height + 10),
+      width: 200,
+      height,
+      top: index * (height + 10),
+      left: 0,
+      right: 200,
+      bottom: index * (height + 10) + height,
+      toJSON: () => ({}),
+    }),
+  });
+  return el;
+}
+
 test('virtualized board keeps gap outside measured row size', async () => {
   const items = Array.from({ length: O2M_KANBAN_VIRTUAL_THRESHOLD }, (_, i) => ({
     Id: String(i),
@@ -33,8 +54,16 @@ test('virtualized board keeps gap outside measured row size', async () => {
   expect(mounted.root.gapPx).toBe(10);
   const rows = mounted.root.cols > 0 ? Math.ceil(items.length / mounted.root.cols) : items.length;
   expect(rows).toBeGreaterThan(1);
-  // n card strides + (n-1) gaps (TanStack Virtual totalSize).
+  // Pre-measure: n card strides + (n-1) gaps (TanStack Virtual totalSize).
   expect(mounted.root.totalSize).toBe(80 * rows + 10 * (rows - 1));
+
+  // Measured path: stub every row taller than the estimate; gap must still apply.
+  const measuredHeight = 120;
+  for (let i = 0; i < rows; i += 1) {
+    mounted.root.measureElement(stubMeasuredRow(i, measuredHeight));
+  }
+  await nextTick();
+  expect(mounted.root.totalSize).toBe(measuredHeight * rows + 10 * (rows - 1));
 
   mounted.unmount();
 });
