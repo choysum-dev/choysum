@@ -43,8 +43,13 @@ function onInput(event: Event): void {
 </script>
 
 <template>
+  <!--
+    Default autocomplete=off for ERP fields; login/register pass username /
+    current-password etc. via attrs which override (bound after this default).
+  -->
   <input
     data-slot="input"
+    autocomplete="off"
     :class="classes"
     :value="modelValue"
     v-bind="$attrs"

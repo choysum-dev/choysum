@@ -36,6 +36,19 @@ new HISTORY entry describing what was re-copied vs re-patched.
 
 ## Entries (newest first)
 
+### 2026-11-28 — Input / Textarea default `autocomplete="off"`
+
+**What:** `Input` and `Textarea` set `autocomplete="off"` before `$attrs` so
+callers (login `username` / `current-password`, etc.) can still override.
+
+**Why not product-only:** Every ERP text control goes through these hosts;
+patching each Choy* field is brittle vs kit defaults. FormView also sets
+`autocomplete="off"` on the `<form>`; autofill color neutralization lives in
+product `index.css`.
+
+**Do not regress:** Keep the default before `$attrs` so explicit autocomplete
+tokens win; do not hard-code `off` after attrs.
+
 ### 2026-11-28 — Invalid chrome: ComboboxTrigger / Button / Switch
 
 **What:**

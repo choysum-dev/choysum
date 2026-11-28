@@ -33,8 +33,10 @@ function onInput(event: Event): void {
 </script>
 
 <template>
+  <!-- Default off; callers may override via attrs (same as Input). -->
   <textarea
     data-slot="textarea"
+    autocomplete="off"
     :class="classes"
     :value="modelValue"
     v-bind="$attrs"

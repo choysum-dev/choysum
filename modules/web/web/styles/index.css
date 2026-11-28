@@ -44,6 +44,20 @@ html {
 }
 
 /*
+ * Browser autofill chrome (yellow/blue) clashes with product tokens.
+ * Form/Input default autocomplete=off; this still covers forced fills.
+ */
+:is(input, textarea):-webkit-autofill,
+:is(input, textarea):-webkit-autofill:hover,
+:is(input, textarea):-webkit-autofill:focus,
+:is(input, textarea):-webkit-autofill:active {
+  -webkit-text-fill-color: var(--color-foreground);
+  caret-color: var(--color-foreground);
+  box-shadow: 0 0 0 1000px var(--color-background) inset;
+  transition: background-color 99999s ease-out 0s;
+}
+
+/*
  * Outline buttons (variant uses border-input): primary-tinted hover chrome.
  * Product override — keeps vendor/ui outline classes untouched. Skips
  * outline-destructive (border-destructive/*, not border-input).
