@@ -100,6 +100,8 @@ export function resolveIndexDisplayMaxText(
         ? Math.floor(gi)
         : base + i;
     if (n > max) max = n;
+    // Digit budget caps around 7–8 digits; further rows cannot widen chrome.
+    if (String(Math.floor(max)).length >= 8) break;
   }
   return max > 0 ? String(Math.floor(max)) : '';
 }
@@ -166,7 +168,8 @@ export function resolveColumnSizePx(
   }
 
   // Index chrome: digit budget may raise above the floor; never soft/user prefs.
-  // Author width / minWidth raise the floor; digit budget may still grow above it.
+  // Author width / minWidth raise the floor (may exceed LIST_INDEX_COLUMN_MAX_WIDTH);
+  // the digit estimator itself stays capped at MAX.
   if (isIndexListColumn(col)) {
     let floor = LIST_INDEX_COLUMN_MIN_WIDTH;
     if (explicitWidth != null) floor = Math.max(floor, explicitWidth);

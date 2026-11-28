@@ -129,11 +129,12 @@ export function estimateListIndexColumnWidth(
   let content: number;
   if (/^\d+$/.test(text)) {
     const fn = opts?.measure === undefined ? getDefaultListTextMeasure() : opts.measure;
+    const fallback = Math.ceil(text.length * LIST_INDEX_DIGIT_CHAR_PX);
     if (typeof fn === 'function') {
       const w = fn(text);
-      content = Number.isFinite(w) && w > 0 ? Math.ceil(w) : Math.ceil(text.length * LIST_INDEX_DIGIT_CHAR_PX);
+      content = Number.isFinite(w) && w > 0 ? Math.ceil(w) : fallback;
     } else {
-      content = Math.ceil(text.length * LIST_INDEX_DIGIT_CHAR_PX);
+      content = fallback;
     }
   } else {
     content = listTextWidthPx(text, opts?.measure);

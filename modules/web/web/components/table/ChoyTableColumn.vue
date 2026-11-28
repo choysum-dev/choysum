@@ -305,7 +305,9 @@ function buildColumn(): Column {
         }
         // Other rows fall back to the global row index with pagination offset.
         const raw = (ctx as any).baseIndex;
-        const base = typeof raw === 'number' ? raw : Number(raw?.value ?? 1);
+        const baseRaw = typeof raw === 'number' ? raw : Number(raw?.value ?? 1);
+        const base =
+          Number.isFinite(baseRaw) && baseRaw > 0 ? Math.floor(baseRaw) : 1;
         return h('span', { class: indexClass }, String(base + rowIndex));
       },
     };
