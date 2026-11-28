@@ -14,6 +14,25 @@ export type FieldClientValidateFn = () => Promise<string>;
 export const FIELD_CLIENT_VALIDATORS_KEY: InjectionKey<Map<string, FieldClientValidateFn>> =
   Symbol('field-client-validators');
 
+/**
+ * Merge conceptual required (meta.notNull / :required) with explicit field rules.
+ * When required and rules do not already include required:true, prepend a default
+ * required rule so asterisk and submit/blur validation stay aligned.
+ */
+export function resolveEffectiveClientRules(opts: {
+  required: boolean;
+  rules?: RuleItem[] | null;
+  requiredMessage: string;
+}): RuleItem[] {
+  const list = Array.isArray(opts.rules) ? opts.rules.filter((r) => r && typeof r === 'object') : [];
+  const hasRequired = list.some((rule) => (rule as { required?: boolean }).required === true);
+  if (!opts.required || hasRequired) {
+    return list.slice();
+  }
+  const message = String(opts.requiredMessage || '').trim() || 'Required';
+  return [{ required: true, message }, ...list];
+}
+
 /** Run async-validator-style rules; returns the first error message (or ''). */
 export async function firstRuleError(rules: RuleItem[] | undefined | null, value: unknown): Promise<string> {
   const list = Array.isArray(rules) ? rules : [];

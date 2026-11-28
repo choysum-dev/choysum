@@ -468,6 +468,7 @@ import { useProvidedOnchange, getOnchangeController } from '@/web/web/composable
 import {
   FIELD_CLIENT_VALIDATORS_KEY,
   firstRuleError,
+  resolveEffectiveClientRules,
 } from '@/web/web/composables/fieldClientValidation';
 import {
   FIELD_ERROR_SPACE_KEY,
@@ -1055,7 +1056,9 @@ watch(
   }
 );
 
-/* Server errors are shown via dedicated alert nodes; client rules also gate submit. */
+/* Server errors are shown via dedicated alert nodes; client rules also gate submit.
+ * Conceptual required (meta.notNull / :required) shares fieldRequired with the label *;
+ * :rules stay additive (pattern / custom validators). */
 const fieldClientValidators = inject(FIELD_CLIENT_VALIDATORS_KEY, null);
 const clientRuleError = ref('');
 /** Client rule messages stay hidden until blur or FormView submit validation. */
@@ -1130,7 +1133,12 @@ async function evaluateClientRules(opts?: { reveal?: boolean }): Promise<string>
     return '';
   }
   const seq = ++clientRulesEvalSeq;
-  const message = await firstRuleError(props.rules, rawValueForm().value);
+  const effectiveRules = resolveEffectiveClientRules({
+    required: fieldRequired.value,
+    rules: props.rules,
+    requiredMessage: _t('Required'),
+  });
+  const message = await firstRuleError(effectiveRules, rawValueForm().value);
   // Ignore superseded evaluations so rapid edit/blur/submit cannot paint stale errors.
   if (seq !== clientRulesEvalSeq) return message;
   clientRuleError.value = message;
@@ -1166,7 +1174,15 @@ onBeforeUnmount(() => {
 });
 
 watch(
-  () => [rawValueForm().value, props.rules, binding.env.isEditMode, readonlyForm.value, visibleForm.value] as const,
+  () =>
+    [
+      rawValueForm().value,
+      props.rules,
+      fieldRequired.value,
+      binding.env.isEditMode,
+      readonlyForm.value,
+      visibleForm.value,
+    ] as const,
   () => {
     void evaluateClientRules();
   },

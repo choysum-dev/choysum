@@ -1,9 +1,34 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { firstRuleError } from './fieldClientValidation';
+import { firstRuleError, resolveEffectiveClientRules } from './fieldClientValidation';
 
 describe('fieldClientValidation', () => {
+  test('resolveEffectiveClientRules prepends required when missing', () => {
+    expect(
+      resolveEffectiveClientRules({ required: true, rules: null, requiredMessage: '必填' }),
+    ).toEqual([{ required: true, message: '必填' }]);
+    const merged = resolveEffectiveClientRules({
+      required: true,
+      rules: [{ type: 'string' } as any],
+      requiredMessage: 'Required',
+    });
+    expect(merged).toEqual([{ required: true, message: 'Required' }, { type: 'string' }]);
+  });
+
+  test('resolveEffectiveClientRules skips insert when not required or already present', () => {
+    expect(resolveEffectiveClientRules({ required: false, rules: [{ type: 'string' } as any], requiredMessage: 'Required' })).toEqual([
+      { type: 'string' },
+    ]);
+    const withRequired = [{ required: true, message: 'custom' }];
+    expect(
+      resolveEffectiveClientRules({ required: true, rules: withRequired, requiredMessage: 'Required' }),
+    ).toEqual(withRequired);
+    expect(resolveEffectiveClientRules({ required: true, rules: undefined, requiredMessage: '  ' })).toEqual([
+      { required: true, message: 'Required' },
+    ]);
+  });
+
   test('firstRuleError returns empty when no rules', async () => {
     expect(await firstRuleError(undefined, 'x')).toBe('');
     expect(await firstRuleError([], 'x')).toBe('');

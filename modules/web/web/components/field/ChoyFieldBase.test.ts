@@ -658,6 +658,96 @@ describe('ChoyFieldBase list-editing-row-id gate', () => {
     expect(validators.size).toBe(0);
   });
 
+  test('auto-requires from meta.notNull without explicit rules', async () => {
+    installUiStubs();
+    installDialogStubs();
+    const { FIELD_CLIENT_VALIDATORS_KEY } = await import('@/web/web/composables/fieldClientValidation');
+    const validators = new Map<string, () => Promise<string>>();
+    const binding = makeBinding({ string: 'Sequence', notNull: true });
+    binding.__value.value = '';
+    const m = mountApp(ChoyFieldBase as any, {
+      props: { binding, renderMode: 'form' },
+      provide: { [FIELD_CLIENT_VALIDATORS_KEY as any]: validators },
+      slots: {
+        edit: () => h(EditStub),
+        display: () => h(DisplayStub),
+      },
+    });
+    await flushPromises();
+    expect(m.q('[data-slot="field-error"]')).toBeFalsy();
+    const validate = [...validators.values()][0];
+    expect(await validate()).toBe('Required');
+    await flushPromises();
+    expect(m.q('[data-slot="field-error"]')?.textContent).toContain('Required');
+    binding.__value.value = '1';
+    await flushPromises();
+    expect(await validate()).toBe('');
+    m.unmount();
+  });
+
+  test('keeps explicit required message when rules already include required', async () => {
+    installUiStubs();
+    installDialogStubs();
+    const { FIELD_CLIENT_VALIDATORS_KEY } = await import('@/web/web/composables/fieldClientValidation');
+    const validators = new Map<string, () => Promise<string>>();
+    const binding = makeBinding({ string: 'Title', notNull: true });
+    binding.__value.value = '';
+    const m = mountApp(ChoyFieldBase as any, {
+      props: {
+        binding,
+        renderMode: 'form',
+        rules: [{ required: true, message: 'custom required' }],
+      },
+      provide: { [FIELD_CLIENT_VALIDATORS_KEY as any]: validators },
+      slots: {
+        edit: () => h(EditStub),
+        display: () => h(DisplayStub),
+      },
+    });
+    await flushPromises();
+    const validate = [...validators.values()][0];
+    expect(await validate()).toBe('custom required');
+    await flushPromises();
+    expect(m.q('[data-slot="field-error"]')?.textContent).toContain('custom required');
+    expect(m.q('[data-slot="field-error"]')?.textContent).not.toContain('Required');
+    m.unmount();
+  });
+
+  test('runs notNull required before additive custom validators', async () => {
+    installUiStubs();
+    installDialogStubs();
+    const { FIELD_CLIENT_VALIDATORS_KEY } = await import('@/web/web/composables/fieldClientValidation');
+    const validators = new Map<string, () => Promise<string>>();
+    const binding = makeBinding({ string: 'Code', notNull: true });
+    binding.__value.value = '';
+    const m = mountApp(ChoyFieldBase as any, {
+      props: {
+        binding,
+        renderMode: 'form',
+        rules: [
+          {
+            validator: (_r: unknown, v: unknown, cb: (e?: Error) => void) => {
+              if (v === 'bad') cb(new Error('pattern'));
+              else cb();
+            },
+          },
+        ],
+      },
+      provide: { [FIELD_CLIENT_VALIDATORS_KEY as any]: validators },
+      slots: {
+        edit: () => h(EditStub),
+        display: () => h(DisplayStub),
+      },
+    });
+    await flushPromises();
+    const validate = [...validators.values()][0];
+    expect(await validate()).toBe('Required');
+    binding.__value.value = 'bad';
+    await flushPromises();
+    expect(await validate()).toBe('pattern');
+    m.unmount();
+  });
+
   test('reveals client rules on focusout outside the field, not within it', async () => {
     installUiStubs();
     installDialogStubs();

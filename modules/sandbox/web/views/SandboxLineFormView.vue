@@ -11,7 +11,7 @@ SPDX-License-Identifier: Apache-2.0
     <ChoySection :title="_t('Line')">
       <ChoyGrid>
         <ChoyCol :span="6">
-          <ChoyVarcharField :store="store" prop="Name" :rules="requiredRules" />
+          <ChoyVarcharField :store="store" prop="Name" />
         </ChoyCol>
         <ChoyCol>
           <ChoyIntField :store="store" prop="Quantity" />
@@ -28,7 +28,6 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
 import type { ModelStore } from '@/web/web/stores/modelStore';
 import type SandboxLine from '@/sandbox/service/models/sandbox_line';
 import { resolvePageStore } from '@/web/web/composables/usePageContext';
@@ -46,7 +45,6 @@ import {
 
 defineOptions({ name: 'SandboxLineFormView', inheritAttrs: true });
 const { _t } = createTranslate('sandbox', { scope: 'web/views/SandboxLineFormView' });
-const requiredRules = computed(() => [{ required: true, message: _t('Required') }]);
 
 const props = withDefaults(
   defineProps<{
