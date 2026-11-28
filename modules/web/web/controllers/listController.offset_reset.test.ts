@@ -50,7 +50,7 @@ test('listController: sort resets offset to 0', async () => {
   await ctrl.sort([{ field: 'Name', direction: 'desc' }]);
   expect(store.state.queryState.pagination.offset).toBe(0);
   expect(store.state.queryState.pagination.limit).toBe(20);
-  expect(searchOffsets.at(-1)).toBe(0);
+  expect(searchOffsets[searchOffsets.length - 1]).toBe(0);
 });
 
 test('listController: setKeyword resets offset to 0', async () => {
@@ -107,7 +107,7 @@ test('listController: explicit pagination with orderBy keeps offset', async () =
     pagination: { limit: 20, offset: 40 },
   });
   expect(store.state.queryState.pagination.offset).toBe(40);
-  expect(searchOffsets.at(-1)).toBe(40);
+  expect(searchOffsets[searchOffsets.length - 1]).toBe(40);
 });
 
 test('listController: paginate alone keeps requested offset', async () => {

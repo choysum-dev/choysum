@@ -171,3 +171,90 @@ test('listController: explicit orderBy undefined override clears store even when
   await ctrl.apply({ appliedGroups: ['Name'] as any, orderBy: undefined });
   expect(store.state.queryState.orderBy).toBeUndefined();
 });
+
+test('listController: fetchGroupChildren filters store orderBy to remaining group keys', async () => {
+  const readGroupOrderBys: unknown[] = [];
+  const store = makeStore({
+    metadata: {
+      fields: {
+        Name: { type: 'varchar' },
+        StageId: { type: 'many2one' },
+        CreatedAt: { type: 'datetime' },
+      },
+    },
+    ReadGroup: async (_gb: unknown, _cond: unknown, opts: { orderBy?: unknown } = {}) => {
+      readGroupOrderBys.push(opts?.orderBy);
+      return { groups: [{ StageId: 's1', __count: 1 }], total: 1 };
+    },
+  });
+  store.state.queryState.appliedGroups = ['Name', 'StageId'];
+  store.state.queryState.orderBy = [{ field: 'CreatedAt', direction: 'desc' }];
+  const ctrl = createListController(store);
+  ctrl.vm.result = {
+    kind: 'group',
+    rows: [
+      {
+        kind: 'group',
+        key: 'acme',
+        depth: 0,
+        label: 'Acme',
+        count: 1,
+        __condition: ['Name', '=', 'Acme'],
+      },
+    ],
+    visibleNodes: [],
+    expandedKeys: new Set<string>(),
+  } as any;
+  readGroupOrderBys.length = 0;
+  await ctrl.fetchGroupChildren('acme');
+  expect(store.state.queryState.orderBy).toEqual([{ field: 'CreatedAt', direction: 'desc' }]);
+  expect(readGroupOrderBys.length).toBeGreaterThan(0);
+  for (const ob of readGroupOrderBys) {
+    expect(ob == null || (Array.isArray(ob) && ob.length === 0)).toBe(true);
+  }
+});
+
+test('listController: loadMoreGroupChildren filters store orderBy to remaining group keys', async () => {
+  const readGroupOrderBys: unknown[] = [];
+  const store = makeStore({
+    metadata: {
+      fields: {
+        Name: { type: 'varchar' },
+        StageId: { type: 'many2one' },
+        CreatedAt: { type: 'datetime' },
+      },
+    },
+    ReadGroup: async (_gb: unknown, _cond: unknown, opts: { orderBy?: unknown } = {}) => {
+      readGroupOrderBys.push(opts?.orderBy);
+      return { groups: [{ StageId: 's2', __count: 1 }], total: 2 };
+    },
+  });
+  store.state.queryState.appliedGroups = ['Name', 'StageId'];
+  store.state.queryState.orderBy = [{ field: 'CreatedAt', direction: 'asc' }];
+  store.state.queryState.pagination = { limit: 1, offset: 0 };
+  const ctrl = createListController(store);
+  ctrl.vm.result = {
+    kind: 'group',
+    rows: [
+      {
+        kind: 'group',
+        key: 'acme',
+        depth: 0,
+        label: 'Acme',
+        count: 2,
+        __condition: ['Name', '=', 'Acme'],
+      },
+    ],
+    visibleNodes: [],
+    expandedKeys: new Set<string>(),
+  } as any;
+  // expandGroup seeds groupChildren via fetchGroupChildren; load-more covers the same filter.
+  await ctrl.expandGroup('acme', true);
+  readGroupOrderBys.length = 0;
+  await ctrl.loadMoreGroupChildren('acme');
+  expect(store.state.queryState.orderBy).toEqual([{ field: 'CreatedAt', direction: 'asc' }]);
+  expect(readGroupOrderBys.length).toBeGreaterThan(0);
+  for (const ob of readGroupOrderBys) {
+    expect(ob == null || (Array.isArray(ob) && ob.length === 0)).toBe(true);
+  }
+});

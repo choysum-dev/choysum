@@ -369,7 +369,10 @@ export function createListController(store: ModelStore<any>): IListController {
         ) {
           queryDimChanged = true;
         }
-        if (queryDimChanged) {
+        if (
+          queryDimChanged &&
+          !Object.prototype.hasOwnProperty.call(effectiveOverrides, 'pagination')
+        ) {
           const existingPag = (qsCommitted.pagination || {}) as PaginationState;
           const limitRaw = Number(existingPag.limit);
           const limit = Number.isFinite(limitRaw) && limitRaw > 0 ? limitRaw : 20;
@@ -583,7 +586,8 @@ export function createListController(store: ModelStore<any>): IListController {
     const ctx = buildUnifiedQuery(store, {
       groupby: remaining,
       pagination: { ...(store.state as any)?.queryState?.pagination, offset: 0 },
-      orderBy: (store.state as any)?.queryState?.orderBy,
+      // Child ReadGroup only accepts ORDER BY on remaining group keys.
+      orderBy: filterOrderByForGroupKeys((store.state as any)?.queryState?.orderBy, remaining),
       parentCondition: parent.__condition,
     });
     const bundle = buildPlan(ctx);
@@ -786,7 +790,8 @@ export function createListController(store: ModelStore<any>): IListController {
     const ctx = buildUnifiedQuery(store, {
       groupby: remaining,
       pagination: { limit, offset },
-      orderBy: (store.state as any)?.queryState?.orderBy,
+      // Child ReadGroup only accepts ORDER BY on remaining group keys.
+      orderBy: filterOrderByForGroupKeys((store.state as any)?.queryState?.orderBy, remaining),
       parentCondition: parent.__condition,
     });
     const bundle = buildPlan(ctx);
