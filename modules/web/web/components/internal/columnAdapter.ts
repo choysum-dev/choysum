@@ -71,25 +71,34 @@ function isIndexListColumn(col: Column): boolean {
   return columnKey(col) === '__index__' || col.type === 'index';
 }
 
-/** Build the widest index label from current-page rows + baseIndex. */
+/**
+ * Widest index label on the current page — mirrors ChoyTableColumn index cell:
+ * `groupIndex` when set, else `baseIndex + rowIndex`. Uses the full `sampleRows`
+ * array (soft `sampleRowLimit` does not trim this path).
+ */
 export function resolveIndexDisplayMaxText(
   options?: Pick<ColumnsToColumnDefsOptions, 'sampleRows' | 'baseIndex' | 'indexDisplayMaxText'>,
 ): string {
   const pre = String(options?.indexDisplayMaxText ?? '').trim();
   if (pre) return pre;
   const rows = options?.sampleRows;
-  const groupIndexes: number[] = [];
-  if (rows) {
-    for (const row of rows) {
-      const gi = (row as { groupIndex?: unknown })?.groupIndex;
-      if (typeof gi === 'number' && Number.isFinite(gi)) groupIndexes.push(gi);
-    }
+  const base =
+    typeof options?.baseIndex === 'number' &&
+    Number.isFinite(options.baseIndex) &&
+    options.baseIndex > 0
+      ? Math.floor(options.baseIndex)
+      : 1;
+  if (!rows || rows.length === 0) {
+    return maxListIndexDisplayText({ baseIndex: base, rowCount: 0 });
   }
-  return maxListIndexDisplayText({
-    baseIndex: options?.baseIndex,
-    rowCount: rows?.length ?? 0,
-    groupIndexes: groupIndexes.length > 0 ? groupIndexes : undefined,
-  });
+  let max = 0;
+  for (let i = 0; i < rows.length; i++) {
+    const gi = (rows[i] as { groupIndex?: unknown } | undefined)?.groupIndex;
+    const n =
+      typeof gi === 'number' && Number.isFinite(gi) ? gi : base + i;
+    if (n > max) max = n;
+  }
+  return max > 0 ? String(Math.floor(max)) : '';
 }
 
 function columnKey(col: Column): string {
@@ -154,11 +163,12 @@ export function resolveColumnSizePx(
   }
 
   // Index chrome: digit budget may raise above the floor; never soft/user prefs.
+  // Author pixel width raises the floor; digit budget may still grow above it.
   if (isIndexListColumn(col)) {
-    const floor = Math.max(
-      LIST_INDEX_COLUMN_MIN_WIDTH,
-      explicitWidth != null ? explicitWidth : LIST_INDEX_COLUMN_MIN_WIDTH,
-    );
+    const floor =
+      explicitWidth != null
+        ? Math.max(LIST_INDEX_COLUMN_MIN_WIDTH, explicitWidth)
+        : LIST_INDEX_COLUMN_MIN_WIDTH;
     const raised = estimateListIndexColumnWidth(opts?.indexDisplayMaxText, {
       measure: opts?.textMeasure,
     });

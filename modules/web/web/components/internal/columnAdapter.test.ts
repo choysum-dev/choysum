@@ -268,6 +268,32 @@ describe('columnsToColumnDefs', () => {
       textMeasure: null,
     });
     expect(blocked[0].size).toBe(44);
+
+    // Per-row groupIndex (mirrors cell renderer) widens when larger than base+i.
+    const grouped = columnsToColumnDefs([idx], {
+      baseIndex: 1,
+      sampleRows: [
+        { Id: 'a', groupIndex: 2 },
+        { Id: 'b', groupIndex: 12345 },
+      ],
+      textMeasure: null,
+    });
+    expect(grouped[0].size).toBeGreaterThan(44);
+    expect(grouped[0].size).toBeLessThanOrEqual(80);
+    expect(
+      resolveIndexDisplayMaxText({
+        baseIndex: 100,
+        sampleRows: [{ Id: 'x' }, { Id: 'y', groupIndex: 3 }],
+      }),
+    ).toBe('100'); // row0 → 100, row1 groupIndex 3 → max stays 100
+
+    // Author wider floor wins over a short digit budget.
+    const custom: Column = { key: '__index__', type: 'index', width: 72 };
+    const floored = resolveColumnSizePx(custom, {
+      indexDisplayMaxText: '9',
+      textMeasure: null,
+    });
+    expect(floored.size).toBe(72);
   });
 });
 

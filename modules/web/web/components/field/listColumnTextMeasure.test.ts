@@ -1,7 +1,10 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { estimateListHeaderMinWidth } from './listColumnSizeDefaults';
+import {
+  estimateListHeaderMinWidth,
+  estimateListIndexColumnWidth,
+} from './listColumnSizeDefaults';
 import {
   createListCanvasTextMeasure,
   formatListSampleCellText,
@@ -23,6 +26,21 @@ test('estimateListHeaderMinWidth uses font measure when provided', () => {
   expect(long).toBeGreaterThan(80);
   expect(long % 20).toBe(0);
   expect(long).toBeLessThanOrEqual(160);
+});
+
+test('estimateListIndexColumnWidth covers measure fn, bad measure, and non-digit text', () => {
+  // measure fn path for digits
+  expect(estimateListIndexColumnWidth('9999', { measure: measure10 })).toBeGreaterThan(44);
+  // non-finite measure → digit char fallback
+  expect(estimateListIndexColumnWidth('999', { measure: () => Number.NaN })).toBe(44);
+  expect(estimateListIndexColumnWidth('9999', { measure: () => 0 })).toBeGreaterThan(44);
+  // non-digit label uses generic listTextWidthPx path
+  const labeled = estimateListIndexColumnWidth('Row-99999', { measure: measure10 });
+  expect(labeled).toBeGreaterThan(44);
+  expect(labeled).toBeLessThanOrEqual(80);
+  // undefined measure → default canvas/char path (still floors short digits)
+  resetDefaultListTextMeasureForTests();
+  expect(estimateListIndexColumnWidth('12')).toBe(44);
 });
 
 test('listTextWidthPx falls back to char budget without measure', () => {
