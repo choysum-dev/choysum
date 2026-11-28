@@ -333,6 +333,50 @@ export function createListController(store: ModelStore<any>): IListController {
         writeQs({ orderBy: resolvedOrderBy });
       }
 
+      // Query-dimension change (sort / filters / keyword / groups / FC) resets to page 1
+      // unless the caller passed an explicit pagination (paginate / URL hydrate).
+      const hasPaginationOverride =
+        !!overrides && Object.prototype.hasOwnProperty.call(overrides, 'pagination');
+      const hasKeywordFieldsOverride =
+        !!overrides && Object.prototype.hasOwnProperty.call(overrides, 'keywordFields');
+      if (!hasPaginationOverride && effectiveOverrides) {
+        const sameJson = (a: unknown, b: unknown) => stableStringify(a) === stableStringify(b);
+        const committedGroups = normalizeGroupbyToStrings(
+          (qsCommitted.appliedGroups as Array<string | GroupBySpec> | undefined) ?? null,
+        );
+        let queryDimChanged = false;
+        if (hasOrderByOverride && !sameJson(resolvedOrderBy, qsCommitted.orderBy)) {
+          queryDimChanged = true;
+        }
+        if (hasKeywordOverride && !sameJson(overrides!.keyword, qsCommitted.keyword)) {
+          queryDimChanged = true;
+        }
+        if (hasAppliedFiltersOverride && !sameJson(overrides!.appliedFilters, qsCommitted.appliedFilters)) {
+          queryDimChanged = true;
+        }
+        if (
+          overrides?.appliedGroups !== undefined &&
+          !sameJson(gbStrings ?? [], committedGroups)
+        ) {
+          queryDimChanged = true;
+        }
+        if (hasForcedConditionOverride && !sameJson(overrides!.forcedCondition, qsCommitted.forcedCondition)) {
+          queryDimChanged = true;
+        }
+        if (
+          hasKeywordFieldsOverride &&
+          !sameJson(overrides!.keywordFields, qsCommitted.keywordFields)
+        ) {
+          queryDimChanged = true;
+        }
+        if (queryDimChanged) {
+          const existingPag = (qsCommitted.pagination || {}) as PaginationState;
+          const limitRaw = Number(existingPag.limit);
+          const limit = Number.isFinite(limitRaw) && limitRaw > 0 ? limitRaw : 20;
+          effectiveOverrides.pagination = { limit, offset: 0 };
+        }
+      }
+
       const ctx = buildSearchOrGroupContext(store, {
         shape,
         filters: finalCondition,

@@ -99,9 +99,33 @@ export function applyChoyViewRouteGroups(store: unknown, groups: readonly string
 }
 
 /**
+ * Clear Search pagination offset on a shared model store (keep limit).
+ * Used when ViewSwitcher changes viewKind so List page N does not bleed into Kanban lanes.
+ */
+export function resetChoyViewRoutePaginationOffset(store: unknown): void {
+  if (!store || typeof store !== 'object') return;
+  const root = store as { state?: Record<string, unknown> };
+  const state = root.state;
+  if (!state || typeof state !== 'object') return;
+  const qs = state.queryState as Record<string, unknown> | undefined;
+  if (!qs || typeof qs !== 'object') return;
+  const pagination = qs.pagination as { limit?: unknown; offset?: unknown } | undefined;
+  if (!pagination || typeof pagination !== 'object') return;
+  const offset = Number(pagination.offset);
+  if (!Number.isFinite(offset) || offset === 0) return;
+  const limitRaw = Number(pagination.limit);
+  const limit = Number.isFinite(limitRaw) && limitRaw > 0 ? limitRaw : 20;
+  qs.pagination = { ...pagination, limit, offset: 0 };
+}
+
+/** Last viewKind applied per shared store (survives sibling KeepAlive remounts). */
+const lastViewKindByStore = new WeakMap<object, string>();
+
+/**
  * Bind ViewSwitcher navigation and default groupby to the current route meta.
  * Applies defaultGroups on setup and again when a KeepAlive view is reactivated
  * so sibling views sharing a store do not keep another view's grouping.
+ * When viewKind changes for the same store, pagination offset is cleared (keep limit).
  */
 export function useChoyViewRouteSwitch(
   options: UseChoyViewRouteSwitchOptions = {},
@@ -113,7 +137,16 @@ export function useChoyViewRouteSwitch(
   const defaultGroups = computed(() => resolveChoyViewRouteDefaultGroups(route.meta));
 
   function applyGroups(): void {
-    applyChoyViewRouteGroups(options.store, defaultGroups.value);
+    const kind = active.value;
+    const store = options.store;
+    if (store && typeof store === 'object') {
+      const prev = lastViewKindByStore.get(store);
+      if (prev !== undefined && prev !== kind) {
+        resetChoyViewRoutePaginationOffset(store);
+      }
+      lastViewKindByStore.set(store, kind);
+    }
+    applyChoyViewRouteGroups(store, defaultGroups.value);
   }
 
   applyGroups();
