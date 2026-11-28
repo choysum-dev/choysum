@@ -3,7 +3,7 @@
 
 import { cn, type ClassValue } from '../../lib/utils';
 
-/** Surface busy presentation (see modules/web/web/docs/choy-loading-feedback.md). */
+/** Surface busy presentation (see .dev/docs/web/choy-loading-feedback.md). */
 export type ViewBusyMode = 'stale' | 'skeleton' | 'block';
 
 /** Host attrs for a busy view-body region (aria + optional inert + soft-stale marker). */
