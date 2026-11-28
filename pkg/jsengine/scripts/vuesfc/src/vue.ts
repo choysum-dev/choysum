@@ -64,10 +64,9 @@ export async function compileSFC(
         inSSR: options.isSSR || false,
         bindingMetadata: script?.bindings,
         ...options.compilerOptions,
-        // Always strip author HTML comments from templates (dev + prod).
-        // Vue still emits runtime anchors (<!--v-if-->, <!---->, <!--[-->) for
-        // patching; those are unrelated to this flag.
-        comments: false,
+        // Default-strip author HTML comments (dev + prod). Explicit
+        // compilerOptions.comments wins. Vue runtime anchors are unrelated.
+        comments: options.compilerOptions?.comments ?? false,
       },
     });
     template = {
