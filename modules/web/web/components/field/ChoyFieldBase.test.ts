@@ -693,6 +693,73 @@ describe('ChoyFieldBase list-editing-row-id gate', () => {
     m.unmount();
   });
 
+  test('nested relation columns validate each row; empty collection passes', async () => {
+    installUiStubs();
+    installDialogStubs();
+    const { FIELD_CLIENT_VALIDATORS_KEY } = await import('@/web/web/composables/fieldClientValidation');
+    const validators = new Map<string, () => Promise<string>>();
+    const lines = ref<Array<{ Name?: string }>>([]);
+    const binding = makeBinding({ string: 'Name', notNull: true }, { fieldPrefix: 'Lines' });
+    (binding as any).prop = 'Lines.Name';
+    (binding as any).recordRef = () => computed(() => ({ Lines: lines.value }));
+    (binding as any).fieldRefOf = (row: { Name?: string }) =>
+      computed({
+        get: () => row?.Name,
+        set: (v: string) => {
+          if (row) row.Name = v;
+        },
+      });
+    const m = mountApp(ChoyFieldBase as any, {
+      props: { binding, renderMode: 'form' },
+      provide: { [FIELD_CLIENT_VALIDATORS_KEY as any]: validators },
+      slots: {
+        edit: () => h(EditStub),
+        display: () => h(DisplayStub),
+      },
+    });
+    await flushPromises();
+    const validate = [...validators.values()][0];
+    expect(await validate()).toBe('');
+    lines.value = [{ Name: '' }, { Name: 'ok' }];
+    await flushPromises();
+    expect(await validate()).toBe('Required');
+    lines.value = [{ Name: 'a' }, { Name: 'b' }];
+    await flushPromises();
+    expect(await validate()).toBe('');
+    m.unmount();
+  });
+
+  test('dotted paths use binding.meta.notNull, not a same-named root FieldsGet overlay', async () => {
+    installUiStubs();
+    installDialogStubs();
+    const { FIELD_CLIENT_VALIDATORS_KEY } = await import('@/web/web/composables/fieldClientValidation');
+    const validators = new Map<string, () => Promise<string>>();
+    // Root "Code" overlay says optional; leaf Partner.Code meta says required.
+    const binding = makeBinding(
+      { string: 'Code', notNull: true },
+      {
+        store: {
+          getFieldMeta: (name: string) => (name === 'Code' ? { notNull: false, string: 'Code' } : undefined),
+        },
+      },
+    );
+    (binding as any).prop = 'Partner.Code';
+    binding.__value.value = '';
+    const m = mountApp(ChoyFieldBase as any, {
+      props: { binding, renderMode: 'form' },
+      provide: { [FIELD_CLIENT_VALIDATORS_KEY as any]: validators },
+      slots: {
+        edit: () => h(EditStub),
+        display: () => h(DisplayStub),
+      },
+    });
+    await flushPromises();
+    const validate = [...validators.values()][0];
+    expect(await validate()).toBe('Required');
+    expect(m.q('[data-slot="field-required"]')).toBeTruthy();
+    m.unmount();
+  });
+
   test('keeps explicit required message when rules already include required', async () => {
     installUiStubs();
     installDialogStubs();
