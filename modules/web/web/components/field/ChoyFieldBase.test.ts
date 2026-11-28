@@ -680,10 +680,15 @@ describe('ChoyFieldBase list-editing-row-id gate', () => {
     const validate = [...validators.values()][0];
     expect(await validate()).toBe('Required');
     await flushPromises();
-    expect(m.q('[data-slot="field-error"]')?.textContent).toContain('Required');
+    // Auto-required: toast/chrome only — no inline「必填」copy.
+    expect(m.q('[data-slot="field-error"]')).toBeFalsy();
+    expect(m.q('[data-invalid="true"]')).toBeTruthy();
+    expect(m.q('[data-slot="field-label"]')?.className || '').toContain('text-destructive');
     binding.__value.value = '1';
     await flushPromises();
     expect(await validate()).toBe('');
+    await flushPromises();
+    expect(m.q('[data-invalid="true"]')).toBeFalsy();
     m.unmount();
   });
 
@@ -744,9 +749,14 @@ describe('ChoyFieldBase list-editing-row-id gate', () => {
     await flushPromises();
     const validate = [...validators.values()][0];
     expect(await validate()).toBe('Required');
+    await flushPromises();
+    expect(m.q('[data-slot="field-error"]')).toBeFalsy();
+    expect(m.q('[data-invalid="true"]')).toBeTruthy();
     binding.__value.value = 'bad';
     await flushPromises();
     expect(await validate()).toBe('pattern');
+    await flushPromises();
+    expect(m.q('[data-slot="field-error"]')?.textContent).toContain('pattern');
     m.unmount();
   });
 

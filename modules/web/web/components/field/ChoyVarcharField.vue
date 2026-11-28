@@ -353,19 +353,30 @@ const ChoyVarcharCell = defineComponent({
       };
       if (!showLimit) return h(Input, controlProps);
       // Word-limit in an inline-end addon so the counter owns width (no absolute overlay).
-      return h(InputGroup, { class: 'choy-varchar-input-wrap w-full shadow-none' }, () => [
-        h(InputGroupInput, controlProps),
-        h(InputGroupAddon, { align: 'inline-end' }, () =>
-          h(
-            InputGroupText,
-            {
-              class: 'choy-varchar-word-limit text-xs tabular-nums',
-              'aria-hidden': 'true',
-            },
-            () => `${strLen(text)} / ${max}`,
+      // Mirror aria-invalid onto the group: Input uses border-0 inside the group, and
+      // kit has-[[data-slot][aria-invalid]] utilities are not emitted by tailwind-go.
+      const groupInvalid = controlProps['aria-invalid'] === 'true' || controlProps['aria-invalid'] === true;
+      return h(
+        InputGroup,
+        {
+          class:
+            'choy-varchar-input-wrap w-full shadow-none aria-invalid:border-destructive aria-invalid:ring-destructive/20',
+          'aria-invalid': groupInvalid ? 'true' : undefined,
+        },
+        () => [
+          h(InputGroupInput, controlProps),
+          h(InputGroupAddon, { align: 'inline-end' }, () =>
+            h(
+              InputGroupText,
+              {
+                class: 'choy-varchar-word-limit text-xs tabular-nums',
+                'aria-hidden': 'true',
+              },
+              () => `${strLen(text)} / ${max}`,
+            ),
           ),
-        ),
-      ]);
+        ],
+      );
     };
   },
 });

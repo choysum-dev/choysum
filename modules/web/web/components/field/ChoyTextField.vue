@@ -318,22 +318,33 @@ const ChoyTextCell = defineComponent({
       };
       if (!showLimit) return h(Textarea, controlProps);
       // Word-limit in a block-end addon so the counter owns a row (no absolute overlay).
-      return h(InputGroup, { class: 'choy-textarea-wrap w-full shadow-none' }, () => [
-        h(InputGroupTextarea, controlProps),
-        h(
-          InputGroupAddon,
-          { align: 'block-end', class: 'justify-end' },
-          () =>
-            h(
-              InputGroupText,
-              {
-                class: 'choy-textarea-word-limit text-xs tabular-nums',
-                'aria-hidden': 'true',
-              },
-              () => `${strLen(text)} / ${max}`,
-            ),
-        ),
-      ]);
+      // Mirror aria-invalid onto the group (same as ChoyVarcharField word-limit path).
+      const groupInvalid = (attrs as Record<string, unknown>)['aria-invalid'] === 'true'
+        || (attrs as Record<string, unknown>)['aria-invalid'] === true;
+      return h(
+        InputGroup,
+        {
+          class:
+            'choy-textarea-wrap w-full shadow-none aria-invalid:border-destructive aria-invalid:ring-destructive/20',
+          'aria-invalid': groupInvalid ? 'true' : undefined,
+        },
+        () => [
+          h(InputGroupTextarea, controlProps),
+          h(
+            InputGroupAddon,
+            { align: 'block-end', class: 'justify-end' },
+            () =>
+              h(
+                InputGroupText,
+                {
+                  class: 'choy-textarea-word-limit text-xs tabular-nums',
+                  'aria-hidden': 'true',
+                },
+                () => `${strLen(text)} / ${max}`,
+              ),
+          ),
+        ],
+      );
     };
   },
 });

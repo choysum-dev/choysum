@@ -47,8 +47,8 @@ SPDX-License-Identifier: Apache-2.0
               :aria-label="triggerAriaLabel"
               :aria-labelledby="callerNamesTrigger ? undefined : labelId || undefined"
               :aria-describedby="describedBy || undefined"
-              :aria-invalid="invalid ? 'true' : undefined"
               v-bind="triggerSelectProps"
+              :aria-invalid="invalid ? 'true' : undefined"
             >
               <span
                 class="min-w-0 flex-1 truncate text-start"

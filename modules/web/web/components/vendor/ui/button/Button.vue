@@ -114,6 +114,8 @@ const classes = computed(() =>
     'appearance-none border-0',
     controlFocusRing,
     'disabled:pointer-events-none disabled:opacity-50',
+    // Date/Time pickers (outline) and other bordered hosts need invalid chrome.
+    'aria-invalid:border-destructive aria-invalid:ring-destructive/20',
     "[&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 [&_svg:not([class*='text-'])]:text-current",
     variantClass[props.variant],
     sizeClass[props.size],

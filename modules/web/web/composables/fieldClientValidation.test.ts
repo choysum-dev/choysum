@@ -1,9 +1,27 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { firstRuleError, resolveEffectiveClientRules } from './fieldClientValidation';
+import {
+  firstRuleError,
+  isChromeOnlyRequiredFailure,
+  resolveEffectiveClientRules,
+} from './fieldClientValidation';
 
 describe('fieldClientValidation', () => {
+  test('isChromeOnlyRequiredFailure is true only for auto-required empty values', () => {
+    expect(isChromeOnlyRequiredFailure({ required: true, rules: null, value: '' })).toBe(true);
+    expect(isChromeOnlyRequiredFailure({ required: true, rules: [], value: null })).toBe(true);
+    expect(
+      isChromeOnlyRequiredFailure({
+        required: true,
+        rules: [{ required: true, message: 'custom' }],
+        value: '',
+      }),
+    ).toBe(false);
+    expect(isChromeOnlyRequiredFailure({ required: true, rules: null, value: 'x' })).toBe(false);
+    expect(isChromeOnlyRequiredFailure({ required: false, rules: null, value: '' })).toBe(false);
+  });
+
   test('resolveEffectiveClientRules prepends required when missing', () => {
     expect(
       resolveEffectiveClientRules({ required: true, rules: null, requiredMessage: '必填' }),

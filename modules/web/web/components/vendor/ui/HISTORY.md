@@ -36,6 +36,35 @@ new HISTORY entry describing what was re-copied vs re-patched.
 
 ## Entries (newest first)
 
+### 2026-11-28 — Invalid chrome: ComboboxTrigger / Button / Switch
+
+**What:**
+- `ComboboxTrigger`: open-state border-ring skips `[aria-invalid='true']`.
+- `Button`: add `aria-invalid:border-destructive` / ring (Date/Time outline pickers).
+- `Switch`: inline `borderColor` uses destructive when `aria-invalid` so it is not
+  overridden by the checked/unchecked token style.
+
+**Why not product-only:** These hosts own the border (or inline style); FieldBase
+can paint some cases via `data-invalid`, but open-ring / Button / Switch still
+need kit-level cooperation.
+
+**Do not regress:** Keep the three behaviors above on re-copy.
+
+### 2026-11-28 — InputGroup host `aria-invalid` border
+
+**What:** Added `aria-invalid:border-destructive` / ring utilities on
+`InputGroup` itself (alongside the existing nested
+`has-[[data-slot][aria-invalid=true]]:` classes).
+
+**Why not product-only:** Nested `has-[[…]]` utilities are not emitted by
+tailwind-go, so word-limit Varchar/Text (border lives on the group, child
+Input is `border-0`) never showed invalid chrome while plain `Input` did.
+Host `aria-invalid:` variants are emitted and match Input/Combobox.
+
+**Do not regress:** Keep host `aria-invalid:border-destructive` (and ring) when
+re-copying InputGroup; product fields that use InputGroup with an invalid
+inner control must also set `aria-invalid` on the group host.
+
 ### 2026-11-27 — InputGroupAddon focuses textarea as well as input
 
 **What:** `InputGroupAddon` click-to-focus used `querySelector("input")` only;

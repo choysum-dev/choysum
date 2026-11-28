@@ -42,9 +42,10 @@ defineProps<{
   </ComboboxTrigger>
 </template>
 
-<!-- Keep the same thin border-ring as focused Input / M2O while the portaled list holds focus. -->
+<!-- Keep the same thin border-ring as focused Input / M2O while the portaled list holds focus.
+     Skip when aria-invalid so invalid chrome is not replaced by the open ring. -->
 <style>
-  [data-slot='combobox-trigger'][data-state='open'] {
+  [data-slot='combobox-trigger'][data-state='open']:not([aria-invalid='true']) {
     border-color: var(--color-ring);
   }
 </style>

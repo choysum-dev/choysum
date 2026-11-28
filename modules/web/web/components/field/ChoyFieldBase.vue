@@ -11,6 +11,7 @@ SPDX-License-Identifier: Apache-2.0
     v-show="visibleForm"
     data-anchor="choy.field-base"
     :data-inline-error-space="inlineErrorSpace"
+    :data-invalid="formInvalid ? 'true' : undefined"
     :orientation="orientation"
     :class="formChromeClass"
     @focusout="onFieldFocusOut"
@@ -28,7 +29,8 @@ SPDX-License-Identifier: Apache-2.0
         v-if="resolvedLabel && labelHtmlFor"
         :id="formLabelId"
         :for="labelHtmlFor"
-        class="text-sm font-normal text-muted-foreground"
+        class="text-sm font-normal"
+        :class="labelToneClass"
       >
         {{ resolvedLabel }}
         <!--
@@ -48,7 +50,8 @@ SPDX-License-Identifier: Apache-2.0
         v-else-if="resolvedLabel"
         :id="formLabelId"
         data-slot="field-label"
-        class="flex w-fit select-none items-center gap-2 text-sm font-normal leading-none text-muted-foreground"
+        class="flex w-fit select-none items-center gap-2 text-sm font-normal leading-none"
+        :class="labelToneClass"
       >
         {{ resolvedLabel }}
         <span
@@ -243,7 +246,7 @@ SPDX-License-Identifier: Apache-2.0
       <FieldError
         v-if="showErrorOverlay"
         :id="formErrorId"
-        class="choy-field-base__error--overlay absolute start-0 top-full z-10 mt-0.5 w-full"
+        class="choy-field-base__error--overlay absolute start-0 top-full z-10 w-full"
       >
         {{ displayError }}
       </FieldError>
@@ -333,7 +336,7 @@ SPDX-License-Identifier: Apache-2.0
         <FieldError
           v-if="serverErrorForRow(row, $index) && inlineErrorSpace === 'overlay'"
           :id="`${inputIdForRow(row)}-error`"
-          class="choy-field-base__error--overlay absolute start-0 top-full z-10 mt-0.5 w-full whitespace-normal"
+          class="choy-field-base__error--overlay absolute start-0 top-full z-10 w-full whitespace-normal"
         >
           {{ serverErrorForRow(row, $index) }}
         </FieldError>
@@ -463,7 +466,7 @@ SPDX-License-Identifier: Apache-2.0
     <p
       v-else-if="showErrorOverlay"
       :id="formErrorId"
-      class="choy-field-base__error choy-field-base__error--overlay absolute start-0 top-full z-10 mt-0.5 w-full whitespace-normal text-sm font-normal leading-4 text-destructive"
+      class="choy-field-base__error choy-field-base__error--overlay absolute start-0 top-full z-10 w-full whitespace-normal text-sm font-normal leading-4 text-destructive"
       data-slot="field-error"
       :title="displayError || undefined"
       role="alert"
@@ -493,6 +496,7 @@ import { useProvidedOnchange, getOnchangeController } from '@/web/web/composable
 import {
   FIELD_CLIENT_VALIDATORS_KEY,
   firstRuleError,
+  isChromeOnlyRequiredFailure,
   resolveEffectiveClientRules,
 } from '@/web/web/composables/fieldClientValidation';
 import {
@@ -1082,15 +1086,19 @@ watch(
 );
 
 /* Server errors are shown via dedicated alert nodes; client rules also gate submit.
- * Conceptual required (meta.notNull / :required) shares fieldRequired with the label *;
- * :rules stay additive (pattern / custom validators). */
+ * Auto-required (meta.notNull / :required) fails validation with toast + invalid chrome
+ * but does not paint inline copy; explicit :rules messages still paint. */
 const fieldClientValidators = inject(FIELD_CLIENT_VALIDATORS_KEY, null);
 const clientRuleError = ref('');
-/** Client rule messages stay hidden until blur or FormView submit validation. */
+/** False when the only client failure is auto-required (chrome-only). */
+const clientRuleShowsMessage = ref(true);
+/** Client rule state stays hidden until blur or FormView submit validation. */
 const clientRulesRevealed = ref(false);
 const displayError = computed(() => {
   if (serverError.value) return serverError.value;
-  if (clientRulesRevealed.value && clientRuleError.value) return clientRuleError.value;
+  if (clientRulesRevealed.value && clientRuleError.value && clientRuleShowsMessage.value) {
+    return clientRuleError.value;
+  }
   return undefined;
 });
 const showErrorReserve = computed(
@@ -1127,7 +1135,13 @@ const formDescribedBy = computed(() => {
   if (effectiveHelp.value) parts.push(formHelpId.value);
   return parts.length ? parts.join(' ') : undefined;
 });
-const formInvalid = computed(() => !!displayError.value);
+/** Invalid chrome (border / label) when revealed client failure or server error — even if chrome-only required. */
+const formInvalid = computed(
+  () => !!serverError.value || (clientRulesRevealed.value && !!clientRuleError.value),
+);
+const labelToneClass = computed(() =>
+  formInvalid.value ? 'text-destructive' : 'text-muted-foreground',
+);
 // Keep absolute overlay errors reachable when they extend past a scrollport.
 // Use nearest (not a window-only rect check) so nested panel scrollers are honored.
 watch(
@@ -1155,18 +1169,27 @@ let clientRulesEvalSeq = 0;
 async function evaluateClientRules(opts?: { reveal?: boolean }): Promise<string> {
   if (!binding.env.isEditMode || readonlyForm.value || !visibleForm.value) {
     clientRuleError.value = '';
+    clientRuleShowsMessage.value = true;
     return '';
   }
   const seq = ++clientRulesEvalSeq;
+  const value = rawValueForm().value;
+  const chromeOnlyRequired = isChromeOnlyRequiredFailure({
+    required: fieldRequired.value,
+    rules: props.rules,
+    value,
+  });
   const effectiveRules = resolveEffectiveClientRules({
     required: fieldRequired.value,
     rules: props.rules,
     requiredMessage: _t('Required'),
   });
-  const message = await firstRuleError(effectiveRules, rawValueForm().value);
+  const message = await firstRuleError(effectiveRules, value);
   // Ignore superseded evaluations so rapid edit/blur/submit cannot paint stale errors.
   if (seq !== clientRulesEvalSeq) return message;
   clientRuleError.value = message;
+  // Auto-required empty: block submit / toast, paint invalid chrome, skip inline copy.
+  clientRuleShowsMessage.value = !(message && chromeOnlyRequired);
   if (opts?.reveal) clientRulesRevealed.value = true;
   return message;
 }
@@ -1253,4 +1276,34 @@ defineSlots<{
   }): any;
 }>();
 </script>
+
+<!--
+  Invalid edit chrome from data-invalid. Some hosts miss aria-invalid:border-*
+  (Button pickers), override it (Combobox open ring), or never emit has-* (InputGroup).
+  Scoped to edit-control so translate / company action buttons stay untouched.
+-->
+<style>
+  [data-anchor='choy.field-base'][data-invalid='true'] .choy-field-base__edit-control :is(
+    [data-slot='input'],
+    [data-slot='input-group'],
+    [data-slot='textarea'],
+    [data-slot='combobox-trigger'],
+    [data-slot='combobox-input'],
+    [data-slot='tags-input'],
+    [data-slot='switch'],
+    [data-anchor='choy.internal.date-picker'],
+    [data-anchor='choy.internal.datetime-picker'],
+    [data-anchor='choy.internal.time-picker'],
+    .choy-m2m-tags__shell,
+    .choy-m2m-list,
+    .choy-image-avatar--empty,
+    .choy-attachment-upload,
+    .choy-attachment-current--compact,
+    .choy-html-field__edit,
+    .choy-json-field__edit
+  ) {
+    /* Beat layered Tailwind border-input / open-ring utilities. */
+    border-color: var(--color-destructive) !important;
+  }
+</style>
 

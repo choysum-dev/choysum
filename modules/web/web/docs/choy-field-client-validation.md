@@ -6,14 +6,17 @@ Conceptual **required** and the label asterisk share one source:
 2. View `:required` (boolean / expression)
 
 When the field is editable and visible, ChoyFieldBase automatically applies a
-client `required` rule (`Required`) so blur / Form submit match the label
-asterisk. The asterisk itself is edit/create only — display mode omits the
-glyph but still reserves its width so help icons do not shift. Server
-`notNull` remains authoritative.
+client `required` check so blur / Form submit stay aligned with the label
+asterisk. **Auto-required** (meta.notNull / `:required` without an explicit
+`rules` required) fails validation with Form toast + invalid chrome (red
+label / control) and does **not** paint inline「必填」copy. The asterisk is
+edit/create only — display mode omits the glyph but still reserves its width.
+Server `notNull` remains authoritative.
 
-**`:rules`** are additive only (patterns, custom validators, or an explicit
-`required: true` with a custom message). If `rules` already include
-`required: true`, the default required rule is not inserted again.
+**`:rules`** are additive (patterns, custom validators, or an explicit
+`required: true` with a custom message). Explicit `required: true` in `rules`
+still paints its message. If `rules` already include `required: true`, the
+default required rule is not inserted again.
 
 Other metadata (`size`, `selection`, `digits`, domain, unique) is not turned
 into generic FieldBase rules — use control constraints, pickers, or server
