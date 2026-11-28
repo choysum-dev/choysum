@@ -122,6 +122,7 @@ describe('ChoyTableColumn handle type', () => {
     await flushPromises();
     const col = registry!.columns.value[0] as any;
     expect(col.width).toBe(44);
+    expect(col.type).toBe('index');
     const header = col.headerCellRenderer();
     expect(header.props.class).toContain('tabular-nums');
     expect(String(header.children)).toContain('#');

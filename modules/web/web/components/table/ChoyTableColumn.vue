@@ -294,6 +294,8 @@ function buildColumn(): Column {
       align: 'end',
       sortable: false,
       ...colProps,
+      // Keep type after spread so prop/dataKey keys still classify as index chrome.
+      type: 'index',
       headerCellRenderer: indexHeader,
       cellRenderer: ({ rowData, rowIndex }: any) => {
         // Group detail rows prefer the per-group index (positive only).

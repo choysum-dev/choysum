@@ -300,6 +300,21 @@ describe('columnsToColumnDefs', () => {
       textMeasure: null,
     });
     expect(floored.size).toBe(72);
+
+    // Authored minWidth is preserved as floor for short labels.
+    const minOnly: Column = { key: '__index__', type: 'index', minWidth: 120 };
+    const kept = resolveColumnSizePx(minOnly, {
+      indexDisplayMaxText: '9',
+      textMeasure: null,
+    });
+    expect(kept.size).toBe(120);
+    expect(kept.minSize).toBe(120);
+
+    // Custom dataKey still recognized via type: 'index'.
+    const typed: Column = { key: 'rowNumber', dataKey: 'rowNumber', type: 'index', width: 44 };
+    expect(
+      resolveColumnSizePx(typed, { indexDisplayMaxText: '12345', textMeasure: null }).size,
+    ).toBeGreaterThan(44);
   });
 });
 

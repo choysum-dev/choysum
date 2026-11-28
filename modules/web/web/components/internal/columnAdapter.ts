@@ -166,12 +166,11 @@ export function resolveColumnSizePx(
   }
 
   // Index chrome: digit budget may raise above the floor; never soft/user prefs.
-  // Author pixel width raises the floor; digit budget may still grow above it.
+  // Author width / minWidth raise the floor; digit budget may still grow above it.
   if (isIndexListColumn(col)) {
-    const floor =
-      explicitWidth != null
-        ? Math.max(LIST_INDEX_COLUMN_MIN_WIDTH, explicitWidth)
-        : LIST_INDEX_COLUMN_MIN_WIDTH;
+    let floor = LIST_INDEX_COLUMN_MIN_WIDTH;
+    if (explicitWidth != null) floor = Math.max(floor, explicitWidth);
+    if (minSize != null) floor = Math.max(floor, minSize);
     const raised = estimateListIndexColumnWidth(opts?.indexDisplayMaxText, {
       measure: opts?.textMeasure,
     });
