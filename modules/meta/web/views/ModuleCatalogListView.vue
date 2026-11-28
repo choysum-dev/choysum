@@ -71,16 +71,16 @@ SPDX-License-Identifier: Apache-2.0
       </template>
 
       <ChoyTableColumn type="index" :vColumnProps="{ align: 'right' }" />
-      <ChoyVarcharField prop="ModuleName" :store="store" :vColumnProps="{ minWidth: 160 }" />
-      <ChoyVarcharField prop="Application" :store="store" :vColumnProps="{ minWidth: 120 }" />
-      <ChoyVarcharField prop="Author" :store="store" :vColumnProps="{ minWidth: 120 }" />
-      <ChoyVarcharField prop="License" :store="store" :vColumnProps="{ minWidth: 110 }" />
+      <ChoyVarcharField prop="ModuleName" :store="store" />
+      <ChoyVarcharField prop="Application" :store="store" />
+      <ChoyVarcharField prop="Author" :store="store" />
+      <ChoyVarcharField prop="License" :store="store" />
       <!-- Version fields stay registered for Browse/Search; UI shows one compressed line. -->
       <ChoyVirtualField :store="store" prop="InstalledVersion" />
       <ChoyVirtualField :store="store" prop="LocalVersion" />
       <ChoyVirtualField :store="store" prop="RegistryVersion" />
       <ChoyVirtualField :store="store" prop="UpdateAvailable" />
-      <ChoyTableColumn :label="_t('Version')" :vColumnProps="{ minWidth: 160 }">
+      <ChoyTableColumn :label="_t('Version')" field-type="varchar">
         <template #default="{ row }">
           <span class="truncate" :title="versionLineFor(row)">{{ versionLineFor(row) }}</span>
         </template>
@@ -89,17 +89,16 @@ SPDX-License-Identifier: Apache-2.0
         prop="LastInstalledOrUpgradedAt"
         :label="_t('Installed / Upgraded At')"
         :store="store"
-        :vColumnProps="{ minWidth: 160 }"
       />
       <ChoyVirtualField :store="store" prop="Installed" />
-      <ChoyTableColumn prop="Installed" :label="_t('Status')" :vColumnProps="{ minWidth: 120 }">
+      <ChoyTableColumn prop="Installed" :label="_t('Status')" field-type="boolean">
         <template #default="{ row }">
           <ChoyBadge :variant="statusBadgeVariant(row)" class="font-normal">
             {{ statusLabel(row) }}
           </ChoyBadge>
         </template>
       </ChoyTableColumn>
-      <ChoyTableColumn :label="_t('Action')" :vColumnProps="{ minWidth: 160 }">
+      <ChoyTableColumn :label="_t('Action')" :width="160">
         <template #default="{ row }">
           <div class="flex flex-wrap items-center gap-1">
             <ChoyActionButton

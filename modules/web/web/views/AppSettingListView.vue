@@ -26,18 +26,16 @@ SPDX-License-Identifier: Apache-2.0
       />
     </template>
     <ChoyTableColumn type="selection" :vColumnProps="{ align: 'center' }" />
-    <ChoyTableColumn type="index" :vColumnProps="{ align: 'end', width: 44 }" />
+    <ChoyTableColumn type="index" :vColumnProps="{ align: 'end' }" />
     <ChoyVarcharField
       :store="store"
       prop="Key"
       :label="_t('Key')"
-      :vColumnProps="{ minWidth: 180 }"
     />
     <ChoyTextField
       :store="store"
       prop="Value"
       :label="_t('Value')"
-      :vColumnProps="{ minWidth: 220 }"
     />
   </ChoyListView>
 </template>

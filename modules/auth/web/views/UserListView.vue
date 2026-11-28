@@ -21,14 +21,13 @@ SPDX-License-Identifier: Apache-2.0
       prop="Avatar"
       :store="store"
       data-testid="user-list-avatar"
-      :vColumnProps="{ minWidth: 140 }"
     />
-    <ChoyVarcharField prop="Username" :store="store" :vColumnProps="{ minWidth: 140 }" />
+    <ChoyVarcharField prop="Username" :store="store" />
     <ChoyManyToOneRefField :store="store" prop="CompanyId" />
-    <ChoyVarcharField prop="Email" :store="store" :vColumnProps="{ minWidth: 180 }" />
+    <ChoyVarcharField prop="Email" :store="store" />
     <ChoyVarcharField prop="Phone" :store="store" />
     <ChoyVarcharField prop="FullName" :store="store" />
-    <ChoyDatetimeField prop="CreatedAt" mode="datetime" :store="store" :vColumnProps="{ minWidth: 160 }" />
+    <ChoyDatetimeField prop="CreatedAt" mode="datetime" :store="store" />
   </ChoyListView>
 </template>
 

@@ -17,13 +17,13 @@ SPDX-License-Identifier: Apache-2.0
     <ChoyTableColumn type="selection" :vColumnProps="{ align: 'center' }" />
     <ChoyTableColumn type="index" :vColumnProps="{ align: 'right' }" />
 
-    <ChoyVarcharField :store="store" prop="Name" :vColumnProps="{ minWidth: 180 }" />
-    <ChoyVarcharField :store="store" prop="Code" :vColumnProps="{ minWidth: 120 }" />
-    <ChoyManyToOneRefField :store="store" prop="CompanyId" :vColumnProps="{ minWidth: 180 }" />
+    <ChoyVarcharField :store="store" prop="Name" />
+    <ChoyVarcharField :store="store" prop="Code" />
+    <ChoyManyToOneRefField :store="store" prop="CompanyId" />
     <ChoyIntField :store="store" prop="CustomerRank" />
     <ChoyIntField :store="store" prop="SupplierRank" />
     <ChoyBooleanField :store="store" prop="IsActive" />
-    <ChoyDatetimeField :store="store" prop="UpdatedAt" mode="datetime" :vColumnProps="{ minWidth: 160 }" />
+    <ChoyDatetimeField :store="store" prop="UpdatedAt" mode="datetime" />
   </ChoyListView>
 </template>
 

@@ -28,12 +28,12 @@ SPDX-License-Identifier: Apache-2.0
     <ChoyTableColumn type="selection" :vColumnProps="{ align: 'center' }" />
     <ChoyTableColumn type="index" :vColumnProps="{ align: 'right' }" />
 
-    <ChoyVarcharField prop="UserId.Username" :store="store" :vColumnProps="{ minWidth: 140 }" />
-    <ChoyVarcharField prop="TokenType" :store="store" :vColumnProps="{ minWidth: 100 }" />
-    <ChoyDatetimeField prop="ExpiresAt" mode="datetime" :store="store" :vColumnProps="{ minWidth: 160 }" />
+    <ChoyVarcharField prop="UserId.Username" :store="store" />
+    <ChoyVarcharField prop="TokenType" :store="store" />
+    <ChoyDatetimeField prop="ExpiresAt" mode="datetime" :store="store" />
     <ChoyBooleanField :store="store" prop="Revoked" widget="checkbox" />
-    <ChoyDatetimeField prop="RevokedAt" mode="datetime" :store="store" :vColumnProps="{ minWidth: 160 }" />
-    <ChoyDatetimeField prop="CreatedAt" mode="datetime" :store="store" :vColumnProps="{ minWidth: 160 }" />
+    <ChoyDatetimeField prop="RevokedAt" mode="datetime" :store="store" />
+    <ChoyDatetimeField prop="CreatedAt" mode="datetime" :store="store" />
   </ChoyListView>
 </template>
 

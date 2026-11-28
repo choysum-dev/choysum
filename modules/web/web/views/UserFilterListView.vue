@@ -23,42 +23,36 @@ SPDX-License-Identifier: Apache-2.0
     detail-path="/web/user-filters/:id"
   >
     <ChoyTableColumn type="selection" :vColumnProps="{ align: 'center' }" />
-    <ChoyTableColumn type="index" :vColumnProps="{ align: 'end', width: 44 }" />
+    <ChoyTableColumn type="index" :vColumnProps="{ align: 'end' }" />
     <ChoyVarcharField
       :store="store"
       prop="Name"
       :label="_t('Name')"
-      :vColumnProps="{ minWidth: 160 }"
     />
     <ChoyVarcharField
       :store="store"
       prop="Application"
       :label="_t('Application')"
-      :vColumnProps="{ minWidth: 120 }"
     />
     <ChoyVarcharField
       :store="store"
       prop="ModelName"
       :label="_t('Model Name')"
-      :vColumnProps="{ minWidth: 140 }"
     />
     <ChoyVarcharField
       :store="store"
       prop="ScopeKey"
       :label="_t('Scope Key')"
-      :vColumnProps="{ minWidth: 160 }"
     />
     <ChoyVarcharField
       :store="store"
       prop="UserId"
       :label="_t('User')"
-      :vColumnProps="{ minWidth: 120 }"
     />
     <ChoyBooleanField
       :store="store"
       prop="IsDefault"
       :label="_t('Is Default')"
-      :vColumnProps="{ minWidth: 100 }"
     />
   </ChoyListView>
 </template>
