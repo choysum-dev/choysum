@@ -108,10 +108,8 @@ const virtualized = computed(() =>
   o2mKanbanShouldVirtualize(props.virtualize, props.items.length),
 );
 
-const estimateSize = computed(() => {
-  const card = resolveO2MKanbanEstimateCardSize(props.estimateCardSize);
-  return card + gapPx.value;
-});
+/** Card-only stride; inter-row spacing is virtualizer `gap` (survives measureElement). */
+const estimateSize = computed(() => resolveO2MKanbanEstimateCardSize(props.estimateCardSize));
 
 const rowCount = computed(() => o2mKanbanRowCount(props.items.length, cols.value));
 
@@ -121,6 +119,11 @@ const virtualizer = useVirtualizer({
   },
   getScrollElement: () => (virtualized.value ? (boardRef.value as Element | null) : null),
   estimateSize: () => estimateSize.value,
+  // Same as ChoyKanbanVirtualLaneBody: gap is outside measured item height so
+  // measureElement cannot collapse vertical rhythm (column gap still uses CSS).
+  get gap() {
+    return gapPx.value;
+  },
   getItemKey: (index) => `row-${index}-${cols.value}`,
   overscan: 4,
 });
@@ -188,5 +191,9 @@ defineExpose({
   measureElement,
   cols,
   virtualized,
+  /** Card estimate only (gap is virtualizer `gap`, not folded into measure). */
+  estimateSize,
+  gapPx,
+  totalSize,
 });
 </script>
