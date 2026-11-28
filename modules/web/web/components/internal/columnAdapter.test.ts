@@ -4,6 +4,7 @@
 import {
   columnsToColumnDefs,
   FALLBACK_COLUMN_SIZE,
+  listColumnIsResizable,
   orderListTableColumns,
   resolveColumnSizePx,
   resolveColumnWidthSpec,
@@ -197,6 +198,12 @@ describe('columnsToColumnDefs', () => {
     const defs = columnsToColumnDefs([title], { userWidths: { Title: 300 } });
     expect(defs[0].size).toBe(180);
     expect((defs[0].meta as { resizable?: boolean }).resizable).toBe(false);
+  });
+
+  test('listColumnIsResizable rejects narrow chrome without dataKey', () => {
+    expect(listColumnIsResizable({ key: 'del', minWidth: 36 })).toBe(false);
+    expect(listColumnIsResizable({ key: 'Name', dataKey: 'Name', minWidth: 140 })).toBe(true);
+    expect(listColumnIsResizable({ key: 'actions', dataKey: 'x', minWidth: 140 })).toBe(false);
   });
 
   test('explicit numeric width skips soft cap even for varchar', () => {

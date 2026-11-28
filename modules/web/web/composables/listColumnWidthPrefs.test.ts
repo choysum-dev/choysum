@@ -8,6 +8,7 @@ import {
   listColumnWidthBucketId,
   listColumnWidthStorageKey,
   readListColumnWidthPrefs,
+  resolveListColumnPrefsUserId,
   upsertListColumnWidthPref,
   writeListColumnWidthPrefs,
 } from './listColumnWidthPrefs';
@@ -128,4 +129,57 @@ test('applyUserColumnWidthOverride prefers clamped user width', () => {
   expect(applyUserColumnWidthOverride(140, 200)).toBe(200);
   expect(applyUserColumnWidthOverride(140, 10)).toBe(40);
   expect(applyUserColumnWidthOverride(140, null)).toBe(140);
+});
+
+test('resolveListColumnPrefsUserId prefers identity then currentUser', () => {
+  expect(
+    resolveListColumnPrefsUserId({
+      identity: { userId: 'id-1' },
+      currentUser: { Id: 'cu-2' },
+    }),
+  ).toBe('id-1');
+  expect(
+    resolveListColumnPrefsUserId({
+      identity: { userId: '  ' },
+      currentUser: { Id: 'cu-2' },
+    }),
+  ).toBe('cu-2');
+  expect(resolveListColumnPrefsUserId(null)).toBe('anon');
+});
+
+test('readListColumnWidthPrefs tolerates corrupt JSON and upsert skips empty keys', () => {
+  const storage = memoryStorage();
+  const bucket = {
+    kind: 'list' as const,
+    application: 'sandbox',
+    modelName: 'Record',
+    scopePath: '/web/sandbox/records',
+  };
+  storage.setItem(listColumnWidthStorageKey('u1'), '{not-json');
+  expect(readListColumnWidthPrefs(bucket, 'u1', storage).columns).toEqual({});
+
+  expect(upsertListColumnWidthPref(bucket, 'u1', '', 200, storage).columns).toEqual({});
+  expect(upsertListColumnWidthPref(bucket, 'u1', 'Title', NaN, storage).columns).toEqual({});
+});
+
+test('resolveStorage falls back when localStorage access throws', () => {
+  const bucket = {
+    kind: 'list' as const,
+    application: 'sandbox',
+    modelName: 'Record',
+    scopePath: '/web/sandbox/records',
+  };
+  const desc = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+  Object.defineProperty(globalThis, 'localStorage', {
+    configurable: true,
+    get() {
+      throw new Error('storage denied');
+    },
+  });
+  try {
+    expect(readListColumnWidthPrefs(bucket, 'u1').columns).toEqual({});
+  } finally {
+    if (desc) Object.defineProperty(globalThis, 'localStorage', desc);
+    else delete (globalThis as { localStorage?: Storage }).localStorage;
+  }
 });

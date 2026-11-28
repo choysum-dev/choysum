@@ -434,7 +434,9 @@ function measureHeaderColumnWidths(fromEl: HTMLElement | null): Record<string, n
   const out: Record<string, number> = {};
   const row = fromEl?.closest('[role="row"]');
   if (!row) return out;
-  row.querySelectorAll<HTMLElement>('[role="columnheader"][data-column-id]').forEach((cell) => {
+  // Query role first, then filter data-column-id (compound attr selectors are
+  // unavailable in the FE unit DOM harness).
+  row.querySelectorAll<HTMLElement>('[role="columnheader"]').forEach((cell) => {
     const id = cell.getAttribute('data-column-id');
     if (!id) return;
     const w = Math.round(cell.getBoundingClientRect().width);

@@ -3,9 +3,12 @@
 
 import { estimateListHeaderMinWidth } from './listColumnSizeDefaults';
 import {
+  createListCanvasTextMeasure,
   formatListSampleCellText,
+  getDefaultListTextMeasure,
   listTextWidthPx,
   readListSampleCellValue,
+  resetDefaultListTextMeasureForTests,
   sampleSoftColumnMinWidths,
   type ListTextMeasureFn,
 } from './listColumnTextMeasure';
@@ -33,6 +36,85 @@ test('formatListSampleCellText reads scalars and M2O-like objects', () => {
   expect(formatListSampleCellText(12)).toBe('12');
   expect(formatListSampleCellText({ DisplayName: 'Acme' })).toBe('Acme');
   expect(formatListSampleCellText({ Name: 'Beta' })).toBe('Beta');
+  expect(formatListSampleCellText({ other: 1 })).toBe('');
+});
+
+test('createListCanvasTextMeasure uses canvas measureText when available', () => {
+  resetDefaultListTextMeasureForTests();
+  const original = document.createElement.bind(document);
+  document.createElement = ((tag: string, ...rest: unknown[]) => {
+    if (String(tag).toLowerCase() === 'canvas') {
+      return {
+        getContext: () => ({
+          font: '',
+          measureText: (text: string) => ({ width: String(text).length * 7 }),
+        }),
+      } as unknown as HTMLCanvasElement;
+    }
+    return original(tag as any, ...(rest as []));
+  }) as typeof document.createElement;
+  try {
+    const measure = createListCanvasTextMeasure('13px sans-serif');
+    expect(measure).toBeTruthy();
+    expect(measure!('ABCD')).toBe(28);
+    expect(measure!('')).toBe(0);
+    expect(getDefaultListTextMeasure()).toBeTruthy();
+    expect(listTextWidthPx('XY', undefined)).toBe(14);
+  } finally {
+    document.createElement = original;
+    resetDefaultListTextMeasureForTests();
+  }
+});
+
+test('createListCanvasTextMeasure returns null when canvas context is missing', () => {
+  const original = document.createElement.bind(document);
+  document.createElement = ((tag: string, ...rest: unknown[]) => {
+    if (String(tag).toLowerCase() === 'canvas') {
+      return { getContext: () => null } as unknown as HTMLCanvasElement;
+    }
+    return original(tag as any, ...(rest as []));
+  }) as typeof document.createElement;
+  try {
+    expect(createListCanvasTextMeasure()).toBeNull();
+  } finally {
+    document.createElement = original;
+  }
+});
+
+test('createListCanvasTextMeasure returns null when canvas setup throws', () => {
+  const original = document.createElement.bind(document);
+  document.createElement = ((tag: string, ...rest: unknown[]) => {
+    if (String(tag).toLowerCase() === 'canvas') {
+      throw new Error('canvas unavailable');
+    }
+    return original(tag as any, ...(rest as []));
+  }) as typeof document.createElement;
+  try {
+    expect(createListCanvasTextMeasure()).toBeNull();
+  } finally {
+    document.createElement = original;
+  }
+});
+
+test('createListCanvasTextMeasure falls back when measureText width is non-positive', () => {
+  const original = document.createElement.bind(document);
+  document.createElement = ((tag: string, ...rest: unknown[]) => {
+    if (String(tag).toLowerCase() === 'canvas') {
+      return {
+        getContext: () => ({
+          font: '',
+          measureText: () => ({ width: 0 }),
+        }),
+      } as unknown as HTMLCanvasElement;
+    }
+    return original(tag as any, ...(rest as []));
+  }) as typeof document.createElement;
+  try {
+    const measure = createListCanvasTextMeasure();
+    expect(measure!('ABCD')).toBe(48);
+  } finally {
+    document.createElement = original;
+  }
 });
 
 test('readListSampleCellValue prefers literal keys then dotted paths', () => {

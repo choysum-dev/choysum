@@ -564,6 +564,20 @@ test('dataTableGridTemplate mixes fixed and capped tracks for min/max widths', (
   expect(layout.tableMaxWidth).toBe(44 + 350 + 80);
 });
 
+test('dataTableGridTemplate empty and fr tracks clear tableMaxWidth', () => {
+  expect(dataTableGridTemplate([])).toEqual({
+    gridTemplate: '',
+    tableMinWidth: 0,
+    tableMaxWidth: 0,
+  });
+  const fr = dataTableGridTemplate([
+    { size: 140, minSize: 140, widthSpec: { type: 'auto' } },
+    { size: 80 },
+  ]);
+  expect(fr.gridTemplate).toBe('minmax(140px, 1fr) 80px');
+  expect(fr.tableMaxWidth).toBeNull();
+});
+
 test('embedTableShouldFitContent stays off (full-width embed frames)', () => {
   expect(
     embedTableShouldFitContent({
