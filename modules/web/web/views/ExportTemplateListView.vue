@@ -22,42 +22,36 @@ SPDX-License-Identifier: Apache-2.0
     detail-path="/web/export-templates/:id"
   >
     <ChoyTableColumn type="selection" :vColumnProps="{ align: 'center' }" />
-    <ChoyTableColumn type="index" :vColumnProps="{ align: 'end', width: 44 }" />
+    <ChoyTableColumn type="index" :vColumnProps="{ align: 'end' }" />
     <ChoyVarcharField
       :store="store"
       prop="Name"
       :label="_t('Name')"
-      :vColumnProps="{ minWidth: 160 }"
     />
     <ChoyVarcharField
       :store="store"
       prop="Application"
       :label="_t('Application')"
-      :vColumnProps="{ minWidth: 120 }"
     />
     <ChoyVarcharField
       :store="store"
       prop="ModelName"
       :label="_t('Model Name')"
-      :vColumnProps="{ minWidth: 140 }"
     />
     <ChoyVarcharField
       :store="store"
       prop="UserId"
       :label="_t('User')"
-      :vColumnProps="{ minWidth: 120 }"
     />
     <ChoyBooleanField
       :store="store"
       prop="ImportCompatible"
       :label="_t('Import Compatible')"
-      :vColumnProps="{ minWidth: 120 }"
     />
     <ChoyJsonField
       :store="store"
       prop="Fields"
       :label="_t('Fields')"
-      :vColumnProps="{ minWidth: 180 }"
     />
   </ChoyListView>
 </template>

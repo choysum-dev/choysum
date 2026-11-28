@@ -16,12 +16,12 @@ SPDX-License-Identifier: Apache-2.0
   >
     <ChoyTableColumn type="selection" :vColumnProps="{ align: 'center' }" />
     <ChoyTableColumn type="index" :vColumnProps="{ align: 'right' }" />
-    <ChoyVarcharField prop="Name" :store="store" :vColumnProps="{ minWidth: 140 }" />
-    <ChoyVarcharField prop="Code" :store="store" :vColumnProps="{ minWidth: 120 }" />
-    <ChoyVarcharField prop="Description" :store="store" :vColumnProps="{ minWidth: 200 }" />
+    <ChoyVarcharField prop="Name" :store="store" />
+    <ChoyVarcharField prop="Code" :store="store" />
+    <ChoyVarcharField prop="Description" :store="store" />
     <ChoyBooleanField :store="store" prop="IsActive" widget="checkbox" />
     <ChoyBooleanField :store="store" prop="IsSystem" widget="checkbox" />
-    <ChoyDatetimeField prop="CreatedAt" mode="datetime" :store="store" :vColumnProps="{ minWidth: 160 }" />
+    <ChoyDatetimeField prop="CreatedAt" mode="datetime" :store="store" />
   </ChoyListView>
 </template>
 

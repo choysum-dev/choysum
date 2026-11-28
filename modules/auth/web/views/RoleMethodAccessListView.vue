@@ -16,14 +16,14 @@ SPDX-License-Identifier: Apache-2.0
   >
     <ChoyTableColumn type="selection" :vColumnProps="{ align: 'center' }" />
     <ChoyTableColumn type="index" :vColumnProps="{ align: 'right' }" />
-    <ChoyVarcharField prop="RoleId.Name" :store="store" :vColumnProps="{ minWidth: 140 }" />
-    <ChoyManyToOneRefField prop="MetaApplicationId" :store="store" :vColumnProps="{ minWidth: 140 }" />
-    <ChoyManyToOneRefField prop="MetaModelId" :store="store" :vColumnProps="{ minWidth: 160 }" />
-    <ChoyManyToOneRefField prop="MetaServiceId" :store="store" :vColumnProps="{ minWidth: 180 }" />
-    <ChoySelectionField prop="LogicalModelName" :store="store" :vColumnProps="{ minWidth: 140 }" />
-    <ChoySelectionField prop="Mode" :store="store" :vColumnProps="{ minWidth: 100 }" />
-    <ChoySelectionField prop="Source" :store="store" :vColumnProps="{ minWidth: 100 }" />
-    <ChoyDatetimeField prop="CreatedAt" mode="datetime" :store="store" :vColumnProps="{ minWidth: 160 }" />
+    <ChoyVarcharField prop="RoleId.Name" :store="store" />
+    <ChoyManyToOneRefField prop="MetaApplicationId" :store="store" />
+    <ChoyManyToOneRefField prop="MetaModelId" :store="store" />
+    <ChoyManyToOneRefField prop="MetaServiceId" :store="store" />
+    <ChoySelectionField prop="LogicalModelName" :store="store" />
+    <ChoySelectionField prop="Mode" :store="store" />
+    <ChoySelectionField prop="Source" :store="store" />
+    <ChoyDatetimeField prop="CreatedAt" mode="datetime" :store="store" />
   </ChoyListView>
 </template>
 

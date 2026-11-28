@@ -16,15 +16,15 @@ SPDX-License-Identifier: Apache-2.0
   >
     <ChoyTableColumn type="selection" :vColumnProps="{ align: 'center' }" />
     <ChoyTableColumn type="index" :vColumnProps="{ align: 'right' }" />
-    <ChoyVarcharField prop="RoleId.Name" :store="store" :vColumnProps="{ minWidth: 140 }" />
-    <ChoySelectionField prop="Kind" :store="store" :vColumnProps="{ minWidth: 100 }" />
-    <ChoyManyToOneRefField prop="MetaApplicationId" :store="store" :vColumnProps="{ minWidth: 140 }" />
-    <ChoyManyToOneRefField prop="MetaModelId" :store="store" :vColumnProps="{ minWidth: 160 }" />
-    <ChoyBooleanField prop="PermRead" :store="store" :vColumnProps="{ minWidth: 80 }" />
-    <ChoyBooleanField prop="PermWrite" :store="store" :vColumnProps="{ minWidth: 80 }" />
-    <ChoyBooleanField prop="PermCreate" :store="store" :vColumnProps="{ minWidth: 80 }" />
-    <ChoyBooleanField prop="PermDelete" :store="store" :vColumnProps="{ minWidth: 80 }" />
-    <ChoyDatetimeField prop="CreatedAt" mode="datetime" :store="store" :vColumnProps="{ minWidth: 160 }" />
+    <ChoyVarcharField prop="RoleId.Name" :store="store" />
+    <ChoySelectionField prop="Kind" :store="store" />
+    <ChoyManyToOneRefField prop="MetaApplicationId" :store="store" />
+    <ChoyManyToOneRefField prop="MetaModelId" :store="store" />
+    <ChoyBooleanField prop="PermRead" :store="store" />
+    <ChoyBooleanField prop="PermWrite" :store="store" />
+    <ChoyBooleanField prop="PermCreate" :store="store" />
+    <ChoyBooleanField prop="PermDelete" :store="store" />
+    <ChoyDatetimeField prop="CreatedAt" mode="datetime" :store="store" />
   </ChoyListView>
 </template>
 

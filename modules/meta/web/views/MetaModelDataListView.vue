@@ -15,42 +15,36 @@ SPDX-License-Identifier: Apache-2.0
     :searchView="ChoySearchView"
     :detail-path="detailPathForRow"
   >
-    <ChoyTableColumn type="index" :vColumnProps="{ align: 'end', width: 44 }" />
+    <ChoyTableColumn type="index" :vColumnProps="{ align: 'end' }" />
     <ChoyVarcharField
       :store="store"
       prop="Module"
       :label="_t('Module')"
-      :vColumnProps="{ minWidth: 120 }"
     />
     <ChoyVarcharField
       :store="store"
       prop="Name"
       :label="_t('Name')"
-      :vColumnProps="{ minWidth: 160 }"
     />
     <ChoyVarcharField
       :store="store"
       prop="Application"
       :label="_t('Application')"
-      :vColumnProps="{ minWidth: 120 }"
     />
     <ChoyVarcharField
       :store="store"
       prop="ModelName"
       :label="_t('Model Name')"
-      :vColumnProps="{ minWidth: 160 }"
     />
     <ChoyVarcharField
       :store="store"
       prop="ResId"
       :label="_t('Resource Id')"
-      :vColumnProps="{ minWidth: 140 }"
     />
     <ChoyBooleanField
       :store="store"
       prop="NoUpdate"
       :label="_t('No Update')"
-      :vColumnProps="{ minWidth: 100 }"
     />
   </ChoyListView>
 </template>

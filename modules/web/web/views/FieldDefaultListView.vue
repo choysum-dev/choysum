@@ -18,36 +18,31 @@ SPDX-License-Identifier: Apache-2.0
     :detail-path="detailPathForRow"
   >
     <ChoyTableColumn type="selection" :vColumnProps="{ align: 'center' }" />
-    <ChoyTableColumn type="index" :vColumnProps="{ align: 'end', width: 44 }" />
+    <ChoyTableColumn type="index" :vColumnProps="{ align: 'end' }" />
     <ChoyVarcharField
       :store="store"
       prop="Model"
       :label="_t('Model')"
-      :vColumnProps="{ minWidth: 140 }"
     />
     <ChoyVarcharField
       :store="store"
       prop="Field"
       :label="_t('Field')"
-      :vColumnProps="{ minWidth: 140 }"
     />
     <ChoyVarcharField
       :store="store"
       prop="UserId"
       :label="_t('User Id')"
-      :vColumnProps="{ minWidth: 120 }"
     />
     <ChoyVarcharField
       :store="store"
       prop="CompanyId"
       :label="_t('Company Id')"
-      :vColumnProps="{ minWidth: 120 }"
     />
     <ChoyJsonField
       :store="store"
       prop="Value"
       :label="_t('Value')"
-      :vColumnProps="{ minWidth: 180 }"
     />
   </ChoyListView>
 </template>

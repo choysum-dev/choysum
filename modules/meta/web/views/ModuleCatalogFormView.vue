@@ -121,7 +121,7 @@ SPDX-License-Identifier: Apache-2.0
                     <ChoyTableColumn
                       prop="ModuleName"
                       :label="_t('Module Name')"
-                      :vColumnProps="{ minWidth: 140 }"
+                      field-type="varchar"
                     >
                       <template #default="{ row }">
                         <span class="truncate text-sm text-foreground">{{
@@ -132,7 +132,7 @@ SPDX-License-Identifier: Apache-2.0
                     <ChoyTableColumn
                       prop="InstalledVersion"
                       :label="_t('Version')"
-                      :vColumnProps="{ minWidth: 220 }"
+                      field-type="varchar"
                     >
                       <template #default="{ row }">
                         <span
@@ -146,7 +146,7 @@ SPDX-License-Identifier: Apache-2.0
                     <ChoyTableColumn
                       prop="Installed"
                       :label="_t('Status')"
-                      :vColumnProps="{ minWidth: 120, width: 140 }"
+                      field-type="boolean"
                     >
                       <template #default="{ row }">
                         <ChoyBadge
@@ -161,7 +161,7 @@ SPDX-License-Identifier: Apache-2.0
                     <ChoyTableColumn
                       prop="Application"
                       :label="_t('Application')"
-                      :vColumnProps="{ minWidth: 120 }"
+                      field-type="varchar"
                     >
                       <template #default="{ row }">
                         <span class="truncate text-sm text-muted-foreground">{{
@@ -172,7 +172,7 @@ SPDX-License-Identifier: Apache-2.0
                     <ChoyTableColumn
                       prop="License"
                       :label="_t('License')"
-                      :vColumnProps="{ minWidth: 120 }"
+                      field-type="varchar"
                     >
                       <template #default="{ row }">
                         <span class="truncate text-sm text-muted-foreground">{{
@@ -208,7 +208,7 @@ SPDX-License-Identifier: Apache-2.0
                     <ChoyTableColumn
                       prop="ModuleName"
                       :label="_t('Module Name')"
-                      :vColumnProps="{ minWidth: 140 }"
+                      field-type="varchar"
                     >
                       <template #default="{ row }">
                         <span class="truncate text-sm text-foreground">{{
@@ -219,7 +219,7 @@ SPDX-License-Identifier: Apache-2.0
                     <ChoyTableColumn
                       prop="InstalledVersion"
                       :label="_t('Version')"
-                      :vColumnProps="{ minWidth: 220 }"
+                      field-type="varchar"
                     >
                       <template #default="{ row }">
                         <span
@@ -233,7 +233,7 @@ SPDX-License-Identifier: Apache-2.0
                     <ChoyTableColumn
                       prop="Installed"
                       :label="_t('Status')"
-                      :vColumnProps="{ minWidth: 120, width: 140 }"
+                      field-type="boolean"
                     >
                       <template #default="{ row }">
                         <ChoyBadge
@@ -248,7 +248,7 @@ SPDX-License-Identifier: Apache-2.0
                     <ChoyTableColumn
                       prop="Application"
                       :label="_t('Application')"
-                      :vColumnProps="{ minWidth: 120 }"
+                      field-type="varchar"
                     >
                       <template #default="{ row }">
                         <span class="truncate text-sm text-muted-foreground">{{
@@ -259,7 +259,7 @@ SPDX-License-Identifier: Apache-2.0
                     <ChoyTableColumn
                       prop="License"
                       :label="_t('License')"
-                      :vColumnProps="{ minWidth: 120 }"
+                      field-type="varchar"
                     >
                       <template #default="{ row }">
                         <span class="truncate text-sm text-muted-foreground">{{
