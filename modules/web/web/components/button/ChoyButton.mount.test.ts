@@ -195,7 +195,8 @@ describe('ChoyButton mount', () => {
       expect(cls).toContain('text-destructive');
       expect(cls).toContain('hover:bg-destructive/10');
       expect(` ${cls} `.includes(' bg-destructive/10 ')).toBe(false);
-      expect(cls).not.toContain('border-destructive');
+      // Soft variant stays borderless; kit may still list aria-invalid:border-destructive.
+      expect(cls.split(/\s+/).includes('border-destructive')).toBe(false);
     } finally {
       w.unmount();
     }

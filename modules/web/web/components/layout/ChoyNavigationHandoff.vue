@@ -3,15 +3,14 @@ SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 SPDX-License-Identifier: Apache-2.0
 -->
 
+<!--
+  Blocks the viewport while a navigation ticket is open and no surface has
+  taken over — covers Guest→App shell swap so the destination does not look idle.
+  Interaction shield is immediate; spinner/mask paint is delayed so fast handoffs
+  do not flash a second mask. Shield sits under the delayed spinner mask.
+-->
 <template>
-  <!--
-    Blocks the viewport while a navigation ticket is open and no surface has
-    taken over — covers Guest→App shell swap so the destination does not look idle.
-    Interaction shield is immediate; spinner/mask paint is delayed so fast handoffs
-    do not flash a second mask.
-  -->
   <Teleport to="body">
-    <!-- Immediate click/focus shield (App shell also sets inert on the body). -->
     <div
       v-if="busy"
       data-testid="choy-navigation-handoff-shield"

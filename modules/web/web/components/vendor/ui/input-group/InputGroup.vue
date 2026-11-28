@@ -29,7 +29,8 @@ const props = defineProps<{
       // Focus state.
       'has-[[data-slot=input-group-control]:focus-visible]:border-ring has-[[data-slot=input-group-control]:focus-visible]:ring-ring/50 has-[[data-slot=input-group-control]:focus-visible]:ring-3',
 
-      // Error state.
+      // Error state: host aria-invalid (reliable) plus nested has- for child controls.
+      'aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40',
       'has-[[data-slot][aria-invalid=true]]:ring-destructive/20 has-[[data-slot][aria-invalid=true]]:border-destructive dark:has-[[data-slot][aria-invalid=true]]:ring-destructive/40',
 
       props.class,
@@ -38,3 +39,24 @@ const props = defineProps<{
     <slot />
   </div>
 </template>
+
+<!--
+  Tighten control padding next to inline addons. Kit lists has-[>[data-align]]:[&>input]:p*
+  utilities, but nested has- variants are not always emitted — without this, Input keeps
+  px-3 on both sides and the word-limit counter sits too far from the text (and RTL breaks
+  if we used physical padding-right).
+-->
+<style>
+  /* !important: beat layered Input px-3 utilities. Logical for LTR/RTL. */
+  [data-slot='input-group']:has(>[data-align='inline-end']) > [data-slot='input-group-control'] {
+    padding-inline-end: 0.25rem !important;
+  }
+  /* Word-limit (end addon only): start inset matches addon outer pe-3 (12px). */
+  [data-slot='input-group']:has(>[data-align='inline-end']):not(:has(>[data-align='inline-start']))
+    > [data-slot='input-group-control'] {
+    padding-inline-start: 0.75rem !important;
+  }
+  [data-slot='input-group']:has(>[data-align='inline-start']) > [data-slot='input-group-control'] {
+    padding-inline-start: 0.25rem !important;
+  }
+</style>

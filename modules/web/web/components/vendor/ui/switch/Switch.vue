@@ -24,10 +24,19 @@ const checked = defineModel<boolean>({ default: false });
  * or margin utilities in the served bundle. marginInlineStart:auto parks the
  * thumb on the inline-end edge so LTR and RTL both read “on” toward the end.
  */
+const ariaInvalid = computed(
+  () => props['aria-invalid'] === true || props['aria-invalid'] === 'true',
+);
+
 const rootStyle = computed(() => ({
   paddingInline: '2px',
   backgroundColor: checked.value ? 'var(--choy-color-primary)' : 'var(--choy-color-input)',
-  borderColor: checked.value ? 'var(--choy-color-primary)' : 'var(--choy-color-border)',
+  // Inline borderColor would otherwise beat FieldBase / aria-invalid CSS.
+  borderColor: ariaInvalid.value
+    ? 'var(--color-destructive)'
+    : checked.value
+      ? 'var(--choy-color-primary)'
+      : 'var(--choy-color-border)',
 }));
 
 const thumbStyle = computed(() => ({

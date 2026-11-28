@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026-present Brian Wang <wangbuke@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
-import { h } from 'vue';
+import { defineComponent, h } from 'vue';
 import { flushPromises, mountApp } from '@/web/web/__tests__/mountApp';
 import ChoySection from './ChoySection.vue';
 
@@ -43,7 +43,7 @@ describe('ChoySection mount', () => {
     mounted.unmount();
   });
 
-  test('marks a divided section for trailing-rule spacing', async () => {
+  test('marks a divided section with trailing hairline (spacing is sibling CSS)', async () => {
     const mounted = mountApp(ChoySection as any, {
       props: {
         title: 'System Information',
@@ -53,7 +53,6 @@ describe('ChoySection mount', () => {
     await flushPromises();
     const root = mounted.q('[data-testid=choy-section]') as HTMLElement | null;
     expect(root?.hasAttribute('data-divided')).toBe(true);
-    expect(root?.className || '').toContain('mt-8');
     const title = mounted.q('[data-slot=choy-section-title]') as HTMLElement | null;
     const rule = mounted.q('[data-slot=choy-section-rule]') as HTMLElement | null;
     expect(title).not.toBeNull();
@@ -64,6 +63,29 @@ describe('ChoySection mount', () => {
     expect(rule?.getAttribute('aria-hidden')).toBe('true');
     expect(rule?.parentElement === title).toBe(true);
     expect(mounted.q('[data-slot=field-legend]')?.className || '').toContain('sr-only');
+    mounted.unmount();
+  });
+
+  test('adjacent sections stack as direct siblings for margin-top rhythm', async () => {
+    const Host = defineComponent({
+      setup() {
+        return () =>
+          h('div', { 'data-testid': 'section-stack' }, [
+            h(ChoySection as any, { title: 'First' }),
+            h(ChoySection as any, { title: 'Second' }),
+          ]);
+      },
+    });
+    const mounted = mountApp(Host as any);
+    await flushPromises();
+    const stack = mounted.q('[data-testid=section-stack]') as HTMLElement | null;
+    expect(stack).not.toBeNull();
+    const sections = Array.from(stack!.children).filter(
+      (el) => (el as HTMLElement).getAttribute?.('data-testid') === 'choy-section',
+    );
+    // Direct siblings so ChoySection scoped `section + section { margin-top: 2rem }` can apply.
+    expect(sections.length).toBe(2);
+    expect(sections[0]).not.toBe(sections[1]);
     mounted.unmount();
   });
 

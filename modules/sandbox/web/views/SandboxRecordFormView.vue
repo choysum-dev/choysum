@@ -56,286 +56,281 @@ SPDX-License-Identifier: Apache-2.0
     </template>
 
     <!--
-      Sheet tip chrome + padless ChoySections (not nested cards).
-      Identity mt-0 so tip mb-8 is not doubled by section margin.
+      Padless ChoySections (not nested cards). Onchange demo tip is a footer footnote.
+      ChoyGrid defaults to container 421 (omit span = one field slot).
+      Use :span="12" for full-bleed; object span for custom bands; :responsive="false" to freeze.
+      Label gutter is per ChoyCol (contents + max-content); keep one field per Col for 421 demos.
     -->
-    <div data-anchor="choy.form.sheet" class="flex min-h-full flex-col">
-      <aside
-        class="mb-8 rounded-md border border-border bg-muted/40 px-3.5 py-2.5 text-xs leading-relaxed text-muted-foreground"
-        data-testid="sandbox-onchange-hint"
-      >
-        {{
-          _t(
-            'Onchange: Active/State warn → toast; State disables Progress statusbar clicks (options stay visible); Currency/Category rewrite values; negative Int Value → field error; Line Quantity silently clamps to 1…999 (no toast).',
-          )
-        }}
-      </aside>
+    <ChoySection :title="_t('Identity')">
+      <ChoyGrid>
+        <ChoyCol>
+          <ChoyCharField :store="store" prop="NameChar" />
+        </ChoyCol>
+        <ChoyCol>
+          <ChoyVarcharField :store="store" prop="Title" />
+        </ChoyCol>
+        <ChoyCol>
+          <ChoyVarcharField :store="store" prop="Code" :copyable="true" />
+        </ChoyCol>
+        <ChoyCol>
+          <ChoyBooleanField :store="store" prop="IsActive" widget="switch" />
+        </ChoyCol>
+        <ChoyCol>
+          <ChoyIntField :store="store" prop="Sequence" />
+        </ChoyCol>
+        <ChoyCol>
+          <ChoySelectionField :store="store" prop="State" />
+        </ChoyCol>
+        <ChoyCol :span="12">
+          <ChoyTextField :store="store" prop="Notes" orientation="vertical" />
+        </ChoyCol>
+      </ChoyGrid>
+    </ChoySection>
 
-      <!--
-        ChoyGrid defaults to container 421 (omit span = one field slot).
-        Use :span="12" for full-bleed; object span for custom bands; :responsive="false" to freeze.
-        Label gutter is per ChoyCol (contents + max-content); keep one field per Col for 421 demos.
-      -->
-      <ChoySection :title="_t('Identity')" class="mt-0">
-        <ChoyGrid>
-          <ChoyCol>
-            <ChoyCharField :store="store" prop="NameChar" :rules="requiredRules" />
-          </ChoyCol>
-          <ChoyCol>
-            <ChoyVarcharField :store="store" prop="Title" :rules="requiredRules" />
-          </ChoyCol>
-          <ChoyCol>
-            <ChoyVarcharField :store="store" prop="Code" :rules="requiredRules" :copyable="true" />
-          </ChoyCol>
-          <ChoyCol>
-            <ChoyBooleanField :store="store" prop="IsActive" widget="switch" />
-          </ChoyCol>
-          <ChoyCol>
-            <ChoyIntField :store="store" prop="Sequence" />
-          </ChoyCol>
-          <ChoyCol>
-            <ChoySelectionField :store="store" prop="State" />
-          </ChoyCol>
-          <ChoyCol :span="12">
-            <ChoyTextField :store="store" prop="Notes" orientation="vertical" />
-          </ChoyCol>
-        </ChoyGrid>
-      </ChoySection>
+    <ChoySection :title="_t('Numbers')">
+      <ChoyGrid>
+        <ChoyCol>
+          <ChoyIntField :store="store" prop="IntValue" />
+        </ChoyCol>
+        <ChoyCol>
+          <ChoyBigintField :store="store" prop="BigintValue" />
+        </ChoyCol>
+        <ChoyCol>
+          <ChoyNumberField :store="store" prop="NumberValue" />
+        </ChoyCol>
+        <ChoyCol>
+          <ChoyDecimalField :store="store" prop="DecimalValue" />
+        </ChoyCol>
+        <ChoyCol>
+          <ChoyManyToOneRefField
+            :store="store"
+            prop="CurrencyId"
+            :searchView="CurrencyListView"
+            :search-view-title="_t('Select Currency')"
+          />
+        </ChoyCol>
+        <ChoyCol>
+          <ChoyMonetaryField :store="store" prop="Amount" />
+        </ChoyCol>
+      </ChoyGrid>
+    </ChoySection>
 
-      <ChoySection :title="_t('Numbers')">
-        <ChoyGrid>
-          <ChoyCol>
-            <ChoyIntField :store="store" prop="IntValue" />
-          </ChoyCol>
-          <ChoyCol>
-            <ChoyBigintField :store="store" prop="BigintValue" />
-          </ChoyCol>
-          <ChoyCol>
-            <ChoyNumberField :store="store" prop="NumberValue" />
-          </ChoyCol>
-          <ChoyCol>
-            <ChoyDecimalField :store="store" prop="DecimalValue" />
-          </ChoyCol>
-          <ChoyCol>
-            <ChoyManyToOneRefField
+    <ChoySection :title="_t('Temporal')">
+      <!-- Object span: container bands (not viewport) — three columns when wide. -->
+      <ChoyGrid>
+        <ChoyCol :span="{ base: 12, md: 6, lg: 4 }">
+          <ChoyDateField :store="store" prop="DateValue" />
+        </ChoyCol>
+        <ChoyCol :span="{ base: 12, md: 6, lg: 4 }">
+          <ChoyDatetimeField :store="store" prop="DatetimeValue" mode="datetime" />
+        </ChoyCol>
+        <ChoyCol :span="{ base: 12, md: 6, lg: 4 }">
+          <ChoyTimeField :store="store" prop="TimeValue" />
+        </ChoyCol>
+      </ChoyGrid>
+    </ChoySection>
+
+    <ChoySection :title="_t('Rich Content')">
+      <ChoyGrid>
+        <ChoyCol :span="12">
+          <ChoyHtmlField :store="store" prop="BodyHtml" orientation="vertical" />
+        </ChoyCol>
+        <ChoyCol :span="{ base: 12, md: 6, lg: 6 }">
+          <ChoyBinaryField :store="store" prop="Attachment" />
+        </ChoyCol>
+        <ChoyCol :span="{ base: 12, md: 6, lg: 6 }">
+          <ChoyImageField :store="store" prop="Image" />
+        </ChoyCol>
+        <ChoyCol :span="{ base: 12, md: 6, lg: 6 }">
+          <ChoyJsonField :store="store" prop="JsonPayload" />
+        </ChoyCol>
+        <ChoyCol :span="{ base: 12, md: 6, lg: 6 }">
+          <ChoyPropertiesField :store="store" prop="Properties" />
+        </ChoyCol>
+      </ChoyGrid>
+    </ChoySection>
+
+    <ChoySection :title="_t('Depth')">
+      <ChoyGrid>
+        <!-- Numeric span = lg target; scales up under 421 (6→12→12). -->
+        <ChoyCol :span="6">
+          <ChoyVarcharField :store="store" prop="CompanyNote" />
+        </ChoyCol>
+        <ChoyCol :span="6">
+          <ChoyManyToOneRefField
+            :store="store"
+            prop="CompanyId"
+            :searchView="CompanyListView"
+            :search-view-title="_t('Select Company')"
+          />
+        </ChoyCol>
+        <ChoyCol>
+          <ChoyIntField :store="store" prop="LineCount" :readonly="true" />
+        </ChoyCol>
+        <ChoyCol>
+          <ChoyVarcharField :store="store" prop="CategoryName" :readonly="true" />
+        </ChoyCol>
+        <ChoyCol :span="6">
+          <ChoyManyToOneField :store="store" prop="PrimaryLineId" :readonly="true">
+            <ChoyVarcharField :store="store" prop="PrimaryLineId.Name" />
+          </ChoyManyToOneField>
+        </ChoyCol>
+      </ChoyGrid>
+    </ChoySection>
+
+    <ChoySection :title="_t('Relations')">
+      <ChoyGrid>
+        <ChoyCol :span="6">
+          <ChoyManyToOneField
+            :store="store"
+            prop="CategoryId"
+            :searchView="SandboxCategoryListView"
+            :search-view-title="_t('Select Category')"
+          >
+            <ChoyVarcharField :store="store" prop="CategoryId.Name" />
+          </ChoyManyToOneField>
+        </ChoyCol>
+        <ChoyCol :span="6">
+          <ChoyManyToOneRefField
+            :store="store"
+            prop="CategoryRefId"
+            :searchView="SandboxCategoryListView"
+            :search-view-title="_t('Select Category Ref')"
+          />
+        </ChoyCol>
+        <ChoyCol :span="12">
+          <ChoyManyToManyField
+            :store="store"
+            prop="Tags"
+            :search-list="SandboxTagListView"
+            :search-view-title="_t('Select Tags')"
+          >
+            <ChoyVarcharField :store="store" prop="Tags.Name" />
+            <ChoyVarcharField :store="store" prop="Tags.Code" />
+          </ChoyManyToManyField>
+        </ChoyCol>
+        <ChoyCol :span="12">
+          <!--
+            ManyToManyRef is string[] on the parent, so TagTableRefIds.Name is not a FieldPath.
+            Nested columns bind via field-prefix + row; type the column store as the target model.
+          -->
+          <ChoyManyToManyRefField
+            :store="store"
+            prop="TagTableRefIds"
+            :search-list="SandboxTagListView"
+            :search-view-title="_t('Select Tag Ref Table')"
+          >
+            <template #default="{ refStore }">
+              <ChoyVarcharField :store="(refStore as ModelStore<SandboxTag> | undefined)" prop="Name" />
+              <ChoyVarcharField :store="(refStore as ModelStore<SandboxTag> | undefined)" prop="Code" />
+            </template>
+          </ChoyManyToManyRefField>
+        </ChoyCol>
+        <ChoyCol :span="12">
+          <ChoyManyToManyTagsField
+            :store="store"
+            prop="TagChips"
+            :search-list="SandboxTagListView"
+            :search-view-title="_t('Select Tag Chips')"
+            :tag-label-field="['Name', 'Code', 'Id']"
+          />
+        </ChoyCol>
+        <ChoyCol :span="12">
+          <ChoyManyToManyRefTagsField
+            :store="store"
+            prop="TagRefIds"
+            :search-list="SandboxTagListView"
+            :search-view-title="_t('Select Tag Refs')"
+            :tag-label-field="['Name', 'Code', 'Id']"
+          />
+        </ChoyCol>
+        <ChoyCol :span="12">
+          <ChoyManyToManyTreeField
+            :store="store"
+            prop="Categories"
+            :label="_t('Categories')"
+            :lazy="false"
+            :max-depth="0"
+            children-field="Children"
+            order-field="Code"
+            :root-condition="{
+              And: [['ParentId', 'is', null]],
+            }"
+            :default-expand-all="true"
+            :check-strictly="false"
+          />
+        </ChoyCol>
+        <ChoyCol :span="12">
+          <ChoyManyToManyRefTreeField
+            :store="store"
+            prop="CategoryPathIds"
+            :label="_t('Category Path')"
+            :lazy="false"
+            :max-depth="0"
+            children-field="Children"
+            :root-condition="{
+              And: [['ParentId', 'is', null]],
+            }"
+            :default-expand-all="true"
+            :check-strictly="false"
+          />
+        </ChoyCol>
+      </ChoyGrid>
+    </ChoySection>
+
+    <ChoySection :title="_t('Lines')">
+      <div class="flex flex-col gap-4">
+        <SandboxLinesVirtTools :store="store" />
+        <ChoyTabs v-model="linesTab">
+          <!-- force-mount: both panes register Lines.* so save returnFields stay complete. -->
+          <ChoyTab :label="_t('Lines (table)')" value="lines-table" force-mount>
+            <ChoyOneToManyField :store="store" prop="Lines" hide-label>
+              <ChoyVarcharField :store="store" prop="Lines.Name" />
+              <ChoyIntField :store="store" prop="Lines.Quantity" />
+              <ChoySelectionField :store="store" prop="Lines.State" />
+              <ChoyIntField :store="store" prop="Lines.Sequence" />
+            </ChoyOneToManyField>
+          </ChoyTab>
+          <ChoyTab :label="_t('Lines (kanban)')" value="lines-kanban" force-mount>
+            <ChoyOneToManyKanbanField
               :store="store"
-              prop="CurrencyId"
-              :searchView="CurrencyListView"
-              :search-view-title="_t('Select Currency')"
-            />
-          </ChoyCol>
-          <ChoyCol>
-            <ChoyMonetaryField :store="store" prop="Amount" />
-          </ChoyCol>
-        </ChoyGrid>
-      </ChoySection>
-
-      <ChoySection :title="_t('Temporal')">
-        <!-- Object span: container bands (not viewport) — three columns when wide. -->
-        <ChoyGrid>
-          <ChoyCol :span="{ base: 12, md: 6, lg: 4 }">
-            <ChoyDateField :store="store" prop="DateValue" />
-          </ChoyCol>
-          <ChoyCol :span="{ base: 12, md: 6, lg: 4 }">
-            <ChoyDatetimeField :store="store" prop="DatetimeValue" mode="datetime" />
-          </ChoyCol>
-          <ChoyCol :span="{ base: 12, md: 6, lg: 4 }">
-            <ChoyTimeField :store="store" prop="TimeValue" />
-          </ChoyCol>
-        </ChoyGrid>
-      </ChoySection>
-
-      <ChoySection :title="_t('Rich Content')">
-        <ChoyGrid>
-          <ChoyCol :span="12">
-            <ChoyHtmlField :store="store" prop="BodyHtml" orientation="vertical" />
-          </ChoyCol>
-          <ChoyCol :span="{ base: 12, md: 6, lg: 6 }">
-            <ChoyBinaryField :store="store" prop="Attachment" />
-          </ChoyCol>
-          <ChoyCol :span="{ base: 12, md: 6, lg: 6 }">
-            <ChoyImageField :store="store" prop="Image" />
-          </ChoyCol>
-          <ChoyCol :span="{ base: 12, md: 6, lg: 6 }">
-            <ChoyJsonField :store="store" prop="JsonPayload" />
-          </ChoyCol>
-          <ChoyCol :span="{ base: 12, md: 6, lg: 6 }">
-            <ChoyPropertiesField :store="store" prop="Properties" />
-          </ChoyCol>
-        </ChoyGrid>
-      </ChoySection>
-
-      <ChoySection :title="_t('Depth')">
-        <ChoyGrid>
-          <!-- Numeric span = lg target; scales up under 421 (6→12→12). -->
-          <ChoyCol :span="6">
-            <ChoyVarcharField :store="store" prop="CompanyNote" />
-          </ChoyCol>
-          <ChoyCol :span="6">
-            <ChoyManyToOneRefField
-              :store="store"
-              prop="CompanyId"
-              :searchView="CompanyListView"
-              :search-view-title="_t('Select Company')"
-            />
-          </ChoyCol>
-          <ChoyCol>
-            <ChoyIntField :store="store" prop="LineCount" :readonly="true" />
-          </ChoyCol>
-          <ChoyCol>
-            <ChoyVarcharField :store="store" prop="CategoryName" :readonly="true" />
-          </ChoyCol>
-          <ChoyCol :span="6">
-            <ChoyManyToOneField :store="store" prop="PrimaryLineId" :readonly="true">
-              <ChoyVarcharField :store="store" prop="PrimaryLineId.Name" />
-            </ChoyManyToOneField>
-          </ChoyCol>
-        </ChoyGrid>
-      </ChoySection>
-
-      <ChoySection :title="_t('Relations')">
-        <ChoyGrid>
-          <ChoyCol :span="6">
-            <ChoyManyToOneField
-              :store="store"
-              prop="CategoryId"
-              :searchView="SandboxCategoryListView"
-              :search-view-title="_t('Select Category')"
+              prop="Lines"
+              hide-label
+              card-title-field="Name"
+              card-subtitle-field=""
+              :fields="['Quantity', 'State']"
+              :default-record="defaultLineRecord"
+              :form-view="SandboxLineFormView"
+              :create-dialog-title="_t('New Line')"
+              :edit-dialog-title="_t('Edit Line')"
+              :display-dialog-title="_t('View Line')"
             >
-              <ChoyVarcharField :store="store" prop="CategoryId.Name" />
-            </ChoyManyToOneField>
-          </ChoyCol>
-          <ChoyCol :span="6">
-            <ChoyManyToOneRefField
-              :store="store"
-              prop="CategoryRefId"
-              :searchView="SandboxCategoryListView"
-              :search-view-title="_t('Select Category Ref')"
-            />
-          </ChoyCol>
-          <ChoyCol :span="12">
-            <ChoyManyToManyField
-              :store="store"
-              prop="Tags"
-              :search-list="SandboxTagListView"
-              :search-view-title="_t('Select Tags')"
-            >
-              <ChoyVarcharField :store="store" prop="Tags.Name" />
-              <ChoyVarcharField :store="store" prop="Tags.Code" />
-            </ChoyManyToManyField>
-          </ChoyCol>
-          <ChoyCol :span="12">
-            <!--
-              ManyToManyRef is string[] on the parent, so TagTableRefIds.Name is not a FieldPath.
-              Nested columns bind via field-prefix + row; type the column store as the target model.
-            -->
-            <ChoyManyToManyRefField
-              :store="store"
-              prop="TagTableRefIds"
-              :search-list="SandboxTagListView"
-              :search-view-title="_t('Select Tag Ref Table')"
-            >
-              <template #default="{ refStore }">
-                <ChoyVarcharField :store="(refStore as ModelStore<SandboxTag> | undefined)" prop="Name" />
-                <ChoyVarcharField :store="(refStore as ModelStore<SandboxTag> | undefined)" prop="Code" />
-              </template>
-            </ChoyManyToManyRefField>
-          </ChoyCol>
-          <ChoyCol :span="12">
-            <ChoyManyToManyTagsField
-              :store="store"
-              prop="TagChips"
-              :search-list="SandboxTagListView"
-              :search-view-title="_t('Select Tag Chips')"
-              :tag-label-field="['Name', 'Code', 'Id']"
-            />
-          </ChoyCol>
-          <ChoyCol :span="12">
-            <ChoyManyToManyRefTagsField
-              :store="store"
-              prop="TagRefIds"
-              :search-list="SandboxTagListView"
-              :search-view-title="_t('Select Tag Refs')"
-              :tag-label-field="['Name', 'Code', 'Id']"
-            />
-          </ChoyCol>
-          <ChoyCol :span="12">
-            <ChoyManyToManyTreeField
-              :store="store"
-              prop="Categories"
-              :label="_t('Categories')"
-              :lazy="false"
-              :max-depth="0"
-              children-field="Children"
-              order-field="Code"
-              :root-condition="{
-                And: [['ParentId', 'is', null]],
-              }"
-              :default-expand-all="true"
-              :check-strictly="false"
-            />
-          </ChoyCol>
-          <ChoyCol :span="12">
-            <ChoyManyToManyRefTreeField
-              :store="store"
-              prop="CategoryPathIds"
-              :label="_t('Category Path')"
-              :lazy="false"
-              :max-depth="0"
-              children-field="Children"
-              :root-condition="{
-                And: [['ParentId', 'is', null]],
-              }"
-              :default-expand-all="true"
-              :check-strictly="false"
-            />
-          </ChoyCol>
-        </ChoyGrid>
-      </ChoySection>
-
-      <ChoySection :title="_t('Lines')">
-        <div class="flex flex-col gap-4">
-          <SandboxLinesVirtTools :store="store" />
-          <ChoyTabs v-model="linesTab">
-            <!-- force-mount: both panes register Lines.* so save returnFields stay complete. -->
-            <ChoyTab :label="_t('Lines (table)')" value="lines-table" force-mount>
-              <ChoyOneToManyField :store="store" prop="Lines" hide-label>
-                <ChoyVarcharField :store="store" prop="Lines.Name" />
-                <ChoyIntField :store="store" prop="Lines.Quantity" />
-                <ChoySelectionField :store="store" prop="Lines.State" />
-                <ChoyIntField :store="store" prop="Lines.Sequence" />
-              </ChoyOneToManyField>
-            </ChoyTab>
-            <ChoyTab :label="_t('Lines (kanban)')" value="lines-kanban" force-mount>
-              <ChoyOneToManyKanbanField
-                :store="store"
-                prop="Lines"
-                hide-label
-                card-title-field="Name"
-                card-subtitle-field=""
-                :fields="['Quantity', 'State']"
-                :default-record="defaultLineRecord"
-                :form-view="SandboxLineFormView"
-                :create-dialog-title="_t('New Line')"
-                :edit-dialog-title="_t('Edit Line')"
-                :display-dialog-title="_t('View Line')"
-              >
-                <template #card="{ item }">
-                  <div class="flex flex-col gap-1 text-xs">
-                    <div class="truncate text-sm font-medium">{{ item?.Name || _t('Unnamed Line') }}</div>
-                    <div class="text-muted-foreground">
-                      {{ _t('Qty') }} {{ item?.Quantity ?? 0 }}
-                      <span class="text-muted-foreground/60"> · </span>
-                      {{ item?.State || '—' }}
-                    </div>
+              <template #card="{ item }">
+                <div class="flex flex-col gap-1 text-xs">
+                  <div class="truncate text-sm font-medium">{{ item?.Name || _t('Unnamed Line') }}</div>
+                  <div class="text-muted-foreground">
+                    {{ _t('Qty') }} {{ item?.Quantity ?? 0 }}
+                    <span class="text-muted-foreground/60"> · </span>
+                    {{ item?.State || '—' }}
                   </div>
-                </template>
-              </ChoyOneToManyKanbanField>
-            </ChoyTab>
-          </ChoyTabs>
-        </div>
-      </ChoySection>
-    </div>
+                </div>
+              </template>
+            </ChoyOneToManyKanbanField>
+          </ChoyTab>
+        </ChoyTabs>
+      </div>
+    </ChoySection>
+
+    <aside
+      class="mt-8 rounded-md border border-border bg-muted/40 px-3.5 py-2.5 text-xs leading-relaxed text-muted-foreground"
+      data-testid="sandbox-onchange-hint"
+    >
+      {{
+        _t(
+          'Onchange: Active/State warn → toast; State disables Progress statusbar clicks (options stay visible); Currency/Category rewrite values; negative Int Value → field error; Line Quantity silently clamps to 1…999 (no toast).',
+        )
+      }}
+    </aside>
   </ChoyFormView>
 </template>
 
@@ -400,7 +395,6 @@ import { sandboxRecordActions } from './sandbox_record_actions';
 
 defineOptions({ name: 'SandboxRecordFormView', inheritAttrs: true });
 const { _t } = createTranslate('sandbox', { scope: 'web/views/SandboxRecordFormView' });
-const requiredRules = computed(() => [{ required: true, message: _t('Required') }]);
 const linesTab = ref('lines-table');
 const formViewRef = ref<{
   reloadDisplay?: () => Promise<void>;

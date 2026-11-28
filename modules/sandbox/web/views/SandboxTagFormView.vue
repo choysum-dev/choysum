@@ -18,10 +18,10 @@ SPDX-License-Identifier: Apache-2.0
     <ChoySection :title="_t('Tag')">
       <ChoyGrid>
         <ChoyCol :span="6">
-          <ChoyVarcharField :store="store" prop="Name" :rules="requiredRules" />
+          <ChoyVarcharField :store="store" prop="Name" />
         </ChoyCol>
         <ChoyCol :span="6">
-          <ChoyVarcharField :store="store" prop="Code" :rules="requiredRules" />
+          <ChoyVarcharField :store="store" prop="Code" />
         </ChoyCol>
         <ChoyCol>
           <ChoyBooleanField :store="store" prop="IsActive" />
@@ -32,7 +32,6 @@ SPDX-License-Identifier: Apache-2.0
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
 import type { RouteLocationRaw } from 'vue-router';
 import type { ModelStore } from '@/web/web/stores/modelStore';
 import type SandboxTag from '@/sandbox/service/models/sandbox_tag';
@@ -52,7 +51,6 @@ import { sandboxTagActions } from './sandbox_tag_actions';
 
 defineOptions({ name: 'SandboxTagFormView', inheritAttrs: true });
 const { _t } = createTranslate('sandbox', { scope: 'web/views/SandboxTagFormView' });
-const requiredRules = computed(() => [{ required: true, message: _t('Required') }]);
 
 const props = withDefaults(
   defineProps<{

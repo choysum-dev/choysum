@@ -36,6 +36,64 @@ new HISTORY entry describing what was re-copied vs re-patched.
 
 ## Entries (newest first)
 
+### 2026-11-28 — InputGroup denser inline addon / control padding
+
+**What:**
+- `inputGroupAddonVariants` inline-start/end: outer inset stays `ps/pe-3` (12px);
+  button/kbd nudge uses logical `-ms` / `-me` (was physical `ml` / `mr`).
+- `InputGroup.vue` style: with an inline-end addon only, control
+  `padding-inline-start: 0.75rem` (match addon outer 12px) and
+  `padding-inline-end: 0.25rem` toward the counter; with inline-start addon,
+  tighten start to `0.25rem`. Kit `has-[…]` utilities are not always emitted.
+
+**Why not product-only:** Word-limit Varchar/Text and Search all share InputGroup;
+density belongs on the kit host. Logical insets keep LTR/RTL mirrored.
+
+**Do not regress:** Keep the `<style>` block (or equivalent emitted utilities)
+and logical addon insets on re-copy.
+
+### 2026-11-28 — Input / Textarea default `autocomplete="off"`
+
+**What:** `Input` and `Textarea` set `autocomplete="off"` before `$attrs` so
+callers (login `username` / `current-password`, etc.) can still override.
+
+**Why not product-only:** Every ERP text control goes through these hosts;
+patching each Choy* field is brittle vs kit defaults. FormView also sets
+`autocomplete="off"` on the `<form>`; autofill color neutralization lives in
+product `index.css`.
+
+**Do not regress:** Keep the default before `$attrs` so explicit autocomplete
+tokens win; do not hard-code `off` after attrs.
+
+### 2026-11-28 — Invalid chrome: ComboboxTrigger / Button / Switch
+
+**What:**
+- `ComboboxTrigger`: open-state border-ring skips `[aria-invalid='true']`.
+- `Button`: add `aria-invalid:border-destructive` / ring (Date/Time outline pickers).
+- `Switch`: inline `borderColor` uses destructive when `aria-invalid` so it is not
+  overridden by the checked/unchecked token style.
+
+**Why not product-only:** These hosts own the border (or inline style); FieldBase
+can paint some cases via `data-invalid`, but open-ring / Button / Switch still
+need kit-level cooperation.
+
+**Do not regress:** Keep the three behaviors above on re-copy.
+
+### 2026-11-28 — InputGroup host `aria-invalid` border
+
+**What:** Added `aria-invalid:border-destructive` / ring utilities on
+`InputGroup` itself (alongside the existing nested
+`has-[[data-slot][aria-invalid=true]]:` classes).
+
+**Why not product-only:** Nested `has-[[…]]` utilities are not emitted by
+tailwind-go, so word-limit Varchar/Text (border lives on the group, child
+Input is `border-0`) never showed invalid chrome while plain `Input` did.
+Host `aria-invalid:` variants are emitted and match Input/Combobox.
+
+**Do not regress:** Keep host `aria-invalid:border-destructive` (and ring) when
+re-copying InputGroup; product fields that use InputGroup with an invalid
+inner control must also set `aria-invalid` on the group host.
+
 ### 2026-11-27 — InputGroupAddon focuses textarea as well as input
 
 **What:** `InputGroupAddon` click-to-focus used `querySelector("input")` only;

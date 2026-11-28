@@ -257,7 +257,7 @@ describe('ChoyFieldBase label and help', () => {
     m.unmount();
   });
 
-  test('shows required asterisk on form label in display and edit', () => {
+  test('shows required asterisk on form label only while editable', () => {
     const display = mountBase(
       {
         binding: makeBinding({ string: 'NameChar', notNull: true }, { isEditMode: false }),
@@ -270,7 +270,8 @@ describe('ChoyFieldBase label and help', () => {
         },
       },
     );
-    expect(display.q('[data-slot="field-label"]')?.textContent).toContain('*');
+    expect(display.q('[data-slot="field-label"]')?.textContent).not.toContain('*');
+    expect(display.q('[data-slot="field-required"]')).toBeTruthy();
     display.unmount();
 
     const edit = mountBase(
@@ -286,6 +287,7 @@ describe('ChoyFieldBase label and help', () => {
       },
     );
     expect(edit.q('[data-slot="field-label"]')?.textContent).toContain('*');
+    expect(edit.q('[data-slot="field-required"]')).toBeTruthy();
     edit.unmount();
 
     const optionalDisplay = mountBase(
@@ -656,6 +658,176 @@ describe('ChoyFieldBase list-editing-row-id gate', () => {
     expect(m.q('[data-slot="field-error"]')).toBeFalsy();
     m.unmount();
     expect(validators.size).toBe(0);
+  });
+
+  test('auto-requires from meta.notNull without explicit rules', async () => {
+    installUiStubs();
+    installDialogStubs();
+    const { FIELD_CLIENT_VALIDATORS_KEY } = await import('@/web/web/composables/fieldClientValidation');
+    const validators = new Map<string, () => Promise<string>>();
+    const binding = makeBinding({ string: 'Sequence', notNull: true });
+    binding.__value.value = '';
+    const m = mountApp(ChoyFieldBase as any, {
+      props: { binding, renderMode: 'form' },
+      provide: { [FIELD_CLIENT_VALIDATORS_KEY as any]: validators },
+      slots: {
+        edit: () => h(EditStub),
+        display: () => h(DisplayStub),
+      },
+    });
+    await flushPromises();
+    expect(m.q('[data-slot="field-error"]')).toBeFalsy();
+    const validate = [...validators.values()][0];
+    expect(await validate()).toBe('Required');
+    await flushPromises();
+    // Auto-required: toast/chrome only — no visible inline copy; sr-only keeps a11y association.
+    expect(m.q('[data-slot="field-error"]')).toBeFalsy();
+    expect(m.q('[data-slot="field-error-sr"]')?.textContent).toContain('Required');
+    expect(m.q('[data-invalid="true"]')).toBeTruthy();
+    expect(m.q('[data-slot="field-label"]')?.className || '').toContain('text-destructive');
+    binding.__value.value = '1';
+    await flushPromises();
+    expect(await validate()).toBe('');
+    await flushPromises();
+    expect(m.q('[data-invalid="true"]')).toBeFalsy();
+    m.unmount();
+  });
+
+  test('nested relation columns validate each row; empty collection passes', async () => {
+    installUiStubs();
+    installDialogStubs();
+    const { FIELD_CLIENT_VALIDATORS_KEY } = await import('@/web/web/composables/fieldClientValidation');
+    const validators = new Map<string, () => Promise<string>>();
+    const lines = ref<Array<{ Name?: string }>>([]);
+    const binding = makeBinding({ string: 'Name', notNull: true }, { fieldPrefix: 'Lines' });
+    (binding as any).prop = 'Lines.Name';
+    (binding as any).recordRef = () => computed(() => ({ Lines: lines.value }));
+    (binding as any).fieldRefOf = (row: { Name?: string }) =>
+      computed({
+        get: () => row?.Name,
+        set: (v: string) => {
+          if (row) row.Name = v;
+        },
+      });
+    const m = mountApp(ChoyFieldBase as any, {
+      props: { binding, renderMode: 'form' },
+      provide: { [FIELD_CLIENT_VALIDATORS_KEY as any]: validators },
+      slots: {
+        edit: () => h(EditStub),
+        display: () => h(DisplayStub),
+      },
+    });
+    await flushPromises();
+    const validate = [...validators.values()][0];
+    expect(await validate()).toBe('');
+    lines.value = [{ Name: '' }, { Name: 'ok' }];
+    await flushPromises();
+    expect(await validate()).toBe('Required');
+    lines.value = [{ Name: 'a' }, { Name: 'b' }];
+    await flushPromises();
+    expect(await validate()).toBe('');
+    m.unmount();
+  });
+
+  test('dotted paths use binding.meta.notNull, not a same-named root FieldsGet overlay', async () => {
+    installUiStubs();
+    installDialogStubs();
+    const { FIELD_CLIENT_VALIDATORS_KEY } = await import('@/web/web/composables/fieldClientValidation');
+    const validators = new Map<string, () => Promise<string>>();
+    // Root "Code" overlay says optional; leaf Partner.Code meta says required.
+    const binding = makeBinding(
+      { string: 'Code', notNull: true },
+      {
+        store: {
+          getFieldMeta: (name: string) => (name === 'Code' ? { notNull: false, string: 'Code' } : undefined),
+        },
+      },
+    );
+    (binding as any).prop = 'Partner.Code';
+    binding.__value.value = '';
+    const m = mountApp(ChoyFieldBase as any, {
+      props: { binding, renderMode: 'form' },
+      provide: { [FIELD_CLIENT_VALIDATORS_KEY as any]: validators },
+      slots: {
+        edit: () => h(EditStub),
+        display: () => h(DisplayStub),
+      },
+    });
+    await flushPromises();
+    const validate = [...validators.values()][0];
+    expect(await validate()).toBe('Required');
+    expect(m.q('[data-slot="field-required"]')).toBeTruthy();
+    m.unmount();
+  });
+
+  test('keeps explicit required message when rules already include required', async () => {
+    installUiStubs();
+    installDialogStubs();
+    const { FIELD_CLIENT_VALIDATORS_KEY } = await import('@/web/web/composables/fieldClientValidation');
+    const validators = new Map<string, () => Promise<string>>();
+    const binding = makeBinding({ string: 'Title', notNull: true });
+    binding.__value.value = '';
+    const m = mountApp(ChoyFieldBase as any, {
+      props: {
+        binding,
+        renderMode: 'form',
+        rules: [{ required: true, message: 'custom required' }],
+      },
+      provide: { [FIELD_CLIENT_VALIDATORS_KEY as any]: validators },
+      slots: {
+        edit: () => h(EditStub),
+        display: () => h(DisplayStub),
+      },
+    });
+    await flushPromises();
+    const validate = [...validators.values()][0];
+    expect(await validate()).toBe('custom required');
+    await flushPromises();
+    expect(m.q('[data-slot="field-error"]')?.textContent).toContain('custom required');
+    expect(m.q('[data-slot="field-error"]')?.textContent).not.toContain('Required');
+    m.unmount();
+  });
+
+  test('runs notNull required before additive custom validators', async () => {
+    installUiStubs();
+    installDialogStubs();
+    const { FIELD_CLIENT_VALIDATORS_KEY } = await import('@/web/web/composables/fieldClientValidation');
+    const validators = new Map<string, () => Promise<string>>();
+    const binding = makeBinding({ string: 'Code', notNull: true });
+    binding.__value.value = '';
+    const m = mountApp(ChoyFieldBase as any, {
+      props: {
+        binding,
+        renderMode: 'form',
+        rules: [
+          {
+            validator: (_r: unknown, v: unknown, cb: (e?: Error) => void) => {
+              if (v === 'bad') cb(new Error('pattern'));
+              else cb();
+            },
+          },
+        ],
+      },
+      provide: { [FIELD_CLIENT_VALIDATORS_KEY as any]: validators },
+      slots: {
+        edit: () => h(EditStub),
+        display: () => h(DisplayStub),
+      },
+    });
+    await flushPromises();
+    const validate = [...validators.values()][0];
+    expect(await validate()).toBe('Required');
+    await flushPromises();
+    expect(m.q('[data-slot="field-error"]')).toBeFalsy();
+    expect(m.q('[data-slot="field-error-sr"]')?.textContent).toContain('Required');
+    expect(m.q('[data-invalid="true"]')).toBeTruthy();
+    binding.__value.value = 'bad';
+    await flushPromises();
+    expect(await validate()).toBe('pattern');
+    await flushPromises();
+    expect(m.q('[data-slot="field-error"]')?.textContent).toContain('pattern');
+    expect(m.q('[data-slot="field-error-sr"]')).toBeFalsy();
+    m.unmount();
   });
 
   test('reveals client rules on focusout outside the field, not within it', async () => {

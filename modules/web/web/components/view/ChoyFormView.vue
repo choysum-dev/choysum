@@ -298,6 +298,7 @@ SPDX-License-Identifier: Apache-2.0
 
     <form
       ref="formRef"
+      :autocomplete="autocomplete"
       :class="isSettingsPresentation ? 'choy-settings-view__sheet flex min-h-0 min-w-0 flex-1 flex-col gap-8' : undefined"
       :inert="(isSettingsPresentation ? overlayBusy : submitting) || undefined"
       @submit.self.prevent="isSettingsPresentation ? onSettingsSaveGated() : onNativeSubmitGated()"
@@ -444,6 +445,8 @@ const props = withDefaults(
     discardLabel?: string;
     activeView?: string;
     viewSwitcherOptions?: ChoyViewSwitcherOption[];
+    /** Form-level autocomplete; default off. Individual controls may still override. */
+    autocomplete?: string;
   }>(),
   {
     createAction: undefined,
@@ -460,6 +463,7 @@ const props = withDefaults(
     controlBusy: false,
     activeView: 'settings',
     viewSwitcherOptions: () => [],
+    autocomplete: 'off',
   }
 );
 

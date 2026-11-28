@@ -12,12 +12,13 @@ SPDX-License-Identifier: Apache-2.0
     data-anchor="choy.section"
     data-testid="choy-section"
     :data-divided="divided ? '' : undefined"
-    :class="cn('flex min-w-0 flex-col gap-4', divided ? 'mt-8' : undefined, props.class)"
+    :class="cn('flex min-w-0 flex-col gap-4', props.class)"
   >
     <!--
       Visible title is a plain div (not <legend>). Divided sections append a
       trailing hairline with gap-4 so text never sits flush against the rule.
       <legend> stays sr-only inside FieldSet for a11y only.
+      Adjacent sections get margin-top via the sibling rule below (not via divided).
     -->
     <div
       v-if="title && !$slots.header"
@@ -75,8 +76,9 @@ defineOptions({ name: 'ChoySection' });
 
 /**
  * Sheet section for form/detail partitions. Title/description props, or #header
- * + default content. Optional trailing hairline after the title for phase breaks.
- * No border, radius, or bg-card — those belong on ChoyCard.
+ * + default content. Stacked sections get mt-8 between siblings; optional
+ * `divided` adds a hairline only. No border, radius, or bg-card — those belong
+ * on ChoyCard.
  */
 const props = withDefaults(
   defineProps<{
@@ -85,7 +87,8 @@ const props = withDefaults(
     description?: string;
     /**
      * Draw a hairline for phase breaks: trailing after the title when present,
-     * otherwise a full-width rule (#header / untitled).
+     * otherwise a full-width rule (#header / untitled). Does not change spacing —
+     * adjacent sections already use sibling margin-top.
      */
     divided?: boolean;
   }>(),
@@ -94,3 +97,10 @@ const props = withDefaults(
   },
 );
 </script>
+
+<style scoped>
+/* Vertical rhythm between stacked sheet sections (first stays flush). */
+[data-anchor='choy.section'] + [data-anchor='choy.section'] {
+  margin-top: 2rem;
+}
+</style>

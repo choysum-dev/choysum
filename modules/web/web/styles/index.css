@@ -44,6 +44,20 @@ html {
 }
 
 /*
+ * Browser autofill chrome (yellow/blue) clashes with product tokens.
+ * Form/Input default autocomplete=off; this still covers forced fills.
+ */
+:is(input, textarea):-webkit-autofill,
+:is(input, textarea):-webkit-autofill:hover,
+:is(input, textarea):-webkit-autofill:focus,
+:is(input, textarea):-webkit-autofill:active {
+  -webkit-text-fill-color: var(--color-foreground);
+  caret-color: var(--color-foreground);
+  box-shadow: 0 0 0 1000px var(--color-background) inset;
+  transition: background-color 99999s ease-out 0s;
+}
+
+/*
  * Outline buttons (variant uses border-input): primary-tinted hover chrome.
  * Product override — keeps vendor/ui outline classes untouched. Skips
  * outline-destructive (border-destructive/*, not border-input).
@@ -447,6 +461,19 @@ html {
   gap: var(--choy-field-stack-gap);
 }
 
+/*
+ * Overlay field errors: sit clearly under the control (not on the border),
+ * with a light sheet so short copy like「必填」stays readable over dense grids.
+ */
+.choy-field-base__error--overlay {
+  margin-top: 0.25rem;
+  padding: 0.125rem 0.25rem;
+  border-radius: 0.125rem;
+  background-color: color-mix(in oklab, var(--choy-color-background, canvas) 92%, transparent);
+  pointer-events: none;
+  line-height: 1rem;
+}
+
 /* Vertical form chrome: stacked label above control (opt-in via orientation). */
 [data-slot='field'].choy-field-base[data-orientation='vertical'] {
   gap: var(--choy-field-stack-gap);
@@ -625,6 +652,14 @@ html {
 /* Error / description track the same density scale as labels. */
 .choy-field-base [data-slot='field-error'] {
   font-size: var(--choy-font-size-sm);
+}
+
+/*
+ * InputGroup :has(aria-invalid) fallback (kit has-* utilities may not emit).
+ * Field-wide invalid chrome for all control hosts lives on ChoyFieldBase.vue.
+ */
+[data-slot='input-group']:has([data-slot][aria-invalid='true']) {
+  border-color: var(--color-destructive) !important;
 }
 
 /* Numeric field controls + display: stable digit width in lists/forms. */
