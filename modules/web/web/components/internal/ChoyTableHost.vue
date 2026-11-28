@@ -323,11 +323,15 @@ function schedulePersistUserWidths(): void {
   }, LIST_COLUMN_WIDTH_WRITE_DEBOUNCE_MS);
 }
 
+/** Snapshot of userWidths before a drag seeds a measured start width. */
+let widthsBeforeDrag: Record<string, number> | null = null;
+
 function onColumnResizeStart(payload: {
   columnId: string;
   width: number;
   snapshot: Record<string, number>;
 }): void {
+  widthsBeforeDrag = { ...userWidths.value };
   const freeze: Record<string, number> = {};
   for (const [id, w] of Object.entries(payload.snapshot || {})) {
     const clamped = clampListColumnWidthPx(w);
@@ -348,20 +352,37 @@ function onColumnResize(payload: { columnId: string; width: number }): void {
   userWidths.value = { ...userWidths.value, [payload.columnId]: clamped };
 }
 
+function restoreWidthsBeforeDrag(columnId: string): void {
+  const before = widthsBeforeDrag;
+  widthsBeforeDrag = null;
+  if (!before) return;
+  const next = { ...userWidths.value };
+  if (Object.prototype.hasOwnProperty.call(before, columnId)) {
+    next[columnId] = before[columnId]!;
+  } else {
+    delete next[columnId];
+  }
+  userWidths.value = next;
+}
+
 function onColumnResizeEnd(payload: { columnId: string; width: number }): void {
   const clamped = clampListColumnWidthPx(payload.width);
-  if (clamped == null) {
-    dragFreezeWidths.value = null;
+  const start = clampListColumnWidthPx(dragFreezeWidths.value?.[payload.columnId]);
+  dragFreezeWidths.value = null;
+  // Click / zero-delta drag: do not persist a seed-only override.
+  if (clamped == null || (start != null && start === clamped)) {
+    restoreWidthsBeforeDrag(payload.columnId);
     return;
   }
+  widthsBeforeDrag = null;
   userWidths.value = { ...userWidths.value, [payload.columnId]: clamped };
-  dragFreezeWidths.value = null;
   schedulePersistUserWidths();
   emit('column-widths-change', { ...userWidths.value });
 }
 
 function onColumnResizeReset(payload: { columnId: string }): void {
   cancelPendingPersist();
+  widthsBeforeDrag = null;
   dragFreezeWidths.value = null;
   const next = { ...userWidths.value };
   delete next[payload.columnId];
@@ -375,6 +396,7 @@ function onColumnResizeReset(payload: { columnId: string }): void {
 /** Clear all user width overrides for this host bucket (restore auto widths). */
 function resetColumnWidths(): void {
   cancelPendingPersist();
+  widthsBeforeDrag = null;
   dragFreezeWidths.value = null;
   userWidths.value = {};
   if (props.columnWidthBucket) {
